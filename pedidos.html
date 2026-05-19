@@ -278,37 +278,49 @@ function buildOrderHtml(order, isActive = true) {
 }
 // --- FIM DA FUNÇÃO buildOrderHtml ---
         
-        function renderMyOrdersPage() {
-            myOrdersList.innerHTML = '';
-            if (myOrders.length === 0) {
-                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum pedido ativo em andamento.</p>';
-            } else {
-                myOrders.forEach(order => {
-                    const orderDiv = document.createElement('div');
-                    let orderClass = 'bg-white p-5 rounded-xl shadow-sm border border-gray-200 cursor-pointer transition-all hover:shadow-md';
-                    if (order.status === 'Novo' || order.status === 'Pendente') orderClass += ' new-order-highlight';
-                    else if (order.status === 'Saiu para entrega' || order.status === 'Despachado') orderClass += ' dispatched-order-highlight';
-                    
-                    orderDiv.className = orderClass;
-                    orderDiv.dataset.orderId = order.id;
-                    orderDiv.innerHTML = buildOrderHtml(order, true);
-                    myOrdersList.appendChild(orderDiv);
-                });
-            }
+function renderMyOrdersPage() {
+    // 1. Garantir que as listas existam, mesmo que vazias, para evitar erro de .length
+    const active = window.myOrders ? window.myOrders.filter(o => o.status !== 'Finalizado') : [];
+    const finalized = window.myOrders ? window.myOrders.filter(o => o.status === 'Finalizado') : [];
 
-            finalizedOrdersList.innerHTML = '';
-            if (finalizedOrders.length === 0) {
-                finalizedOrdersList.innerHTML = '<p class="text-sm text-gray-400 italic">Nenhum pedido finalizado ainda.</p>';
-            } else {
-                finalizedOrders.forEach(order => {
-                    const orderDiv = document.createElement('div');
-                    orderDiv.className = 'bg-gray-50 p-4 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors';
-                    orderDiv.dataset.orderId = order.id;
-                    orderDiv.innerHTML = buildOrderHtml(order, false);
-                    finalizedOrdersList.appendChild(orderDiv);
-                });
-            }
-        }
+    // 2. Renderizar Ativos
+    const list = document.getElementById('my-orders-list');
+    if (!list) return; // Se o elemento não existir no HTML, para aqui
+    
+    list.innerHTML = '';
+    if (active.length === 0) {
+        list.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum pedido ativo.</p>';
+    } else {
+        active.forEach(order => {
+            const orderDiv = document.createElement('div');
+            let orderClass = 'bg-white p-5 rounded-xl shadow-sm border border-gray-200 cursor-pointer transition-all hover:shadow-md';
+            if (['Novo', 'Pendente'].includes(order.status)) orderClass += ' new-order-highlight';
+            else if (['Saiu para entrega', 'Despachado'].includes(order.status)) orderClass += ' dispatched-order-highlight';
+            
+            orderDiv.className = orderClass;
+            orderDiv.dataset.orderId = order.id;
+            orderDiv.innerHTML = buildOrderHtml(order, true);
+            list.appendChild(orderDiv);
+        });
+    }
+
+    // 3. Renderizar Finalizados
+    const finalizedList = document.getElementById('finalized-orders-list');
+    if (!finalizedList) return;
+
+    finalizedList.innerHTML = '';
+    if (finalized.length === 0) {
+        finalizedList.innerHTML = '<p class="text-sm text-gray-400 italic">Nenhum pedido finalizado.</p>';
+    } else {
+        finalized.forEach(order => {
+            const orderDiv = document.createElement('div');
+            orderDiv.className = 'bg-gray-50 p-4 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100';
+            orderDiv.dataset.orderId = order.id;
+            orderDiv.innerHTML = buildOrderHtml(order, false);
+            finalizedList.appendChild(orderDiv);
+        });
+    }
+}
         
         // ======================= LOGICA DE SUPORTE E BOTÕES =======================
         function removeOrder(orderId) {
@@ -524,6 +536,12 @@ function buildOrderHtml(order, isActive = true) {
                 const data = snapshot.val();
                 const newOrders = [];
 
+				window.myOrders = newOrders;
+    
+    // LINHAS PARA TESTE:
+    console.log("Total de pedidos encontrados:", newOrders.length);
+    console.log("Dados recebidos:", newOrders);
+
                 if (data) {
                     // Converte os dados recebidos em formato de Objeto do Firebase para um Array
                     Object.keys(data).forEach(key => {
@@ -554,7 +572,9 @@ function buildOrderHtml(order, isActive = true) {
                     if (typeof showNewOrderNotification === "function") showNewOrderNotification();
                     if (typeof highlightNewOrder === "function") highlightNewOrder(latestOrder.id);
                     if (typeof printOrder === "function") {
-                        setTimeout(() => { printOrder(latestOrder.id); }, 2500);             
+                        setTimeout(() => { printOrder(latestOrder.id); }, 2500);   
+					}
+				}
             });
         });
 
