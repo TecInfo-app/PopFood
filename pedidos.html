@@ -165,22 +165,24 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
         }
         
         // ======================= NOTIFICAÇÃO E SOM =======================
-        function showNewOrderNotification() {
-            newOrderNotification.classList.remove('hidden');
-            setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
-        
-           try {
-    const notificationSound = new Audio('som.mp3');
-    notificationSound.play();
-} catch (e) {
-    console.log("Áudio bloqueado pelo navegador até o usuário interagir.");
+function showNewOrderNotification() {
+    newOrderNotification.classList.remove('hidden');
+    setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
+
+    /* // Som desativado para evitar erro de Autoplay do navegador
+    try {
+        const notificationSound = new Audio('som.mp3');
+        notificationSound.play();
+    } catch (e) {
+        console.log("Áudio bloqueado pelas políticas do navegador.");
+    }
+    */
+
+    setTimeout(() => {
+        newOrderNotification.classList.remove('show');
+        setTimeout(() => { newOrderNotification.classList.add('hidden'); }, 500);
+    }, 5000);
 }
-        
-            setTimeout(() => {
-                newOrderNotification.classList.remove('show');
-                setTimeout(() => { newOrderNotification.classList.add('hidden'); }, 500);
-            }, 5000);
-        }
 
         function highlightNewOrder(orderId) {
             const orderElement = myOrdersList.querySelector(`[data-order-id="${orderId}"]`);
