@@ -204,25 +204,21 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
        function buildOrderHtml(order, isActive = true) {
     let itemsHtml = '';
     
-    // Proteção: Só tenta fazer o forEach se 'order.items' existir e for um Array
+    // A PROTEÇÃO ESTÁ AQUI:
     if (order.items && Array.isArray(order.items)) {
-    order.items.forEach(item => {
-            let complementsHtml = '';
-            // ... (seu código de complementos permanece aqui)
-            
+        order.items.forEach(item => {
             itemsHtml += `
                 <li class="text-sm text-gray-600">
                     <div class="flex justify-between items-center">
-                        <span>${item.quantity}x ${item.product.name}</span>
+                        <span>${item.quantity}x ${item.product ? item.product.name : 'Produto'}</span>
                         <span class="font-bold">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
                     </div>
                 </li>
             `;
         });
     } else {
-    // Adiciona uma mensagem de aviso no HTML caso não tenha itens
-    itemsHtml = '<li class="text-sm text-gray-400 italic">Sem itens neste pedido.</li>';
-}
+        itemsHtml = '<li class="text-sm text-gray-400 italic">Sem itens neste pedido.</li>';
+    }
 
             // 2. Define os botões de ação (Depende se o pedido está ativo ou não)
             let actionButtonsHtml = '';
