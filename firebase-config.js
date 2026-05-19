@@ -4,15 +4,16 @@ import { getDatabase } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // Cole aqui os dados gerados pelo seu painel do Firebase:
+// Cole aqui os dados gerados pelo seu painel do Firebase:
 const firebaseConfig = {
-    apiKey: "Sua_ApiKey_Aqui",
-    authDomain: "tutubebidasapp-28b77.firebaseapp.com",
+  apiKey: "AIzaSyDBHaHN0WWnesZtH8Z76n5RmTsy3Sn8EBI",
+  authDomain: "tutubebidasapp-28b77.firebaseapp.com",
     // 🔴 ADICIONE OU CORRIJA ESTA LINHA EXATA ABAIXO:
-    databaseURL: "https://tutubebidasapp-28b77-default-rtdb.firebaseio.com", 
-    projectId: "tutubebidasapp-28b77",
-    storageBucket: "tutubebidasapp-28b77.appspot.com",
-    messagingSenderId: "Seu_Sender_Id",
-    appId: "Seu_App_Id"
+    databaseURL: "https://tutubebidasapp-28b77-default-rtdb.firebaseio.com",
+  projectId: "tutubebidasapp-28b77",
+  storageBucket: "tutubebidasapp-28b77.firebasestorage.app",
+  messagingSenderId: "92833412828",
+  appId: "1:92833412828:web:cbeb1ba840bfcbbd686619"
 };
 
 const app = initializeApp(firebaseConfig);
