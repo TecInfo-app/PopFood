@@ -115,7 +115,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Configuração oficial extraída do seu firebase-config.js
         const firebaseConfig = {
             apiKey: "AIzaSyDBHaHN0WWnesZtH8Z76n5RmTsy3Sn8EBI",
             authDomain: "tutubebidasapp-28b77.firebaseapp.com",
@@ -130,7 +129,6 @@
         const database = getDatabase(app);
         const ordersRef = ref(database, 'myOrders');
 
-        // Estado Global local sincronizado com Firebase
         let myOrders = [];
         let finalizedOrders = [];
         let restaurantProfile = {};
@@ -182,7 +180,7 @@
                 const notificationSound = new Audio('som.mp3');
                 notificationSound.play();
             } catch (e) {
-                console.log("Áudio bloqueado pelas diretivas do navegador.");
+                console.log("Áudio bloqueado.");
             }
         
             setTimeout(() => {
@@ -335,12 +333,21 @@
             }
         }
         
-        // AÇÕES EXECUTANDO REMOTAMENTE DIRETO NO FIREBASE REALTIME DATABASE
+        // ================= CONSERTO DA EXCLUSÃO AQUI =================
         function removeOrder(orderId) {
+            // Remove direto o nó no Firebase Realtime Database
             const singleOrderRef = ref(database, `myOrders/${orderId}`);
             remove(singleOrderRef)
-                .then(() => showMessage('Pedido excluído permanentemente!', 'success'))
-                .catch(err => showMessage('Erro ao excluir: ' + err.message, 'error'));
+                .then(() => {
+                    // Remove localmente do array para evitar leitura fantasma no onValue
+                    myOrders = myOrders.filter(o => o.id !== orderId);
+                    finalizedOrders = finalizedOrders.filter(o => o.id !== orderId);
+                    renderMyOrdersPage();
+                    showMessage('Pedido excluído permanentemente!', 'success');
+                })
+                .catch(err => {
+                    showMessage('Erro ao excluir do Firebase: ' + err.message, 'error');
+                });
         }
 
         function dispatchOrder(orderId) {
@@ -491,7 +498,6 @@
             setTimeout(() => { printWindow.print(); }, 500);
         }
 
-        // SINCRONIZAÇÃO EM TEMPO REAL COM O BANCO DE DADOS DO FIREBASE
         window.addEventListener('DOMContentLoaded', () => {
             loadProfileData();
             setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
@@ -502,7 +508,6 @@
                 let finishedOrders = [];
                 let latestOrder = null;
 
-                // Mapeia os IDs antigos antes de aplicar a nova renderização
                 const existingOrderIds = new Set(myOrders.map(o => o.id));
 
                 if (data) {
@@ -519,7 +524,6 @@
                     });
                 }
 
-                // CONTROLE DO SOM E POP-UP: Só ativa se for um ID totalmente novo no banco
                 if (!isFirstLoad && activeOrders.length > myOrders.length) {
                     activeOrders.forEach(order => {
                         if (!existingOrderIds.has(order.id)) {
@@ -538,7 +542,6 @@
 
                 renderMyOrdersPage();
                 
-                // Se um novo pedido real entrou, destaca e chama a impressão
                 if (latestOrder) {
                     highlightNewOrder(latestOrder.id);
                     setTimeout(() => { printOrder(latestOrder.id); }, 2500);
@@ -546,7 +549,6 @@
             });
         });
 
-        // GERENCIADOR CENTRAL DE CLIQUES EVENTOS DO PAINEL
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
