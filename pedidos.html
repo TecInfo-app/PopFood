@@ -527,7 +527,7 @@ function renderMyOrdersPage() {
                 setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
             }
 
-// O onValue agora filtra automaticamente pedidos vazios
+// O onValue substitui completamente o antigo window.addEventListener('storage')
 onValue(ordersRef, (snapshot) => {
     const data = snapshot.val();
     let newOrders = [];
@@ -536,7 +536,7 @@ onValue(ordersRef, (snapshot) => {
         Object.keys(data).forEach(key => {
             const order = data[key];
             
-            // FILTRO DE SEGURANÇA: 
+            // FILTRO DE SEGURANÇA:
             // Só adicionamos o pedido se ele tiver um "total" ou uma lista de "items"
             // Isso ignora pedidos fantasmas/corrompidos que estão causando a duplicação
             if (order && (order.items || order.total >= 0)) {
@@ -552,12 +552,15 @@ onValue(ordersRef, (snapshot) => {
         latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
     }
 
+    // Atualiza as listas globais
     window.myOrders = newOrders;
     lastKnownOrderCount = newOrders.length;
 
     // Renderiza a página
     if (typeof renderMyOrdersPage === "function") {
         renderMyOrdersPage();
+    } else if (typeof loadAllData === "function") {
+        loadAllData();
     }
 
     // Dispara ações automáticas apenas para pedidos que realmente tenham itens
@@ -565,7 +568,7 @@ onValue(ordersRef, (snapshot) => {
         if (typeof showNewOrderNotification === "function") showNewOrderNotification();
         if (typeof highlightNewOrder === "function") highlightNewOrder(latestOrder.id);
         
-        // Impressão automática com atraso
+        // Impressão automática com atraso de 2.5 segundos
         if (typeof printOrder === "function") {
             setTimeout(() => { printOrder(latestOrder.id); }, 2500);
         }
