@@ -203,7 +203,8 @@ function showNewOrderNotification() {
         }
 
         // ======================= RENDERIZAÇÃO DAS LISTAS =======================
-       function buildOrderHtml(order, isActive = true) {
+    // --- INÍCIO DA FUNÇÃO buildOrderHtml ---
+function buildOrderHtml(order, isActive = true) {
     let itemsHtml = '';
     
     // 1. Proteção para itens
@@ -275,6 +276,7 @@ function showNewOrderNotification() {
         </div>
     `;
 }
+// --- FIM DA FUNÇÃO buildOrderHtml ---
         
         function renderMyOrdersPage() {
             myOrdersList.innerHTML = '';
