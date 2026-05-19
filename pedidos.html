@@ -20,7 +20,6 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
-        /* Estilos de impressão */
         @media print {
             body * {
                 visibility: hidden;
@@ -39,7 +38,6 @@
                 color: #000;
             }
         }
-        /* Notificação de novo pedido */
         .notification-box {
             position: fixed;
             bottom: 20px;
@@ -57,7 +55,6 @@
         .notification-box.show {
             opacity: 1;
         }
-        /* Destaques de Status */
         .new-order-highlight {
             background-color: #fff3e0 !important;
         }
@@ -118,7 +115,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <script>
-        // ======================= SUAS INFORMAÇÕES DO CONFIG REPETIDAS AQUI =======================
+        // CONFIGURAÇÃO OFICIAL TUTU BEBIDAS
         const firebaseConfig = {
             apiKey: "AIzaSyDBHaHN0WWnesZtH8Z76n5RmTsy3Sn8EBI",
             authDomain: "tutubebidasapp-28b77.firebaseapp.com",
@@ -129,12 +126,10 @@
             appId: "1:92833412828:web:cbeb1ba840bfcbbd686619"
         };
 
-        // Inicializando conexão direta com o banco de dados
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const ordersRef = database.ref('myOrders');
 
-        // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
         let myOrders = [];
         let finalizedOrders = [];
         let restaurantProfile = {};
@@ -144,7 +139,6 @@
         const AUTO_FINALIZE_TIME_MS = 2 * 60 * 60 * 1000;
         const AUTO_FINALIZE_INTERVAL_MS = 5 * 60 * 1000;
 
-        // ======================= REFERÊNCIAS AO DOM =======================
         const myOrdersList = document.getElementById('my-orders-list');
         const finalizedOrdersList = document.getElementById('finalized-orders-list');
         const messageBox = document.getElementById('messageBox');
@@ -155,7 +149,6 @@
         const confirmActionBtn = document.getElementById('confirmActionBtn');
         const newOrderNotification = document.getElementById('newOrderNotification');
         
-        // ======================= FUNÇÕES AUXILIARES =======================
         function showMessage(message, type = 'success') {
             messageBox.textContent = message;
             messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500');
@@ -180,7 +173,6 @@
             toggleModal(confirmationModal, true);
         }
         
-        // ======================= NOTIFICAÇÃO E SOM =======================
         function showNewOrderNotification() {
             newOrderNotification.classList.remove('hidden');
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
@@ -189,7 +181,7 @@
                 const notificationSound = new Audio('som.mp3');
                 notificationSound.play();
             } catch (e) {
-                console.log("Áudio bloqueado pelas políticas do navegador.");
+                console.log("Áudio bloqueado.");
             }
         
             setTimeout(() => {
@@ -205,7 +197,6 @@
             }
         }
 
-        // ======================= PERSISTÊNCIA E CARGA LOCAL =======================
         function loadProfileData() {
             try {
                 restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
@@ -214,7 +205,6 @@
             }
         }
 
-        // ======================= RENDERIZAÇÃO DAS LISTAS =======================
         function buildOrderHtml(order, isActive = true) {
             let itemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
@@ -344,7 +334,6 @@
             }
         }
         
-        // ======================= OPERAÇÕES DIRETAS NO BANCO REALTIME =======================
         function removeOrder(orderId) {
             database.ref(`myOrders/${orderId}`).remove()
                 .then(() => showMessage('Pedido excluído permanentemente!', 'success'))
@@ -372,7 +361,6 @@
             });
         }
 
-        // ======================= IMPRESSÃO FORMATADA COM TAXA DE ENTREGA =======================
         function printOrder(orderId) {
             const order = myOrders.find(o => o.id === orderId) || finalizedOrders.find(o => o.id === orderId);
             if (!order) {
@@ -497,17 +485,18 @@
             setTimeout(() => { printWindow.print(); }, 500);
         }
 
-        // ======================= CAPTURA SÍNCRONA VIA LIVE STREAM DO FIREBASE =======================
         window.addEventListener('DOMContentLoaded', () => {
             loadProfileData();
             setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
 
-            // Escuta em tempo real direto da referência do nó "myOrders" do seu Realtime Database
             ordersRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 let activeOrders = [];
                 let finishedOrders = [];
                 let latestOrder = null;
+
+                // Guardamos os IDs antigos antes de mapear a nova lista
+                const existingOrderIds = new Set(myOrders.map(o => o.id));
 
                 if (data) {
                     Object.keys(data).forEach(key => {
@@ -523,12 +512,17 @@
                     });
                 }
 
-                // Dispara alertas visuais e sonoros se um novo pedido surgir no banco online
-                if (!isFirstLoad && activeOrders.length > myOrders.length) {
-                    const currentIds = new Set(myOrders.map(o => o.id));
-                    latestOrder = activeOrders.find(o => !currentIds.has(o.id));
-                    
-                    showNewOrderNotification();
+                // CORREÇÃO LOGICA DO SOM: Só toca se o ID NÃO existia no banco antes de carregar
+                if (!isFirstLoad) {
+                    activeOrders.forEach(order => {
+                        if (!existingOrderIds.has(order.id)) {
+                            latestOrder = order; // É um pedido novo de verdade!
+                        }
+                    });
+
+                    if (latestOrder) {
+                        showNewOrderNotification();
+                    }
                 }
 
                 myOrders = activeOrders;
@@ -537,7 +531,6 @@
 
                 renderMyOrdersPage();
                 
-                // Se o fluxo detectar que veio uma nova requisição, aplica destaque e envia para impressão automática
                 if (latestOrder) {
                     highlightNewOrder(latestOrder.id);
                     setTimeout(() => { printOrder(latestOrder.id); }, 2500);
@@ -545,6 +538,7 @@
             });
         });
 
+        // GERENCIADOR CENTRAL DE CLIQUES CORRIGIDO
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
@@ -563,6 +557,7 @@
             
             if (e.target.closest('.remove-order-btn')) {
                 e.stopPropagation();
+                // Correção do ID na modal de exclusão
                 showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
                 return;
             }
