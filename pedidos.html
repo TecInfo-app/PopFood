@@ -575,7 +575,10 @@ onValue(ordersRef, (snapshot) => {
     }
 });
 
-        // Mantemos a sua função de cliques nos botões dos cards exatamente igual!
+       // ======================= LOGICA DE SUPORTE E BOTÕES =======================
+        // ... (suas funções removeOrder, dispatchOrder, finishOrder, autoFinalizeOldOrders, printOrder continuam aqui) ...
+
+        // Esta função centraliza os cliques (ela deve ficar fora do DOMContentLoaded)
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
@@ -586,48 +589,27 @@ onValue(ordersRef, (snapshot) => {
                 orderDiv.classList.remove('new-order-highlight');
             }
 
-            if (e.target.closest('.print-order-btn')) {
-                e.stopPropagation();
-                printOrder(orderId);
-                return;
-            }
-            
-            if (e.target.closest('.remove-order-btn')) {
-                e.stopPropagation();
-                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
-                return;
-            }
-
-            if (e.target.closest('.dispatch-order-btn')) {
-                e.stopPropagation();
-                dispatchOrder(orderId);
-                return;
-            }
-
-            if (e.target.closest('.finish-order-btn')) {
-                e.stopPropagation();
-                finishOrder(orderId);
-                return;
-            }
+            if (e.target.closest('.print-order-btn')) { e.stopPropagation(); printOrder(orderId); return; }
+            if (e.target.closest('.remove-order-btn')) { e.stopPropagation(); showConfirmationModal('Excluir Pedido', `Tem certeza?`, () => removeOrder(orderId)); return; }
+            if (e.target.closest('.dispatch-order-btn')) { e.stopPropagation(); dispatchOrder(orderId); return; }
+            if (e.target.closest('.finish-order-btn')) { e.stopPropagation(); finishOrder(orderId); return; }
 
             const details = orderDiv.querySelector('.order-details');
-            if (details) {
-                details.classList.toggle('hidden');
-            }
+            if (details) details.classList.toggle('hidden');
         }
 
-        // Reatribui os eventos para as suas listas existentes
-        myOrdersList.addEventListener('click', handleListClicks);
-        finalizedOrdersList.addEventListener('click', handleListClicks);
+        // ======================= INICIALIZAÇÃO DE EVENTOS =======================
+        // Precisamos garantir que os elementos existam antes de adicionar os eventos
+        if (myOrdersList) myOrdersList.addEventListener('click', handleListClicks);
+        if (finalizedOrdersList) finalizedOrdersList.addEventListener('click', handleListClicks);
         
         cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
         confirmActionBtn.addEventListener('click', () => {
-            if (confirmationCallback) {
-                confirmationCallback();
-            }
+            if (confirmationCallback) confirmationCallback();
             confirmationCallback = null;
             toggleModal(confirmationModal, false);
         });
+
     </script>
 </body>
 </html>
