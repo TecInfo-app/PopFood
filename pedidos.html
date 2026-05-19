@@ -527,56 +527,50 @@ function renderMyOrdersPage() {
                 setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
             }
 
-            // Referência para a pasta de pedidos no Firebase
-            const ordersRef = ref(db, 'myOrders');
-            let lastKnownOrderCount = -1;
+// O onValue agora filtra automaticamente pedidos vazios
+onValue(ordersRef, (snapshot) => {
+    const data = snapshot.val();
+    let newOrders = [];
 
-            // O onValue substitui completamente o antigo window.addEventListener('storage')
-            onValue(ordersRef, (snapshot) => {
-                const data = snapshot.val();
-                const newOrders = [];
-
-				window.myOrders = newOrders;
-    
-    // LINHAS PARA TESTE:
-    console.log("Total de pedidos encontrados:", newOrders.length);
-    console.log("Dados recebidos:", newOrders);
-
-                if (data) {
-                    // Converte os dados recebidos em formato de Objeto do Firebase para um Array
-                    Object.keys(data).forEach(key => {
-                        newOrders.push({ id: key, ...data[key] });
-                    });
-                }
-
-                // Identifica se entrou um pedido novo para disparar alertas e impressão automática
-                let latestOrder = null;
-                if (lastKnownOrderCount !== -1 && newOrders.length > lastKnownOrderCount) {
-                    const oldOrderIds = new Set(window.myOrders ? window.myOrders.map(order => order.id) : []);
-                    latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
-                }
-
-                // Atualiza as listas globais que sua página usa para renderizar
-                window.myOrders = newOrders;
-                lastKnownOrderCount = newOrders.length;
-
-                // Executa a sua função que desenha e separa os pedidos na tela
-                if (typeof renderMyOrdersPage === "function") {
-                    renderMyOrdersPage();
-                } else if (typeof loadAllData === "function") {
-                    loadAllData();
-                }
-
-                // Se houver um pedido novo, dispara as ações automáticas perfeitamente
-                if (latestOrder) {
-                    if (typeof showNewOrderNotification === "function") showNewOrderNotification();
-                    if (typeof highlightNewOrder === "function") highlightNewOrder(latestOrder.id);
-                    if (typeof printOrder === "function") {
-                        setTimeout(() => { printOrder(latestOrder.id); }, 2500);   
-					}
-				}
-            });
+    if (data) {
+        Object.keys(data).forEach(key => {
+            const order = data[key];
+            
+            // FILTRO DE SEGURANÇA: 
+            // Só adicionamos o pedido se ele tiver um "total" ou uma lista de "items"
+            // Isso ignora pedidos fantasmas/corrompidos que estão causando a duplicação
+            if (order && (order.items || order.total >= 0)) {
+                newOrders.push({ id: key, ...order });
+            }
         });
+    }
+
+    // Identifica se entrou um pedido novo para alertas
+    let latestOrder = null;
+    if (lastKnownOrderCount !== -1 && newOrders.length > lastKnownOrderCount) {
+        const oldOrderIds = new Set(window.myOrders ? window.myOrders.map(o => o.id) : []);
+        latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
+    }
+
+    window.myOrders = newOrders;
+    lastKnownOrderCount = newOrders.length;
+
+    // Renderiza a página
+    if (typeof renderMyOrdersPage === "function") {
+        renderMyOrdersPage();
+    }
+
+    // Dispara ações automáticas apenas para pedidos que realmente tenham itens
+    if (latestOrder && latestOrder.items) {
+        if (typeof showNewOrderNotification === "function") showNewOrderNotification();
+        if (typeof highlightNewOrder === "function") highlightNewOrder(latestOrder.id);
+        
+        // Impressão automática com atraso
+        if (typeof printOrder === "function") {
+            setTimeout(() => { printOrder(latestOrder.id); }, 2500);
+        }
+    }
+});
 
         // Mantemos a sua função de cliques nos botões dos cards exatamente igual!
         function handleListClicks(e) {
