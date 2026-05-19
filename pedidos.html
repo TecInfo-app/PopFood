@@ -20,6 +20,7 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
+        /* Estilos de impressão */
         @media print {
             body * {
                 visibility: hidden;
@@ -34,7 +35,11 @@
                 width: 100%;
                 font-family: 'Inter', sans-serif;
             }
+            .print-area h1, .print-area h2, .print-area h3, .print-area h4 {
+                color: #000;
+            }
         }
+        /* Notificação de novo pedido */
         .notification-box {
             position: fixed;
             bottom: 20px;
@@ -52,6 +57,7 @@
         .notification-box.show {
             opacity: 1;
         }
+        /* Destaques de Status */
         .new-order-highlight {
             background-color: #fff3e0 !important;
         }
@@ -63,6 +69,7 @@
 <body class="p-4 bg-gray-100 min-h-screen">
 
     <div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
+
         <div id="my-orders-page">
             <div class="flex items-center justify-between mb-6 border-b pb-4">
                 <div class="flex items-center gap-4">
@@ -78,7 +85,7 @@
                 <span class="h-3 w-3 rounded-full bg-orange-500 animate-pulse"></span> Pedidos em Andamento
             </h2>
             <div id="my-orders-list" class="space-y-4 mb-10">
-                <p class="text-center text-gray-500 py-4">Conectando ao banco Tutu Bebidas...</p>
+                <p class="text-center text-gray-500 py-4">Buscando novos pedidos no Firebase...</p>
             </div>
 
             <div class="mt-12 pt-6 border-t border-gray-200">
@@ -111,7 +118,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <script>
-        // ======================= SEU BANCO DE DADOS OFICIAL =======================
+        // ======================= SUAS INFORMAÇÕES DO CONFIG REPETIDAS AQUI =======================
         const firebaseConfig = {
             apiKey: "AIzaSyDBHaHN0WWnesZtH8Z76n5RmTsy3Sn8EBI",
             authDomain: "tutubebidasapp-28b77.firebaseapp.com",
@@ -122,12 +129,12 @@
             appId: "1:92833412828:web:cbeb1ba840bfcbbd686619"
         };
 
-        // Inicialização Estável
+        // Inicializando conexão direta com o banco de dados
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const ordersRef = database.ref('myOrders');
 
-        // ======================= ESTADO GLOBAL =======================
+        // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
         let myOrders = [];
         let finalizedOrders = [];
         let restaurantProfile = {};
@@ -148,12 +155,6 @@
         const confirmActionBtn = document.getElementById('confirmActionBtn');
         const newOrderNotification = document.getElementById('newOrderNotification');
         
-        try {
-            restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
-        } catch(e) {
-            restaurantProfile = {};
-        }
-
         // ======================= FUNÇÕES AUXILIARES =======================
         function showMessage(message, type = 'success') {
             messageBox.textContent = message;
@@ -179,7 +180,7 @@
             toggleModal(confirmationModal, true);
         }
         
-        // ======================= NOTIFICAÇÕES SINAL DE ÁUDIO =======================
+        // ======================= NOTIFICAÇÃO E SOM =======================
         function showNewOrderNotification() {
             newOrderNotification.classList.remove('hidden');
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
@@ -188,7 +189,7 @@
                 const notificationSound = new Audio('som.mp3');
                 notificationSound.play();
             } catch (e) {
-                console.log("Aviso: O navegador aguarda um clique na tela para liberar o som de alerta.");
+                console.log("Áudio bloqueado pelas políticas do navegador.");
             }
         
             setTimeout(() => {
@@ -204,7 +205,16 @@
             }
         }
 
-        // ======================= CONSTRUTOR DE INTERFACE =======================
+        // ======================= PERSISTÊNCIA E CARGA LOCAL =======================
+        function loadProfileData() {
+            try {
+                restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
+            } catch (e) {
+                restaurantProfile = {};
+            }
+        }
+
+        // ======================= RENDERIZAÇÃO DAS LISTAS =======================
         function buildOrderHtml(order, isActive = true) {
             let itemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
@@ -220,6 +230,7 @@
                             complementsHtml += `</ul>`;
                         }
                     }
+
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
                     const prodName = item.product ? item.product.name : 'Produto';
 
@@ -250,7 +261,7 @@
 
                 actionButtonsHtml = `
                     ${dispatchBtnHtml}
-                    <button class="finish-order-btn bg-green-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-green-600 transition-colors">Finalizar</button>
+                    <button class="finish-order-btn bg-green-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-green-600 transition-colors">Finalizar Pedido</button>
                     <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded-full text-sm transition-colors">Imprimir</button>
                     <button class="remove-order-btn bg-red-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-red-600 transition-colors">Excluir</button>
                 `;
@@ -281,16 +292,18 @@
                         <div>
                             <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
                             <p class="text-sm text-gray-600"><strong>Nome:</strong> ${clientName}</p>
-                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${clientPhone}</p>
+                            <p class="text-sm text-gray-600"><strong>Tel:</strong> ${clientPhone}</p>
                             <p class="text-sm text-gray-600"><strong>Endereço:</strong> ${clientAddress}</p>
+                            ${order.customer && order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
+                            ${order.customer && order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
                         </div>
                         <div>
-                            <h5 class="font-bold text-gray-700 mb-1">Pagamento:</h5>
+                            <h5 class="font-bold text-gray-700 mb-1">Forma de Pagamento:</h5>
                             <span class="inline-block bg-green-50 text-green-800 font-bold px-3 py-1 rounded border border-green-200 text-sm">${order.paymentMethod || 'A combinar'}</span>
                         </div>
                     </div>
                     <div class="mb-4">
-                        <h5 class="font-bold text-gray-700 mb-2">Itens:</h5>
+                        <h5 class="font-bold text-gray-700 mb-2">Itens do Pedido:</h5>
                         <ul class="space-y-2 pl-4 border-l-2 border-gray-100">
                             ${itemsHtml}
                         </ul>
@@ -302,7 +315,7 @@
         function renderMyOrdersPage() {
             myOrdersList.innerHTML = '';
             if (myOrders.length === 0) {
-                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum pedido ativo em andamento no banco.</p>';
+                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum pedido ativo em andamento no Firebase.</p>';
             } else {
                 myOrders.forEach(order => {
                     const orderDiv = document.createElement('div');
@@ -331,22 +344,22 @@
             }
         }
         
-        // ======================= OPERAÇÕES DIRETAS DO REALTIME DATABASE =======================
+        // ======================= OPERAÇÕES DIRETAS NO BANCO REALTIME =======================
         function removeOrder(orderId) {
             database.ref(`myOrders/${orderId}`).remove()
-                .then(() => showMessage('Pedido excluído com sucesso!', 'success'))
-                .catch(err => showMessage('Erro ao remover: ' + err.message, 'error'));
+                .then(() => showMessage('Pedido excluído permanentemente!', 'success'))
+                .catch(err => showMessage('Erro ao excluir: ' + err.message, 'error'));
         }
 
         function dispatchOrder(orderId) {
             database.ref(`myOrders/${orderId}`).update({ status: "Saiu para entrega" })
-                .then(() => showMessage('Pedido atualizado para Entrega!', 'blue'))
+                .then(() => showMessage('Pedido despachado com sucesso!', 'blue'))
                 .catch(err => showMessage('Erro ao despachar: ' + err.message, 'error'));
         }
 
         function finishOrder(orderId) {
             database.ref(`myOrders/${orderId}`).update({ status: "Finalizado" })
-                .then(() => showMessage('Pedido concluído e arquivado!', 'success'))
+                .then(() => showMessage('Pedido finalizado com sucesso!', 'success'))
                 .catch(err => showMessage('Erro ao finalizar: ' + err.message, 'error'));
         }
         
@@ -359,62 +372,142 @@
             });
         }
 
-        // ======================= SCRIPT DE IMPRESSÃO TÉRMICA =======================
+        // ======================= IMPRESSÃO FORMATADA COM TAXA DE ENTREGA =======================
         function printOrder(orderId) {
             const order = myOrders.find(o => o.id === orderId) || finalizedOrders.find(o => o.id === orderId);
-            if (!order) return;
+            if (!order) {
+                showMessage('Pedido não encontrado para impressão.', 'error');
+                return;
+            }
         
             const printWindow = window.open('', '_blank');
             if (!printWindow) {
                 showMessage('Habilite os pop-ups do navegador para conseguir imprimir!', 'error');
                 return;
             }
-            
+            const printDocument = printWindow.document;
+
             let orderItemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
                 order.items.forEach(item => {
+                    let complementsHtml = '';
+                    if (item.complements && Object.keys(item.complements).length > 0) {
+                        for (const groupName in item.complements) {
+                            const optionsHtml = item.complements[groupName].map(comp => `
+                                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                                    <span>- ${comp.name}</span>
+                                    ${comp.price > 0 ? `<span>(+R$ ${comp.price.toFixed(2).replace('.', ',')})</span>` : ''}
+                                </div>
+                            `).join('');
+
+                            complementsHtml += `
+                                <div style="margin-top: 5px; padding-left: 10px;">
+                                    <div style="font-weight: bold; font-size: 12px; color: #555;">${groupName}:</div>
+                                    ${optionsHtml}
+                                </div>
+                            `;
+                        }
+                    }
+                    
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
+                    const prodName = item.product ? item.product.name : 'Produto';
+            
                     orderItemsHtml += `
-                        <div style="font-size: 14px; margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 4px;">
-                            <strong>${item.quantity}x ${item.product ? item.product.name : 'Produto'}</strong> - R$ ${itemPrice.toFixed(2).replace('.', ',')}
-                        </div>`;
+                        <div style="font-size: 14px; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="font-weight: bold;">${item.quantity}x ${prodName}</span>
+                                <span style="font-weight: bold;">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                            ${complementsHtml}
+                        </div>
+                    `;
                 });
             }
 
-            let deliveryFee = Number(order.deliveryFee || order.taxaEntrega || 0);
-            const totalGeral = typeof order.total === 'number' ? order.total : 0;
+            let deliveryFee = 0;
+            if (typeof order.deliveryFee !== 'undefined') deliveryFee = Number(order.deliveryFee);
+            else if (typeof order.taxaEntrega !== 'undefined') deliveryFee = Number(order.taxaEntrega);
+            
+            let deliveryFeeHtml = deliveryFee > 0 ? `R$ ${deliveryFee.toFixed(2).replace('.', ',')}` : 'Grátis';
+            const totalGeral = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
+            
+            const clientName = order.customer ? order.customer.name : 'N/A';
+            const clientPhone = order.customer ? order.customer.phone : 'N/A';
+            const clientAddress = order.customer ? `${order.customer.address}, ${order.customer.number || ''}` : '';
         
-            printWindow.document.write(`
+            const printContent = `
+                <div class="print-area" style="padding: 10px; max-width: 280px; margin: 0 auto; line-height: 1.4; font-family: sans-serif;">
+                    <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
+                        ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto 5px; display:block;"/>` : ''}
+                        <h1 style="font-size: 20px; font-weight: bold; margin: 0;">${restaurantProfile.name || 'Tutu Bebidas'}</h1>
+                        ${restaurantProfile.phone ? `<p style="font-size: 12px; margin: 3px 0 0;">Tel: ${restaurantProfile.phone}</p>` : ''}
+                    </div>
+                    
+                    <h2 style="font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 15px;">Pedido #${order.id.slice(-6)}</h2>
+                    
+                    <div style="margin-bottom: 15px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        <h3 style="font-size: 13px; font-weight: bold; margin-top: 0; margin-bottom: 5px;">Cliente:</h3>
+                        <p style="margin: 0;"><strong>Nome:</strong> ${clientName}</p>
+                        <p style="margin: 0;"><strong>Tel:</strong> ${clientPhone}</p>
+                        <p style="margin: 0;"><strong>End:</strong> ${clientAddress}</p>
+                        ${order.customer && order.customer.complement ? `<p style="margin: 0;"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
+                        ${order.customer && order.customer.reference ? `<p style="margin: 0;"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
+                    </div>
+        
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 5px;">Itens:</h3>
+                        ${orderItemsHtml}
+                    </div>
+        
+                    <div style="border-top: 2px solid #333; padding-top: 8px; margin-top: 15px; font-size: 14px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #555;">
+                            <span>Taxa de Entrega:</span>
+                            <span style="font-weight: bold;">${deliveryFeeHtml}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 4px; border-top: 1px dashed #aaa; padding-top: 4px;">
+                            <span>TOTAL GERAL:</span>
+                            <span>R$ ${totalGeral}</span>
+                        </div>
+                        <p style="font-size: 13px; margin-top: 8px; margin-bottom: 0;"><strong>Forma de Pagto:</strong> ${order.paymentMethod || 'A combinar'}</p>
+                    </div>
+        
+                    <div style="text-align: center; margin-top: 25px; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 5px;">
+                        <p style="margin:0;">Impresso em: ${new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+        
+            printDocument.write(`
+                <!DOCTYPE html>
                 <html>
-                <head><title>Pedido #${order.id.slice(-6)}</title></head>
-                <body style="font-family:sans-serif; max-width:280px; margin:10px auto; line-height:1.4;">
-                    <h2 style="text-align:center; margin-bottom:5px;">${restaurantProfile.name || 'Tutu Bebidas'}</h2>
-                    <h3 style="text-align:center; margin-top:0;">Pedido #${order.id.slice(-6)}</h3>
-                    <p><strong>Cliente:</strong> ${order.customer ? order.customer.name : 'N/A'}</p>
-                    <p><strong>Tel:</strong> ${order.customer ? order.customer.phone : 'N/A'}</p>
-                    <p><strong>Endereço:</strong> ${order.customer ? order.customer.address : ''}, ${order.customer ? order.customer.number || '' : ''}</p>
-                    <hr style="border:none; border-top:1px dashed #000;"/>
-                    ${orderItemsHtml}
-                    <p><strong>Taxa Entrega:</strong> R$ ${deliveryFee.toFixed(2).replace('.', ',')}</p>
-                    <h3>TOTAL GERAL: R$ ${totalGeral.toFixed(2).replace('.', ',')}</h3>
-                    <p><strong>Forma de Pagto:</strong> ${order.paymentMethod || 'A combinar'}</p>
-                </body>
+                <head>
+                    <title>Impressão de Pedido #${order.id.slice(-6)}</title>
+                    <style>
+                        @media print {
+                            @page { size: auto; margin: 0mm; }
+                            body { margin: 5mm; }
+                        }
+                    </style>
+                </head>
+                <body>${printContent}</body>
                 </html>
             `);
-            printWindow.document.close();
+            printDocument.close();
             printWindow.focus();
             setTimeout(() => { printWindow.print(); }, 500);
         }
 
-        // ======================= CONEXÃO REALTIME LIVE =======================
+        // ======================= CAPTURA SÍNCRONA VIA LIVE STREAM DO FIREBASE =======================
         window.addEventListener('DOMContentLoaded', () => {
+            loadProfileData();
             setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
 
-            // Escuta ativa no nó correto do seu banco
+            // Escuta em tempo real direto da referência do nó "myOrders" do seu Realtime Database
             ordersRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 let activeOrders = [];
                 let finishedOrders = [];
+                let latestOrder = null;
 
                 if (data) {
                     Object.keys(data).forEach(key => {
@@ -430,8 +523,11 @@
                     });
                 }
 
-                // Tocar o som apenas se chegar um pedido novo de verdade após a página já estar aberta
+                // Dispara alertas visuais e sonoros se um novo pedido surgir no banco online
                 if (!isFirstLoad && activeOrders.length > myOrders.length) {
+                    const currentIds = new Set(myOrders.map(o => o.id));
+                    latestOrder = activeOrders.find(o => !currentIds.has(o.id));
+                    
                     showNewOrderNotification();
                 }
 
@@ -440,33 +536,64 @@
                 isFirstLoad = false;
 
                 renderMyOrdersPage();
+                
+                // Se o fluxo detectar que veio uma nova requisição, aplica destaque e envia para impressão automática
+                if (latestOrder) {
+                    highlightNewOrder(latestOrder.id);
+                    setTimeout(() => { printOrder(latestOrder.id); }, 2500);
+                }
             });
         });
 
-        // Gerenciador central de cliques
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
+
             const orderId = orderDiv.dataset.orderId;
 
-            if (e.target.closest('.print-order-btn')) { e.stopPropagation(); printOrder(orderId); return; }
-            if (e.target.closest('.remove-order-btn')) { 
-                e.stopPropagation(); 
-                showConfirmationModal('Excluir Pedido', 'Tem certeza que deseja apagar permanentemente este pedido do Firebase?', () => removeOrder(orderId)); 
-                return; 
+            if (orderDiv.classList.contains('new-order-highlight')) {
+                orderDiv.classList.remove('new-order-highlight');
             }
-            if (e.target.closest('.dispatch-order-btn')) { e.stopPropagation(); dispatchOrder(orderId); return; }
-            if (e.target.closest('.finish-order-btn')) { e.stopPropagation(); finishOrder(orderId); return; }
+
+            if (e.target.closest('.print-order-btn')) {
+                e.stopPropagation();
+                printOrder(orderId);
+                return;
+            }
+            
+            if (e.target.closest('.remove-order-btn')) {
+                e.stopPropagation();
+                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
+                return;
+            }
+
+            if (e.target.closest('.dispatch-order-btn')) {
+                e.stopPropagation();
+                dispatchOrder(orderId);
+                return;
+            }
+
+            if (e.target.closest('.finish-order-btn')) {
+                e.stopPropagation();
+                finishOrder(orderId);
+                return;
+            }
 
             const details = orderDiv.querySelector('.order-details');
-            if (details) details.classList.toggle('hidden');
+            if (details) {
+                details.classList.toggle('hidden');
+            }
         }
 
         myOrdersList.addEventListener('click', handleListClicks);
         finalizedOrdersList.addEventListener('click', handleListClicks);
+        
         cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
         confirmActionBtn.addEventListener('click', () => {
-            if (confirmationCallback) confirmationCallback();
+            if (confirmationCallback) {
+                confirmationCallback();
+            }
+            confirmationCallback = null;
             toggleModal(confirmationModal, false);
         });
     </script>
