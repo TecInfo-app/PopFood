@@ -78,7 +78,7 @@
                 <span class="h-3 w-3 rounded-full bg-orange-500 animate-pulse"></span> Pedidos em Andamento
             </h2>
             <div id="my-orders-list" class="space-y-4 mb-10">
-                <p class="text-center text-gray-500 py-4">Carregando pedidos do Firebase...</p>
+                <p class="text-center text-gray-500 py-4">Conectando ao banco Tutu Bebidas...</p>
             </div>
 
             <div class="mt-12 pt-6 border-t border-gray-200">
@@ -111,10 +111,18 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
     <script>
-        // ======================= INICIALIZAÇÃO DO SEU BANCO =======================
+        // ======================= SEU BANCO DE DADOS OFICIAL =======================
         const firebaseConfig = {
-            databaseURL: "https://tecinfo-app.firebaseio.com"
+            apiKey: "AIzaSyDBHaHN0WWnesZtH8Z76n5RmTsy3Sn8EBI",
+            authDomain: "tutubebidasapp-28b77.firebaseapp.com",
+            databaseURL: "https://tutubebidasapp-28b77-default-rtdb.firebaseio.com",
+            projectId: "tutubebidasapp-28b77",
+            storageBucket: "tutubebidasapp-28b77.firebasestorage.app",
+            messagingSenderId: "92833412828",
+            appId: "1:92833412828:web:cbeb1ba840bfcbbd686619"
         };
+
+        // Inicialização Estável
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const ordersRef = database.ref('myOrders');
@@ -171,7 +179,7 @@
             toggleModal(confirmationModal, true);
         }
         
-        // ======================= NOTIFICAÇÕES =======================
+        // ======================= NOTIFICAÇÕES SINAL DE ÁUDIO =======================
         function showNewOrderNotification() {
             newOrderNotification.classList.remove('hidden');
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
@@ -180,7 +188,7 @@
                 const notificationSound = new Audio('som.mp3');
                 notificationSound.play();
             } catch (e) {
-                console.log("Aguardando interação do usuário para reproduzir som.");
+                console.log("Aviso: O navegador aguarda um clique na tela para liberar o som de alerta.");
             }
         
             setTimeout(() => {
@@ -196,7 +204,7 @@
             }
         }
 
-        // ======================= RENDERIZAR INTERFACE =======================
+        // ======================= CONSTRUTOR DE INTERFACE =======================
         function buildOrderHtml(order, isActive = true) {
             let itemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
@@ -226,7 +234,7 @@
                     `;
                 });
             } else {
-                itemsHtml = `<p class="text-xs text-gray-400 italic">Nenhum item discriminado.</p>`;
+                itemsHtml = `<p class="text-xs text-gray-400 italic">Nenhum item discriminado no pedido.</p>`;
             }
 
             let actionButtonsHtml = '';
@@ -294,7 +302,7 @@
         function renderMyOrdersPage() {
             myOrdersList.innerHTML = '';
             if (myOrders.length === 0) {
-                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum pedido em andamento no Firebase.</p>';
+                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum pedido ativo em andamento no banco.</p>';
             } else {
                 myOrders.forEach(order => {
                     const orderDiv = document.createElement('div');
@@ -323,22 +331,22 @@
             }
         }
         
-        // ======================= OPERAÇÕES DIRETA NO FIREBASE =======================
+        // ======================= OPERAÇÕES DIRETAS DO REALTIME DATABASE =======================
         function removeOrder(orderId) {
             database.ref(`myOrders/${orderId}`).remove()
-                .then(() => showMessage('Pedido removido do Firebase!', 'success'))
+                .then(() => showMessage('Pedido excluído com sucesso!', 'success'))
                 .catch(err => showMessage('Erro ao remover: ' + err.message, 'error'));
         }
 
         function dispatchOrder(orderId) {
             database.ref(`myOrders/${orderId}`).update({ status: "Saiu para entrega" })
-                .then(() => showMessage('Pedido marcado como Despachado!', 'blue'))
-                .catch(err => showMessage('Erro ao atualizar: ' + err.message, 'error'));
+                .then(() => showMessage('Pedido atualizado para Entrega!', 'blue'))
+                .catch(err => showMessage('Erro ao despachar: ' + err.message, 'error'));
         }
 
         function finishOrder(orderId) {
             database.ref(`myOrders/${orderId}`).update({ status: "Finalizado" })
-                .then(() => showMessage('Pedido finalizado com sucesso!', 'success'))
+                .then(() => showMessage('Pedido concluído e arquivado!', 'success'))
                 .catch(err => showMessage('Erro ao finalizar: ' + err.message, 'error'));
         }
         
@@ -351,13 +359,16 @@
             });
         }
 
-        // ======================= IMPRESSÃO REESTRUTURADA =======================
+        // ======================= SCRIPT DE IMPRESSÃO TÉRMICA =======================
         function printOrder(orderId) {
             const order = myOrders.find(o => o.id === orderId) || finalizedOrders.find(o => o.id === orderId);
             if (!order) return;
         
             const printWindow = window.open('', '_blank');
-            if (!printWindow) return;
+            if (!printWindow) {
+                showMessage('Habilite os pop-ups do navegador para conseguir imprimir!', 'error');
+                return;
+            }
             
             let orderItemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
@@ -376,14 +387,17 @@
             printWindow.document.write(`
                 <html>
                 <head><title>Pedido #${order.id.slice(-6)}</title></head>
-                <body style="font-family:sans-serif; max-width:280px; margin:10px auto;">
-                    <h2 style="text-align:center;">Pedido #${order.id.slice(-6)}</h2>
+                <body style="font-family:sans-serif; max-width:280px; margin:10px auto; line-height:1.4;">
+                    <h2 style="text-align:center; margin-bottom:5px;">${restaurantProfile.name || 'Tutu Bebidas'}</h2>
+                    <h3 style="text-align:center; margin-top:0;">Pedido #${order.id.slice(-6)}</h3>
                     <p><strong>Cliente:</strong> ${order.customer ? order.customer.name : 'N/A'}</p>
-                    <p><strong>Endereço:</strong> ${order.customer ? order.customer.address : ''}</p>
-                    <hr/>
+                    <p><strong>Tel:</strong> ${order.customer ? order.customer.phone : 'N/A'}</p>
+                    <p><strong>Endereço:</strong> ${order.customer ? order.customer.address : ''}, ${order.customer ? order.customer.number || '' : ''}</p>
+                    <hr style="border:none; border-top:1px dashed #000;"/>
                     ${orderItemsHtml}
-                    <p><strong>Entrega:</strong> R$ ${deliveryFee.toFixed(2).replace('.', ',')}</p>
-                    <h3>TOTAL: R$ ${totalGeral.toFixed(2).replace('.', ',')}</h3>
+                    <p><strong>Taxa Entrega:</strong> R$ ${deliveryFee.toFixed(2).replace('.', ',')}</p>
+                    <h3>TOTAL GERAL: R$ ${totalGeral.toFixed(2).replace('.', ',')}</h3>
+                    <p><strong>Forma de Pagto:</strong> ${order.paymentMethod || 'A combinar'}</p>
                 </body>
                 </html>
             `);
@@ -392,10 +406,11 @@
             setTimeout(() => { printWindow.print(); }, 500);
         }
 
-        // ======================= ESCUTA REALTIME ATIVA =======================
+        // ======================= CONEXÃO REALTIME LIVE =======================
         window.addEventListener('DOMContentLoaded', () => {
             setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
 
+            // Escuta ativa no nó correto do seu banco
             ordersRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 let activeOrders = [];
@@ -415,7 +430,7 @@
                     });
                 }
 
-                // Disparar som apenas em novos pedidos reais após carregamento inicial
+                // Tocar o som apenas se chegar um pedido novo de verdade após a página já estar aberta
                 if (!isFirstLoad && activeOrders.length > myOrders.length) {
                     showNewOrderNotification();
                 }
@@ -428,6 +443,7 @@
             });
         });
 
+        // Gerenciador central de cliques
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
@@ -436,7 +452,7 @@
             if (e.target.closest('.print-order-btn')) { e.stopPropagation(); printOrder(orderId); return; }
             if (e.target.closest('.remove-order-btn')) { 
                 e.stopPropagation(); 
-                showConfirmationModal('Excluir', 'Excluir definitivamente do Firebase?', () => removeOrder(orderId)); 
+                showConfirmationModal('Excluir Pedido', 'Tem certeza que deseja apagar permanentemente este pedido do Firebase?', () => removeOrder(orderId)); 
                 return; 
             }
             if (e.target.closest('.dispatch-order-btn')) { e.stopPropagation(); dispatchOrder(orderId); return; }
