@@ -532,57 +532,32 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
 
         // ======================= CAPTURA DOS EVENTOS COM FIREBASE EM TEMPO REAL =======================
         window.addEventListener('DOMContentLoaded', () => {
-            // Mantém o timer de auto-finalizar pedidos antigos ativo se a função existir
             if (typeof autoFinalizeOldOrders === "function") {
                 setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
             }
 
-            // Referência para a pasta de pedidos no Firebase
-            // Faz a ligação direta com a pasta 'myOrders' na nuvem do Firebase
-const ordersRef = ref(db, 'myOrders');
+            const ordersRef = ref(db, 'myOrders');
 
-// O 'onValue' monitora o Firebase em tempo real. Entrou pedido novo, ele roda na hora!
-onValue(ordersRef, (snapshot) => {
-    const data = snapshot.val();
-    const ordersArray = [];
-    
-    if (data) {
-        // Converte os dados recebidos do Firebase em um Array para o seu sistema entender
-        Object.keys(data).forEach(key => {
-            ordersArray.push({ id: key, ...data[key] });
-        });
-    }
-
-    // Substitui os pedidos antigos do seu sistema pelos novos vindos da nuvem
-    window.myOrders = ordersArray; 
-
-    // Alerta sonoro de novo pedido (opcional, mude para o nome do seu arquivo de som)
-    if (ordersArray.length > 0) {
-        const notificationSound = new Audio('som.mp3');
-        notificationSound.play().catch(e => console.log("Aguardando interação para tocar som"));
-    }
-
-    // Executa a SUA função atual que desenha os pedidos na tela
-    // (Verifique se no seu código ela se chama renderOrders, atualizarTela ou loadAllData)
-    if (typeof renderOrders === "function") {
-        renderOrders(); 
-    } else if (typeof loadAllData === "function") {
-        loadAllData();
-    }
-});
-
-                // Se houver um pedido novo, dispara as ações automáticas perfeitamente
-                if (latestOrder) {
-                    if (typeof showNewOrderNotification === "function") showNewOrderNotification();
-                    if (typeof highlightNewOrder === "function") highlightNewOrder(latestOrder.id);
-                    if (typeof printOrder === "function") {
-                        setTimeout(() => { printOrder(latestOrder.id); }, 2500);
-                    }
+            onValue(ordersRef, (snapshot) => {
+                const data = snapshot.val();
+                const allOrders = [];
+                
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        allOrders.push({ id: key, ...data[key] });
+                    });
                 }
+
+                // Separar em Ativos e Finalizados
+                myOrders = allOrders.filter(o => o.status !== 'Finalizado' && o.status !== 'Finalizado (Auto)');
+                finalizedOrders = allOrders.filter(o => o.status === 'Finalizado' || o.status === 'Finalizado (Auto)');
+
+                // Desenha tudo na tela
+                renderMyOrdersPage();
             });
         });
 
-        // Mantemos a sua função de cliques nos botões dos cards exatamente igual!
+        // Mantemos a sua função de cliques nos botões dos cards
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
@@ -622,6 +597,16 @@ onValue(ordersRef, (snapshot) => {
                 details.classList.toggle('hidden');
             }
         }
+
+        myOrdersList.addEventListener('click', handleListClicks);
+        finalizedOrdersList.addEventListener('click', handleListClicks);
+        
+        cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
+        confirmActionBtn.addEventListener('click', () => {
+            if (confirmationCallback) confirmationCallback();
+            confirmationCallback = null;
+            toggleModal(confirmationModal, false);
+        });
 
         // Reatribui os eventos para as suas listas existentes
         myOrdersList.addEventListener('click', handleListClicks);
