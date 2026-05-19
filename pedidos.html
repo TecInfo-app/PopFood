@@ -520,95 +520,99 @@ function renderMyOrdersPage() {
             setTimeout(() => { printWindow.print(); }, 500);
         }
 
-        // ======================= CAPTURA DOS EVENTOS COM FIREBASE EM TEMPO REAL =======================
-        window.addEventListener('DOMContentLoaded', () => {
-            // Mantém o timer de auto-finalizar pedidos antigos ativo se a função existir
-            if (typeof autoFinalizeOldOrders === "function") {
-                setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
-            }
+// =============================================================================
+// PAINEL DE PEDIDOS - CÓDIGO INTEGRADO E CORRIGIDO
+// =============================================================================
 
-// O onValue substitui completamente o antigo window.addEventListener('storage')
-onValue(ordersRef, (snapshot) => {
-    const data = snapshot.val();
-    let newOrders = [];
+window.addEventListener('DOMContentLoaded', () => {
 
-    if (data) {
-        Object.keys(data).forEach(key => {
-            const order = data[key];
-            
-            // FILTRO DE SEGURANÇA:
-            // Só adicionamos o pedido se ele tiver um "total" ou uma lista de "items"
-            // Isso ignora pedidos fantasmas/corrompidos que estão causando a duplicação
-            if (order && (order.items || order.total >= 0)) {
-                newOrders.push({ id: key, ...order });
-            }
-        });
+    // 1. Timer de Auto-Finalização
+    if (typeof autoFinalizeOldOrders === "function") {
+        setInterval(autoFinalizeOldOrders, typeof AUTO_FINALIZE_INTERVAL_MS !== 'undefined' ? AUTO_FINALIZE_INTERVAL_MS : 60000);
     }
 
-    // Identifica se entrou um pedido novo para alertas
-    let latestOrder = null;
-    if (lastKnownOrderCount !== -1 && newOrders.length > lastKnownOrderCount) {
-        const oldOrderIds = new Set(window.myOrders ? window.myOrders.map(o => o.id) : []);
-        latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
-    }
+    // 2. Conexão Firebase com Filtro de Segurança
+    const ordersRef = ref(db, 'myOrders');
+    let lastKnownOrderCount = -1;
 
-    // Atualiza as listas globais
-    window.myOrders = newOrders;
-    lastKnownOrderCount = newOrders.length;
+    onValue(ordersRef, (snapshot) => {
+        const data = snapshot.val();
+        let newOrders = [];
 
-    // Renderiza a página
-    if (typeof renderMyOrdersPage === "function") {
-        renderMyOrdersPage();
-    } else if (typeof loadAllData === "function") {
-        loadAllData();
-    }
-
-    // Dispara ações automáticas apenas para pedidos que realmente tenham itens
-    if (latestOrder && latestOrder.items) {
-        if (typeof showNewOrderNotification === "function") showNewOrderNotification();
-        if (typeof highlightNewOrder === "function") highlightNewOrder(latestOrder.id);
-        
-        // Impressão automática com atraso de 2.5 segundos
-        if (typeof printOrder === "function") {
-            setTimeout(() => { printOrder(latestOrder.id); }, 2500);
-        }
-    }
-});
-
-       // ======================= LOGICA DE SUPORTE E BOTÕES =======================
-        // ... (suas funções removeOrder, dispatchOrder, finishOrder, autoFinalizeOldOrders, printOrder continuam aqui) ...
-
-        // Esta função centraliza os cliques (ela deve ficar fora do DOMContentLoaded)
-        function handleListClicks(e) {
-            const orderDiv = e.target.closest('[data-order-id]');
-            if (!orderDiv) return;
-
-            const orderId = orderDiv.dataset.orderId;
-
-            if (orderDiv.classList.contains('new-order-highlight')) {
-                orderDiv.classList.remove('new-order-highlight');
-            }
-
-            if (e.target.closest('.print-order-btn')) { e.stopPropagation(); printOrder(orderId); return; }
-            if (e.target.closest('.remove-order-btn')) { e.stopPropagation(); showConfirmationModal('Excluir Pedido', `Tem certeza?`, () => removeOrder(orderId)); return; }
-            if (e.target.closest('.dispatch-order-btn')) { e.stopPropagation(); dispatchOrder(orderId); return; }
-            if (e.target.closest('.finish-order-btn')) { e.stopPropagation(); finishOrder(orderId); return; }
-
-            const details = orderDiv.querySelector('.order-details');
-            if (details) details.classList.toggle('hidden');
+        if (data) {
+            Object.keys(data).forEach(key => {
+                const order = data[key];
+                // FILTRO: Ignora pedidos sem itens e sem valor (evita réplicas fantasmas)
+                if (order && (order.items || order.total >= 0)) {
+                    newOrders.push({ id: key, ...order });
+                }
+            });
         }
 
-        // ======================= INICIALIZAÇÃO DE EVENTOS =======================
-        // Precisamos garantir que os elementos existam antes de adicionar os eventos
-        if (myOrdersList) myOrdersList.addEventListener('click', handleListClicks);
-        if (finalizedOrdersList) finalizedOrdersList.addEventListener('click', handleListClicks);
-        
-        cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
-        confirmActionBtn.addEventListener('click', () => {
-            if (confirmationCallback) confirmationCallback();
-            confirmationCallback = null;
-            toggleModal(confirmationModal, false);
-        });
+        // Identifica novo pedido para impressão automática
+        let latestOrder = null;
+        if (lastKnownOrderCount !== -1 && newOrders.length > lastKnownOrderCount) {
+            const oldOrderIds = new Set(window.myOrders ? window.myOrders.map(o => o.id) : []);
+            latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
+        }
+
+        window.myOrders = newOrders;
+        lastKnownOrderCount = newOrders.length;
+
+        // Renderização na tela
+        if (typeof renderMyOrdersPage === "function") renderMyOrdersPage();
+        else if (typeof loadAllData === "function") loadAllData();
+
+        // Dispara impressão automática (apenas para pedidos reais)
+        if (latestOrder && latestOrder.items) {
+            if (typeof showNewOrderNotification === "function") showNewOrderNotification();
+            if (typeof printOrder === "function") {
+                setTimeout(() => { printOrder(latestOrder.id); }, 2500);
+            }
+        }
+    });
+
+    // 3. Centralizador de Cliques
+    function handleListClicks(e) {
+        const orderDiv = e.target.closest('[data-order-id]');
+        if (!orderDiv) return;
+
+        const orderId = orderDiv.dataset.orderId;
+
+        // Ações dos botões
+        if (e.target.closest('.print-order-btn')) { e.stopPropagation(); printOrder(orderId); return; }
+        if (e.target.closest('.remove-order-btn')) { 
+            e.stopPropagation(); 
+            showConfirmationModal('Excluir Pedido', 'Tem certeza que deseja excluir?', () => removeOrder(orderId)); 
+            return; 
+        }
+        if (e.target.closest('.dispatch-order-btn')) { e.stopPropagation(); dispatchOrder(orderId); return; }
+        if (e.target.closest('.finish-order-btn')) { e.stopPropagation(); finishOrder(orderId); return; }
+
+        // Expandir detalhes
+        const details = orderDiv.querySelector('.order-details');
+        if (details) details.classList.toggle('hidden');
+    }
+
+    // Inicialização dos Eventos
+    const myOrdersList = document.getElementById('my-orders-list');
+    const finalizedOrdersList = document.getElementById('finalized-orders-list');
+    
+    if (myOrdersList) myOrdersList.addEventListener('click', handleListClicks);
+    if (finalizedOrdersList) finalizedOrdersList.addEventListener('click', handleListClicks);
+
+    // Modal de Confirmação
+    const cancelBtn = document.getElementById('cancelConfirmationBtn');
+    const confirmBtn = document.getElementById('confirmActionBtn');
+    
+    if (cancelBtn) cancelBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
+    if (confirmBtn) confirmBtn.addEventListener('click', () => {
+        if (typeof confirmationCallback === 'function') confirmationCallback();
+        confirmationCallback = null;
+        toggleModal(confirmationModal, false);
+    });
+
+}); // <--- CHAVE QUE FECHA O DOMContentLoaded (MANTENHA ISSO)
 
     </script>
 </body>
