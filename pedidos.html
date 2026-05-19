@@ -169,12 +169,12 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
             newOrderNotification.classList.remove('hidden');
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
         
-            try {
-                const notificationSound = new Audio('som.mp3');
-                notificationSound.play();
-            } catch (e) {
-                console.log("Áudio bloqueado pelas políticas do navegador.");
-            }
+           try {
+    const notificationSound = new Audio('som.mp3');
+    notificationSound.play();
+} catch (e) {
+    console.log("Áudio bloqueado pelo navegador até o usuário interagir.");
+}
         
             setTimeout(() => {
                 newOrderNotification.classList.remove('show');
@@ -206,7 +206,7 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
     
     // Proteção: Só tenta fazer o forEach se 'order.items' existir e for um Array
     if (order.items && Array.isArray(order.items)) {
-        order.items.forEach(item => {
+    order.items.forEach(item => {
             let complementsHtml = '';
             // ... (seu código de complementos permanece aqui)
             
@@ -220,9 +220,9 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
             `;
         });
     } else {
-        // Exibe uma mensagem amigável caso não haja itens
-        itemsHtml = '<li class="text-sm text-gray-400 italic">Sem itens neste pedido.</li>';
-    }
+    // Adiciona uma mensagem de aviso no HTML caso não tenha itens
+    itemsHtml = '<li class="text-sm text-gray-400 italic">Sem itens neste pedido.</li>';
+}
 
             // 2. Define os botões de ação (Depende se o pedido está ativo ou não)
             let actionButtonsHtml = '';
