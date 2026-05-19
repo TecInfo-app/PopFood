@@ -200,23 +200,21 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
         }
 
         // ======================= RENDERIZAÇÃO DAS LISTAS =======================
+// Localize a função buildOrderHtml (linha 204 aproximadamente)
 function buildOrderHtml(order, isActive = true) {
-            let itemsHtml = '';
-            
-            // PROTEÇÃO: Verifica se 'items' existe e é um array antes de usar o forEach
-            if (order.items && Array.isArray(order.items)) {
-                order.items.forEach(item => {
-                    let complementsHtml = '';
-                    if (item.complements && Object.keys(item.complements).length > 0) {
-                        for (const groupName in item.complements) {
-                            complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
-                            complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
-                            complementsHtml += item.complements[groupName].map(comp => `
-                                <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
-                            `).join('');
-                            complementsHtml += `</ul>`;
-                        }
-                    }
+    let itemsHtml = '';
+    
+    // Adicione esta verificação:
+    if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+            // ... seu código de renderização de itens permanece igual aqui dentro
+            // (Certifique-se de que item.totalPrice também exista antes de chamar toFixed)
+            let price = item.totalPrice || 0;
+            itemsHtml += `... R$ ${price.toFixed(2).replace('.', ',')} ...`;
+        });
+    } else {
+        itemsHtml = '<li class="text-sm text-gray-400">Sem itens.</li>';
+    }
 
                     itemsHtml += `
                         <li class="text-sm text-gray-600">
@@ -342,20 +340,6 @@ function buildOrderHtml(order, isActive = true) {
                 });
         }
 
-            const initialFinalizedOrdersLength = finalizedOrders.length;
-            finalizedOrders = finalizedOrders.filter(order => order.id !== orderId);
-            if (finalizedOrders.length < initialFinalizedOrdersLength) {
-                saveFinalizedOrders();
-                orderRemoved = true;
-            }
-
-            if (orderRemoved) {
-                renderMyOrdersPage();
-                showMessage('Pedido excluído permanentemente!', 'success');
-            } else {
-                showMessage('Pedido não encontrado para exclusão.', 'error');
-            }
-        }
 
         function dispatchOrder(orderId) {
             // 1. Procuramos o pedido específico na lista local atual para validar o status
