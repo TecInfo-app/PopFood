@@ -194,8 +194,7 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
         function saveFinalizedOrders() { localStorage.setItem('finalizedOrders', JSON.stringify(finalizedOrders)); }
 
         function loadAllData() {
-            myOrders = JSON.parse(localStorage.getItem('myOrders')) || [];
-            finalizedOrders = JSON.parse(localStorage.getItem('finalizedOrders')) || [];
+            // Mantemos apenas o perfil do restaurante do localStorage, os pedidos virão da Nuvem!
             restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
             renderMyOrdersPage();
         }
