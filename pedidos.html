@@ -202,35 +202,40 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
         // ======================= RENDERIZAÇÃO DAS LISTAS =======================
 // Localize a função buildOrderHtml (linha 204 aproximadamente)
 function buildOrderHtml(order, isActive = true) {
-    let itemsHtml = '';
-    
-    // Adicione esta verificação:
-    if (order.items && Array.isArray(order.items)) {
-        order.items.forEach(item => {
-            // ... seu código de renderização de itens permanece igual aqui dentro
-            // (Certifique-se de que item.totalPrice também exista antes de chamar toFixed)
-            let price = item.totalPrice || 0;
-            itemsHtml += `... R$ ${price.toFixed(2).replace('.', ',')} ...`;
-        });
-    } else {
-        itemsHtml = '<li class="text-sm text-gray-400">Sem itens.</li>';
-    }
+            let itemsHtml = '';
+            
+            // 1. Proteção: Verifica se 'items' existe e é um array
+            if (order.items && Array.isArray(order.items)) {
+                order.items.forEach(item => {
+                    let complementsHtml = '';
+                    // Verifica se existem complementos
+                    if (item.complements && Object.keys(item.complements).length > 0) {
+                        for (const groupName in item.complements) {
+                            complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
+                            complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
+                            complementsHtml += item.complements[groupName].map(comp => `
+                                <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
+                            `).join('');
+                            complementsHtml += `</ul>`;
+                        }
+                    }
 
+                    // Renderiza o item com nome, quantidade e preço
                     itemsHtml += `
                         <li class="text-sm text-gray-600">
                             <div class="flex justify-between items-center">
                                 <span>${item.quantity}x ${item.product.name}</span>
-                                <span class="font-bold">R$ ${item.totalPrice.toFixed(2).replace('.', ',')}</span>
+                                <span class="font-bold">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
                             </div>
                             ${complementsHtml}
                         </li>
                     `;
                 });
             } else {
-                // Caso não existam itens, exibe uma mensagem amigável ao invés de quebrar
-                itemsHtml = '<li class="text-sm text-gray-400 italic">Itens não disponíveis.</li>';
+                itemsHtml = '<li class="text-sm text-gray-400 italic">Sem itens neste pedido.</li>';
             }
 
+            // 2. Define os botões de ação (Depende se o pedido está ativo ou não)
             let actionButtonsHtml = '';
             if (isActive) {
                 let dispatchBtnHtml = '';
@@ -256,12 +261,13 @@ function buildOrderHtml(order, isActive = true) {
                 `;
             }
 
+            // 3. Retorna o HTML completo do card
             return `
                 <div class="flex justify-between items-center order-header">
-                    <h4 class="text-xl font-bold text-gray-800">Pedido #${order.id.slice(-6)}</h4>
+                    <h4 class="text-xl font-bold text-gray-800">Pedido #${order.id ? order.id.slice(-6) : 'N/A'}</h4>
                     <div class="flex items-center gap-2 flex-wrap justify-end">
-                        <span class="text-sm text-gray-500 hidden md:block">${order.date}</span>
-                        <span class="text-xl font-bold text-green-600">R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                        <span class="text-sm text-gray-500 hidden md:block">${order.date || ''}</span>
+                        <span class="text-xl font-bold text-green-600">R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
                         ${actionButtonsHtml}
                     </div>
                 </div>
@@ -269,15 +275,8 @@ function buildOrderHtml(order, isActive = true) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
-                            <p class="text-sm text-gray-600"><strong>Nome:</strong> ${order.customer.name}</p>
-                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${order.customer.phone}</p>
-                            <p class="text-sm text-gray-600"><strong>Endereço:</strong> ${order.customer.address}, ${order.customer.number}</p>
-                            ${order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Complemento:</strong> ${order.customer.complement}</p>` : ''}
-                            ${order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Ponto de Ref.:</strong> ${order.customer.reference}</p>` : ''}
-                        </div>
-                        <div>
-                            <h5 class="font-bold text-gray-700 mb-1">Forma de Pagamento:</h5>
-                            <span class="inline-block bg-green-50 text-green-800 font-bold px-3 py-1 rounded border border-green-200 text-sm">${order.paymentMethod}</span>
+                            <p class="text-sm text-gray-600"><strong>Nome:</strong> ${order.customer ? order.customer.name : 'N/A'}</p>
+                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${order.customer ? order.customer.phone : 'N/A'}</p>
                         </div>
                     </div>
                     <div class="mb-4">
