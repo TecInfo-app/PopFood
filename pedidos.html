@@ -20,6 +20,7 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
+        /* Estilos de impressão */
         @media print {
             body * {
                 visibility: hidden;
@@ -34,7 +35,11 @@
                 width: 100%;
                 font-family: 'Inter', sans-serif;
             }
+            .print-area h1, .print-area h2, .print-area h3, .print-area h4 {
+                color: #000;
+            }
         }
+        /* Notificação de novo pedido */
         .notification-box {
             position: fixed;
             bottom: 20px;
@@ -52,6 +57,7 @@
         .notification-box.show {
             opacity: 1;
         }
+        /* Destaques de Status */
         .new-order-highlight {
             background-color: #fff3e0 !important;
         }
@@ -79,7 +85,7 @@
                 <span class="h-3 w-3 rounded-full bg-orange-500 animate-pulse"></span> Pedidos em Andamento
             </h2>
             <div id="my-orders-list" class="space-y-4 mb-10">
-                <p class="text-center text-gray-500 py-4">Buscando pedidos no Firebase...</p>
+                <p class="text-center text-gray-500 py-4">Nenhum pedido realizado ainda.</p>
             </div>
 
             <div class="mt-12 pt-6 border-t border-gray-200">
@@ -108,30 +114,17 @@
 
     <div id="newOrderNotification" class="notification-box hidden">Novo pedido chegou!</div>
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDBHaHN0WWnesZtH8Z76n5RmTsy3Sn8EBI",
-            authDomain: "tutubebidasapp-28b77.firebaseapp.com",
-            databaseURL: "https://tutubebidasapp-28b77-default-rtdb.firebaseio.com",
-            projectId: "tutubebidasapp-28b77",
-            storageBucket: "tutubebidasapp-28b77.firebasestorage.app",
-            messagingSenderId: "92833412828",
-            appId: "1:92833412828:web:cbeb1ba840bfcbbd686619"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        const ordersRef = ref(database, 'myOrders');
-
+    <script>
+        // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
         let myOrders = [];
         let finalizedOrders = [];
         let restaurantProfile = {};
         let confirmationCallback = null;
-        let isFirstLoad = true;
+        
+        const AUTO_FINALIZE_TIME_MS = 2 * 60 * 60 * 1000;
+        const AUTO_FINALIZE_INTERVAL_MS = 5 * 60 * 1000;
 
+        // ======================= REFERÊNCIAS AO DOM =======================
         const myOrdersList = document.getElementById('my-orders-list');
         const finalizedOrdersList = document.getElementById('finalized-orders-list');
         const messageBox = document.getElementById('messageBox');
@@ -142,6 +135,7 @@
         const confirmActionBtn = document.getElementById('confirmActionBtn');
         const newOrderNotification = document.getElementById('newOrderNotification');
         
+        // ======================= FUNÇÕES AUXILIARES =======================
         function showMessage(message, type = 'success') {
             messageBox.textContent = message;
             messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500');
@@ -166,13 +160,17 @@
             toggleModal(confirmationModal, true);
         }
         
+        // ======================= NOTIFICAÇÃO E SOM =======================
         function showNewOrderNotification() {
             newOrderNotification.classList.remove('hidden');
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
+        
             try {
                 const notificationSound = new Audio('som.mp3');
                 notificationSound.play();
-            } catch (e) { console.log("Áudio bloqueado pelo navegador."); }
+            } catch (e) {
+                console.log("Áudio bloqueado pelas políticas do navegador.");
+            }
         
             setTimeout(() => {
                 newOrderNotification.classList.remove('show');
@@ -180,6 +178,25 @@
             }, 5000);
         }
 
+        function highlightNewOrder(orderId) {
+            const orderElement = myOrdersList.querySelector(`[data-order-id="${orderId}"]`);
+            if (orderElement) {
+                orderElement.classList.add('new-order-highlight');
+            }
+        }
+
+        // ======================= PERSISTÊNCIA DE DADOS =======================
+        function saveMyOrders() { localStorage.setItem('myOrders', JSON.stringify(myOrders)); }
+        function saveFinalizedOrders() { localStorage.setItem('finalizedOrders', JSON.stringify(finalizedOrders)); }
+
+        function loadAllData() {
+            myOrders = JSON.parse(localStorage.getItem('myOrders')) || [];
+            finalizedOrders = JSON.parse(localStorage.getItem('finalizedOrders')) || [];
+            restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
+            renderMyOrdersPage();
+        }
+
+        // ======================= RENDERIZAÇÃO DAS LISTAS =======================
         function buildOrderHtml(order, isActive = true) {
             let itemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
@@ -187,22 +204,42 @@
                     let complementsHtml = '';
                     if (item.complements && Object.keys(item.complements).length > 0) {
                         for (const groupName in item.complements) {
-                            complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p><ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
-                            complementsHtml += item.complements[groupName].map(comp => `<li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>`).join('');
+                            complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
+                            complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
+                            complementsHtml += item.complements[groupName].map(comp => `
+                                <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
+                            `).join('');
                             complementsHtml += `</ul>`;
                         }
                     }
+
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
                     const prodName = item.product ? item.product.name : 'Produto';
-                    itemsHtml += `<li class="text-sm text-gray-600"><div class="flex justify-between items-center"><span>${item.quantity}x ${prodName}</span><span class="font-bold">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span></div>${complementsHtml}</li>`;
+
+                    itemsHtml += `
+                        <li class="text-sm text-gray-600">
+                            <div class="flex justify-between items-center">
+                                <span>${item.quantity}x ${prodName}</span>
+                                <span class="font-bold">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                            ${complementsHtml}
+                        </li>
+                    `;
                 });
-            } else { itemsHtml = `<p class="text-xs text-gray-400 italic">Nenhum item discriminado.</p>`; }
+            } else {
+                itemsHtml = `<p class="text-xs text-gray-400 italic">Nenhum item discriminado.</p>`;
+            }
 
             let actionButtonsHtml = '';
             if (isActive) {
-                let dispatchBtnHtml = (order.status === "Saiu para entrega" || order.status === "Despachado") 
-                    ? `<button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded-full text-sm cursor-not-allowed" disabled>✓ Despachado</button>`
-                    : `<button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-blue-600 transition-colors">Despachar</button>`;
+                let dispatchBtnHtml = '';
+                if (order.status === "Saiu para entrega" || order.status === "Despachado") {
+                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded-full text-sm cursor-not-allowed" disabled>✓ Despachado</button>`;
+                } else if (order.status === "Entregue") {
+                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-green-100 text-green-700 font-bold py-1 px-3 rounded-full text-sm cursor-not-allowed" disabled>✓ Recebido</button>`;
+                } else {
+                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-blue-600 transition-colors">Despachar</button>`;
+                }
 
                 actionButtonsHtml = `
                     ${dispatchBtnHtml}
@@ -235,16 +272,23 @@
                 <div class="order-details mt-4 pt-4 border-t hidden">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
+                            <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
                             <p class="text-sm text-gray-600"><strong>Nome:</strong> ${clientName}</p>
-                            <p class="text-sm text-gray-600"><strong>Tel:</strong> ${clientPhone}</p>
+                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${clientPhone}</p>
                             <p class="text-sm text-gray-600"><strong>Endereço:</strong> ${clientAddress}</p>
+                            ${order.customer && order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Complemento:</strong> ${order.customer.complement}</p>` : ''}
+                            ${order.customer && order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Ponto de Ref.:</strong> ${order.customer.reference}</p>` : ''}
                         </div>
                         <div>
+                            <h5 class="font-bold text-gray-700 mb-1">Forma de Pagamento:</h5>
                             <span class="inline-block bg-green-50 text-green-800 font-bold px-3 py-1 rounded border border-green-200 text-sm">${order.paymentMethod || 'A combinar'}</span>
                         </div>
                     </div>
                     <div class="mb-4">
-                        <ul class="space-y-2 pl-4 border-l-2 border-gray-100">${itemsHtml}</ul>
+                        <h5 class="font-bold text-gray-700 mb-2">Itens do Pedido:</h5>
+                        <ul class="space-y-2 pl-4 border-l-2 border-gray-100">
+                            ${itemsHtml}
+                        </ul>
                     </div>
                 </div>
             `;
@@ -282,76 +326,260 @@
             }
         }
         
+        // ======================= LOGICA DE SUPORTE E BOTÕES =======================
         function removeOrder(orderId) {
-            const singleOrderRef = ref(database, `myOrders/${orderId}`);
-            remove(singleOrderRef)
-                .then(() => showMessage('Pedido excluído permanentemente!', 'success'))
-                .catch(err => showMessage('Erro ao excluir: ' + err.message, 'error'));
+            let orderRemoved = false;
+
+            const initialMyOrdersLength = myOrders.length;
+            myOrders = myOrders.filter(order => order.id !== orderId);
+            if (myOrders.length < initialMyOrdersLength) {
+                saveMyOrders();
+                orderRemoved = true;
+            }
+
+            const initialFinalizedOrdersLength = finalizedOrders.length;
+            finalizedOrders = finalizedOrders.filter(order => order.id !== orderId);
+            if (finalizedOrders.length < initialFinalizedOrdersLength) {
+                saveFinalizedOrders();
+                orderRemoved = true;
+            }
+
+            if (orderRemoved) {
+                renderMyOrdersPage();
+                showMessage('Pedido excluído permanentemente!', 'success');
+            } else {
+                showMessage('Pedido não encontrado para exclusão.', 'error');
+            }
         }
 
         function dispatchOrder(orderId) {
-            const singleOrderRef = ref(database, `myOrders/${orderId}`);
-            update(singleOrderRef, { status: "Saiu para entrega" })
-                .then(() => showMessage('Pedido despachado com sucesso!', 'blue'))
-                .catch(err => showMessage('Erro ao despachar: ' + err.message, 'error'));
+            const orderIndex = myOrders.findIndex(o => o.id === orderId);
+            
+            if (orderIndex !== -1) {
+                if (myOrders[orderIndex].status === "Saiu para entrega") {
+                    showMessage('Este pedido já foi despachado!', 'yellow');
+                    return;
+                }
+                
+                // Altera diretamente no array ativo local da memória para não duplicar
+                myOrders[orderIndex].status = "Saiu para entrega";
+                saveMyOrders();
+                showMessage('Pedido despachado com sucesso!', 'blue');
+                renderMyOrdersPage(); 
+            }
         }
 
         function finishOrder(orderId) {
-            const singleOrderRef = ref(database, `myOrders/${orderId}`);
-            update(singleOrderRef, { status: "Finalizado" })
-                .then(() => showMessage('Pedido finalizado com sucesso!', 'success'))
-                .catch(err => showMessage('Erro ao finalizar: ' + err.message, 'error'));
+            const orderIndex = myOrders.findIndex(o => o.id === orderId);
+            if (orderIndex !== -1) {
+                const finishedOrder = myOrders.splice(orderIndex, 1)[0];
+                finishedOrder.status = 'Finalizado';
+                finalizedOrders.push(finishedOrder);
+                
+                saveMyOrders();
+                saveFinalizedOrders();
+                renderMyOrdersPage();
+                showMessage('Pedido finalizado com sucesso!');
+            }
+        }
+        
+        function autoFinalizeOldOrders() {
+            const now = Date.now();
+            let changesMade = false;
+            const ordersToFinalize = myOrders.filter(order => order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS);
+            
+            if (ordersToFinalize.length > 0) {
+                ordersToFinalize.forEach(order => {
+                    const orderIndex = myOrders.findIndex(o => o.id === order.id);
+                    if (orderIndex !== -1) {
+                        const finishedOrder = myOrders.splice(orderIndex, 1)[0];
+                        finishedOrder.status = 'Finalizado (Auto)';
+                        finalizedOrders.push(finishedOrder);
+                        changesMade = true;
+                    }
+                });
+
+                if (changesMade) {
+                    saveMyOrders();
+                    saveFinalizedOrders();
+                    renderMyOrdersPage();
+                    showMessage('Pedidos antigos finalizados automaticamente.', 'yellow');
+                }
+            }
         }
 
-        // MONITORAMENTO EM TEMPO REAL DIRETO DO FIREBASE REALTIME DATABASE
-        onValue(ordersRef, (snapshot) => {
-            const data = snapshot.val();
-            let activeOrders = [];
-            let finishedOrders = [];
-            let latestOrder = null;
+        // ======================= IMPRESSÃO FORMATADA COM TAXA DE ENTREGA =======================
+        function printOrder(orderId) {
+            const order = myOrders.find(o => o.id === orderId) || finalizedOrders.find(o => o.id === orderId);
+            if (!order) {
+                showMessage('Pedido não encontrado para impressão.', 'error');
+                return;
+            }
+        
+            const printWindow = window.open('', '_blank');
+            const printDocument = printWindow.document;
 
-            const existingOrderIds = new Set(myOrders.map(o => o.id));
+            let orderItemsHtml = '';
+            if(order.items && Array.isArray(order.items)) {
+                order.items.forEach(item => {
+                    let complementsHtml = '';
+                    if (item.complements && Object.keys(item.complements).length > 0) {
+                        for (const groupName in item.complements) {
+                            const optionsHtml = item.complements[groupName].map(comp => `
+                                <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                                    <span>- ${comp.name}</span>
+                                    ${comp.price > 0 ? `<span>(+R$ ${comp.price.toFixed(2).replace('.', ',')})</span>` : ''}
+                                </div>
+                            `).join('');
 
-            if (data) {
-                Object.keys(data).forEach(key => {
-                    const order = data[key];
-                    if (order) {
-                        const formattedOrder = { id: key, ...order };
-                        if (order.status === 'Finalizado' || order.status === 'Finalizado (Auto)') {
-                            finishedOrders.push(formattedOrder);
-                        } else {
-                            activeOrders.push(formattedOrder);
+                            complementsHtml += `
+                                <div style="margin-top: 5px; padding-left: 10px;">
+                                    <div style="font-weight: bold; font-size: 12px; color: #555;">${groupName}:</div>
+                                    ${optionsHtml}
+                                </div>
+                            `;
                         }
                     }
+                    
+                    const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
+                    const prodName = item.product ? item.product.name : 'Produto';
+            
+                    orderItemsHtml += `
+                        <div style="font-size: 14px; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="font-weight: bold;">${item.quantity}x ${prodName}</span>
+                                <span style="font-weight: bold;">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                            ${complementsHtml}
+                        </div>
+                    `;
                 });
             }
 
-            if (!isFirstLoad && activeOrders.length > myOrders.length) {
-                activeOrders.forEach(order => {
-                    if (!existingOrderIds.has(order.id)) {
-                        latestOrder = order;
-                    }
-                });
-                if (latestOrder) { showNewOrderNotification(); }
+            // Captura e formatação dinâmica da taxa de entrega
+            let deliveryFee = 0;
+            if (typeof order.deliveryFee !== 'undefined') deliveryFee = Number(order.deliveryFee);
+            else if (typeof order.taxaEntrega !== 'undefined') deliveryFee = Number(order.taxaEntrega);
+            
+            let deliveryFeeHtml = deliveryFee > 0 ? `R$ ${deliveryFee.toFixed(2).replace('.', ',')}` : 'Grátis';
+            const totalGeral = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
+            const clientName = order.customer ? order.customer.name : 'N/A';
+            const clientPhone = order.customer ? order.customer.phone : 'N/A';
+            const clientAddress = order.customer ? `${order.customer.address}, ${order.customer.number || ''}` : 'Não informado';
+        
+            const printContent = `
+                <div class="print-area" style="padding: 10px; max-width: 280px; margin: 0 auto; line-height: 1.4; font-family: sans-serif;">
+                    <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
+                        ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto 5px; display:block;"/>` : ''}
+                        ${restaurantProfile.name ? `<h1 style="font-size: 20px; font-weight: bold; margin: 0;">${restaurantProfile.name}</h1>` : '<h1 style="font-size: 20px; font-weight: bold; margin: 0;">Comprovante Delivery</h1>'}
+                        ${restaurantProfile.phone ? `<p style="font-size: 12px; margin: 3px 0 0;">Tel: ${restaurantProfile.phone}</p>` : ''}
+                    </div>
+                    
+                    <h2 style="font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 15px;">Pedido #${order.id.slice(-6)}</h2>
+                    
+                    <div style="margin-bottom: 15px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        <h3 style="font-size: 13px; font-weight: bold; margin-top: 0; margin-bottom: 5px;">Cliente:</h3>
+                        <p style="margin: 0;"><strong>Nome:</strong> ${clientName}</p>
+                        <p style="margin: 0;"><strong>Tel:</strong> ${clientPhone}</p>
+                        <p style="margin: 0;"><strong>End:</strong> ${clientAddress}</p>
+                        ${order.customer && order.customer.complement ? `<p style="margin: 0;"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
+                        ${order.customer && order.customer.reference ? `<p style="margin: 0;"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
+                    </div>
+        
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 5px;">Itens:</h3>
+                        ${orderItemsHtml}
+                    </div>
+        
+                    <div style="border-top: 2px solid #333; padding-top: 8px; margin-top: 15px; font-size: 14px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #555;">
+                            <span>Taxa de Entrega:</span>
+                            <span style="font-weight: bold;">${deliveryFeeHtml}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 4px; border-top: 1px dashed #aaa; padding-top: 4px;">
+                            <span>TOTAL GERAL:</span>
+                            <span>R$ ${totalGeral}</span>
+                        </div>
+                        <p style="font-size: 13px; margin-top: 8px; margin-bottom: 0;"><strong>Forma de Pagto:</strong> ${order.paymentMethod || 'A combinar'}</p>
+                    </div>
+        
+                    <div style="text-align: center; margin-top: 25px; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 5px;">
+                        <p style="margin:0;">Impresso em: ${new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+        
+            printDocument.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Impressão de Pedido #${order.id.slice(-6)}</title>
+                    <style>
+                        @media print {
+                            @page { size: auto; margin: 0mm; }
+                            body { margin: 5mm; }
+                        }
+                    </style>
+                </head>
+                <body>${printContent}</body>
+                </html>
+            `);
+            printDocument.close();
+            printWindow.focus();
+            setTimeout(() => { printWindow.print(); }, 500);
+        }
+
+        // ======================= CAPTURA DOS EVENTOS E CLIQUES =======================
+        window.addEventListener('DOMContentLoaded', () => {
+            loadAllData();
+            setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
+        });
+        
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'myOrders') {
+                const newOrders = JSON.parse(e.newValue) || [];
+                const oldOrders = myOrders;
+                let latestOrder = null;
+
+                if (newOrders.length > oldOrders.length) {
+                    const oldOrderIds = new Set(oldOrders.map(order => order.id));
+                    latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
+                }
+
+                myOrders = newOrders;
+                renderMyOrdersPage();
+                
+                if (latestOrder) {
+                    showNewOrderNotification();
+                    highlightNewOrder(latestOrder.id);
+                    setTimeout(() => { printOrder(latestOrder.id); }, 2500);
+                }
             }
-
-            myOrders = activeOrders;
-            finalizedOrders = finishedOrders;
-            isFirstLoad = false;
-
-            renderMyOrdersPage();
+            if (e.key === 'finalizedOrders') {
+                finalizedOrders = JSON.parse(e.newValue) || [];
+                renderMyOrdersPage();
+            }
         });
 
-        // CENTRALIZADOR DE CLIQUES CORRIGIDO PARA CAPTURAR O DATASET CORRETAMENTE
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
 
             const orderId = orderDiv.dataset.orderId;
 
+            if (orderDiv.classList.contains('new-order-highlight')) {
+                orderDiv.classList.remove('new-order-highlight');
+            }
+
+            if (e.target.closest('.print-order-btn')) {
+                e.stopPropagation();
+                printOrder(orderId);
+                return;
+            }
+            
             if (e.target.closest('.remove-order-btn')) {
                 e.stopPropagation();
-                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
+                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
                 return;
             }
 
@@ -368,14 +596,19 @@
             }
 
             const details = orderDiv.querySelector('.order-details');
-            if (details) { details.classList.toggle('hidden'); }
+            if (details) {
+                details.classList.toggle('hidden');
+            }
         }
 
         myOrdersList.addEventListener('click', handleListClicks);
         finalizedOrdersList.addEventListener('click', handleListClicks);
+        
         cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
         confirmActionBtn.addEventListener('click', () => {
-            if (confirmationCallback) confirmationCallback();
+            if (confirmationCallback) {
+                confirmationCallback();
+            }
             confirmationCallback = null;
             toggleModal(confirmationModal, false);
         });
