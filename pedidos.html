@@ -114,18 +114,19 @@
 
     <div id="newOrderNotification" class="notification-box hidden">Novo pedido chegou!</div>
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
-        // CONFIGURAÇÃO DO SEU FIREBASE (Adicione as suas credenciais reais aqui caso necessário)
+    <script>
+        // ======================= CONFIGURAÇÃO DO FIREBASE =======================
         const firebaseConfig = {
-            databaseURL: "https://tecinfo-app.firebaseio.com" 
+            databaseURL: "https://tecinfo-app.firebaseio.com"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const ordersRef = ref(db, 'myOrders');
+        // Inicializa o Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const ordersRef = database.ref('myOrders');
 
         // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
         let myOrders = [];
@@ -148,8 +149,12 @@
         const confirmActionBtn = document.getElementById('confirmActionBtn');
         const newOrderNotification = document.getElementById('newOrderNotification');
         
-        // Carrega o perfil do restaurante localmente
-        restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
+        // Carrega perfil local
+        try {
+            restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
+        } catch(e) {
+            restaurantProfile = {};
+        }
 
         // ======================= FUNÇÕES AUXILIARES =======================
         function showMessage(message, type = 'success') {
@@ -185,7 +190,7 @@
                 const notificationSound = new Audio('som.mp3');
                 notificationSound.play();
             } catch (e) {
-                console.log("Áudio bloqueado pelas políticas do navegador.");
+                console.log("Áudio retido pelo navegador até interação do usuário.");
             }
         
             setTimeout(() => {
@@ -221,7 +226,7 @@
                     itemsHtml += `
                         <li class="text-sm text-gray-600">
                             <div class="flex justify-between items-center">
-                                <span>${item.quantity}x ${item.product?.name || 'Produto'}</span>
+                                <span>${item.quantity}x ${item.product ? item.product.name : 'Item'}</span>
                                 <span class="font-bold">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
                             </div>
                             ${complementsHtml}
@@ -229,7 +234,7 @@
                     `;
                 });
             } else {
-                itemsHtml = `<p class="text-xs text-gray-400 italic">Sem itens neste pedido.</p>`;
+                itemsHtml = `<p class="text-xs text-gray-400 italic">Sem itens listados.</p>`;
             }
 
             let actionButtonsHtml = '';
@@ -257,17 +262,17 @@
                 `;
             }
 
-            const formattedTotal = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
-            const customerName = order.customer?.name || 'Não Informado';
-            const customerPhone = order.customer?.phone || 'N/A';
-            const customerAddress = order.customer?.address ? `${order.customer.address}, ${order.customer.number || ''}` : 'Não informado';
+            const totalExibido = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
+            const clientName = order.customer ? order.customer.name : 'N/A';
+            const clientPhone = order.customer ? order.customer.phone : 'N/A';
+            const clientAddress = order.customer ? `${order.customer.address}, ${order.customer.number || ''}` : 'Não informado';
 
             return `
                 <div class="flex justify-between items-center order-header">
                     <h4 class="text-xl font-bold text-gray-800">Pedido #${order.id.slice(-6)}</h4>
                     <div class="flex items-center gap-2 flex-wrap justify-end">
                         <span class="text-sm text-gray-500 hidden md:block">${order.date || ''}</span>
-                        <span class="text-xl font-bold text-green-600">R$ ${formattedTotal}</span>
+                        <span class="text-xl font-bold text-green-600">R$ ${totalExibido}</span>
                         ${actionButtonsHtml}
                     </div>
                 </div>
@@ -275,15 +280,15 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div>
                             <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
-                            <p class="text-sm text-gray-600"><strong>Nome:</strong> ${customerName}</p>
-                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${customerPhone}</p>
-                            <p class="text-sm text-gray-600"><strong>Endereço:</strong> ${customerAddress}</p>
-                            ${order.customer?.complement ? `<p class="text-sm text-gray-600"><strong>Complemento:</strong> ${order.customer.complement}</p>` : ''}
-                            ${order.customer?.reference ? `<p class="text-sm text-gray-600"><strong>Ponto de Ref.:</strong> ${order.customer.reference}</p>` : ''}
+                            <p class="text-sm text-gray-600"><strong>Nome:</strong> ${clientName}</p>
+                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${clientPhone}</p>
+                            <p class="text-sm text-gray-600"><strong>Endereço:</strong> ${clientAddress}</p>
+                            ${order.customer && order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Complemento:</strong> ${order.customer.complement}</p>` : ''}
+                            ${order.customer && order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Ponto de Ref.:</strong> ${order.customer.reference}</p>` : ''}
                         </div>
                         <div>
                             <h5 class="font-bold text-gray-700 mb-1">Forma de Pagamento:</h5>
-                            <span class="inline-block bg-green-50 text-green-800 font-bold px-3 py-1 rounded border border-green-200 text-sm">${order.paymentMethod || 'Não informado'}</span>
+                            <span class="inline-block bg-green-50 text-green-800 font-bold px-3 py-1 rounded border border-green-200 text-sm">${order.paymentMethod || 'A combinar'}</span>
                         </div>
                     </div>
                     <div class="mb-4">
@@ -328,51 +333,35 @@
             }
         }
         
-        // ======================= LÓGICA DE AÇÕES NO FIREBASE =======================
+        // ======================= FUNÇÕES DE OPERAÇÃO NO FIREBASE =======================
         function removeOrder(orderId) {
-            const orderSpecificRef = ref(db, `myOrders/${orderId}`);
-            remove(orderSpecificRef)
-                .then(() => {
-                    showMessage('Pedido excluído do banco de dados!', 'success');
-                })
-                .catch((error) => {
-                    showMessage('Erro ao excluir pedido: ' + error.message, 'error');
-                });
+            database.ref(`myOrders/${orderId}`).remove()
+                .then(() => showMessage('Pedido removido com sucesso!', 'success'))
+                .catch(err => showMessage('Erro ao excluir: ' + err.message, 'error'));
         }
 
         function dispatchOrder(orderId) {
-            const orderSpecificRef = ref(db, `myOrders/${orderId}`);
-            update(orderSpecificRef, { status: "Saiu para entrega" })
-                .then(() => {
-                    showMessage('Pedido despachado com sucesso!', 'blue');
-                })
-                .catch((error) => {
-                    showMessage('Erro ao despachar: ' + error.message, 'error');
-                });
+            database.ref(`myOrders/${orderId}`).update({ status: "Saiu para entrega" })
+                .then(() => showMessage('Pedido alterado para Entrega!', 'blue'))
+                .catch(err => showMessage('Erro ao despachar: ' + err.message, 'error'));
         }
 
         function finishOrder(orderId) {
-            const orderSpecificRef = ref(db, `myOrders/${orderId}`);
-            update(orderSpecificRef, { status: "Finalizado" })
-                .then(() => {
-                    showMessage('Pedido finalizado com sucesso!', 'success');
-                })
-                .catch((error) => {
-                    showMessage('Erro ao finalizar: ' + error.message, 'error');
-                });
+            database.ref(`myOrders/${orderId}`).update({ status: "Finalizado" })
+                .then(() => showMessage('Pedido arquivado em Concluídos!', 'success'))
+                .catch(err => showMessage('Erro ao finalizar: ' + err.message, 'error'));
         }
         
         function autoFinalizeOldOrders() {
             const now = Date.now();
             myOrders.forEach(order => {
-                if (order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS && order.status !== 'Finalizado') {
-                    const orderSpecificRef = ref(db, `myOrders/${order.id}`);
-                    update(orderSpecificRef, { status: 'Finalizado (Auto)' });
+                if (order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS) {
+                    database.ref(`myOrders/${order.id}`).update({ status: 'Finalizado (Auto)' });
                 }
             });
         }
 
-        // ======================= IMPRESSÃO FORMATADA =======================
+        // ======================= IMPRESSÃO TÉRMICA =======================
         function printOrder(orderId) {
             const order = myOrders.find(o => o.id === orderId) || finalizedOrders.find(o => o.id === orderId);
             if (!order) {
@@ -381,8 +370,8 @@
             }
         
             const printWindow = window.open('', '_blank');
-            if (!printWindow) {
-                showMessage('Bloqueador de popups ativo! Autorize a impressão automática.', 'error');
+            if(!printWindow) {
+                showMessage('Habilite as permissões de Pop-up no seu navegador!', 'error');
                 return;
             }
             const printDocument = printWindow.document;
@@ -412,7 +401,7 @@
                     orderItemsHtml += `
                         <div style="font-size: 14px; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 8px;">
                             <div style="display: flex; justify-content: space-between;">
-                                <span style="font-weight: bold;">${item.quantity}x ${item.product?.name || 'Produto'}</span>
+                                <span style="font-weight: bold;">${item.quantity}x ${item.product ? item.product.name : 'Produto'}</span>
                                 <span style="font-weight: bold;">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
                             </div>
                             ${complementsHtml}
@@ -438,11 +427,11 @@
                     
                     <div style="margin-bottom: 15px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
                         <h3 style="font-size: 13px; font-weight: bold; margin-top: 0; margin-bottom: 5px;">Cliente:</h3>
-                        <p style="margin: 0;"><strong>Nome:</strong> ${order.customer?.name || 'N/A'}</p>
-                        <p style="margin: 0;"><strong>Tel:</strong> ${order.customer?.phone || 'N/A'}</p>
-                        <p style="margin: 0;"><strong>End:</strong> ${order.customer?.address || ''}, ${order.customer?.number || ''}</p>
-                        ${order.customer?.complement ? `<p style="margin: 0;"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
-                        ${order.customer?.reference ? `<p style="margin: 0;"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
+                        <p style="margin: 0;"><strong>Nome:</strong> ${order.customer ? order.customer.name : 'N/A'}</p>
+                        <p style="margin: 0;"><strong>Tel:</strong> ${order.customer ? order.customer.phone : 'N/A'}</p>
+                        <p style="margin: 0;"><strong>End:</strong> ${order.customer ? order.customer.address : ''}, ${order.customer ? order.customer.number : ''}</p>
+                        ${order.customer && order.customer.complement ? `<p style="margin: 0;"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
+                        ${order.customer && order.customer.reference ? `<p style="margin: 0;"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
                     </div>
         
                     <div style="margin-bottom: 15px;">
@@ -459,7 +448,7 @@
                             <span>TOTAL GERAL:</span>
                             <span>R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
                         </div>
-                        <p style="font-size: 13px; margin-top: 8px; margin-bottom: 0;"><strong>Forma de Pagto:</strong> ${order.paymentMethod || 'N/A'}</p>
+                        <p style="font-size: 13px; margin-top: 8px; margin-bottom: 0;"><strong>Forma de Pagto:</strong> ${order.paymentMethod || 'A combinar'}</p>
                     </div>
         
                     <div style="text-align: center; margin-top: 25px; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 5px;">
@@ -488,11 +477,12 @@
             setTimeout(() => { printWindow.print(); }, 500);
         }
 
-        // ======================= CAPTURA DE EVENTOS DO FIREBASE =======================
+        // ======================= SINCRONIZAÇÃO EM TEMPO REAL =======================
         window.addEventListener('DOMContentLoaded', () => {
             setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
 
-            onValue(ordersRef, (snapshot) => {
+            // Escuta modificações diretamente no nó do Firebase
+            ordersRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 let activeOrders = [];
                 let finishedOrders = [];
@@ -501,11 +491,10 @@
                     Object.keys(data).forEach(key => {
                         const order = data[key];
                         
-                        // FILTRO SEGURO: Ignora os pedidos fantasmas / corrompidos (sem itens válidos)
+                        // FILTRO ANTI-REPLICA FANTASMA: Garante integridade do item
                         if (order && (order.items || order.total > 0)) {
                             const formattedOrder = { id: key, ...order };
                             
-                            // Divide dinamicamente pelas listas corretas baseando-se no status
                             if (order.status === 'Finalizado' || order.status === 'Finalizado (Auto)') {
                                 finishedOrders.push(formattedOrder);
                             } else {
@@ -515,7 +504,7 @@
                     });
                 }
 
-                // Dispara alertas para novos pedidos reais adicionados ao monitor
+                // Identifica se chegou um novo pedido real para automação e som
                 let latestOrder = null;
                 if (lastKnownOrderCount !== -1 && activeOrders.length > lastKnownOrderCount) {
                     const oldOrderIds = new Set(myOrders.map(o => o.id));
@@ -536,7 +525,7 @@
             });
         });
 
-        // ======================= TRATAMENTO CENTRALIZADO DE CLIQUES =======================
+        // ======================= MONITOR DE CLIQUE CENTRALIZADO =======================
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
@@ -547,7 +536,7 @@
                 orderDiv.classList.remove('new-order-highlight');
             }
 
-            // Mapeia os cliques para as funções reestruturadas do Firebase
+            // Ações dos Botões Internos
             if (e.target.closest('.print-order-btn')) {
                 e.stopPropagation();
                 printOrder(orderId);
@@ -556,7 +545,7 @@
             
             if (e.target.closest('.remove-order-btn')) {
                 e.stopPropagation();
-                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
+                showConfirmationModal('Excluir Pedido', `Deseja apagar permanentemente do sistema o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
                 return;
             }
 
@@ -572,6 +561,7 @@
                 return;
             }
 
+            // Alternar sanfona de detalhes do pedido
             const details = orderDiv.querySelector('.order-details');
             if (details) {
                 details.classList.toggle('hidden');
