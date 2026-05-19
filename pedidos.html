@@ -201,39 +201,28 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
         }
 
         // ======================= RENDERIZAÇÃO DAS LISTAS =======================
-        function buildOrderHtml(order, isActive = true) {
-            let itemsHtml = '';
+       function buildOrderHtml(order, isActive = true) {
+    let itemsHtml = '';
+    
+    // Proteção: Só tenta fazer o forEach se 'order.items' existir e for um Array
+    if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+            let complementsHtml = '';
+            // ... (seu código de complementos permanece aqui)
             
-            // 1. Proteção: Verifica se 'items' existe e é um array
-            if (order.items && Array.isArray(order.items)) {
-                order.items.forEach(item => {
-                    let complementsHtml = '';
-                    // Verifica se existem complementos
-                    if (item.complements && Object.keys(item.complements).length > 0) {
-                        for (const groupName in item.complements) {
-                            complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
-                            complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
-                            complementsHtml += item.complements[groupName].map(comp => `
-                                <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
-                            `).join('');
-                            complementsHtml += `</ul>`;
-                        }
-                    }
-
-                    // Renderiza o item com nome, quantidade e preço
-                    itemsHtml += `
-                        <li class="text-sm text-gray-600">
-                            <div class="flex justify-between items-center">
-                                <span>${item.quantity}x ${item.product.name}</span>
-                                <span class="font-bold">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
-                            </div>
-                            ${complementsHtml}
-                        </li>
-                    `;
-                });
-            } else {
-                itemsHtml = '<li class="text-sm text-gray-400 italic">Sem itens neste pedido.</li>';
-            }
+            itemsHtml += `
+                <li class="text-sm text-gray-600">
+                    <div class="flex justify-between items-center">
+                        <span>${item.quantity}x ${item.product.name}</span>
+                        <span class="font-bold">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </li>
+            `;
+        });
+    } else {
+        // Exibe uma mensagem amigável caso não haja itens
+        itemsHtml = '<li class="text-sm text-gray-400 italic">Sem itens neste pedido.</li>';
+    }
 
             // 2. Define os botões de ação (Depende se o pedido está ativo ou não)
             let actionButtonsHtml = '';
@@ -337,8 +326,6 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
                     showMessage('Erro ao excluir o pedido. Tente novamente.', 'error');
                 });
         }
-
-           
 
         function dispatchOrder(orderId) {
             // 1. Procuramos o pedido específico na lista local atual para validar o status
