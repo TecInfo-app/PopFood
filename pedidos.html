@@ -249,32 +249,33 @@ function showNewOrderNotification() {
             }
 
             // 3. Retorna o HTML completo do card
-            return `
-                <div class="flex justify-between items-center order-header">
-                    <h4 class="text-xl font-bold text-gray-800">Pedido #${order.id ? order.id.slice(-6) : 'N/A'}</h4>
-                    <div class="flex items-center gap-2 flex-wrap justify-end">
-                        <span class="text-sm text-gray-500 hidden md:block">${order.date || ''}</span>
-                        <span class="text-xl font-bold text-green-600">R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
-                        ${actionButtonsHtml}
-                    </div>
-                </div>
-                <div class="order-details mt-4 pt-4 border-t hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
-                            <p class="text-sm text-gray-600"><strong>Nome:</strong> ${order.customer ? order.customer.name : 'N/A'}</p>
-                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${order.customer ? order.customer.phone : 'N/A'}</p>
+           return `
+                    <div class="flex justify-between items-center order-header">
+                        <h4 class="text-xl font-bold text-gray-800">Pedido #${order.id ? order.id.slice(-6) : 'N/A'}</h4>
+                        <div class="flex items-center gap-2 flex-wrap justify-end">
+                            <span class="text-sm text-gray-500 hidden md:block">${order.date || ''}</span>
+                            <span class="text-xl font-bold text-green-600">R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
+                            ${actionButtonsHtml}
                         </div>
                     </div>
-                    <div class="mb-4">
-                        <h5 class="font-bold text-gray-700 mb-2">Itens do Pedido:</h5>
-                        <ul class="space-y-2 pl-4 border-l-2 border-gray-100">
-                            ${itemsHtml}
-                        </ul>
+                    <div class="order-details mt-4 pt-4 border-t hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
+                                <p class="text-sm text-gray-600"><strong>Nome:</strong> ${order.customer ? order.customer.name : 'N/A'}</p>
+                                <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${order.customer ? order.customer.phone : 'N/A'}</p>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <h5 class="font-bold text-gray-700 mb-2">Itens do Pedido:</h5>
+                            <ul class="space-y-2 pl-4 border-l-2 border-gray-100">
+                                ${itemsHtml}
+                            </ul>
+                        </div>
                     </div>
-                </div>
-            `;
-        }
+                `;
+            } // <--- ESTE FECHAMENTO CORRESPONDE AO IF(ISACTIVE)
+        } // <--- ESTE FECHAMENTO CORRESPONDE À FUNÇÃO buildOrderHtml
         function renderMyOrdersPage() {
             myOrdersList.innerHTML = '';
             if (myOrders.length === 0) {
