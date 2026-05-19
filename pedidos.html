@@ -5,94 +5,611 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meus Pedidos - Gerenciador de Delivery</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
-        .modal-enter { animation: fadeIn 0.3s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        .notification-box {
-            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-            background-color: #ef4444; color: white; padding: 1rem 2rem;
-            border-radius: 9999px; z-index: 1000; opacity: 0; transition: opacity 0.5s;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
         }
-        .notification-box.show { opacity: 1; }
-        .new-order-highlight { background-color: #fff3e0 !important; }
-        .dispatched-order-highlight { background-color: #e0f2fe !important; }
+        .modal-enter {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        /* Estilos de impressão */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-area, .print-area * {
+                visibility: visible;
+            }
+            .print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                font-family: 'Inter', sans-serif;
+            }
+            .print-area h1, .print-area h2, .print-area h3, .print-area h4 {
+                color: #000;
+            }
+        }
+        /* Notificação de novo pedido */
+        .notification-box {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #ef4444;
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 9999px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .notification-box.show {
+            opacity: 1;
+        }
+        /* Destaques de Status */
+        .new-order-highlight {
+            background-color: #fff3e0 !important;
+        }
+        .dispatched-order-highlight {
+            background-color: #e0f2fe !important;
+        }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen">
 
     <div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
-        <h1 class="text-3xl font-bold text-gray-800 mb-6">Painel de Pedidos</h1>
-        
-        <div id="my-orders-list" class="space-y-4 mb-10"></div>
-        <div id="finalized-orders-list" class="space-y-3 opacity-75"></div>
+
+        <div id="my-orders-page">
+            <div class="flex items-center justify-between mb-6 border-b pb-4">
+                <div class="flex items-center gap-4">
+                    <a href="index.html" class="text-gray-500 hover:text-gray-800 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
+                    </a>
+                    <h1 class="text-3xl font-bold text-gray-800">Painel de Pedidos</h1>
+                </div>
+                <span class="bg-amber-100 text-amber-800 font-semibold px-4 py-1.5 rounded-full text-sm">Monitor Ativo</span>
+            </div>
+            
+            <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                <span class="h-3 w-3 rounded-full bg-orange-500 animate-pulse"></span> Pedidos em Andamento
+            </h2>
+            <div id="my-orders-list" class="space-y-4 mb-10">
+                <p class="text-center text-gray-500 py-4">Nenhum pedido realizado ainda.</p>
+            </div>
+
+            <div class="mt-12 pt-6 border-t border-gray-200">
+                <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
+                    <span class="h-3 w-3 rounded-full bg-green-500"></span> Finalizados / Concluídos
+                </h2>
+                <div id="finalized-orders-list" class="space-y-3 opacity-75">
+                    <p class="text-sm text-gray-400 italic">Nenhum pedido finalizado nesta sessão.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="messageBox" class="fixed bottom-4 right-4 p-4 text-white rounded-lg shadow-lg z-50 hidden transition-all duration-300"></div>
+    </div>
+    
+    <div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm modal-enter">
+            <h3 id="confirmationModalTitle" class="text-xl font-bold text-gray-800 mb-4">Confirmação</h3>
+            <p id="confirmationModalMessage" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end gap-2">
+                <button id="cancelConfirmationBtn" class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-400">Cancelar</button>
+                <button id="confirmActionBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-red-700">Confirmar</button>
+            </div>
+        </div>
     </div>
 
     <div id="newOrderNotification" class="notification-box hidden">Novo pedido chegou!</div>
     
     <script type="module">
-        import { db } from './firebase-config.js';
-        import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+	
+	import { db } from './firebase-config.js';
+import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Variáveis globais
-        window.myOrders = [];
 
-        function buildOrderHtml(order, isActive = true) {
-            let itemsHtml = (order.items && Array.isArray(order.items)) 
-                ? order.items.map(item => `
-                    <li class="text-sm text-gray-600 flex justify-between">
-                        <span>${item.quantity}x ${item.product?.name || 'Produto'}</span>
-                        <span class="font-bold">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
-                    </li>`).join('')
-                : '<li class="text-sm text-gray-400 italic">Sem itens.</li>';
+        // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
+        let myOrders = [];
+        let finalizedOrders = [];
+        let restaurantProfile = {};
+        let confirmationCallback = null;
+        
+        const AUTO_FINALIZE_TIME_MS = 2 * 60 * 60 * 1000;
+        const AUTO_FINALIZE_INTERVAL_MS = 5 * 60 * 1000;
 
-            let actionButtonsHtml = isActive ? `
-                <button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1 px-3 rounded-full text-sm">Despachar</button>
-                <button class="finish-order-btn bg-green-500 text-white font-bold py-1 px-3 rounded-full text-sm">Finalizar</button>
-            ` : `<span class="text-xs bg-gray-100 px-2 py-1 rounded">Status: ${order.status}</span>`;
+        // ======================= REFERÊNCIAS AO DOM =======================
+        const myOrdersList = document.getElementById('my-orders-list');
+        const finalizedOrdersList = document.getElementById('finalized-orders-list');
+        const messageBox = document.getElementById('messageBox');
+        const confirmationModal = document.getElementById('confirmationModal');
+        const confirmationModalTitle = document.getElementById('confirmationModalTitle');
+        const confirmationModalMessage = document.getElementById('confirmationModalMessage');
+        const cancelConfirmationBtn = document.getElementById('cancelConfirmationBtn');
+        const confirmActionBtn = document.getElementById('confirmActionBtn');
+        const newOrderNotification = document.getElementById('newOrderNotification');
+        
+        // ======================= FUNÇÕES AUXILIARES =======================
+        function showMessage(message, type = 'success') {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500');
+            if (type === 'success') messageBox.classList.add('bg-green-500');
+            else if (type === 'error') messageBox.classList.add('bg-red-500');
+            else if (type === 'blue') messageBox.classList.add('bg-blue-500');
+            else messageBox.classList.add('bg-yellow-500');
+            
+            setTimeout(() => { messageBox.classList.add('hidden'); }, 3000);
+        }
+        
+        function toggleModal(modal, show) {
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+        
+        function showConfirmationModal(title, message, callback) {
+            confirmationModalTitle.textContent = title;
+            confirmationModalMessage.textContent = message;
+            confirmationCallback = callback;
+            toggleModal(confirmationModal, true);
+        }
+        
+        // ======================= NOTIFICAÇÃO E SOM =======================
+function showNewOrderNotification() {
+    newOrderNotification.classList.remove('hidden');
+    setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
 
-            return `
-                <div class="flex justify-between items-center p-4">
-                    <h4 class="font-bold text-gray-800">Pedido #${order.id.slice(-6)}</h4>
-                    <div class="flex gap-2">${actionButtonsHtml}</div>
-                </div>
-                <div class="order-details p-4 border-t hidden">
-                    <ul class="space-y-1">${itemsHtml}</ul>
-                </div>
-            `;
+    /* // Som desativado para evitar erro de Autoplay do navegador
+    try {
+        const notificationSound = new Audio('som.mp3');
+        notificationSound.play();
+    } catch (e) {
+        console.log("Áudio bloqueado pelas políticas do navegador.");
+    }
+    */
+
+    setTimeout(() => {
+        newOrderNotification.classList.remove('show');
+        setTimeout(() => { newOrderNotification.classList.add('hidden'); }, 500);
+    }, 5000);
+}
+
+        function highlightNewOrder(orderId) {
+            const orderElement = myOrdersList.querySelector(`[data-order-id="${orderId}"]`);
+            if (orderElement) {
+                orderElement.classList.add('new-order-highlight');
+            }
         }
 
-        // Função render simplificada
-        window.renderMyOrdersPage = () => {
-            const list = document.getElementById('my-orders-list');
-            list.innerHTML = window.myOrders.map(order => {
-                const div = document.createElement('div');
-                div.className = 'bg-white rounded-xl shadow-sm border p-2 cursor-pointer';
-                div.dataset.orderId = order.id;
-                div.innerHTML = buildOrderHtml(order, true);
-                return div.outerHTML;
-            }).join('');
-        };
+        // ======================= PERSISTÊNCIA DE DADOS =======================
+        function saveMyOrders() { localStorage.setItem('myOrders', JSON.stringify(myOrders)); }
+        function saveFinalizedOrders() { localStorage.setItem('finalizedOrders', JSON.stringify(finalizedOrders)); }
 
-        // Firebase Listener
-        onValue(ref(db, 'myOrders'), (snapshot) => {
-            const data = snapshot.val();
-            window.myOrders = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+        function loadAllData() {
+            myOrders = JSON.parse(localStorage.getItem('myOrders')) || [];
+            finalizedOrders = JSON.parse(localStorage.getItem('finalizedOrders')) || [];
+            restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
             renderMyOrdersPage();
+        }
+
+        // ======================= RENDERIZAÇÃO DAS LISTAS =======================
+       function buildOrderHtml(order, isActive = true) {
+    let itemsHtml = '';
+    
+    // 1. Proteção para itens
+    if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+            itemsHtml += `
+                <li class="text-sm text-gray-600">
+                    <div class="flex justify-between items-center">
+                        <span>${item.quantity}x ${item.product ? item.product.name : 'Produto'}</span>
+                        <span class="font-bold">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </li>
+            `;
+        });
+    } else {
+        itemsHtml = '<li class="text-sm text-gray-400 italic">Sem itens neste pedido.</li>';
+    }
+
+    // 2. Define os botões de ação
+    let actionButtonsHtml = '';
+    if (isActive) {
+        let dispatchBtnHtml = '';
+        if (order.status === "Saiu para entrega" || order.status === "Despachado") {
+            dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded-full text-sm cursor-not-allowed" disabled>✓ Despachado</button>`;
+        } else if (order.status === "Entregue") {
+            dispatchBtnHtml = `<button class="dispatch-order-btn bg-green-100 text-green-700 font-bold py-1 px-3 rounded-full text-sm cursor-not-allowed" disabled>✓ Recebido</button>`;
+        } else {
+            dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-blue-600 transition-colors">Despachar</button>`;
+        }
+
+        actionButtonsHtml = `
+            ${dispatchBtnHtml}
+            <button class="finish-order-btn bg-green-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-green-600 transition-colors">Finalizar Pedido</button>
+            <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded-full text-sm transition-colors">Imprimir</button>
+            <button data-id="${order.id}" class="remove-order-btn bg-red-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-red-600 transition-colors">Excluir</button>
+        `;
+    } else {
+        actionButtonsHtml = `
+            <span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-medium">Status: ${order.status}</span>
+            <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded-full text-sm transition-colors">Imprimir</button>
+            <button data-id="${order.id}" class="remove-order-btn bg-red-100 text-red-600 font-bold py-1 px-3 rounded-full text-sm hover:bg-red-200 transition-colors">Excluir</button>
+        `;
+    }
+
+    // 3. Retorna o HTML completo
+    return `
+        <div class="flex justify-between items-center order-header">
+            <h4 class="text-xl font-bold text-gray-800">Pedido #${order.id ? order.id.slice(-6) : 'N/A'}</h4>
+            <div class="flex items-center gap-2 flex-wrap justify-end">
+                <span class="text-sm text-gray-500 hidden md:block">${order.date || ''}</span>
+                <span class="text-xl font-bold text-green-600">R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
+                ${actionButtonsHtml}
+            </div>
+        </div>
+        <div class="order-details mt-4 pt-4 border-t hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
+                    <p class="text-sm text-gray-600"><strong>Nome:</strong> ${order.customer ? order.customer.name : 'N/A'}</p>
+                    <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${order.customer ? order.customer.phone : 'N/A'}</p>
+                </div>
+            </div>
+            <div class="mb-4">
+                <h5 class="font-bold text-gray-700 mb-2">Itens do Pedido:</h5>
+                <ul class="space-y-2 pl-4 border-l-2 border-gray-100">
+                    ${itemsHtml}
+                </ul>
+            </div>
+        </div>
+    `;
+}
+        
+        function renderMyOrdersPage() {
+            myOrdersList.innerHTML = '';
+            if (myOrders.length === 0) {
+                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum pedido ativo em andamento.</p>';
+            } else {
+                myOrders.forEach(order => {
+                    const orderDiv = document.createElement('div');
+                    let orderClass = 'bg-white p-5 rounded-xl shadow-sm border border-gray-200 cursor-pointer transition-all hover:shadow-md';
+                    if (order.status === 'Novo' || order.status === 'Pendente') orderClass += ' new-order-highlight';
+                    else if (order.status === 'Saiu para entrega' || order.status === 'Despachado') orderClass += ' dispatched-order-highlight';
+                    
+                    orderDiv.className = orderClass;
+                    orderDiv.dataset.orderId = order.id;
+                    orderDiv.innerHTML = buildOrderHtml(order, true);
+                    myOrdersList.appendChild(orderDiv);
+                });
+            }
+
+            finalizedOrdersList.innerHTML = '';
+            if (finalizedOrders.length === 0) {
+                finalizedOrdersList.innerHTML = '<p class="text-sm text-gray-400 italic">Nenhum pedido finalizado ainda.</p>';
+            } else {
+                finalizedOrders.forEach(order => {
+                    const orderDiv = document.createElement('div');
+                    orderDiv.className = 'bg-gray-50 p-4 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors';
+                    orderDiv.dataset.orderId = order.id;
+                    orderDiv.innerHTML = buildOrderHtml(order, false);
+                    finalizedOrdersList.appendChild(orderDiv);
+                });
+            }
+        }
+        
+        // ======================= LOGICA DE SUPORTE E BOTÕES =======================
+        function removeOrder(orderId) {
+            // 1. Cria a referência direta para o pedido que será apagado no Firebase
+            const orderRef = ref(db, `myOrders/${orderId}`);
+
+            // 2. Remove o registro direto da nuvem
+            remove(orderRef)
+                .then(() => {
+                    showMessage('Pedido excluído com sucesso!', 'success');
+                    // O 'onValue' que já configuramos vai perceber que o pedido sumiu lá na nuvem,
+                    // vai atualizar as variáveis e redesenhar a tela automaticamente!
+                })
+                .catch((error) => {
+                    console.error("Erro ao excluir pedido no Firebase:", error);
+                    showMessage('Erro ao excluir o pedido. Tente novamente.', 'error');
+                });
+        }
+
+        function dispatchOrder(orderId) {
+            // 1. Procuramos o pedido específico na lista local atual para validar o status
+            const currentOrders = window.myOrders || [];
+            const localOrder = currentOrders.find(o => o.id === orderId);
+
+            if (localOrder && localOrder.status === "Saiu para entrega") {
+                showMessage('Este pedido já foi despachado!', 'yellow');
+                return;
+            }
+
+            // 2. Cria a referência exata do pedido que queremos atualizar na nuvem
+            const orderRef = ref(db, `myOrders/${orderId}`);
+
+            // 3. Atualiza apenas o campo 'status' direto no Firebase
+            update(orderRef, { status: "Saiu para entrega" })
+                .then(() => {
+                    showMessage('Pedido despachado com sucesso!', 'blue');
+                    // Não precisa chamar renderMyOrdersPage() aqui, 
+                    // pois o 'onValue' já vai fazer isso automaticamente ao notar a mudança!
+                })
+                .catch((error) => {
+                    console.error("Erro ao despachar pedido no Firebase:", error);
+                    showMessage('Erro ao despachar o pedido. Tente novamente.', 'error');
+                });
+        }
+
+        function finishOrder(orderId) {
+            // 1. Cria a referência exata do pedido na nuvem usando o ID dele
+            const orderRef = ref(db, `myOrders/${orderId}`);
+            
+            // 2. Atualiza o status para 'Finalizado' direto no Firebase
+            update(orderRef, { status: 'Finalizado' })
+                .then(() => {
+                    showMessage('Pedido finalizado com sucesso!', 'success');
+                    // Não precisa mexer em arrays locais ou chamar renderMyOrdersPage(), 
+                    // pois o 'onValue' que configuramos antes vai ouvir a mudança na nuvem e atualizar a tela sozinho!
+                })
+                .catch((error) => {
+                    console.error("Erro ao finalizar pedido no Firebase:", error);
+                    showMessage('Erro ao finalizar o pedido. Tente novamente.', 'error');
+                });
+        }
+        
+        function autoFinalizeOldOrders() {
+            const now = Date.now();
+            let changesMade = false;
+            const ordersToFinalize = myOrders.filter(order => order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS);
+            
+            if (ordersToFinalize.length > 0) {
+                ordersToFinalize.forEach(order => {
+                    const orderIndex = myOrders.findIndex(o => o.id === order.id);
+                    if (orderIndex !== -1) {
+                        const finishedOrder = myOrders.splice(orderIndex, 1)[0];
+                        finishedOrder.status = 'Finalizado (Auto)';
+                        finalizedOrders.push(finishedOrder);
+                        changesMade = true;
+                    }
+                });
+
+                if (changesMade) {
+                    saveMyOrders();
+                    saveFinalizedOrders();
+                    renderMyOrdersPage();
+                    showMessage('Pedidos antigos finalizados automaticamente.', 'yellow');
+                }
+            }
+        }
+
+        // ======================= IMPRESSÃO FORMATADA COM TAXA DE ENTREGA =======================
+        function printOrder(orderId) {
+            const order = myOrders.find(o => o.id === orderId) || finalizedOrders.find(o => o.id === orderId);
+            if (!order) {
+                showMessage('Pedido não encontrado para impressão.', 'error');
+                return;
+            }
+        
+            const printWindow = window.open('', '_blank');
+            const printDocument = printWindow.document;
+
+            let orderItemsHtml = '';
+            order.items.forEach(item => {
+                let complementsHtml = '';
+                if (item.complements && Object.keys(item.complements).length > 0) {
+                    for (const groupName in item.complements) {
+                        const optionsHtml = item.complements[groupName].map(comp => `
+                            <div style="display: flex; justify-content: space-between; font-size: 12px;">
+                                <span>- ${comp.name}</span>
+                                ${comp.price > 0 ? `<span>(+R$ ${comp.price.toFixed(2).replace('.', ',')})</span>` : ''}
+                            </div>
+                        `).join('');
+
+                        complementsHtml += `
+                            <div style="margin-top: 5px; padding-left: 10px;">
+                                <div style="font-weight: bold; font-size: 12px; color: #555;">${groupName}:</div>
+                                ${optionsHtml}
+                            </div>
+                        `;
+                    }
+                }
+        
+                orderItemsHtml += `
+                    <div style="font-size: 14px; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="font-weight: bold;">${item.quantity}x ${item.product.name}</span>
+                            <span style="font-weight: bold;">R$ ${item.totalPrice.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        ${complementsHtml}
+                    </div>
+                `;
+            });
+
+            // Captura e formatação dinâmica da taxa de entrega
+            let deliveryFee = 0;
+            if (typeof order.deliveryFee !== 'undefined') deliveryFee = Number(order.deliveryFee);
+            else if (typeof order.taxaEntrega !== 'undefined') deliveryFee = Number(order.taxaEntrega);
+            
+            let deliveryFeeHtml = deliveryFee > 0 ? `R$ ${deliveryFee.toFixed(2).replace('.', ',')}` : 'Grátis';
+        
+            const printContent = `
+                <div class="print-area" style="padding: 10px; max-width: 280px; margin: 0 auto; line-height: 1.4; font-family: sans-serif;">
+                    <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
+                        ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto 5px; display:block;"/>` : ''}
+                        ${restaurantProfile.name ? `<h1 style="font-size: 20px; font-weight: bold; margin: 0;">${restaurantProfile.name}</h1>` : '<h1 style="font-size: 20px; font-weight: bold; margin: 0;">Comprovante Delivery</h1>'}
+                        ${restaurantProfile.phone ? `<p style="font-size: 12px; margin: 3px 0 0;">Tel: ${restaurantProfile.phone}</p>` : ''}
+                    </div>
+                    
+                    <h2 style="font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 15px;">Pedido #${order.id.slice(-6)}</h2>
+                    
+                    <div style="margin-bottom: 15px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                        <h3 style="font-size: 13px; font-weight: bold; margin-top: 0; margin-bottom: 5px;">Cliente:</h3>
+                        <p style="margin: 0;"><strong>Nome:</strong> ${order.customer.name}</p>
+                        <p style="margin: 0;"><strong>Tel:</strong> ${order.customer.phone}</p>
+                        <p style="margin: 0;"><strong>End:</strong> ${order.customer.address}, ${order.customer.number}</p>
+                        ${order.customer.complement ? `<p style="margin: 0;"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
+                        ${order.customer.reference ? `<p style="margin: 0;"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
+                    </div>
+        
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 5px;">Itens:</h3>
+                        ${orderItemsHtml}
+                    </div>
+        
+                    <div style="border-top: 2px solid #333; padding-top: 8px; margin-top: 15px; font-size: 14px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #555;">
+                            <span>Taxa de Entrega:</span>
+                            <span style="font-weight: bold;">${deliveryFeeHtml}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 4px; border-top: 1px dashed #aaa; padding-top: 4px;">
+                            <span>TOTAL GERAL:</span>
+                            <span>R$ ${order.total.toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        <p style="font-size: 13px; margin-top: 8px; margin-bottom: 0;"><strong>Forma de Pagto:</strong> ${order.paymentMethod}</p>
+                    </div>
+        
+                    <div style="text-align: center; margin-top: 25px; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 5px;">
+                        <p style="margin:0;">Impresso em: ${new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+        
+            printDocument.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Impressão de Pedido #${order.id.slice(-6)}</title>
+                    <style>
+                        @media print {
+                            @page { size: auto; margin: 0mm; }
+                            body { margin: 5mm; }
+                        }
+                    </style>
+                </head>
+                <body>${printContent}</body>
+                </html>
+            `);
+            printDocument.close();
+            printWindow.focus();
+            setTimeout(() => { printWindow.print(); }, 500);
+        }
+
+        // ======================= CAPTURA DOS EVENTOS COM FIREBASE EM TEMPO REAL =======================
+        window.addEventListener('DOMContentLoaded', () => {
+            // Mantém o timer de auto-finalizar pedidos antigos ativo se a função existir
+            if (typeof autoFinalizeOldOrders === "function") {
+                setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
+            }
+
+            // Referência para a pasta de pedidos no Firebase
+            const ordersRef = ref(db, 'myOrders');
+            let lastKnownOrderCount = -1;
+
+            // O onValue substitui completamente o antigo window.addEventListener('storage')
+            onValue(ordersRef, (snapshot) => {
+                const data = snapshot.val();
+                const newOrders = [];
+
+                if (data) {
+                    // Converte os dados recebidos em formato de Objeto do Firebase para um Array
+                    Object.keys(data).forEach(key => {
+                        newOrders.push({ id: key, ...data[key] });
+                    });
+                }
+
+                // Identifica se entrou um pedido novo para disparar alertas e impressão automática
+                let latestOrder = null;
+                if (lastKnownOrderCount !== -1 && newOrders.length > lastKnownOrderCount) {
+                    const oldOrderIds = new Set(window.myOrders ? window.myOrders.map(order => order.id) : []);
+                    latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
+                }
+
+                // Atualiza as listas globais que sua página usa para renderizar
+                window.myOrders = newOrders;
+                lastKnownOrderCount = newOrders.length;
+
+                // Executa a sua função que desenha e separa os pedidos na tela
+                if (typeof renderMyOrdersPage === "function") {
+                    renderMyOrdersPage();
+                } else if (typeof loadAllData === "function") {
+                    loadAllData();
+                }
+
+                // Se houver um pedido novo, dispara as ações automáticas perfeitamente
+                if (latestOrder) {
+                    if (typeof showNewOrderNotification === "function") showNewOrderNotification();
+                    if (typeof highlightNewOrder === "function") highlightNewOrder(latestOrder.id);
+                    if (typeof printOrder === "function") {
+                        setTimeout(() => { printOrder(latestOrder.id); }, 2500);
+                    }
+                }
+            });
         });
 
-        // Delegação de eventos
-        document.addEventListener('click', (e) => {
-            const btn = e.target;
-            const orderId = btn.closest('[data-order-id]')?.dataset.orderId;
-            if (!orderId) return;
+        // Mantemos a sua função de cliques nos botões dos cards exatamente igual!
+        function handleListClicks(e) {
+            const orderDiv = e.target.closest('[data-order-id]');
+            if (!orderDiv) return;
 
-            if (btn.classList.contains('finish-order-btn')) {
-                update(ref(db, `myOrders/${orderId}`), { status: 'Finalizado' });
-            } else if (btn.classList.contains('dispatch-order-btn')) {
-                update(ref(db, `myOrders/${orderId}`), { status: 'Despachado' });
+            const orderId = orderDiv.dataset.orderId;
+
+            if (orderDiv.classList.contains('new-order-highlight')) {
+                orderDiv.classList.remove('new-order-highlight');
             }
+
+            if (e.target.closest('.print-order-btn')) {
+                e.stopPropagation();
+                printOrder(orderId);
+                return;
+            }
+            
+            if (e.target.closest('.remove-order-btn')) {
+                e.stopPropagation();
+                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
+                return;
+            }
+
+            if (e.target.closest('.dispatch-order-btn')) {
+                e.stopPropagation();
+                dispatchOrder(orderId);
+                return;
+            }
+
+            if (e.target.closest('.finish-order-btn')) {
+                e.stopPropagation();
+                finishOrder(orderId);
+                return;
+            }
+
+            const details = orderDiv.querySelector('.order-details');
+            if (details) {
+                details.classList.toggle('hidden');
+            }
+        }
+
+        // Reatribui os eventos para as suas listas existentes
+        myOrdersList.addEventListener('click', handleListClicks);
+        finalizedOrdersList.addEventListener('click', handleListClicks);
+        
+        cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
+        confirmActionBtn.addEventListener('click', () => {
+            if (confirmationCallback) {
+                confirmationCallback();
+            }
+            confirmationCallback = null;
+            toggleModal(confirmationModal, false);
         });
     </script>
 </body>
