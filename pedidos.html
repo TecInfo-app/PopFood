@@ -554,9 +554,7 @@ function buildOrderHtml(order, isActive = true) {
                     if (typeof showNewOrderNotification === "function") showNewOrderNotification();
                     if (typeof highlightNewOrder === "function") highlightNewOrder(latestOrder.id);
                     if (typeof printOrder === "function") {
-                        setTimeout(() => { printOrder(latestOrder.id); }, 2500);
-                    }
-                }
+                        setTimeout(() => { printOrder(latestOrder.id); }, 2500);             
             });
         });
 
