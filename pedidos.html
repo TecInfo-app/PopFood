@@ -20,7 +20,6 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
-        /* Estilos de impressão */
         @media print {
             body * {
                 visibility: hidden;
@@ -39,7 +38,6 @@
                 color: #000;
             }
         }
-        /* Notificação de novo pedido */
         .notification-box {
             position: fixed;
             bottom: 20px;
@@ -57,7 +55,6 @@
         .notification-box.show {
             opacity: 1;
         }
-        /* Destaques de Status */
         .new-order-highlight {
             background-color: #fff3e0 !important;
         }
@@ -85,7 +82,7 @@
                 <span class="h-3 w-3 rounded-full bg-orange-500 animate-pulse"></span> Pedidos em Andamento
             </h2>
             <div id="my-orders-list" class="space-y-4 mb-10">
-                <p class="text-center text-gray-500 py-4">Nenhum pedido realizado ainda.</p>
+                <p class="text-center text-gray-500 py-4">Buscando novos pedidos no Firebase...</p>
             </div>
 
             <div class="mt-12 pt-6 border-t border-gray-200">
@@ -114,17 +111,35 @@
 
     <div id="newOrderNotification" class="notification-box hidden">Novo pedido chegou!</div>
     
-    <script>
-        // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // Configuração oficial extraída do seu firebase-config.js
+        const firebaseConfig = {
+            apiKey: "AIzaSyDBHaHN0WWnesZtH8Z76n5RmTsy3Sn8EBI",
+            authDomain: "tutubebidasapp-28b77.firebaseapp.com",
+            databaseURL: "https://tutubebidasapp-28b77-default-rtdb.firebaseio.com",
+            projectId: "tutubebidasapp-28b77",
+            storageBucket: "tutubebidasapp-28b77.firebasestorage.app",
+            messagingSenderId: "92833412828",
+            appId: "1:92833412828:web:cbeb1ba840bfcbbd686619"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        const ordersRef = ref(database, 'myOrders');
+
+        // Estado Global local sincronizado com Firebase
         let myOrders = [];
         let finalizedOrders = [];
         let restaurantProfile = {};
         let confirmationCallback = null;
+        let isFirstLoad = true;
         
         const AUTO_FINALIZE_TIME_MS = 2 * 60 * 60 * 1000;
         const AUTO_FINALIZE_INTERVAL_MS = 5 * 60 * 1000;
 
-        // ======================= REFERÊNCIAS AO DOM =======================
         const myOrdersList = document.getElementById('my-orders-list');
         const finalizedOrdersList = document.getElementById('finalized-orders-list');
         const messageBox = document.getElementById('messageBox');
@@ -135,7 +150,6 @@
         const confirmActionBtn = document.getElementById('confirmActionBtn');
         const newOrderNotification = document.getElementById('newOrderNotification');
         
-        // ======================= FUNÇÕES AUXILIARES =======================
         function showMessage(message, type = 'success') {
             messageBox.textContent = message;
             messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500', 'bg-blue-500');
@@ -160,7 +174,6 @@
             toggleModal(confirmationModal, true);
         }
         
-        // ======================= NOTIFICAÇÃO E SOM =======================
         function showNewOrderNotification() {
             newOrderNotification.classList.remove('hidden');
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
@@ -169,7 +182,7 @@
                 const notificationSound = new Audio('som.mp3');
                 notificationSound.play();
             } catch (e) {
-                console.log("Áudio bloqueado pelas políticas do navegador.");
+                console.log("Áudio bloqueado pelas diretivas do navegador.");
             }
         
             setTimeout(() => {
@@ -185,18 +198,14 @@
             }
         }
 
-        // ======================= PERSISTÊNCIA DE DADOS =======================
-        function saveMyOrders() { localStorage.setItem('myOrders', JSON.stringify(myOrders)); }
-        function saveFinalizedOrders() { localStorage.setItem('finalizedOrders', JSON.stringify(finalizedOrders)); }
-
-        function loadAllData() {
-            myOrders = JSON.parse(localStorage.getItem('myOrders')) || [];
-            finalizedOrders = JSON.parse(localStorage.getItem('finalizedOrders')) || [];
-            restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
-            renderMyOrdersPage();
+        function loadProfileData() {
+            try {
+                restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
+            } catch (e) {
+                restaurantProfile = {};
+            }
         }
 
-        // ======================= RENDERIZAÇÃO DAS LISTAS =======================
         function buildOrderHtml(order, isActive = true) {
             let itemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
@@ -274,10 +283,10 @@
                         <div>
                             <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
                             <p class="text-sm text-gray-600"><strong>Nome:</strong> ${clientName}</p>
-                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${clientPhone}</p>
+                            <p class="text-sm text-gray-600"><strong>Tel:</strong> ${clientPhone}</p>
                             <p class="text-sm text-gray-600"><strong>Endereço:</strong> ${clientAddress}</p>
-                            ${order.customer && order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Complemento:</strong> ${order.customer.complement}</p>` : ''}
-                            ${order.customer && order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Ponto de Ref.:</strong> ${order.customer.reference}</p>` : ''}
+                            ${order.customer && order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
+                            ${order.customer && order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
                         </div>
                         <div>
                             <h5 class="font-bold text-gray-700 mb-1">Forma de Pagamento:</h5>
@@ -326,89 +335,38 @@
             }
         }
         
-        // ======================= LOGICA DE SUPORTE E BOTÕES =======================
+        // AÇÕES EXECUTANDO REMOTAMENTE DIRETO NO FIREBASE REALTIME DATABASE
         function removeOrder(orderId) {
-            let orderRemoved = false;
-
-            const initialMyOrdersLength = myOrders.length;
-            myOrders = myOrders.filter(order => order.id !== orderId);
-            if (myOrders.length < initialMyOrdersLength) {
-                saveMyOrders();
-                orderRemoved = true;
-            }
-
-            const initialFinalizedOrdersLength = finalizedOrders.length;
-            finalizedOrders = finalizedOrders.filter(order => order.id !== orderId);
-            if (finalizedOrders.length < initialFinalizedOrdersLength) {
-                saveFinalizedOrders();
-                orderRemoved = true;
-            }
-
-            if (orderRemoved) {
-                renderMyOrdersPage();
-                showMessage('Pedido excluído permanentemente!', 'success');
-            } else {
-                showMessage('Pedido não encontrado para exclusão.', 'error');
-            }
+            const singleOrderRef = ref(database, `myOrders/${orderId}`);
+            remove(singleOrderRef)
+                .then(() => showMessage('Pedido excluído permanentemente!', 'success'))
+                .catch(err => showMessage('Erro ao excluir: ' + err.message, 'error'));
         }
 
         function dispatchOrder(orderId) {
-            const orderIndex = myOrders.findIndex(o => o.id === orderId);
-            
-            if (orderIndex !== -1) {
-                if (myOrders[orderIndex].status === "Saiu para entrega") {
-                    showMessage('Este pedido já foi despachado!', 'yellow');
-                    return;
-                }
-                
-                // Altera diretamente no array ativo local da memória para não duplicar
-                myOrders[orderIndex].status = "Saiu para entrega";
-                saveMyOrders();
-                showMessage('Pedido despachado com sucesso!', 'blue');
-                renderMyOrdersPage(); 
-            }
+            const singleOrderRef = ref(database, `myOrders/${orderId}`);
+            update(singleOrderRef, { status: "Saiu para entrega" })
+                .then(() => showMessage('Pedido despachado com sucesso!', 'blue'))
+                .catch(err => showMessage('Erro ao despachar: ' + err.message, 'error'));
         }
 
         function finishOrder(orderId) {
-            const orderIndex = myOrders.findIndex(o => o.id === orderId);
-            if (orderIndex !== -1) {
-                const finishedOrder = myOrders.splice(orderIndex, 1)[0];
-                finishedOrder.status = 'Finalizado';
-                finalizedOrders.push(finishedOrder);
-                
-                saveMyOrders();
-                saveFinalizedOrders();
-                renderMyOrdersPage();
-                showMessage('Pedido finalizado com sucesso!');
-            }
+            const singleOrderRef = ref(database, `myOrders/${orderId}`);
+            update(singleOrderRef, { status: "Finalizado" })
+                .then(() => showMessage('Pedido finalizado com sucesso!', 'success'))
+                .catch(err => showMessage('Erro ao finalizar: ' + err.message, 'error'));
         }
         
         function autoFinalizeOldOrders() {
             const now = Date.now();
-            let changesMade = false;
-            const ordersToFinalize = myOrders.filter(order => order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS);
-            
-            if (ordersToFinalize.length > 0) {
-                ordersToFinalize.forEach(order => {
-                    const orderIndex = myOrders.findIndex(o => o.id === order.id);
-                    if (orderIndex !== -1) {
-                        const finishedOrder = myOrders.splice(orderIndex, 1)[0];
-                        finishedOrder.status = 'Finalizado (Auto)';
-                        finalizedOrders.push(finishedOrder);
-                        changesMade = true;
-                    }
-                });
-
-                if (changesMade) {
-                    saveMyOrders();
-                    saveFinalizedOrders();
-                    renderMyOrdersPage();
-                    showMessage('Pedidos antigos finalizados automaticamente.', 'yellow');
+            myOrders.forEach(order => {
+                if (order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS) {
+                    const singleOrderRef = ref(database, `myOrders/${order.id}`);
+                    update(singleOrderRef, { status: 'Finalizado (Auto)' });
                 }
-            }
+            });
         }
 
-        // ======================= IMPRESSÃO FORMATADA COM TAXA DE ENTREGA =======================
         function printOrder(orderId) {
             const order = myOrders.find(o => o.id === orderId) || finalizedOrders.find(o => o.id === orderId);
             if (!order) {
@@ -417,10 +375,14 @@
             }
         
             const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                showMessage('Habilite os pop-ups do navegador para conseguir imprimir!', 'error');
+                return;
+            }
             const printDocument = printWindow.document;
 
             let orderItemsHtml = '';
-            if(order.items && Array.isArray(order.items)) {
+            if (order.items && Array.isArray(order.items)) {
                 order.items.forEach(item => {
                     let complementsHtml = '';
                     if (item.complements && Object.keys(item.complements).length > 0) {
@@ -456,13 +418,13 @@
                 });
             }
 
-            // Captura e formatação dinâmica da taxa de entrega
             let deliveryFee = 0;
             if (typeof order.deliveryFee !== 'undefined') deliveryFee = Number(order.deliveryFee);
             else if (typeof order.taxaEntrega !== 'undefined') deliveryFee = Number(order.taxaEntrega);
             
             let deliveryFeeHtml = deliveryFee > 0 ? `R$ ${deliveryFee.toFixed(2).replace('.', ',')}` : 'Grátis';
             const totalGeral = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
+            
             const clientName = order.customer ? order.customer.name : 'N/A';
             const clientPhone = order.customer ? order.customer.phone : 'N/A';
             const clientAddress = order.customer ? `${order.customer.address}, ${order.customer.number || ''}` : 'Não informado';
@@ -471,7 +433,7 @@
                 <div class="print-area" style="padding: 10px; max-width: 280px; margin: 0 auto; line-height: 1.4; font-family: sans-serif;">
                     <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
                         ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto 5px; display:block;"/>` : ''}
-                        ${restaurantProfile.name ? `<h1 style="font-size: 20px; font-weight: bold; margin: 0;">${restaurantProfile.name}</h1>` : '<h1 style="font-size: 20px; font-weight: bold; margin: 0;">Comprovante Delivery</h1>'}
+                        <h1 style="font-size: 20px; font-weight: bold; margin: 0;">${restaurantProfile.name || 'Tutu Bebidas'}</h1>
                         ${restaurantProfile.phone ? `<p style="font-size: 12px; margin: 3px 0 0;">Tel: ${restaurantProfile.phone}</p>` : ''}
                     </div>
                     
@@ -529,38 +491,62 @@
             setTimeout(() => { printWindow.print(); }, 500);
         }
 
-        // ======================= CAPTURA DOS EVENTOS E CLIQUES =======================
+        // SINCRONIZAÇÃO EM TEMPO REAL COM O BANCO DE DADOS DO FIREBASE
         window.addEventListener('DOMContentLoaded', () => {
-            loadAllData();
+            loadProfileData();
             setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
-        });
-        
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'myOrders') {
-                const newOrders = JSON.parse(e.newValue) || [];
-                const oldOrders = myOrders;
+
+            onValue(ordersRef, (snapshot) => {
+                const data = snapshot.val();
+                let activeOrders = [];
+                let finishedOrders = [];
                 let latestOrder = null;
 
-                if (newOrders.length > oldOrders.length) {
-                    const oldOrderIds = new Set(oldOrders.map(order => order.id));
-                    latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
+                // Mapeia os IDs antigos antes de aplicar a nova renderização
+                const existingOrderIds = new Set(myOrders.map(o => o.id));
+
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const order = data[key];
+                        if (order) {
+                            const formattedOrder = { id: key, ...order };
+                            if (order.status === 'Finalizado' || order.status === 'Finalizado (Auto)') {
+                                finishedOrders.push(formattedOrder);
+                            } else {
+                                activeOrders.push(formattedOrder);
+                            }
+                        }
+                    });
                 }
 
-                myOrders = newOrders;
+                // CONTROLE DO SOM E POP-UP: Só ativa se for um ID totalmente novo no banco
+                if (!isFirstLoad && activeOrders.length > myOrders.length) {
+                    activeOrders.forEach(order => {
+                        if (!existingOrderIds.has(order.id)) {
+                            latestOrder = order;
+                        }
+                    });
+
+                    if (latestOrder) {
+                        showNewOrderNotification();
+                    }
+                }
+
+                myOrders = activeOrders;
+                finalizedOrders = finishedOrders;
+                isFirstLoad = false;
+
                 renderMyOrdersPage();
                 
+                // Se um novo pedido real entrou, destaca e chama a impressão
                 if (latestOrder) {
-                    showNewOrderNotification();
                     highlightNewOrder(latestOrder.id);
                     setTimeout(() => { printOrder(latestOrder.id); }, 2500);
                 }
-            }
-            if (e.key === 'finalizedOrders') {
-                finalizedOrders = JSON.parse(e.newValue) || [];
-                renderMyOrdersPage();
-            }
+            });
         });
 
+        // GERENCIADOR CENTRAL DE CLIQUES EVENTOS DO PAINEL
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
