@@ -338,20 +338,7 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
                 });
         }
 
-            const initialFinalizedOrdersLength = finalizedOrders.length;
-            finalizedOrders = finalizedOrders.filter(order => order.id !== orderId);
-            if (finalizedOrders.length < initialFinalizedOrdersLength) {
-                saveFinalizedOrders();
-                orderRemoved = true;
-            }
-
-            if (orderRemoved) {
-                renderMyOrdersPage();
-                showMessage('Pedido excluído permanentemente!', 'success');
-            } else {
-                showMessage('Pedido não encontrado para exclusão.', 'error');
-            }
-        }
+           
 
         function dispatchOrder(orderId) {
             // 1. Procuramos o pedido específico na lista local atual para validar o status
