@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Delivery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7fafc;
+        }
+        /* Estilos personalizados para botões desabilitados, melhorando a UX */
+        .disabled-btn {
+            background-color: #e5e7eb;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+        /* Animação de entrada para os modais */
+        .modal-enter {
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .product-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Estilo do toggle de visibilidade */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #2563eb;
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Estilo da caixa de notificação */
+        .notification-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #4CAF50; /* Verde */
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            font-size: 16px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .notification-box.show {
+            opacity: 1;
+        }
+
+        /* Estilo de impressão */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            .print-area, .print-area * {
+                visibility: visible;
+            }
+            .print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                font-family: 'Inter', sans-serif;
+            }
+            .print-area h1, .print-area h2, .print-area h3, .print-area h4 {
+                color: #000;
+            }
+        }
+    </style>
+</head>
+<body class="p-4 bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
+
+        <div id="login-page" class="flex flex-col items-center justify-center min-h-[50vh]">
+            <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Login do Master</h1>
+            <div class="w-full max-w-sm p-6 bg-gray-50 rounded-xl">
+                <input type="text" id="usernameInput" placeholder="Usuário (master)" value="master" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <input type="password" id="passwordInput" placeholder="Senha (123)" value="123" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <button id="loginBtn" class="w-full bg-sky-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-sky-700 transition-colors duration-200">
+                    Entrar
+                </button>
+            </div>
+        </div>
+
+        <div id="master-menu-page" class="hidden flex flex-col items-center justify-center min-h-[50vh]">
+            <div id="restaurant-info-master" class="w-full max-w-xl p-6 mb-8 bg-blue-50 rounded-xl shadow-inner text-center hidden">
+                <img id="restaurant-logo-master" src="#" alt="Logo do Restaurante" class="h-20 mx-auto mb-4 hidden">
+                <h2 id="restaurant-name-master" class="text-3xl font-bold text-blue-900"></h2>
+                <p id="restaurant-description-master" class="text-blue-800"></p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 w-full max-w-4xl">
+                <button id="adminBtn" class="bg-sky-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-sky-700 transition-colors duration-200 text-xl">
+                    Cadastrar Produtos
+                </button>
+                <a href="cliente.html" class="bg-green-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200 text-xl text-center">
+                    Faça seu Pedido
+                </a>
+                <a href="perfil.html" class="bg-blue-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200 text-xl text-center">
+                    Editar Perfil
+                </a>
+                <a href="pedidos.html" class="bg-purple-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors duration-200 text-xl text-center">
+                    Meus Pedidos
+                </a>
+                <a href="clientes.html" class="bg-indigo-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition-colors duration-200 text-xl text-center">
+                    Clientes Cadastrados
+                </a>
+            </div>
+        </div>
+        
+        <div id="admin-page" class="hidden">
+            <div class="flex items-center gap-4 mb-6">
+                <button id="backToMenuBtnAdmin" class="text-gray-500 hover:text-gray-800 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
+                </button>
+                <h1 class="text-3xl font-bold text-gray-800">Cadastro de Produtos</h1>
+            </div>
+
+            <div class="mb-8 p-6 bg-yellow-50 rounded-xl">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Gerenciar Categorias</h2>
+                <div class="flex flex-col md:flex-row gap-2 mb-4">
+                    <input type="text" id="categoryNameInput" placeholder="Nome da Categoria" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <button id="addCategoryBtn" class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-yellow-600 transition-colors duration-200">
+                        Adicionar Categoria
+                    </button>
+                </div>
+                <div id="categoryList" class="flex flex-wrap gap-2">
+                    </div>
+            </div>
+
+            <div class="mb-8 p-6 bg-gray-50 rounded-xl">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4" id="productFormTitle">Adicionar Novo Produto</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <input type="text" id="productNameInput" placeholder="Nome do Produto" class="col-span-2 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <input type="text" id="productPdvCodeInput" placeholder="Código PDV (Opcional)" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <input type="number" id="productPriceInput" placeholder="Preço (R$)" min="0" step="0.01" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <select id="productCategorySelect" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="" disabled selected>Selecione uma categoria</option>
+                    </select>
+                </div>
+                <textarea id="productDescriptionInput" placeholder="Descrição do Produto" rows="3" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"></textarea>
+                
+                <div class="mb-4">
+                    <label for="productImageFileInput" class="block text-sm font-medium text-gray-700 mb-1">Imagem do Produto (Upload)</label>
+                    <input type="file" id="productImageFileInput" accept="image/*" class="w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer">
+                    <div id="imagePreviewContainer" class="mt-4 hidden">
+                        <img id="imagePreview" src="#" alt="Pré-visualização da imagem" class="w-32 h-32 object-cover rounded-lg border border-gray-300">
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button id="addProductBtn" class="flex-1 bg-sky-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-sky-700 transition-colors">
+                        Adicionar Produto
+                    </button>
+                    <button id="cancelEditBtn" class="hidden flex-1 bg-gray-300 text-gray-800 font-bold py-3 rounded-lg shadow-md hover:bg-gray-400 transition-colors">
+                        Cancelar Edição
+                    </button>
+                </div>
+            </div>
+            
+            <div class="relative mb-6">
+                <input type="text" id="searchProductInput" placeholder="Pesquisar produtos..." class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+            </div>
+
+            <div id="productList" class="grid gap-6">
+                <div class="text-center text-gray-500" id="loadingIndicator">Carregando produtos...</div>
+            </div>
+        </div>
+
+        <div id="messageBox" class="fixed bottom-4 right-4 p-4 text-white rounded-lg shadow-lg z-50 hidden transition-all duration-300"></div>
+    </div>
+
+    <div id="complementModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl modal-enter">
+            <div class="flex justify-between items-center mb-4 border-b pb-4">
+                <h3 class="text-2xl font-bold text-gray-800">Gerenciar Complementos para <span id="complementProductName" class="text-sky-600"></span></h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div id="complementList" class="max-h-[60vh] overflow-y-auto mb-4 p-2 -mx-2">
+                </div>
+            <div class="mt-4 p-4 bg-sky-50 rounded-xl">
+                <h4 class="text-xl font-semibold text-gray-700 mb-2">Adicionar Novo Grupo de Complemento</h4>
+                <div class="flex flex-col md:flex-row gap-2 mb-2">
+                    <input type="text" id="complementNameInput" placeholder="Nome do Grupo (Ex: Tamanho)" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <input type="text" id="complementDescriptionInput" placeholder="Descrição do Grupo (Opcional)" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <div class="flex items-center gap-2 mb-2">
+                    <input type="checkbox" id="isMandatoryCheckbox" class="h-4 w-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500">
+                    <label for="isMandatoryCheckbox" class="text-gray-700">Obrigatório</label>
+                </div>
+                <div id="mandatoryOptions" class="hidden grid grid-cols-2 gap-2 mb-2">
+                    <input type="number" id="minSelectionInput" placeholder="Mínimo (Ex: 1)" min="0" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <input type="number" id="maxSelectionInput" placeholder="Máximo (Ex: 2)" min="0" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+                <button id="addComplementBtn" class="w-full bg-sky-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-sky-600 transition-colors">Adicionar Grupo</button>
+            </div>
+            <div class="mt-4 pt-4 border-t flex gap-2 justify-end">
+                <button id="saveComplementsBtn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-green-700">Salvar</button>
+                <button id="cancelComplementsBtn" class="bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg shadow-md hover:bg-gray-400">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm modal-enter">
+            <h3 id="confirmationModalTitle" class="text-xl font-bold text-gray-800 mb-4">Confirmação</h3>
+            <p id="confirmationModalMessage" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end gap-2">
+                <button id="cancelConfirmationBtn" class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-400">Cancelar</button>
+                <button id="confirmActionBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-red-700">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+	
+	import { auth } from './firebase-config.js';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+
+        // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
+        let allProducts = [];
+        let allCategories = [];
+        let productComplementsCache = {};
+        let editingProductId = null;
+        let currentProductId = null;
+        let currentImageBase64 = null;
+        let localComplements = null;
+        let confirmationCallback = null;
+        
+        // Objeto para armazenar o perfil do restaurante
+        let restaurantProfile = {
+            logo: null,
+            name: '',
+            description: '',
+            phone: '',
+            address: '',
+            email: '',
+            hours: '',
+            show: {
+                name: true,
+                description: true,
+                phone: true,
+                address: true,
+                email: true,
+                hours: true
+            }
+        };
+
+        // ======================= REFERÊNCIAS AOS ELEMENTOS DO DOM =======================
+        // Páginas
+        const loginPage = document.getElementById('login-page');
+        const masterMenuPage = document.getElementById('master-menu-page');
+        const adminPage = document.getElementById('admin-page');
+        // Botões de Navegação
+        const loginBtn = document.getElementById('loginBtn');
+        const adminBtn = document.getElementById('adminBtn');
+        const backToMenuBtnAdmin = document.getElementById('backToMenuBtnAdmin');
+        
+        // Elementos de Categoria (Admin)
+        const categoryNameInput = document.getElementById('categoryNameInput');
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+        const categoryList = document.getElementById('categoryList');
+
+        // Elementos de Produto (Admin)
+        const productFormTitle = document.getElementById('productFormTitle');
+        const productNameInput = document.getElementById('productNameInput');
+        const productPdvCodeInput = document.getElementById('productPdvCodeInput');
+        const productPriceInput = document.getElementById('productPriceInput');
+        const productDescriptionInput = document.getElementById('productDescriptionInput');
+        const productCategorySelect = document.getElementById('productCategorySelect');
+        const productImageFileInput = document.getElementById('productImageFileInput');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const addProductBtn = document.getElementById('addProductBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const searchProductInput = document.getElementById('searchProductInput');
+        const productList = document.getElementById('productList');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        
+        // Elementos de exibição do perfil no menu master
+        const restaurantInfoMaster = document.getElementById('restaurant-info-master');
+        const restaurantLogoMaster = document.getElementById('restaurant-logo-master');
+        const restaurantNameMaster = document.getElementById('restaurant-name-master');
+        const restaurantDescriptionMaster = document.getElementById('restaurant-description-master');
+
+
+        // Modais
+        const messageBox = document.getElementById('messageBox');
+        const complementModal = document.getElementById('complementModal');
+        const complementProductName = document.getElementById('complementProductName');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const complementList = document.getElementById('complementList');
+        const complementNameInput = document.getElementById('complementNameInput');
+        const complementDescriptionInput = document.getElementById('complementDescriptionInput');
+        const isMandatoryCheckbox = document.getElementById('isMandatoryCheckbox');
+        const mandatoryOptions = document.getElementById('mandatoryOptions');
+        const minSelectionInput = document.getElementById('minSelectionInput');
+        const maxSelectionInput = document.getElementById('maxSelectionInput');
+        const addComplementBtn = document.getElementById('addComplementBtn');
+        const saveComplementsBtn = document.getElementById('saveComplementsBtn');
+        const cancelComplementsBtn = document.getElementById('cancelComplementsBtn');
+        const confirmationModal = document.getElementById('confirmationModal');
+        const confirmationModalTitle = document.getElementById('confirmationModalTitle');
+        const confirmationModalMessage = document.getElementById('confirmationModalMessage');
+        const cancelConfirmationBtn = document.getElementById('cancelConfirmationBtn');
+        const confirmActionBtn = document.getElementById('confirmActionBtn');
+
+        // ======================= FUNÇÕES AUXILIARES =======================
+        // Função para mostrar/esconder uma página
+        function showPage(page) {
+            const pages = [loginPage, masterMenuPage, adminPage];
+            pages.forEach(p => p.classList.add('hidden'));
+            page.classList.remove('hidden');
+            renderRestaurantInfo(page);
+        }
+
+        // Função para mostrar mensagens de feedback (Toast)
+        function showMessage(message, type = 'success') {
+            messageBox.textContent = message;
+            messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500');
+            if (type === 'success') {
+                messageBox.classList.add('bg-green-500');
+            } else if (type === 'error') {
+                messageBox.classList.add('bg-red-500');
+            } else {
+                messageBox.classList.add('bg-yellow-500');
+            }
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Função para alternar a exibição de um modal
+        function toggleModal(modal, show) {
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        // ======================= PERSISTÊNCIA DE DADOS COM LOCALSTORAGE =======================
+        // Funções para salvar e carregar dados no localStorage. Isso simula um banco de dados.
+        function saveToLocalStorage(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        function loadFromLocalStorage(key) {
+            const data = localStorage.getItem(key);
+            return data ? JSON.parse(data) : [];
+        }
+        
+        function loadAllData() {
+            allCategories = loadFromLocalStorage('allCategories');
+            allProducts = loadFromLocalStorage('allProducts');
+            productComplementsCache = JSON.parse(localStorage.getItem('productComplementsCache')) || {};
+
+            const savedProfile = localStorage.getItem('restaurantProfile');
+            if (savedProfile) {
+                restaurantProfile = JSON.parse(savedProfile);
+            }
+            renderCategories();
+            renderProductList(allProducts);
+            renderRestaurantInfo(loginPage);
+            loadingIndicator.classList.add('hidden');
+        }
+
+        // ======================= FUNÇÕES DA PÁGINA DE PERFIL (APENAS REFERÊNCIA) =======================
+        // A lógica do perfil foi movida para perfil.html.
+        function renderRestaurantInfo(page) {
+            let logoElem, nameElem, descElem;
+            
+            if (page === masterMenuPage) {
+                logoElem = restaurantLogoMaster;
+                nameElem = restaurantNameMaster;
+                descElem = restaurantDescriptionMaster;
+            } else {
+                return;
+            }
+
+            const showRestaurantInfoMaster = restaurantProfile.name || restaurantProfile.description;
+
+            if (page === masterMenuPage) {
+                if (showRestaurantInfoMaster) {
+                    restaurantInfoMaster.classList.remove('hidden');
+                } else {
+                    restaurantInfoMaster.classList.add('hidden');
+                }
+            }
+            
+            if (restaurantProfile.logo && logoElem) {
+                logoElem.src = restaurantProfile.logo;
+                logoElem.classList.remove('hidden');
+            } else if (logoElem) {
+                logoElem.classList.add('hidden');
+            }
+
+            if (restaurantProfile.show.name && restaurantProfile.name && nameElem) {
+                nameElem.textContent = restaurantProfile.name;
+                nameElem.classList.remove('hidden');
+            } else if (nameElem) {
+                nameElem.classList.add('hidden');
+            }
+
+            if (restaurantProfile.show.description && restaurantProfile.description && descElem) {
+                descElem.textContent = restaurantProfile.description;
+                descElem.classList.remove('hidden');
+            } else if (descElem) {
+                descElem.classList.add('hidden');
+            }
+        }
+
+        // ======================= FUNÇÕES DA PÁGINA DE ADMIN =======================
+        // ----- CATEGORIAS -----
+        function renderCategories() {
+            categoryList.innerHTML = '';
+            productCategorySelect.innerHTML = '<option value="" disabled selected>Selecione uma categoria</option>';
+
+            allCategories.forEach(category => {
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'flex items-center bg-yellow-200 text-yellow-900 rounded-full py-1 px-4 text-sm font-semibold';
+                categoryDiv.innerHTML = `
+                    <span>${category.name}</span>
+                    <button data-id="${category.id}" class="remove-category-btn ml-2 text-yellow-700 hover:text-yellow-900 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                `;
+                categoryList.appendChild(categoryDiv);
+
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                productCategorySelect.appendChild(option);
+            });
+            saveToLocalStorage('allCategories', allCategories);
+        }
+
+        function addCategory() {
+            const name = categoryNameInput.value.trim();
+            if (name === '') {
+                showMessage('O nome da categoria não pode estar vazio.', 'error');
+                return;
+            }
+            if (allCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase())) {
+                showMessage('Esta categoria já existe.', 'error');
+                return;
+            }
+            const newCategory = {
+                id: Date.now().toString(),
+                name
+            };
+            allCategories.push(newCategory);
+            categoryNameInput.value = '';
+            renderCategories();
+            showMessage('Categoria adicionada!', 'success');
+        }
+        
+        function removeCategory(id) {
+            allCategories = allCategories.filter(category => category.id !== id);
+            allProducts.forEach(product => {
+                if (product.categoryId === id) {
+                    product.categoryId = '';
+                }
+            });
+            saveToLocalStorage('allProducts', allProducts);
+            renderCategories();
+            renderProductList(allProducts);
+            showMessage('Categoria removida.', 'success');
+        }
+
+        // ----- PRODUTOS -----
+        function renderProductList(productsToRender) {
+            productList.innerHTML = '';
+            if (productsToRender.length === 0) {
+                productList.innerHTML = '<div class="text-center text-gray-500 col-span-full">Nenhum produto encontrado.</div>';
+                return;
+            }
+
+            productsToRender.forEach(product => {
+                const categoryName = allCategories.find(c => c.id === product.categoryId)?.name || 'Sem Categoria';
+                const productCard = document.createElement('div');
+                productCard.className = `bg-gray-50 p-4 rounded-xl shadow-md flex items-center gap-4 product-card relative ${product.paused ? 'opacity-50' : ''}`;
+                productCard.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
+                    <div class="flex-1">
+                        <h3 class="text-xl font-bold text-gray-800">${product.name}</h3>
+                        ${product.pdvCode ? `<p class="text-xs text-gray-400">Código PDV: ${product.pdvCode}</p>` : ''}
+                        <p class="text-sm text-gray-500">${categoryName}</p>
+                        <p class="text-lg font-semibold text-sky-600">R$ ${product.price.toFixed(2).replace('.', ',')}</p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button data-id="${product.id}" class="manage-complements-btn bg-sky-100 text-sky-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-sky-200 transition-colors">Complementos</button>
+                        <button data-id="${product.id}" class="toggle-product-pause-btn bg-${product.paused ? 'green' : 'red'}-100 text-${product.paused ? 'green' : 'red'}-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-${product.paused ? 'green' : 'red'}-200 transition-colors">
+                            ${product.paused ? 'Retomar' : 'Pausar'}
+                        </button>
+                        <button data-id="${product.id}" class="edit-product-btn bg-blue-100 text-blue-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-blue-200 transition-colors">Editar</button>
+                        <button data-id="${product.id}" class="remove-product-btn bg-red-100 text-red-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-red-200 transition-colors">Remover</button>
+                    </div>
+                    ${product.paused ? '<span class="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">Pausado</span>' : ''}
+                `;
+                productList.appendChild(productCard);
+            });
+        }
+
+        function toggleProductPause(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (product) {
+                product.paused = !product.paused;
+                saveToLocalStorage('allProducts', allProducts);
+                renderProductList(allProducts);
+                showMessage(`Produto ${product.paused ? 'pausado' : 'retomado'} com sucesso!`, 'success');
+            }
+        }
+
+        function validateProductForm() {
+            const name = productNameInput.value.trim();
+            const price = parseFloat(productPriceInput.value);
+            const categoryId = productCategorySelect.value;
+            if (!name || isNaN(price) || price < 0 || !categoryId) {
+                showMessage('Por favor, preencha todos os campos obrigatórios (Nome, Preço e Categoria).', 'error');
+                return false;
+            }
+            if (!editingProductId && !currentImageBase64) {
+                showMessage('Por favor, adicione uma imagem para o produto.', 'error');
+                return false;
+            }
+            return true;
+        }
+
+        function saveProduct() {
+            if (!validateProductForm()) return;
+            
+            const name = productNameInput.value.trim();
+            const pdvCode = productPdvCodeInput.value.trim();
+            const price = parseFloat(productPriceInput.value);
+            const description = productDescriptionInput.value.trim();
+            const categoryId = productCategorySelect.value;
+
+            if (editingProductId) {
+                const productIndex = allProducts.findIndex(p => p.id === editingProductId);
+                if (productIndex > -1) {
+                    allProducts[productIndex] = {
+                        ...allProducts[productIndex],
+                        name,
+                        pdvCode,
+                        price,
+                        description,
+                        categoryId,
+                        image: currentImageBase64 || allProducts[productIndex].image
+                    };
+                    showMessage('Produto atualizado com sucesso!', 'success');
+                }
+            } else {
+                const newProduct = {
+                    id: Date.now().toString(),
+                    name,
+                    pdvCode,
+                    price,
+                    description,
+                    categoryId,
+                    image: currentImageBase64,
+                    paused: false
+                };
+                allProducts.push(newProduct);
+                showMessage('Produto adicionado com sucesso!', 'success');
+            }
+
+            saveToLocalStorage('allProducts', allProducts);
+            resetProductForm();
+            renderProductList(allProducts);
+        }
+
+        function editProduct(id) {
+            const product = allProducts.find(p => p.id === id);
+            if (!product) return;
+            editingProductId = id;
+            productFormTitle.textContent = 'Editar Produto';
+            productNameInput.value = product.name;
+            productPdvCodeInput.value = product.pdvCode || '';
+            productPriceInput.value = product.price;
+            productDescriptionInput.value = product.description;
+            productCategorySelect.value = product.categoryId;
+            currentImageBase64 = product.image;
+            if (product.image) {
+                imagePreview.src = product.image;
+                imagePreviewContainer.classList.remove('hidden');
+            } else {
+                imagePreviewContainer.classList.add('hidden');
+            }
+            addProductBtn.textContent = 'Salvar Alterações';
+            cancelEditBtn.classList.remove('hidden');
+        }
+
+        function removeProduct(id) {
+            allProducts = allProducts.filter(product => product.id !== id);
+            delete productComplementsCache[id];
+            saveToLocalStorage('allProducts', allProducts);
+            localStorage.setItem('productComplementsCache', JSON.stringify(productComplementsCache));
+            renderProductList(allProducts);
+            showMessage('Produto removido.', 'success');
+        }
+
+        function resetProductForm() {
+            editingProductId = null;
+            productFormTitle.textContent = 'Adicionar Novo Produto';
+            productNameInput.value = '';
+            productPdvCodeInput.value = '';
+            productPriceInput.value = '';
+            productDescriptionInput.value = '';
+            productCategorySelect.value = '';
+            productImageFileInput.value = '';
+            currentImageBase64 = null;
+            imagePreview.src = '#';
+            imagePreviewContainer.classList.add('hidden');
+            addProductBtn.textContent = 'Adicionar Produto';
+            cancelEditBtn.classList.add('hidden');
+        }
+
+        // ----- COMPLEMENTOS -----
+        function renderComplementGroups(productId) {
+            const complements = localComplements;
+            complementList.innerHTML = '';
+            if (complements.length === 0) {
+                complementList.innerHTML = '<p class="text-gray-500 text-center">Nenhum grupo de complemento adicionado.</p>';
+                return;
+            }
+
+            complements.forEach((group, groupIndex) => {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = `bg-gray-100 rounded-lg p-4 mb-4 relative ${group.paused ? 'opacity-50' : ''}`;
+                groupDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h5 class="text-xl font-semibold text-gray-800">${group.name}</h5>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium text-gray-500">${group.isMandatory ? 'Obrigatório' : 'Opcional'}</span>
+                            <button data-group-index="${groupIndex}" class="toggle-complement-group-pause-btn bg-${group.paused ? 'green' : 'red'}-100 text-${group.paused ? 'green' : 'red'}-700 font-semibold py-1 px-2 rounded-full text-xs hover:bg-${group.paused ? 'green' : 'red'}-200 transition-colors">
+                                ${group.paused ? 'Retomar' : 'Pausar'}
+                            </button>
+                            <button data-group-index="${groupIndex}" class="remove-complement-group-btn text-red-500 hover:text-red-700 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    ${group.description ? `<p class="text-sm text-gray-500 mb-2">${group.description}</p>` : ''}
+                    ${group.isMandatory ? `<p class="text-xs text-red-500 mb-2">Selecione no mínimo ${group.minSelection} e no máximo ${group.maxSelection} opções.</p>` : ''}
+                    <ul id="options-list-${groupIndex}" class="mt-2 space-y-2">
+                        </ul>
+                    <div class="flex mt-4 gap-2 bg-white p-2 rounded-lg">
+                        <input type="text" placeholder="Nome da Opção" data-group-index="${groupIndex}" class="option-name-input flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm">
+                        <input type="number" placeholder="Preço (R$)" min="0" step="0.01" data-group-index="${groupIndex}" class="option-price-input w-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm">
+                        <button data-group-index="${groupIndex}" class="add-option-btn bg-sky-500 text-white px-4 rounded-lg shadow-md hover:bg-sky-600 transition-colors text-sm">Adicionar</button>
+                    </div>
+                    ${group.paused ? '<span class="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">Pausado</span>' : ''}
+                `;
+                complementList.appendChild(groupDiv);
+
+                const optionsList = document.getElementById(`options-list-${groupIndex}`);
+                group.options.forEach((option, optionIndex) => {
+                    const optionLi = document.createElement('li');
+                    optionLi.className = `flex justify-between items-center bg-gray-50 p-2 rounded-lg ${option.paused ? 'opacity-50' : ''}`;
+                    optionLi.innerHTML = `
+                        <div>
+                            <span class="font-medium">${option.name}</span>
+                            <span class="text-sm text-gray-500 ml-2">(+ R$ ${option.price.toFixed(2).replace('.', ',')})</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button data-group-index="${groupIndex}" data-option-index="${optionIndex}" class="toggle-complement-option-pause-btn bg-${option.paused ? 'green' : 'red'}-100 text-${option.paused ? 'green' : 'red'}-700 font-semibold py-1 px-2 rounded-full text-xs hover:bg-${option.paused ? 'green' : 'red'}-200 transition-colors">
+                                ${option.paused ? 'Retomar' : 'Pausar'}
+                            </button>
+                            <button data-group-index="${groupIndex}" data-option-index="${optionIndex}" class="remove-option-btn text-red-500 hover:text-red-700 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    `;
+                    optionsList.appendChild(optionLi);
+                });
+            });
+        }
+
+        function toggleComplementGroupPause(groupIndex) {
+            const group = localComplements[groupIndex];
+            if (group) {
+                group.paused = !group.paused;
+                renderComplementGroups(currentProductId);
+            }
+        }
+        
+        function toggleComplementOptionPause(groupIndex, optionIndex) {
+            const option = localComplements[groupIndex].options[optionIndex];
+            if (option) {
+                option.paused = !option.paused;
+                renderComplementGroups(currentProductId);
+            }
+        }
+        
+        function openComplementModal(productId) {
+            currentProductId = productId;
+            const product = allProducts.find(p => p.id === productId);
+            if (!product) return;
+
+            complementProductName.textContent = product.name;
+            if (!productComplementsCache[productId]) {
+                productComplementsCache[productId] = [];
+            }
+            localComplements = JSON.parse(JSON.stringify(productComplementsCache[productId]));
+            renderComplementGroups(currentProductId);
+            toggleModal(complementModal, true);
+        }
+
+        function addComplementGroup() {
+            const name = complementNameInput.value.trim();
+            const description = complementDescriptionInput.value.trim();
+            const isMandatory = isMandatoryCheckbox.checked;
+            const minSelection = isMandatory ? parseInt(minSelectionInput.value) : 0;
+            const maxSelection = isMandatory ? parseInt(maxSelectionInput.value) : 0;
+
+            if (name === '') {
+                showMessage('O nome do grupo é obrigatório.', 'error');
+                return;
+            }
+            if (isMandatory && (isNaN(minSelection) || isNaN(maxSelection) || minSelection > maxSelection)) {
+                showMessage('Se for obrigatório, defina uma seleção mínima e máxima válidas.', 'error');
+                return;
+            }
+
+            const newGroup = {
+                name,
+                description,
+                isMandatory,
+                minSelection,
+                maxSelection,
+                options: [],
+                paused: false
+            };
+            localComplements.push(newGroup);
+            renderComplementGroups(currentProductId);
+            
+            complementNameInput.value = '';
+            complementDescriptionInput.value = '';
+            isMandatoryCheckbox.checked = false;
+            minSelectionInput.value = '';
+            maxSelectionInput.value = '';
+            mandatoryOptions.classList.add('hidden');
+        }
+
+        function addOptionToGroup(groupIndex, name, price) {
+            const group = localComplements[groupIndex];
+            if (!group) return;
+
+            if (name === '' || isNaN(price) || price < 0) {
+                showMessage('Nome e preço da opção são obrigatórios e devem ser válidos.', 'error');
+                return;
+            }
+
+            group.options.push({ name, price, paused: false });
+            renderComplementGroups(currentProductId);
+        }
+
+        function removeOptionFromGroup(groupIndex, optionIndex) {
+            localComplements[groupIndex].options.splice(optionIndex, 1);
+            renderComplementGroups(currentProductId);
+        }
+
+        function removeComplementGroup(groupIndex) {
+            localComplements.splice(groupIndex, 1);
+            renderComplementGroups(currentProductId);
+        }
+
+        function saveComplements() {
+            productComplementsCache[currentProductId] = localComplements;
+            localStorage.setItem('productComplementsCache', JSON.stringify(productComplementsCache));
+            showMessage('Complementos salvos com sucesso!', 'success');
+            toggleModal(complementModal, false);
+            localComplements = null;
+        }
+
+        function cancelComplements() {
+            toggleModal(complementModal, false);
+            localComplements = null;
+        }
+        
+        // ======================= MODAL DE CONFIRMAÇÃO GENÉRICA =======================
+        function showConfirmationModal(title, message, callback) {
+            confirmationModalTitle.textContent = title;
+            confirmationModalMessage.textContent = message;
+            confirmationCallback = callback;
+            toggleModal(confirmationModal, true);
+        }
+
+
+        // ======================= LISTENERS DE EVENTOS =======================
+        window.addEventListener('DOMContentLoaded', loadAllData);
+        
+        // Navegação
+        // Substitua as linhas 851 a 859 por este bloco:
+        loginBtn.addEventListener('click', () => {
+            const email = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                showMessage('Por favor, preencha o e-mail e a senha.', 'error');
+                return;
+            }
+
+            // Faz o login real consultando os usuários cadastrados no Firebase
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    showMessage('Login efetuado com sucesso!', 'success');
+                    showPage(masterMenuPage); // Abre o seu menu master
+                })
+                .catch((error) => {
+                    console.error("Erro no login:", error.code);
+                    if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+                        showMessage('Usuário ou senha incorretos!', 'error');
+                    } else {
+                        showMessage('Erro ao entrar: ' + error.message, 'error');
+                    }
+                });
+        });
+		
+        adminBtn.addEventListener('click', () => showPage(adminPage));
+        backToMenuBtnAdmin.addEventListener('click', () => showPage(masterMenuPage));
+
+        // Administração de Categorias
+        addCategoryBtn.addEventListener('click', addCategory);
+        categoryNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') addCategory();
+        });
+        categoryList.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-category-btn')) {
+                const id = e.target.closest('.remove-category-btn').dataset.id;
+                showConfirmationModal('Remover Categoria', 'Tem certeza que deseja remover esta categoria? Produtos associados a ela ficarão "Sem Categoria".', () => removeCategory(id));
+            }
+        });
+
+        // Administração de Produtos
+        addProductBtn.addEventListener('click', saveProduct);
+        cancelEditBtn.addEventListener('click', resetProductForm);
+        productImageFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentImageBase64 = e.target.result;
+                    imagePreview.src = currentImageBase64;
+                    imagePreviewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        productList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-product-btn');
+            const removeBtn = e.target.closest('.remove-product-btn');
+            const complementsBtn = e.target.closest('.manage-complements-btn');
+            const pauseBtn = e.target.closest('.toggle-product-pause-btn');
+
+            if (editBtn) {
+                const id = editBtn.dataset.id;
+                editProduct(id);
+            } else if (removeBtn) {
+                const id = removeBtn.dataset.id;
+                showConfirmationModal('Remover Produto', 'Tem certeza que deseja remover este produto?', () => removeProduct(id));
+            } else if (complementsBtn) {
+                const id = complementsBtn.dataset.id;
+                openComplementModal(id);
+            } else if (pauseBtn) {
+                const id = pauseBtn.dataset.id;
+                toggleProductPause(id);
+            }
+        });
+
+        searchProductInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredProducts = allProducts.filter(product =>
+                product.name.toLowerCase().includes(searchTerm) ||
+                (product.pdvCode && product.pdvCode.toLowerCase().includes(searchTerm)) ||
+                product.description.toLowerCase().includes(searchTerm) ||
+                (allCategories.find(c => c.id === product.categoryId)?.name.toLowerCase().includes(searchTerm))
+            );
+            renderProductList(filteredProducts);
+        });
+
+        // Modais de Complemento (ADMIN)
+        closeModalBtn.addEventListener('click', () => toggleModal(complementModal, false));
+        isMandatoryCheckbox.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                mandatoryOptions.classList.remove('hidden');
+            } else {
+                mandatoryOptions.classList.add('hidden');
+            }
+        });
+        addComplementBtn.addEventListener('click', addComplementGroup);
+        saveComplementsBtn.addEventListener('click', saveComplements);
+        cancelComplementsBtn.addEventListener('click', cancelComplements);
+
+        complementModal.addEventListener('click', (e) => {
+            const addOptionBtn = e.target.closest('.add-option-btn');
+            const removeOptionBtn = e.target.closest('.remove-option-btn');
+            const removeGroupBtn = e.target.closest('.remove-complement-group-btn');
+            const pauseGroupBtn = e.target.closest('.toggle-complement-group-pause-btn');
+            const pauseOptionBtn = e.target.closest('.toggle-complement-option-pause-btn');
+            
+            if (addOptionBtn) {
+                const groupIndex = parseInt(addOptionBtn.dataset.groupIndex);
+                const groupContainer = addOptionBtn.closest('.bg-gray-100');
+                const nameInput = groupContainer.querySelector('.option-name-input');
+                const priceInput = groupContainer.querySelector('.option-price-input');
+                addOptionToGroup(groupIndex, nameInput.value.trim(), parseFloat(priceInput.value));
+                nameInput.value = '';
+                priceInput.value = '';
+            } else if (removeOptionBtn) {
+                const groupIndex = parseInt(removeOptionBtn.dataset.groupIndex);
+                const optionIndex = parseInt(removeOptionBtn.dataset.optionIndex);
+                showConfirmationModal('Remover Opção', 'Tem certeza que deseja remover esta opção?', () => removeOptionFromGroup(groupIndex, optionIndex));
+            } else if (removeGroupBtn) {
+                const groupIndex = parseInt(removeGroupBtn.dataset.groupIndex);
+                showConfirmationModal('Remover Grupo de Complemento', 'Tem certeza que deseja remover este grupo de complemento?', () => removeComplementGroup(groupIndex));
+            } else if (pauseGroupBtn) {
+                const groupIndex = parseInt(pauseGroupBtn.dataset.groupIndex);
+                toggleComplementGroupPause(groupIndex);
+            } else if (pauseOptionBtn) {
+                const groupIndex = parseInt(pauseOptionBtn.dataset.groupIndex);
+                const optionIndex = parseInt(pauseOptionBtn.dataset.optionIndex);
+                toggleComplementOptionPause(groupIndex, optionIndex);
+            }
+        });
+
+        // Modal de Confirmação Genérico
+        cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
+        confirmActionBtn.addEventListener('click', () => {
+            if (confirmationCallback) {
+                confirmationCallback();
+            }
+            confirmationCallback = null;
+            toggleModal(confirmationModal, false);
+        });
+
+        // Notificação de novos pedidos
+        let lastKnownOrderCount = 0;
+
+        function showNewOrderNotification() {
+            const notificationDiv = document.createElement('div');
+            notificationDiv.className = 'notification-box';
+            notificationDiv.textContent = 'Novo pedido chegou!';
+            document.body.appendChild(notificationDiv);
+
+            setTimeout(() => {
+                notificationDiv.classList.add('show');
+            }, 10);
+
+            const notificationSound = new Audio('som.mp3');
+            notificationSound.play();
+
+            setTimeout(() => {
+                notificationDiv.classList.remove('show');
+                setTimeout(() => {
+                    document.body.removeChild(notificationDiv);
+                }, 500);
+            }, 5000);
+        }
+
+        // --- SISTEMA DE PEDIDOS EM TEMPO REAL COM FIREBASE ---
+        lastKnownOrderCount = -1;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Cria a ligação direta com a pasta 'myOrders' na nuvem
+            const ordersRef = ref(db, 'myOrders');
+            
+            // O 'onValue' monitora o Firebase. Entrou pedido novo, ele roda na hora!
+            onValue(ordersRef, (snapshot) => {
+                const data = snapshot.val();
+                
+                // Converte os dados recebidos do Firebase (Objeto) em um Array para o seu sistema entender
+                const ordersArray = [];
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        ordersArray.push({ id: key, ...data[key] });
+                    });
+                }
+
+                // CONTROLE DE NOTIFICAÇÃO SONORA (ALERTA DE NOVO PEDIDO)
+                if (lastKnownOrderCount !== -1 && ordersArray.length > lastKnownOrderCount) {
+                    showNewOrderNotification(); // Toca o som do delivery e mostra o aviso na tela
+                }
+                lastKnownOrderCount = ordersArray.length;
+
+                // RECARREGA OS DADOS NA SUA TELA ONLINE
+                if (typeof loadAllData === "function") {
+                    // Atualiza a lista global de pedidos que a sua função antiga já utilizava
+                    window.myOrders = ordersArray; 
+					
+					
+                    
+                    // Executa a sua função que redesenha os cartões de pedidos na tela
+                    loadAllData(); 
+                }
+            });
+        });
+    </script>
+</body>
+</html>
