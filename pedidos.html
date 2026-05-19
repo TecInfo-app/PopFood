@@ -539,38 +539,38 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
             }
 
             // Referência para a pasta de pedidos no Firebase
-            const ordersRef = ref(db, 'myOrders');
-            let lastKnownOrderCount = -1;
+            // Faz a ligação direta com a pasta 'myOrders' na nuvem do Firebase
+const ordersRef = ref(db, 'myOrders');
 
-            // O onValue substitui completamente o antigo window.addEventListener('storage')
-            onValue(ordersRef, (snapshot) => {
-                const data = snapshot.val();
-                const newOrders = [];
+// O 'onValue' monitora o Firebase em tempo real. Entrou pedido novo, ele roda na hora!
+onValue(ordersRef, (snapshot) => {
+    const data = snapshot.val();
+    const ordersArray = [];
+    
+    if (data) {
+        // Converte os dados recebidos do Firebase em um Array para o seu sistema entender
+        Object.keys(data).forEach(key => {
+            ordersArray.push({ id: key, ...data[key] });
+        });
+    }
 
-                if (data) {
-                    // Converte os dados recebidos em formato de Objeto do Firebase para um Array
-                    Object.keys(data).forEach(key => {
-                        newOrders.push({ id: key, ...data[key] });
-                    });
-                }
+    // Substitui os pedidos antigos do seu sistema pelos novos vindos da nuvem
+    window.myOrders = ordersArray; 
 
-                // Identifica se entrou um pedido novo para disparar alertas e impressão automática
-                let latestOrder = null;
-                if (lastKnownOrderCount !== -1 && newOrders.length > lastKnownOrderCount) {
-                    const oldOrderIds = new Set(window.myOrders ? window.myOrders.map(order => order.id) : []);
-                    latestOrder = newOrders.find(order => !oldOrderIds.has(order.id));
-                }
+    // Alerta sonoro de novo pedido (opcional, mude para o nome do seu arquivo de som)
+    if (ordersArray.length > 0) {
+        const notificationSound = new Audio('som.mp3');
+        notificationSound.play().catch(e => console.log("Aguardando interação para tocar som"));
+    }
 
-                // Atualiza as listas globais que sua página usa para renderizar
-                window.myOrders = newOrders;
-                lastKnownOrderCount = newOrders.length;
-
-                // Executa a sua função que desenha e separa os pedidos na tela
-                if (typeof renderMyOrdersPage === "function") {
-                    renderMyOrdersPage();
-                } else if (typeof loadAllData === "function") {
-                    loadAllData();
-                }
+    // Executa a SUA função atual que desenha os pedidos na tela
+    // (Verifique se no seu código ela se chama renderOrders, atualizarTela ou loadAllData)
+    if (typeof renderOrders === "function") {
+        renderOrders(); 
+    } else if (typeof loadAllData === "function") {
+        loadAllData();
+    }
+});
 
                 // Se houver um pedido novo, dispara as ações automáticas perfeitamente
                 if (latestOrder) {
