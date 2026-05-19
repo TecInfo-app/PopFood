@@ -200,31 +200,38 @@ import { ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs
         }
 
         // ======================= RENDERIZAÇÃO DAS LISTAS =======================
-        function buildOrderHtml(order, isActive = true) {
+function buildOrderHtml(order, isActive = true) {
             let itemsHtml = '';
-            order.items.forEach(item => {
-                let complementsHtml = '';
-                if (item.complements && Object.keys(item.complements).length > 0) {
-                    for (const groupName in item.complements) {
-                        complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
-                        complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
-                        complementsHtml += item.complements[groupName].map(comp => `
-                            <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
-                        `).join('');
-                        complementsHtml += `</ul>`;
+            
+            // PROTEÇÃO: Verifica se 'items' existe e é um array antes de usar o forEach
+            if (order.items && Array.isArray(order.items)) {
+                order.items.forEach(item => {
+                    let complementsHtml = '';
+                    if (item.complements && Object.keys(item.complements).length > 0) {
+                        for (const groupName in item.complements) {
+                            complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
+                            complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
+                            complementsHtml += item.complements[groupName].map(comp => `
+                                <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
+                            `).join('');
+                            complementsHtml += `</ul>`;
+                        }
                     }
-                }
 
-                itemsHtml += `
-                    <li class="text-sm text-gray-600">
-                        <div class="flex justify-between items-center">
-                            <span>${item.quantity}x ${item.product.name}</span>
-                            <span class="font-bold">R$ ${item.totalPrice.toFixed(2).replace('.', ',')}</span>
-                        </div>
-                        ${complementsHtml}
-                    </li>
-                `;
-            });
+                    itemsHtml += `
+                        <li class="text-sm text-gray-600">
+                            <div class="flex justify-between items-center">
+                                <span>${item.quantity}x ${item.product.name}</span>
+                                <span class="font-bold">R$ ${item.totalPrice.toFixed(2).replace('.', ',')}</span>
+                            </div>
+                            ${complementsHtml}
+                        </li>
+                    `;
+                });
+            } else {
+                // Caso não existam itens, exibe uma mensagem amigável ao invés de quebrar
+                itemsHtml = '<li class="text-sm text-gray-400 italic">Itens não disponíveis.</li>';
+            }
 
             let actionButtonsHtml = '';
             if (isActive) {
