@@ -3,32 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PopFood - Acompanhar Pedido</title>
+    <title>PopFood - Meus Pedidos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
-        .status-timeline { display: flex; justify-content: space-between; margin: 30px 0; position: relative; }
+        .status-timeline { display: flex; justify-content: space-between; margin: 20px 0; position: relative; }
         .status-step { text-align: center; flex: 1; position: relative; z-index: 2; }
-        .status-step .step-icon { width: 50px; height: 50px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px; font-size: 24px; transition: all 0.3s; }
+        .status-step .step-icon { width: 40px; height: 40px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: 18px; transition: all 0.3s; }
         .status-step.completed .step-icon { background: #22c55e; color: white; }
         .status-step.active .step-icon { background: #f59e0b; color: white; animation: pulse 1.5s infinite; }
-        .status-step .step-label { font-size: 12px; font-weight: 500; color: #6b7280; }
+        .status-step .step-label { font-size: 10px; font-weight: 500; color: #6b7280; }
         .status-step.completed .step-label { color: #22c55e; font-weight: bold; }
         .status-step.active .step-label { color: #f59e0b; font-weight: bold; }
-        .status-line { position: absolute; top: 25px; left: 0; right: 0; height: 3px; background: #e5e7eb; z-index: 1; }
+        .status-line { position: absolute; top: 20px; left: 0; right: 0; height: 3px; background: #e5e7eb; z-index: 1; }
         .status-line-fill { position: absolute; top: 0; left: 0; height: 100%; background: #22c55e; transition: width 0.5s; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .order-card { transition: all 0.3s; }
-        .order-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
-        .status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
         .status-Pendente { background: #fef3c7; color: #d97706; }
         .status-Preparando { background: #dbeafe; color: #2563eb; }
         .status-Saiu-para-entrega { background: #dcfce7; color: #16a34a; }
         .status-Entregue { background: #e0e7ff; color: #4f46e5; }
         .status-Cancelado { background: #fee2e2; color: #dc2626; }
+        .modal-enter { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen">
@@ -43,14 +43,14 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
             </a>
-            <img id="restaurantLogo" src="#" alt="Logo" class="h-12 hidden">
+            <img id="restaurantLogo" src="#" alt="Logo" class="h-10 hidden">
             <h1 class="text-2xl font-bold text-gray-800">📦 Meus Pedidos</h1>
         </div>
         <button id="logoutBtn" class="text-red-500 hover:text-red-700 text-sm font-semibold">Sair</button>
     </div>
 
-    <!-- Login/Telefone -->
-    <div id="loginPhoneSection" class="bg-gray-50 rounded-xl p-8 text-center">
+    <!-- Login/Telefone (se não estiver logado) -->
+    <div id="loginSection" class="bg-gray-50 rounded-xl p-8 text-center">
         <div class="max-w-sm mx-auto">
             <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,13 +59,10 @@
             </div>
             <h2 class="text-xl font-bold mb-2">Acompanhe seu Pedido</h2>
             <p class="text-gray-500 text-sm mb-6">Digite seu número de WhatsApp para ver seus pedidos</p>
-            <input type="tel" id="phoneLogin" placeholder="(99) 99999-9999" class="w-full p-3 border rounded-lg mb-3 text-center">
-            <button id="loginPhoneBtn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700">
+            <input type="tel" id="phoneInput" placeholder="(99) 99999-9999" class="w-full p-3 border rounded-lg mb-3 text-center">
+            <button id="loginBtn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700">
                 Ver Meus Pedidos
             </button>
-            <p class="text-xs text-gray-400 mt-4">
-                🔒 Seus dados são seguros. Apenas você pode ver seus pedidos.
-            </p>
         </div>
     </div>
 
@@ -76,40 +73,28 @@
             <div class="flex justify-between items-center">
                 <div>
                     <p class="text-sm opacity-90">Olá,</p>
-                    <p id="customerNameDisplay" class="text-xl font-bold"></p>
-                    <p id="customerPhoneDisplay" class="text-sm opacity-90"></p>
+                    <p id="customerName" class="text-xl font-bold"></p>
+                    <p id="customerPhone" class="text-sm opacity-90"></p>
                 </div>
                 <div class="text-right">
                     <p class="text-xs opacity-90">Total de pedidos</p>
-                    <p id="totalOrdersCount" class="text-3xl font-bold">0</p>
+                    <p id="totalOrders" class="text-3xl font-bold">0</p>
                 </div>
             </div>
         </div>
 
         <!-- Filtros -->
         <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-            <button class="filter-order-btn bg-orange-500 text-white px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="todos">
-                📋 Todos
-            </button>
-            <button class="filter-order-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Pendente">
-                ⏳ Pendentes
-            </button>
-            <button class="filter-order-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Preparando">
-                👨‍🍳 Preparando
-            </button>
-            <button class="filter-order-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Saiu para entrega">
-                🛵 Saiu para entrega
-            </button>
-            <button class="filter-order-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Entregue">
-                ✅ Entregues
-            </button>
-            <button class="filter-order-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Cancelado">
-                ❌ Cancelados
-            </button>
+            <button class="filter-btn bg-orange-500 text-white px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="todos">📋 Todos</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Pendente">⏳ Pendentes</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Preparando">👨‍🍳 Preparando</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Saiu para entrega">🛵 Saiu para entrega</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Entregue">✅ Entregues</button>
+            <button class="filter-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-full text-sm whitespace-nowrap" data-filter="Cancelado">❌ Cancelados</button>
         </div>
 
         <!-- Lista de Pedidos -->
-        <div id="ordersList" class="space-y-6">
+        <div id="ordersList" class="space-y-4">
             <div class="text-center text-gray-500 py-8">Carregando pedidos...</div>
         </div>
     </div>
@@ -117,24 +102,12 @@
 
 <!-- Modal de Detalhes do Pedido -->
 <div id="orderDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto modal-enter">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto modal-enter">
         <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
-            <h3 class="text-xl font-bold" id="modalOrderId">Pedido #</h3>
+            <h3 id="modalTitle" class="text-lg font-bold">Detalhes do Pedido</h3>
             <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
         </div>
-        <div class="p-6" id="modalOrderContent"></div>
-    </div>
-</div>
-
-<!-- Modal de Confirmação -->
-<div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl p-6 w-full max-w-sm">
-        <h3 id="confirmationTitle" class="text-xl font-bold mb-4">Confirmar</h3>
-        <p id="confirmationMessage" class="text-gray-600 mb-6"></p>
-        <div class="flex justify-end gap-2">
-            <button id="cancelConfirmBtn" class="bg-gray-300 px-4 py-2 rounded-lg">Cancelar</button>
-            <button id="acceptConfirmBtn" class="bg-red-500 text-white px-4 py-2 rounded-lg">Confirmar</button>
-        </div>
+        <div id="modalContent" class="p-5"></div>
     </div>
 </div>
 
@@ -142,25 +115,26 @@
 
 <script type="module">
     import { 
-        db, collection, query, where, orderBy, onSnapshot, doc, updateDoc, Timestamp, COLLECTIONS 
+        db, collection, query, where, orderBy, getDocs, onSnapshot, doc, updateDoc, Timestamp, COLLECTIONS 
     } from './firebase-config.js';
 
     // Estado
-    let currentCustomer = null;
+    let currentPhone = null;
     let allOrders = [];
     let currentFilter = 'todos';
     let unsubscribeOrders = null;
+    let customerNameCache = '';
 
     // DOM Elements
-    const loginSection = document.getElementById('loginPhoneSection');
+    const loginSection = document.getElementById('loginSection');
     const customerArea = document.getElementById('customerArea');
-    const phoneLogin = document.getElementById('phoneLogin');
-    const loginPhoneBtn = document.getElementById('loginPhoneBtn');
+    const phoneInput = document.getElementById('phoneInput');
+    const loginBtn = document.getElementById('loginBtn');
     const logoutBtn = document.getElementById('logoutBtn');
     const ordersList = document.getElementById('ordersList');
-    const customerNameDisplay = document.getElementById('customerNameDisplay');
-    const customerPhoneDisplay = document.getElementById('customerPhoneDisplay');
-    const totalOrdersCount = document.getElementById('totalOrdersCount');
+    const customerNameSpan = document.getElementById('customerName');
+    const customerPhoneSpan = document.getElementById('customerPhone');
+    const totalOrdersSpan = document.getElementById('totalOrders');
     const restaurantLogo = document.getElementById('restaurantLogo');
     const messageBox = document.getElementById('messageBox');
 
@@ -173,8 +147,26 @@
         setTimeout(() => messageBox.classList.add('hidden'), 3000);
     }
 
-    // Carregar perfil do restaurante
-    async function loadRestaurantProfile() {
+    function formatDate(dateValue) {
+        if (!dateValue) return 'Data não disponível';
+        if (dateValue && typeof dateValue.toDate === 'function') {
+            return dateValue.toDate().toLocaleString('pt-BR');
+        }
+        if (typeof dateValue === 'string') return dateValue;
+        if (dateValue && dateValue.seconds) {
+            return new Date(dateValue.seconds * 1000).toLocaleString('pt-BR');
+        }
+        return new Date(dateValue).toLocaleString('pt-BR');
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function loadRestaurantLogo() {
         try {
             const { getDoc, doc } = await import('./firebase-config.js');
             const docRef = doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main');
@@ -188,65 +180,36 @@
         }
     }
 
-    // Login com telefone
-    function loginWithPhone() {
-        const phone = phoneLogin.value.trim();
-        if (!phone) {
-            showMessage('Digite seu número de WhatsApp', 'error');
-            return;
-        }
-        
-        // Salvar no sessionStorage (vai limpar quando fechar a aba)
-        sessionStorage.setItem('customerPhone', phone);
-        currentCustomer = { phone: phone, name: '' };
-        
-        // Tentar buscar nome do cliente
-        buscarNomeCliente(phone);
-        
-        loginSection.classList.add('hidden');
-        customerArea.classList.remove('hidden');
-        
-        startOrdersListener();
-        showMessage('✅ Conectado! Seus pedidos estão abaixo.', 'success');
-    }
-
     async function buscarNomeCliente(phone) {
         try {
             const { getDoc, doc } = await import('./firebase-config.js');
             const clientRef = doc(db, COLLECTIONS.CLIENTS, phone.replace(/\D/g, ''));
             const clientSnap = await getDoc(clientRef);
             if (clientSnap.exists()) {
-                currentCustomer.name = clientSnap.data().name;
-                customerNameDisplay.textContent = currentCustomer.name;
+                customerNameCache = clientSnap.data().name || 'Cliente';
             } else {
-                customerNameDisplay.textContent = 'Cliente';
+                customerNameCache = 'Cliente';
             }
         } catch (error) {
-            customerNameDisplay.textContent = 'Cliente';
+            customerNameCache = 'Cliente';
         }
-        customerPhoneDisplay.textContent = currentCustomer.phone;
+        customerNameSpan.textContent = customerNameCache;
     }
 
-    function logout() {
-        sessionStorage.removeItem('customerPhone');
-        currentCustomer = null;
-        if (unsubscribeOrders) unsubscribeOrders();
-        allOrders = [];
-        loginSection.classList.remove('hidden');
-        customerArea.classList.add('hidden');
-        phoneLogin.value = '';
-        showMessage('Você saiu da sua conta', 'yellow');
-    }
-
-    // Listener em tempo real dos pedidos
-    function startOrdersListener() {
+    // Função para carregar pedidos - VERSÃO CORRIGIDA
+    function startOrdersListener(phone) {
         if (unsubscribeOrders) unsubscribeOrders();
         
-        const phoneDigits = currentCustomer.phone.replace(/\D/g, '');
+        // Garantir que o telefone está no formato correto
+        const cleanPhone = phone.replace(/\D/g, '');
+        const originalPhone = phone;
         
+        console.log("Buscando pedidos para o telefone:", originalPhone);
+        
+        // Query para buscar pedidos do cliente
         const q = query(
             collection(db, COLLECTIONS.ORDERS),
-            where('customer.phone', '==', currentCustomer.phone),
+            where('customer.phone', '==', originalPhone),
             orderBy('createdAt', 'desc')
         );
         
@@ -255,120 +218,54 @@
                 allOrders = [];
                 snapshot.forEach(doc => {
                     const order = { id: doc.id, ...doc.data() };
+                    console.log("Pedido encontrado:", order.id, order.status);
                     allOrders.push(order);
                 });
                 
-                totalOrdersCount.textContent = allOrders.length;
-                renderOrders();
+                totalOrdersSpan.textContent = allOrders.length;
+                
+                if (allOrders.length === 0) {
+                    ordersList.innerHTML = `
+                        <div class="text-center text-gray-500 py-12 bg-gray-50 rounded-xl">
+                            <svg class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p>Você ainda não tem pedidos</p>
+                            <p class="text-sm mt-2">Faça seu primeiro pedido no cardápio! 🍔</p>
+                        </div>
+                    `;
+                } else {
+                    renderOrders();
+                }
             },
             (error) => {
-                console.error("Erro ao carregar pedidos:", error);
-                ordersList.innerHTML = '<div class="text-center text-red-500 py-8">Erro ao carregar pedidos</div>';
+                console.error("Erro no listener:", error);
+                ordersList.innerHTML = `<div class="text-center text-red-500 py-8">Erro ao carregar pedidos: ${error.message}</div>`;
+                showMessage('Erro ao carregar pedidos: ' + error.message, 'error');
             }
         );
     }
 
     function renderOrders() {
-        let filteredOrders = allOrders;
+        let filtered = allOrders;
         if (currentFilter !== 'todos') {
-            filteredOrders = allOrders.filter(order => order.status === currentFilter);
+            filtered = allOrders.filter(order => order.status === currentFilter);
         }
         
-        if (filteredOrders.length === 0) {
+        if (filtered.length === 0) {
             ordersList.innerHTML = `
-                <div class="text-center text-gray-500 py-12 bg-gray-50 rounded-xl">
-                    <svg class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+                <div class="text-center text-gray-500 py-8 bg-gray-50 rounded-xl">
                     <p>Nenhum pedido ${currentFilter === 'todos' ? 'encontrado' : 'com status "' + currentFilter + '"'}</p>
-                    <p class="text-sm mt-2">Faça seu primeiro pedido no cardápio! 🍔</p>
                 </div>
             `;
             return;
         }
         
         ordersList.innerHTML = '';
-        filteredOrders.forEach(order => {
+        filtered.forEach(order => {
             const card = createOrderCard(order);
             ordersList.appendChild(card);
         });
-    }
-
-    function createOrderCard(order) {
-        const div = document.createElement('div');
-        div.className = 'order-card bg-white rounded-xl shadow-md border overflow-hidden';
-        
-        // Calcular total
-        const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
-        const itemCount = order.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
-        
-        const statusClass = `status-${order.status?.replace(/ /g, '-') || 'Pendente'}`;
-        
-        div.innerHTML = `
-            <div class="p-5">
-                <div class="flex justify-between items-start flex-wrap gap-2 mb-3">
-                    <div>
-                        <span class="text-xs text-gray-400">Pedido realizado em</span>
-                        <p class="text-sm font-medium">${formatDate(order.createdAt || order.date)}</p>
-                    </div>
-                    <span class="status-badge ${statusClass}">
-                        ${getStatusIcon(order.status)} ${order.status || 'Pendente'}
-                    </span>
-                </div>
-                
-                <div class="flex justify-between items-center mb-3">
-                    <div>
-                        <p class="text-lg font-bold text-gray-800">Pedido #${(order.id || '').slice(-6)}</p>
-                        <p class="text-sm text-gray-500">${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</p>
-                    </div>
-                    <p class="text-xl font-bold text-green-600">R$ ${total.toFixed(2).replace('.', ',')}</p>
-                </div>
-                
-                <!-- Timeline de Status -->
-                <div class="status-timeline mb-4">
-                    <div class="status-line"></div>
-                    <div class="status-line-fill" style="width: ${getStatusWidth(order.status)}%"></div>
-                    
-                    <div class="status-step ${getStatusClass(order.status, 'Pendente')}">
-                        <div class="step-icon">📝</div>
-                        <div class="step-label">Pedido<br>Recebido</div>
-                    </div>
-                    <div class="status-step ${getStatusClass(order.status, 'Preparando')}">
-                        <div class="step-icon">👨‍🍳</div>
-                        <div class="step-label">Preparando</div>
-                    </div>
-                    <div class="status-step ${getStatusClass(order.status, 'Saiu para entrega')}">
-                        <div class="step-icon">🛵</div>
-                        <div class="step-label">Saiu para<br>Entrega</div>
-                    </div>
-                    <div class="status-step ${getStatusClass(order.status, 'Entregue')}">
-                        <div class="step-icon">✅</div>
-                        <div class="step-label">Entregue</div>
-                    </div>
-                </div>
-                
-                <!-- Itens resumidos -->
-                <div class="border-t pt-3 mt-2">
-                    <div class="flex justify-between text-sm text-gray-600">
-                        <span>Pagamento: ${order.paymentMethod || 'Não informado'}</span>
-                        <span>Entrega: R$ ${(order.deliveryFee || 5.00).toFixed(2).replace('.', ',')}</span>
-                    </div>
-                </div>
-                
-                <div class="flex gap-3 mt-4">
-                    <button class="view-order-btn flex-1 bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-blue-600 transition" data-order-id="${order.id}">
-                        📋 Ver Detalhes
-                    </button>
-                    ${order.status !== 'Entregue' && order.status !== 'Cancelado' ? `
-                        <button class="cancel-order-btn bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition" data-order-id="${order.id}">
-                            ❌ Cancelar
-                        </button>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-        
-        return div;
     }
 
     function getStatusIcon(status) {
@@ -404,52 +301,101 @@
         return widths[status] || 0;
     }
 
-    function formatDate(dateValue) {
-        if (!dateValue) return 'Data não disponível';
-        if (dateValue && typeof dateValue.toDate === 'function') {
-            return dateValue.toDate().toLocaleString('pt-BR');
-        }
-        if (typeof dateValue === 'string') return dateValue;
-        if (dateValue && dateValue.seconds) {
-            return new Date(dateValue.seconds * 1000).toLocaleString('pt-BR');
-        }
-        return new Date(dateValue).toLocaleString('pt-BR');
+    function createOrderCard(order) {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition';
+        
+        const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
+        const itemCount = order.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
+        const statusClass = `status-${order.status?.replace(/ /g, '-') || 'Pendente'}`;
+        
+        div.innerHTML = `
+            <div class="p-4">
+                <div class="flex justify-between items-start flex-wrap gap-2 mb-3">
+                    <div>
+                        <span class="text-xs text-gray-400">${formatDate(order.createdAt || order.date)}</span>
+                        <p class="text-sm font-bold text-gray-800">Pedido #${(order.id || '').slice(-6)}</p>
+                    </div>
+                    <span class="status-badge ${statusClass} text-xs">
+                        ${getStatusIcon(order.status)} ${order.status || 'Pendente'}
+                    </span>
+                </div>
+                
+                <!-- Timeline de Status -->
+                <div class="status-timeline my-3">
+                    <div class="status-line"></div>
+                    <div class="status-line-fill" style="width: ${getStatusWidth(order.status)}%"></div>
+                    
+                    <div class="status-step ${getStatusClass(order.status, 'Pendente')}">
+                        <div class="step-icon">📝</div>
+                        <div class="step-label">Pedido</div>
+                    </div>
+                    <div class="status-step ${getStatusClass(order.status, 'Preparando')}">
+                        <div class="step-icon">👨‍🍳</div>
+                        <div class="step-label">Preparo</div>
+                    </div>
+                    <div class="status-step ${getStatusClass(order.status, 'Saiu para entrega')}">
+                        <div class="step-icon">🛵</div>
+                        <div class="step-label">Entrega</div>
+                    </div>
+                    <div class="status-step ${getStatusClass(order.status, 'Entregue')}">
+                        <div class="step-icon">✅</div>
+                        <div class="step-label">Entregue</div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center text-sm text-gray-600 mb-3">
+                    <span>${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</span>
+                    <span class="font-bold text-green-600">R$ ${total.toFixed(2).replace('.', ',')}</span>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button class="view-detail flex-1 bg-blue-50 text-blue-600 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-100 transition" data-order-id="${order.id}">
+                        📋 Detalhes
+                    </button>
+                    ${order.status !== 'Entregue' && order.status !== 'Cancelado' ? `
+                        <button class="cancel-order flex-1 bg-red-50 text-red-600 py-1.5 rounded-lg text-sm font-semibold hover:bg-red-100 transition" data-order-id="${order.id}">
+                            ❌ Cancelar
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        return div;
     }
 
-    // Abrir modal com detalhes do pedido
-    async function openOrderDetail(orderId) {
+    function openOrderDetail(orderId) {
         const order = allOrders.find(o => o.id === orderId);
         if (!order) return;
         
         const modal = document.getElementById('orderDetailModal');
-        const modalOrderId = document.getElementById('modalOrderId');
-        const modalContent = document.getElementById('modalOrderContent');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
         
-        modalOrderId.textContent = `Pedido #${orderId.slice(-6)}`;
+        modalTitle.textContent = `Pedido #${orderId.slice(-6)}`;
         
         const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
-        
         let itemsHtml = '';
+        
         order.items?.forEach(item => {
             let complementsHtml = '';
             if (item.complements) {
                 for (const group in item.complements) {
                     if (item.complements[group] && item.complements[group].length) {
-                        complementsHtml += `<div class="mt-2 pl-4 border-l-2 border-orange-200">`;
-                        complementsHtml += `<p class="text-xs font-bold text-gray-600">${group}:</p>`;
-                        complementsHtml += `<ul class="text-xs text-gray-500 space-y-1">`;
+                        complementsHtml += `<div class="mt-2 pl-3 border-l-2 border-orange-200">`;
+                        complementsHtml += `<p class="text-xs font-bold text-gray-600">${escapeHtml(group)}:</p>`;
+                        complementsHtml += `<ul class="text-xs text-gray-500">`;
                         item.complements[group].forEach(opt => {
-                            complementsHtml += `<li>• ${opt.name} ${opt.price > 0 ? `(+R$ ${opt.price.toFixed(2).replace('.', ',')})` : ''}</li>`;
+                            complementsHtml += `<li>• ${escapeHtml(opt.name)} ${opt.price > 0 ? `(+R$ ${opt.price.toFixed(2).replace('.', ',')})` : ''}</li>`;
                         });
                         complementsHtml += `</ul></div>`;
                     }
                 }
             }
-            
             itemsHtml += `
-                <div class="flex justify-between py-2 border-b">
+                <div class="flex justify-between py-2 border-b text-sm">
                     <div>
-                        <span class="font-bold">${item.quantity}x</span> ${item.product?.name}
+                        <span class="font-bold">${item.quantity}x</span> ${escapeHtml(item.product?.name)}
                         ${complementsHtml}
                     </div>
                     <span class="font-bold text-green-600">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
@@ -457,26 +403,23 @@
             `;
         });
         
-        const statusClass = `status-${order.status?.replace(/ /g, '-') || 'Pendente'}`;
-        
         modalContent.innerHTML = `
-            <div class="mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <span class="status-badge ${statusClass} text-sm">
-                        ${getStatusIcon(order.status)} ${order.status || 'Pendente'}
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="status-badge ${`status-${order.status?.replace(/ /g, '-')}`}">
+                        ${getStatusIcon(order.status)} ${order.status}
                     </span>
-                    <span class="text-sm text-gray-500">${formatDate(order.createdAt || order.date)}</span>
+                    <span class="text-xs text-gray-400">${formatDate(order.createdAt || order.date)}</span>
                 </div>
                 
-                <div class="bg-gray-50 p-4 rounded-lg mb-4">
-                    <h4 class="font-bold mb-2">📍 Dados de Entrega</h4>
-                    <p class="text-sm">${order.customer?.address || 'Endereço não informado'}</p>
-                    ${order.customer?.complement ? `<p class="text-sm text-gray-500">Complemento: ${order.customer.complement}</p>` : ''}
-                    ${order.customer?.reference ? `<p class="text-sm text-gray-500">Referência: ${order.customer.reference}</p>` : ''}
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="font-bold text-sm mb-1">📍 Endereço de entrega</p>
+                    <p class="text-sm">${escapeHtml(order.customer?.address || 'Não informado')}</p>
+                    ${order.customer?.complement ? `<p class="text-xs text-gray-500 mt-1">Complemento: ${escapeHtml(order.customer.complement)}</p>` : ''}
                 </div>
                 
-                <div class="mb-4">
-                    <h4 class="font-bold mb-2">🍔 Itens do Pedido</h4>
+                <div>
+                    <p class="font-bold text-sm mb-2">🍔 Itens</p>
                     <div class="bg-gray-50 p-3 rounded-lg">
                         ${itemsHtml || '<p class="text-gray-500">Nenhum item</p>'}
                     </div>
@@ -488,24 +431,17 @@
                         <span>R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}</span>
                     </div>
                     <div class="flex justify-between text-sm">
-                        <span>Taxa de entrega:</span>
+                        <span>Taxa entrega:</span>
                         <span>R$ ${(order.deliveryFee || 5.00).toFixed(2).replace('.', ',')}</span>
                     </div>
-                    <div class="flex justify-between text-lg font-bold text-green-600 pt-2 border-t mt-2">
+                    <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
                         <span>TOTAL:</span>
                         <span>R$ ${total.toFixed(2).replace('.', ',')}</span>
                     </div>
                 </div>
                 
-                <div class="mt-4 pt-3 border-t">
-                    <p class="text-sm"><strong>💳 Pagamento:</strong> ${order.paymentMethod || 'Não informado'}</p>
-                </div>
-                
-                <!-- Mensagem de suporte -->
-                <div class="mt-6 p-3 bg-blue-50 rounded-lg text-center">
-                    <p class="text-sm text-blue-700">
-                        📞 Precisa de ajuda? Entre em contato pelo WhatsApp
-                    </p>
+                <div class="bg-gray-50 p-2 rounded-lg text-center text-sm">
+                    💳 Pagamento: ${order.paymentMethod || 'Não informado'}
                 </div>
             </div>
         `;
@@ -513,42 +449,69 @@
         modal.classList.remove('hidden');
     }
 
-    // Cancelar pedido pelo cliente
     async function cancelOrder(orderId) {
+        const order = allOrders.find(o => o.id === orderId);
+        if (!order || (order.status !== 'Pendente' && order.status !== 'Preparando')) {
+            showMessage('Este pedido não pode ser cancelado', 'error');
+            return;
+        }
+        
         try {
-            const order = allOrders.find(o => o.id === orderId);
-            if (!order) return;
-            
-            if (order.status !== 'Pendente' && order.status !== 'Preparando') {
-                showMessage('Este pedido não pode mais ser cancelado', 'error');
-                return;
-            }
-            
             const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
             await updateDoc(orderRef, { 
                 status: 'Cancelado',
                 updatedAt: Timestamp.now()
             });
-            
             showMessage('✅ Pedido cancelado com sucesso!', 'success');
         } catch (error) {
             console.error("Erro ao cancelar:", error);
-            showMessage('Erro ao cancelar pedido', 'error');
+            showMessage('Erro ao cancelar pedido: ' + error.message, 'error');
         }
     }
 
+    // Login
+    function doLogin() {
+        const phone = phoneInput.value.trim();
+        if (!phone) {
+            showMessage('Digite seu número de WhatsApp', 'error');
+            return;
+        }
+        
+        currentPhone = phone;
+        sessionStorage.setItem('customerPhone', phone);
+        
+        loginSection.classList.add('hidden');
+        customerArea.classList.remove('hidden');
+        
+        customerPhoneSpan.textContent = phone;
+        buscarNomeCliente(phone);
+        startOrdersListener(phone);
+        showMessage('✅ Conectado! Carregando seus pedidos...', 'success');
+    }
+
+    function doLogout() {
+        if (unsubscribeOrders) unsubscribeOrders();
+        sessionStorage.removeItem('customerPhone');
+        currentPhone = null;
+        allOrders = [];
+        loginSection.classList.remove('hidden');
+        customerArea.classList.add('hidden');
+        phoneInput.value = '';
+        showMessage('Você saiu da sua conta', 'yellow');
+    }
+
     // Event Listeners
-    loginPhoneBtn.addEventListener('click', loginWithPhone);
-    phoneLogin.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') loginWithPhone();
+    loginBtn.addEventListener('click', doLogin);
+    phoneInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') doLogin();
     });
     
-    logoutBtn.addEventListener('click', logout);
+    logoutBtn.addEventListener('click', doLogout);
     
     // Filtros
-    document.querySelectorAll('.filter-order-btn').forEach(btn => {
+    document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.filter-order-btn').forEach(b => {
+            document.querySelectorAll('.filter-btn').forEach(b => {
                 b.classList.remove('bg-orange-500', 'text-white');
                 b.classList.add('bg-gray-200', 'text-gray-700');
             });
@@ -560,10 +523,10 @@
         });
     });
     
-    // Delegar eventos
+    // Delegar eventos da lista de pedidos
     ordersList.addEventListener('click', async (e) => {
-        const viewBtn = e.target.closest('.view-order-btn');
-        const cancelBtn = e.target.closest('.cancel-order-btn');
+        const viewBtn = e.target.closest('.view-detail');
+        const cancelBtn = e.target.closest('.cancel-order');
         
         if (viewBtn) {
             openOrderDetail(viewBtn.dataset.orderId);
@@ -576,11 +539,13 @@
     });
     
     // Fechar modal
-    document.getElementById('closeModalBtn')?.addEventListener('click', () => {
-        document.getElementById('orderDetailModal').classList.add('hidden');
-    });
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            document.getElementById('orderDetailModal').classList.add('hidden');
+        });
+    }
     
-    // Fechar modal ao clicar fora
     window.addEventListener('click', (e) => {
         const modal = document.getElementById('orderDetailModal');
         if (e.target === modal) {
@@ -591,15 +556,17 @@
     // Verificar se já tem sessão ativa
     const savedPhone = sessionStorage.getItem('customerPhone');
     if (savedPhone) {
-        currentCustomer = { phone: savedPhone, name: '' };
+        currentPhone = savedPhone;
+        phoneInput.value = savedPhone;
         loginSection.classList.add('hidden');
         customerArea.classList.remove('hidden');
+        customerPhoneSpan.textContent = savedPhone;
         buscarNomeCliente(savedPhone);
-        startOrdersListener();
+        startOrdersListener(savedPhone);
     }
     
     // Carregar logo
-    loadRestaurantProfile();
+    loadRestaurantLogo();
 </script>
 </body>
 </html>
