@@ -52,15 +52,24 @@
         .notification-box.show {
             opacity: 1;
         }
-        .new-order-highlight {
+        .pedido-pendente {
             background-color: #fff3e0 !important;
+            border-left: 4px solid #f97316 !important;
         }
-        .dispatched-order-highlight {
+        .pedido-despachado {
             background-color: #e0f2fe !important;
+            border-left: 4px solid #3b82f6 !important;
         }
         .btn-disabled {
-            opacity: 0.6;
+            opacity: 0.5;
             cursor: not-allowed !important;
+        }
+        .order-card {
+            transition: all 0.3s ease;
+        }
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -69,36 +78,37 @@
     <div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
 
         <div id="my-orders-page">
-            <div class="flex items-center justify-between mb-6 border-b pb-4">
+            <div class="flex items-center justify-between mb-6 border-b pb-4 flex-wrap gap-4">
                 <div class="flex items-center gap-4">
                     <a href="index.html" class="text-gray-500 hover:text-gray-800 transition-colors">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
                     </a>
                     <h1 class="text-3xl font-bold text-gray-800">Painel de Pedidos</h1>
                 </div>
-                <span class="bg-amber-100 text-amber-800 font-semibold px-4 py-1.5 rounded-full text-sm">Monitor Ativo</span>
+                <div class="flex gap-3">
+                    <button id="refreshBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        Atualizar
+                    </button>
+                    <span class="bg-amber-100 text-amber-800 font-semibold px-4 py-2 rounded-full text-sm">Monitor Ativo</span>
+                </div>
             </div>
             
-            <div class="flex gap-4 mb-6">
-                <button id="refreshBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                    Atualizar
-                </button>
-            </div>
-
             <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
-                <span class="h-3 w-3 rounded-full bg-orange-500 animate-pulse"></span> Pedidos em Andamento
+                <span class="h-3 w-3 rounded-full bg-orange-500 animate-pulse"></span> Pedidos em Andamento 
+                <span id="activeCount" class="bg-gray-200 text-gray-700 text-sm px-2 py-1 rounded-full">0</span>
             </h2>
             <div id="my-orders-list" class="space-y-4 mb-10">
-                <p class="text-center text-gray-500 py-4">Carregando pedidos...</p>
+                <p class="text-center text-gray-500 py-8">📭 Nenhum pedido ativo no momento.</p>
             </div>
 
             <div class="mt-12 pt-6 border-t border-gray-200">
                 <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
                     <span class="h-3 w-3 rounded-full bg-green-500"></span> Finalizados / Concluídos
+                    <span id="finalizedCount" class="bg-gray-200 text-gray-700 text-sm px-2 py-1 rounded-full">0</span>
                 </h2>
-                <div id="finalized-orders-list" class="space-y-3 opacity-75">
-                    <p class="text-sm text-gray-400 italic">Nenhum pedido finalizado.</p>
+                <div id="finalized-orders-list" class="space-y-3">
+                    <p class="text-sm text-gray-400 italic text-center py-4">Nenhum pedido finalizado.</p>
                 </div>
             </div>
         </div>
@@ -128,14 +138,14 @@
         let finalizedOrders = [];
         let restaurantProfile = {};
         let confirmationCallback = null;
-        let isFirstLoad = true;
+        let currentActionOrderId = null;
+        let currentActionType = null;
         
-        const AUTO_FINALIZE_TIME_MS = 2 * 60 * 60 * 1000;
-        const AUTO_FINALIZE_INTERVAL_MS = 5 * 60 * 1000;
-
         const myOrdersList = document.getElementById('my-orders-list');
         const finalizedOrdersList = document.getElementById('finalized-orders-list');
         const refreshBtn = document.getElementById('refreshBtn');
+        const activeCountSpan = document.getElementById('activeCount');
+        const finalizedCountSpan = document.getElementById('finalizedCount');
         const messageBox = document.getElementById('messageBox');
         const confirmationModal = document.getElementById('confirmationModal');
         const confirmationModalTitle = document.getElementById('confirmationModalTitle');
@@ -160,10 +170,11 @@
             else modal.classList.add('hidden');
         }
         
-        function showConfirmationModal(title, message, callback) {
+        function showConfirmationModal(title, message, orderId, actionType) {
             confirmationModalTitle.textContent = title;
             confirmationModalMessage.textContent = message;
-            confirmationCallback = callback;
+            currentActionOrderId = orderId;
+            currentActionType = actionType;
             toggleModal(confirmationModal, true);
         }
         
@@ -180,14 +191,6 @@
             }, 5000);
         }
 
-        function highlightNewOrder(orderId) {
-            const orderElement = myOrdersList.querySelector(`[data-order-id="${orderId}"]`);
-            if (orderElement) orderElement.classList.add('new-order-highlight');
-            setTimeout(() => {
-                if (orderElement) orderElement.classList.remove('new-order-highlight');
-            }, 10000);
-        }
-
         async function loadProfileData() {
             try {
                 const profileRef = ref(db, 'restaurantProfile');
@@ -197,166 +200,183 @@
             } catch (e) { restaurantProfile = {}; }
         }
 
-        function buildOrderHtml(order, isActive = true) {
+        function formatDate(timestamp) {
+            if (!timestamp) return 'Data não informada';
+            const date = new Date(timestamp);
+            return date.toLocaleDateString('pt-BR') + ' ' + date.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+        }
+
+        function buildOrderCard(order, isActive = true) {
+            // Montar itens do pedido
             let itemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
-                order.items.forEach(item => {
+                order.items.forEach((item, idx) => {
                     let complementsHtml = '';
                     if (item.complements && Object.keys(item.complements).length > 0) {
                         for (const groupName in item.complements) {
                             if (item.complements[groupName] && Array.isArray(item.complements[groupName])) {
-                                complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
-                                complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
+                                complementsHtml += `<div class="mt-1 ml-4 text-xs text-gray-500">${groupName}:`;
                                 complementsHtml += item.complements[groupName].map(comp => 
-                                    `<li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>`
+                                    `<div class="ml-2">- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</div>`
                                 ).join('');
-                                complementsHtml += `</ul>`;
+                                complementsHtml += `</div>`;
                             }
                         }
                     }
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
                     const prodName = item.product ? item.product.name : 'Produto';
                     itemsHtml += `
-                        <li class="text-sm text-gray-600 border-b border-gray-100 pb-2 mb-2">
+                        <div class="border-b border-gray-100 pb-2 mb-2">
                             <div class="flex justify-between items-center">
-                                <span class="font-medium">${item.quantity}x ${prodName}</span>
-                                <span class="font-bold text-gray-800">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
+                                <span class="font-medium text-gray-800">${item.quantity}x ${prodName}</span>
+                                <span class="font-bold text-green-600">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
                             </div>
                             ${complementsHtml}
-                        </li>
+                        </div>
                     `;
                 });
             } else {
                 itemsHtml = `<p class="text-xs text-gray-400 italic">Nenhum item discriminado.</p>`;
             }
 
+            // Montar botões de ação
             let actionButtonsHtml = '';
+            const orderId = order.id;
+            const currentStatus = order.status || 'Pendente';
+            
             if (isActive) {
-                const isDispatched = order.status === "Saiu para entrega" || order.status === "Despachado";
-                const isDelivered = order.status === "Entregue";
-                
-                let dispatchBtnHtml = '';
-                if (isDispatched) {
-                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1.5 px-3 rounded-full text-sm cursor-not-allowed" disabled data-order-id="${order.id}">✅ Despachado</button>`;
-                } else if (isDelivered) {
-                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-green-100 text-green-700 font-bold py-1.5 px-3 rounded-full text-sm cursor-not-allowed" disabled data-order-id="${order.id}">✓ Entregue</button>`;
-                } else {
-                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1.5 px-3 rounded-full text-sm hover:bg-blue-600 transition-colors" data-order-id="${order.id}">🚚 Despachar</button>`;
+                // Botão Despachar (só mostra se não estiver despachado nem entregue)
+                if (currentStatus !== 'Saiu para entrega' && currentStatus !== 'Despachado' && currentStatus !== 'Entregue') {
+                    actionButtonsHtml += `
+                        <button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-blue-600 transition-colors shadow-sm" data-order-id="${orderId}">
+                            🚚 Despachar
+                        </button>
+                    `;
+                } else if (currentStatus === 'Saiu para entrega' || currentStatus === 'Despachado') {
+                    actionButtonsHtml += `
+                        <button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1.5 px-3 rounded-lg text-sm cursor-not-allowed" disabled>
+                            ✅ Já Despachado
+                        </button>
+                    `;
                 }
                 
-                actionButtonsHtml = `
-                    ${dispatchBtnHtml}
-                    <button class="finish-order-btn bg-green-500 text-white font-bold py-1.5 px-3 rounded-full text-sm hover:bg-green-600 transition-colors" data-order-id="${order.id}">✓ Finalizar</button>
-                    <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded-full text-sm transition-colors" data-order-id="${order.id}">🖨️ Imprimir</button>
-                    <button class="remove-order-btn bg-red-500 text-white font-bold py-1.5 px-3 rounded-full text-sm hover:bg-red-600 transition-colors" data-order-id="${order.id}">🗑️ Excluir</button>
-                `;
-            } else {
-                actionButtonsHtml = `
-                    <span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-medium">Status: ${order.status || 'Finalizado'}</span>
-                    <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded-full text-sm transition-colors" data-order-id="${order.id}">🖨️ Imprimir</button>
-                    <button class="remove-order-btn bg-red-100 text-red-600 font-bold py-1.5 px-3 rounded-full text-sm hover:bg-red-200 transition-colors" data-order-id="${order.id}">🗑️ Excluir</button>
+                // Botão Finalizar (sempre disponível para pedidos ativos)
+                actionButtonsHtml += `
+                    <button class="finish-order-btn bg-green-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-green-600 transition-colors shadow-sm" data-order-id="${orderId}">
+                        ✓ Finalizar
+                    </button>
                 `;
             }
-
-            const totalExibido = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
-            const clientName = order.customer ? order.customer.name : 'N/A';
-            const clientPhone = order.customer ? order.customer.phone : 'N/A';
-            const clientAddress = order.customer ? `${order.customer.address || ''}, ${order.customer.number || ''}` : 'Não informado';
-            const orderDate = order.date || new Date(order.createdAt).toLocaleString('pt-BR') || 'Data não informada';
             
+            // Botão Imprimir (para todos)
+            actionButtonsHtml += `
+                <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded-lg text-sm transition-colors shadow-sm" data-order-id="${orderId}">
+                    🖨️ Imprimir
+                </button>
+            `;
+            
+            // Botão Excluir (para todos)
+            actionButtonsHtml += `
+                <button class="remove-order-btn bg-red-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-red-600 transition-colors shadow-sm" data-order-id="${orderId}">
+                    🗑️ Excluir
+                </button>
+            `;
+
+            // Dados do cliente
+            const clientName = order.customer ? order.customer.name : 'Cliente não identificado';
+            const clientPhone = order.customer ? order.customer.phone : '---';
+            const clientAddress = order.customer ? `${order.customer.address || ''}, ${order.customer.number || ''}` : 'Endereço não informado';
+            const paymentMethod = order.paymentMethod || 'A combinar';
+            const totalValue = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
+            const orderDate = order.date || formatDate(order.createdAt);
+            
+            // Badge de status
             let statusBadge = '';
-            if (order.status === 'Pendente') statusBadge = '<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">⏳ Pendente</span>';
-            else if (order.status === 'Saiu para entrega') statusBadge = '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">🚚 Saiu para entrega</span>';
-            else if (order.status === 'Finalizado') statusBadge = '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">✅ Finalizado</span>';
-            else statusBadge = `<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">${order.status || 'Pendente'}</span>`;
+            if (currentStatus === 'Pendente') statusBadge = '<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">⏳ Pendente</span>';
+            else if (currentStatus === 'Saiu para entrega' || currentStatus === 'Despachado') statusBadge = '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">🚚 Saiu para entrega</span>';
+            else if (currentStatus === 'Finalizado') statusBadge = '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">✅ Finalizado</span>';
+            else statusBadge = `<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">${currentStatus}</span>`;
+            
+            // Classe CSS baseada no status
+            let cardClass = 'bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden order-card';
+            if (currentStatus === 'Pendente') cardClass += ' pedido-pendente';
+            else if (currentStatus === 'Saiu para entrega' || currentStatus === 'Despachado') cardClass += ' pedido-despachado';
 
             return `
-                <div class="flex flex-wrap justify-between items-center order-header gap-2">
-                    <div class="flex items-center gap-3">
-                        <h4 class="text-lg font-bold text-gray-800">Pedido #${order.id.slice(-6)}</h4>
-                        ${statusBadge}
-                    </div>
-                    <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-sm text-gray-500">${orderDate}</span>
-                        <span class="text-xl font-bold text-green-600">R$ ${totalExibido}</span>
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-2 mt-2">
-                    ${actionButtonsHtml}
-                </div>
-                <div class="order-details mt-4 pt-4 border-t hidden">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div class="bg-gray-50 p-3 rounded-lg">
-                            <h5 class="font-bold text-gray-700 mb-2">📋 Dados do Cliente:</h5>
-                            <p class="text-sm text-gray-600"><strong>Nome:</strong> ${clientName}</p>
-                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${clientPhone}</p>
-                            <p class="text-sm text-gray-600"><strong>Endereço:</strong> ${clientAddress}</p>
-                            ${order.customer && order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Complemento:</strong> ${order.customer.complement}</p>` : ''}
-                            ${order.customer && order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Referência:</strong> ${order.customer.reference}</p>` : ''}
+                <div class="${cardClass}" data-order-id="${orderId}" data-status="${currentStatus}">
+                    <div class="p-5 cursor-pointer order-header">
+                        <div class="flex flex-wrap justify-between items-center gap-3">
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <h4 class="text-lg font-bold text-gray-800">Pedido #${orderId.slice(-6)}</h4>
+                                ${statusBadge}
+                            </div>
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <span class="text-sm text-gray-500">📅 ${orderDate}</span>
+                                <span class="text-xl font-bold text-green-600">R$ ${totalValue}</span>
+                            </div>
                         </div>
-                        <div class="bg-gray-50 p-3 rounded-lg">
-                            <h5 class="font-bold text-gray-700 mb-2">💳 Pagamento:</h5>
-                            <span class="inline-block bg-green-100 text-green-800 font-bold px-3 py-1 rounded-full text-sm">${order.paymentMethod || 'A combinar'}</span>
-                            ${order.taxaEntrega ? `<p class="text-sm text-gray-600 mt-2"><strong>Taxa de entrega:</strong> R$ ${order.taxaEntrega.toFixed(2).replace('.', ',')}</p>` : ''}
+                        <div class="flex flex-wrap gap-2 mt-3">
+                            ${actionButtonsHtml}
                         </div>
                     </div>
-                    <div class="mb-4">
-                        <h5 class="font-bold text-gray-700 mb-2">🍽️ Itens do Pedido:</h5>
-                        <ul class="space-y-2 pl-2">
-                            ${itemsHtml}
-                        </ul>
+                    <div class="order-details hidden bg-gray-50 p-5 border-t border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div class="bg-white p-3 rounded-lg shadow-sm">
+                                <h5 class="font-bold text-gray-700 mb-2 flex items-center gap-1">👤 Cliente</h5>
+                                <p class="text-sm"><strong>Nome:</strong> ${clientName}</p>
+                                <p class="text-sm"><strong>Telefone:</strong> ${clientPhone}</p>
+                                <p class="text-sm"><strong>Endereço:</strong> ${clientAddress}</p>
+                                ${order.customer && order.customer.complement ? `<p class="text-sm"><strong>Complemento:</strong> ${order.customer.complement}</p>` : ''}
+                                ${order.customer && order.customer.reference ? `<p class="text-sm"><strong>Referência:</strong> ${order.customer.reference}</p>` : ''}
+                            </div>
+                            <div class="bg-white p-3 rounded-lg shadow-sm">
+                                <h5 class="font-bold text-gray-700 mb-2 flex items-center gap-1">💰 Pagamento</h5>
+                                <p class="text-sm"><strong>Forma:</strong> ${paymentMethod}</p>
+                                ${order.taxaEntrega ? `<p class="text-sm"><strong>Taxa entrega:</strong> R$ ${order.taxaEntrega.toFixed(2).replace('.', ',')}</p>` : ''}
+                                ${order.subtotal ? `<p class="text-sm"><strong>Subtotal:</strong> R$ ${order.subtotal.toFixed(2).replace('.', ',')}</p>` : ''}
+                            </div>
+                        </div>
+                        <div>
+                            <h5 class="font-bold text-gray-700 mb-2 flex items-center gap-1">🍽️ Itens do Pedido</h5>
+                            <div class="bg-white p-3 rounded-lg shadow-sm max-h-64 overflow-y-auto">
+                                ${itemsHtml}
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
         }
 
         function renderMyOrdersPage() {
+            // Renderizar pedidos ativos
             myOrdersList.innerHTML = '';
             if (myOrders.length === 0) {
-                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-8">✅ Nenhum pedido ativo no momento.</p>';
+                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-8">📭 Nenhum pedido ativo no momento.</p>';
+                activeCountSpan.textContent = '0';
             } else {
+                activeCountSpan.textContent = myOrders.length;
                 myOrders.forEach(order => {
-                    const orderDiv = document.createElement('div');
-                    let orderClass = 'bg-white p-5 rounded-xl shadow-sm border border-gray-200 cursor-pointer transition-all hover:shadow-md mb-4';
-                    if (order.status === 'Pendente') orderClass += ' new-order-highlight';
-                    else if (order.status === 'Saiu para entrega') orderClass += ' dispatched-order-highlight';
-                    
-                    orderDiv.className = orderClass;
-                    orderDiv.dataset.orderId = order.id;
-                    orderDiv.innerHTML = buildOrderHtml(order, true);
-                    myOrdersList.appendChild(orderDiv);
+                    const orderHtml = buildOrderCard(order, true);
+                    myOrdersList.insertAdjacentHTML('beforeend', orderHtml);
                 });
             }
 
+            // Renderizar pedidos finalizados
             finalizedOrdersList.innerHTML = '';
             if (finalizedOrders.length === 0) {
                 finalizedOrdersList.innerHTML = '<p class="text-sm text-gray-400 italic text-center py-4">Nenhum pedido finalizado.</p>';
+                finalizedCountSpan.textContent = '0';
             } else {
+                finalizedCountSpan.textContent = finalizedOrders.length;
                 finalizedOrders.forEach(order => {
-                    const orderDiv = document.createElement('div');
-                    orderDiv.className = 'bg-gray-50 p-4 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors mb-3';
-                    orderDiv.dataset.orderId = order.id;
-                    orderDiv.innerHTML = buildOrderHtml(order, false);
-                    finalizedOrdersList.appendChild(orderDiv);
+                    const orderHtml = buildOrderCard(order, false);
+                    finalizedOrdersList.insertAdjacentHTML('beforeend', orderHtml);
                 });
             }
         }
         
-        // ==================== FUNÇÕES CORRIGIDAS ====================
+        // ==================== FUNÇÕES DO FIREBASE ====================
         
-        async function removeOrder(orderId) {
-            try {
-                const singleOrderRef = ref(db, `myOrders/${orderId}`);
-                await remove(singleOrderRef);
-                showMessage('🗑️ Pedido excluído permanentemente!', 'success');
-                // Forçar recarregamento dos dados
-                await loadOrdersFromFirebase();
-            } catch (err) {
-                console.error('Erro ao excluir:', err);
-                showMessage('Erro ao excluir pedido: ' + err.message, 'error');
-            }
-        }
-
         async function dispatchOrder(orderId) {
             try {
                 const singleOrderRef = ref(db, `myOrders/${orderId}`);
@@ -365,7 +385,6 @@
                     dispatchedAt: Date.now()
                 });
                 showMessage('🚚 Pedido despachado com sucesso!', 'blue');
-                // Forçar recarregamento dos dados
                 await loadOrdersFromFirebase();
             } catch (err) {
                 console.error('Erro ao despachar:', err);
@@ -381,7 +400,6 @@
                     finishedAt: Date.now()
                 });
                 showMessage('✅ Pedido finalizado com sucesso!', 'success');
-                // Forçar recarregamento dos dados
                 await loadOrdersFromFirebase();
             } catch (err) {
                 console.error('Erro ao finalizar:', err);
@@ -389,19 +407,32 @@
             }
         }
         
+        async function removeOrder(orderId) {
+            try {
+                const singleOrderRef = ref(db, `myOrders/${orderId}`);
+                await remove(singleOrderRef);
+                showMessage('🗑️ Pedido excluído permanentemente!', 'success');
+                await loadOrdersFromFirebase();
+            } catch (err) {
+                console.error('Erro ao excluir:', err);
+                showMessage('Erro ao excluir pedido: ' + err.message, 'error');
+            }
+        }
+        
         async function loadOrdersFromFirebase() {
             try {
                 const snapshot = await get(ordersRef);
                 const data = snapshot.val();
-                let activeOrders = [];
-                let finishedOrders = [];
+                const activeOrders = [];
+                const finishedOrders = [];
                 
                 if (data) {
                     Object.keys(data).forEach(key => {
                         const order = data[key];
                         if (order) {
                             const formattedOrder = { id: key, ...order };
-                            if (order.status === 'Finalizado' || order.status === 'Finalizado (Auto)') {
+                            const status = order.status || 'Pendente';
+                            if (status === 'Finalizado' || status === 'Finalizado (Auto)') {
                                 finishedOrders.push(formattedOrder);
                             } else {
                                 activeOrders.push(formattedOrder);
@@ -410,7 +441,7 @@
                     });
                 }
                 
-                // Ordenar: mais recentes primeiro
+                // Ordenar: mais recentes primeiro (pela data de criação)
                 activeOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                 finishedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
                 
@@ -420,20 +451,6 @@
             } catch (err) {
                 console.error('Erro ao carregar pedidos:', err);
                 showMessage('Erro ao carregar pedidos: ' + err.message, 'error');
-            }
-        }
-        
-        async function autoFinalizeOldOrders() {
-            const now = Date.now();
-            for (const order of myOrders) {
-                if (order.status !== 'Finalizado' && order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS) {
-                    try {
-                        const singleOrderRef = ref(db, `myOrders/${order.id}`);
-                        await update(singleOrderRef, { status: 'Finalizado (Auto)' });
-                    } catch (err) {
-                        console.error('Erro ao finalizar automaticamente:', err);
-                    }
-                }
             }
         }
 
@@ -449,8 +466,7 @@
                 showMessage('Habilite os pop-ups do navegador para imprimir!', 'error');
                 return;
             }
-            const printDocument = printWindow.document;
-
+            
             let orderItemsHtml = '';
             if (order.items && Array.isArray(order.items)) {
                 order.items.forEach(item => {
@@ -458,28 +474,21 @@
                     if (item.complements && Object.keys(item.complements).length > 0) {
                         for (const groupName in item.complements) {
                             if (item.complements[groupName] && Array.isArray(item.complements[groupName])) {
-                                const optionsHtml = item.complements[groupName].map(comp => `
-                                    <div style="display: flex; justify-content: space-between; font-size: 11px;">
-                                        <span>- ${comp.name}</span>
-                                        ${comp.price > 0 ? `<span>(+R$ ${comp.price.toFixed(2).replace('.', ',')})</span>` : ''}
-                                    </div>
-                                `).join('');
-                                complementsHtml += `
-                                    <div style="margin-top: 5px; padding-left: 10px;">
-                                        <div style="font-weight: bold; font-size: 11px; color: #555;">${groupName}:</div>
-                                        ${optionsHtml}
-                                    </div>
-                                `;
+                                complementsHtml += `<div style="margin-top: 5px; padding-left: 10px;"><strong>${groupName}:</strong>`;
+                                complementsHtml += item.complements[groupName].map(comp => 
+                                    `<div style="margin-left: 10px;">- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</div>`
+                                ).join('');
+                                complementsHtml += `</div>`;
                             }
                         }
                     }
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
                     const prodName = item.product ? item.product.name : 'Produto';
                     orderItemsHtml += `
-                        <div style="font-size: 12px; margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 6px;">
+                        <div style="margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 8px;">
                             <div style="display: flex; justify-content: space-between;">
-                                <span style="font-weight: bold;">${item.quantity}x ${prodName}</span>
-                                <span style="font-weight: bold;">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
+                                <strong>${item.quantity}x ${prodName}</strong>
+                                <strong>R$ ${itemPrice.toFixed(2).replace('.', ',')}</strong>
                             </div>
                             ${complementsHtml}
                         </div>
@@ -487,62 +496,48 @@
                 });
             }
 
-            let deliveryFee = 0;
-            if (typeof order.deliveryFee !== 'undefined') deliveryFee = Number(order.deliveryFee);
-            else if (typeof order.taxaEntrega !== 'undefined') deliveryFee = Number(order.taxaEntrega);
-            
+            let deliveryFee = order.taxaEntrega || order.deliveryFee || 0;
             let deliveryFeeHtml = deliveryFee > 0 ? `R$ ${deliveryFee.toFixed(2).replace('.', ',')}` : 'Grátis';
             const totalGeral = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
-            
             const clientName = order.customer ? order.customer.name : 'N/A';
             const clientPhone = order.customer ? order.customer.phone : 'N/A';
             const clientAddress = order.customer ? `${order.customer.address || ''}, ${order.customer.number || ''}` : 'Não informado';
-            const orderDate = order.date || new Date(order.createdAt).toLocaleString('pt-BR') || 'Data não informada';
+            const orderDate = order.date || formatDate(order.createdAt);
         
             const printContent = `
-                <div class="print-area" style="padding: 10px; max-width: 300px; margin: 0 auto; line-height: 1.4; font-family: sans-serif;">
+                <div class="print-area" style="padding: 10px; max-width: 300px; margin: 0 auto; font-family: Arial, sans-serif;">
                     <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
-                        ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 60px; margin: 0 auto 5px; display:block;"/>` : ''}
-                        <h1 style="font-size: 18px; font-weight: bold; margin: 0;">${restaurantProfile.name || 'Delivery'}</h1>
-                        ${restaurantProfile.phone ? `<p style="font-size: 11px; margin: 3px 0 0;">Tel: ${restaurantProfile.phone}</p>` : ''}
+                        ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 60px; margin: 0 auto 5px;"/>` : ''}
+                        <h1 style="font-size: 18px; margin: 0;">${restaurantProfile.name || 'Delivery'}</h1>
+                        ${restaurantProfile.phone ? `<p style="font-size: 11px;">Tel: ${restaurantProfile.phone}</p>` : ''}
+                    </div>
+                    <h2 style="font-size: 14px; text-align: center;">Pedido #${order.id.slice(-6)}</h2>
+                    <p style="text-align: center; font-size: 10px; color: #666;">${orderDate}</p>
+                    
+                    <div style="margin: 10px 0; padding: 8px; border: 1px solid #ddd; font-size: 11px;">
+                        <strong>Cliente:</strong> ${clientName}<br>
+                        <strong>Telefone:</strong> ${clientPhone}<br>
+                        <strong>Endereço:</strong> ${clientAddress}
                     </div>
                     
-                    <h2 style="font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 12px;">Pedido #${order.id.slice(-6)}</h2>
-                    <p style="text-align: center; font-size: 10px; color: #666; margin-top: -10px; margin-bottom: 12px;">${orderDate}</p>
-                    
-                    <div style="margin-bottom: 12px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px;">
-                        <h3 style="font-size: 12px; font-weight: bold; margin-top: 0; margin-bottom: 5px;">Cliente:</h3>
-                        <p style="margin: 2px 0;"><strong>Nome:</strong> ${clientName}</p>
-                        <p style="margin: 2px 0;"><strong>Tel:</strong> ${clientPhone}</p>
-                        <p style="margin: 2px 0;"><strong>End:</strong> ${clientAddress}</p>
-                        ${order.customer && order.customer.complement ? `<p style="margin: 2px 0;"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
-                        ${order.customer && order.customer.reference ? `<p style="margin: 2px 0;"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
-                    </div>
-        
-                    <div style="margin-bottom: 12px;">
-                        <h3 style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Itens:</h3>
+                    <div style="margin: 10px 0;">
+                        <strong>Itens:</strong>
                         ${orderItemsHtml}
                     </div>
-        
-                    <div style="border-top: 2px solid #333; padding-top: 8px; margin-top: 12px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px;">
-                            <span>Taxa de Entrega:</span>
-                            <span>${deliveryFeeHtml}</span>
+                    
+                    <div style="border-top: 1px solid #333; padding-top: 8px; margin-top: 10px;">
+                        <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                            <span>Taxa de entrega:</span> <span>${deliveryFeeHtml}</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #aaa;">
-                            <span>TOTAL:</span>
-                            <span>R$ ${totalGeral}</span>
+                        <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 5px;">
+                            <span>TOTAL:</span> <span>R$ ${totalGeral}</span>
                         </div>
-                        <p style="font-size: 11px; margin-top: 8px; margin-bottom: 0;"><strong>Pagamento:</strong> ${order.paymentMethod || 'A combinar'}</p>
-                    </div>
-        
-                    <div style="text-align: center; margin-top: 20px; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 5px;">
-                        <p style="margin:0;">Impresso em: ${new Date().toLocaleString()}</p>
+                        <p style="font-size: 11px; margin-top: 8px;"><strong>Pagamento:</strong> ${order.paymentMethod || 'A combinar'}</p>
                     </div>
                 </div>
             `;
         
-            printDocument.write(`
+            printWindow.document.write(`
                 <!DOCTYPE html>
                 <html>
                 <head>
@@ -552,104 +547,124 @@
                         body { font-family: Arial, sans-serif; padding: 10px; }
                         @media print {
                             @page { size: auto; margin: 5mm; }
-                            body { margin: 0; padding: 0; }
                         }
                     </style>
                 </head>
                 <body>${printContent}</body>
                 </html>
             `);
-            printDocument.close();
+            printWindow.document.close();
             printWindow.focus();
             setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
         }
 
-        // ==================== INICIALIZAÇÃO E EVENTOS ====================
+        // ==================== EVENTOS ====================
+        
+        function handleOrderActions(e) {
+            const target = e.target;
+            
+            // Botão Despachar
+            if (target.classList.contains('dispatch-order-btn') && !target.disabled) {
+                e.stopPropagation();
+                const orderId = target.getAttribute('data-order-id');
+                if (orderId) {
+                    showConfirmationModal('Despachar Pedido', 'Confirma que o pedido saiu para entrega?', orderId, 'dispatch');
+                }
+                return;
+            }
+            
+            // Botão Finalizar
+            if (target.classList.contains('finish-order-btn')) {
+                e.stopPropagation();
+                const orderId = target.getAttribute('data-order-id');
+                if (orderId) {
+                    showConfirmationModal('Finalizar Pedido', 'Confirma que este pedido foi concluído?', orderId, 'finish');
+                }
+                return;
+            }
+            
+            // Botão Excluir
+            if (target.classList.contains('remove-order-btn')) {
+                e.stopPropagation();
+                const orderId = target.getAttribute('data-order-id');
+                if (orderId) {
+                    showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir o pedido #${orderId.slice(-6)}? Esta ação não pode ser desfeita.`, orderId, 'remove');
+                }
+                return;
+            }
+            
+            // Botão Imprimir
+            if (target.classList.contains('print-order-btn')) {
+                e.stopPropagation();
+                const orderId = target.getAttribute('data-order-id');
+                if (orderId) {
+                    printOrder(orderId);
+                }
+                return;
+            }
+            
+            // Expandir/Recolher detalhes (clicar no card)
+            const orderCard = target.closest('[data-order-id]');
+            if (orderCard) {
+                const details = orderCard.querySelector('.order-details');
+                if (details) {
+                    details.classList.toggle('hidden');
+                }
+            }
+        }
+        
+        // Executar ação após confirmação
+        async function executeConfirmedAction() {
+            if (currentActionType === 'dispatch' && currentActionOrderId) {
+                await dispatchOrder(currentActionOrderId);
+            } else if (currentActionType === 'finish' && currentActionOrderId) {
+                await finishOrder(currentActionOrderId);
+            } else if (currentActionType === 'remove' && currentActionOrderId) {
+                await removeOrder(currentActionOrderId);
+            }
+            currentActionOrderId = null;
+            currentActionType = null;
+            toggleModal(confirmationModal, false);
+        }
+
+        // ==================== INICIALIZAÇÃO ====================
         
         window.addEventListener('DOMContentLoaded', async () => {
             await loadProfileData();
             await loadOrdersFromFirebase();
-            setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
         });
 
-        // Botão de atualizar manual
         refreshBtn.addEventListener('click', async () => {
             showMessage('🔄 Atualizando pedidos...', 'blue');
             await loadOrdersFromFirebase();
         });
 
-        // LISTENER PRINCIPAL DE CLIQUE (funciona para todos os botões)
-        function handleListClicks(e) {
-            const orderDiv = e.target.closest('[data-order-id]');
-            if (!orderDiv) return;
-
-            const orderId = orderDiv.dataset.orderId;
-            
-            // Botão Despachar
-            if (e.target.closest('.dispatch-order-btn') && !e.target.closest('.dispatch-order-btn').disabled) {
-                e.stopPropagation();
-                showConfirmationModal('Despachar Pedido', 'Confirma que o pedido saiu para entrega?', () => dispatchOrder(orderId));
-                return;
-            }
-            
-            // Botão Finalizar
-            if (e.target.closest('.finish-order-btn')) {
-                e.stopPropagation();
-                showConfirmationModal('Finalizar Pedido', 'Confirma que este pedido foi concluído?', () => finishOrder(orderId));
-                return;
-            }
-            
-            // Botão Excluir
-            if (e.target.closest('.remove-order-btn')) {
-                e.stopPropagation();
-                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}? Esta ação não pode ser desfeita.`, () => removeOrder(orderId));
-                return;
-            }
-
-            // Botão Imprimir
-            if (e.target.closest('.print-order-btn')) {
-                e.stopPropagation();
-                printOrder(orderId);
-                return;
-            }
-
-            // Expandir/Recolher detalhes
-            const details = orderDiv.querySelector('.order-details');
-            if (details) {
-                details.classList.toggle('hidden');
-            }
-        }
-
-        myOrdersList.addEventListener('click', handleListClicks);
-        finalizedOrdersList.addEventListener('click', handleListClicks);
+        // Delegar eventos
+        myOrdersList.addEventListener('click', handleOrderActions);
+        finalizedOrdersList.addEventListener('click', handleOrderActions);
         
-        cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
-        confirmActionBtn.addEventListener('click', () => {
-            if (confirmationCallback) {
-                confirmationCallback();
-                confirmationCallback = null;
-            }
+        cancelConfirmationBtn.addEventListener('click', () => {
             toggleModal(confirmationModal, false);
+            currentActionOrderId = null;
+            currentActionType = null;
         });
-
+        
+        confirmActionBtn.addEventListener('click', executeConfirmedAction);
+        
         // Monitorar novos pedidos em tempo real
+        let isFirstLoad = true;
         let lastOrderCount = 0;
         
         onValue(ordersRef, async (snapshot) => {
             const data = snapshot.val();
             const currentCount = data ? Object.keys(data).length : 0;
             
-            // Verificar se tem pedido novo
             if (!isFirstLoad && currentCount > lastOrderCount) {
                 showNewOrderNotification();
-                // Recarregar para mostrar o novo pedido
-                await loadOrdersFromFirebase();
             }
             
             lastOrderCount = currentCount;
             isFirstLoad = false;
-            
-            // Sempre recarregar os dados quando houver mudança
             await loadOrdersFromFirebase();
         });
     </script>
