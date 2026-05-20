@@ -21,19 +21,9 @@
             to { opacity: 1; transform: scale(1); }
         }
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            .print-area, .print-area * {
-                visibility: visible;
-            }
-            .print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                font-family: 'Inter', sans-serif;
-            }
+            body * { visibility: hidden; }
+            .print-area, .print-area * { visibility: visible; }
+            .print-area { position: absolute; left: 0; top: 0; width: 100%; font-family: 'Inter', sans-serif; }
         }
         .notification-box {
             position: fixed;
@@ -49,38 +39,18 @@
             opacity: 0;
             transition: opacity 0.5s ease-in-out;
         }
-        .notification-box.show {
-            opacity: 1;
-        }
-        .pedido-pendente {
-            background-color: #fff3e0 !important;
-            border-left: 4px solid #f97316 !important;
-        }
-        .pedido-despachado {
-            background-color: #e0f2fe !important;
-            border-left: 4px solid #3b82f6 !important;
-        }
-        .pedido-finalizado {
-            background-color: #f0fdf4 !important;
-            border-left: 4px solid #22c55e !important;
-        }
-        .order-card {
-            transition: all 0.3s ease;
-        }
-        .order-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-        }
-        .btn-desabilitado {
-            opacity: 0.6;
-            cursor: not-allowed !important;
-        }
+        .notification-box.show { opacity: 1; }
+        .pedido-pendente { background-color: #fff3e0 !important; border-left: 4px solid #f97316 !important; }
+        .pedido-despachado { background-color: #e0f2fe !important; border-left: 4px solid #3b82f6 !important; }
+        .pedido-finalizado { background-color: #f0fdf4 !important; border-left: 4px solid #22c55e !important; }
+        .order-card { transition: all 0.3s ease; }
+        .order-card:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        .btn-desabilitado { opacity: 0.6; cursor: not-allowed !important; }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen">
 
     <div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
-
         <div id="my-orders-page">
             <div class="flex items-center justify-between mb-6 border-b pb-4 flex-wrap gap-4">
                 <div class="flex items-center gap-4">
@@ -134,7 +104,7 @@
     <div id="newOrderNotification" class="notification-box hidden">🔔 Novo pedido chegou!</div>
     
     <script type="module">
-        import { db, ref, onValue, update, remove, get, set } from './firebase-config.js';
+        import { db, ref, onValue, update, remove, get } from './firebase-config.js';
 
         const ordersRef = ref(db, 'myOrders');
 
@@ -143,6 +113,10 @@
         let restaurantProfile = {};
         let currentActionOrderId = null;
         let currentActionType = null;
+        
+        // Controle de IDs para notificação
+        let knownOrderIds = new Set();
+        let isFirstLoad = true;
         
         const myOrdersList = document.getElementById('my-orders-list');
         const finalizedOrdersList = document.getElementById('finalized-orders-list');
@@ -181,13 +155,17 @@
             toggleModal(confirmationModal, true);
         }
         
+        function playNewOrderSound() {
+            try {
+                const audio = new Audio('som.mp3');
+                audio.play().catch(e => console.log("Áudio não reproduzido"));
+            } catch (e) { console.log("Áudio bloqueado."); }
+        }
+        
         function showNewOrderNotification() {
             newOrderNotification.classList.remove('hidden');
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
-            try {
-                const notificationSound = new Audio('som.mp3');
-                notificationSound.play().catch(e => console.log("Áudio não reproduzido"));
-            } catch (e) { console.log("Áudio bloqueado."); }
+            playNewOrderSound();
             setTimeout(() => {
                 newOrderNotification.classList.remove('show');
                 setTimeout(() => { newOrderNotification.classList.add('hidden'); }, 500);
@@ -210,10 +188,12 @@
         }
 
         function buildOrderCard(order, isActive = true) {
-            // Montar itens do pedido
+            // Garantir que items existe e é array
+            const items = order.items && Array.isArray(order.items) ? order.items : [];
+            
             let itemsHtml = '';
-            if (order.items && Array.isArray(order.items)) {
-                order.items.forEach((item) => {
+            if (items.length > 0) {
+                items.forEach((item) => {
                     let complementsHtml = '';
                     if (item.complements && Object.keys(item.complements).length > 0) {
                         for (const groupName in item.complements) {
@@ -248,7 +228,6 @@
             const currentStatus = order.status || 'Pendente';
             
             if (isActive) {
-                // Botão Despachar (só mostra se estiver Pendente)
                 if (currentStatus === 'Pendente') {
                     actionButtonsHtml += `
                         <button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-blue-600 transition-colors shadow-sm" data-order-id="${orderId}">
@@ -257,13 +236,12 @@
                     `;
                 } else if (currentStatus === 'Saiu para entrega') {
                     actionButtonsHtml += `
-                        <button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1.5 px-3 rounded-lg text-sm cursor-not-allowed btn-desabilitado" disabled data-order-id="${orderId}">
+                        <button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1.5 px-3 rounded-lg text-sm cursor-not-allowed btn-desabilitado" disabled>
                             ✅ Já Despachado
                         </button>
                     `;
                 }
                 
-                // Botão Finalizar (só mostra se não estiver finalizado)
                 if (currentStatus !== 'Finalizado') {
                     actionButtonsHtml += `
                         <button class="finish-order-btn bg-green-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-green-600 transition-colors shadow-sm" data-order-id="${orderId}">
@@ -273,21 +251,15 @@
                 }
             }
             
-            // Botão Imprimir (para todos)
             actionButtonsHtml += `
                 <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded-lg text-sm transition-colors shadow-sm" data-order-id="${orderId}">
                     🖨️ Imprimir
                 </button>
-            `;
-            
-            // Botão Excluir (para todos)
-            actionButtonsHtml += `
                 <button class="remove-order-btn bg-red-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-red-600 transition-colors shadow-sm" data-order-id="${orderId}">
                     🗑️ Excluir
                 </button>
             `;
 
-            // Dados do cliente
             const clientName = order.customer ? order.customer.name : 'Cliente não identificado';
             const clientPhone = order.customer ? order.customer.phone : '---';
             const clientAddress = order.customer ? `${order.customer.address || ''}, ${order.customer.number || ''}` : 'Endereço não informado';
@@ -295,14 +267,12 @@
             const totalValue = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
             const orderDate = order.date || formatDate(order.createdAt);
             
-            // Badge de status
             let statusBadge = '';
             if (currentStatus === 'Pendente') statusBadge = '<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">⏳ Pendente</span>';
             else if (currentStatus === 'Saiu para entrega') statusBadge = '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">🚚 Saiu para entrega</span>';
             else if (currentStatus === 'Finalizado') statusBadge = '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">✅ Finalizado</span>';
             else statusBadge = `<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">${currentStatus}</span>`;
             
-            // Classe CSS baseada no status
             let cardClass = 'bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden order-card';
             if (currentStatus === 'Pendente') cardClass += ' pedido-pendente';
             else if (currentStatus === 'Saiu para entrega') cardClass += ' pedido-despachado';
@@ -385,30 +355,23 @@
         
         async function dispatchOrder(orderId) {
             try {
-                // Usar ref diretamente com o ID e fazer update apenas do status
                 const orderRef = ref(db, `myOrders/${orderId}`);
-                await update(orderRef, { 
-                    status: "Saiu para entrega",
-                    dispatchedAt: Date.now()
-                });
+                await update(orderRef, { status: "Saiu para entrega" });
                 showMessage('🚚 Pedido despachado com sucesso!', 'blue');
             } catch (err) {
                 console.error('Erro ao despachar:', err);
-                showMessage('Erro ao despachar pedido: ' + err.message, 'error');
+                showMessage('Erro ao despachar: ' + err.message, 'error');
             }
         }
 
         async function finishOrder(orderId) {
             try {
                 const orderRef = ref(db, `myOrders/${orderId}`);
-                await update(orderRef, { 
-                    status: "Finalizado",
-                    finishedAt: Date.now()
-                });
+                await update(orderRef, { status: "Finalizado" });
                 showMessage('✅ Pedido finalizado com sucesso!', 'success');
             } catch (err) {
                 console.error('Erro ao finalizar:', err);
-                showMessage('Erro ao finalizar pedido: ' + err.message, 'error');
+                showMessage('Erro ao finalizar: ' + err.message, 'error');
             }
         }
         
@@ -419,7 +382,7 @@
                 showMessage('🗑️ Pedido excluído permanentemente!', 'success');
             } catch (err) {
                 console.error('Erro ao excluir:', err);
-                showMessage('Erro ao excluir pedido: ' + err.message, 'error');
+                showMessage('Erro ao excluir: ' + err.message, 'error');
             }
         }
         
@@ -427,13 +390,16 @@
         function updateOrdersList(data) {
             const activeOrders = [];
             const finishedOrders = [];
+            const currentOrderIds = new Set();
             
             if (data) {
                 Object.keys(data).forEach(key => {
                     const order = data[key];
                     if (order) {
+                        currentOrderIds.add(key);
                         const formattedOrder = { id: key, ...order };
                         const status = order.status || 'Pendente';
+                        
                         if (status === 'Finalizado') {
                             finishedOrders.push(formattedOrder);
                         } else {
@@ -443,13 +409,24 @@
                 });
             }
             
-            // Ordenar: mais recentes primeiro
+            // Verificar NOVOS pedidos (IDs que não existiam antes)
+            const hasNewOrder = !isFirstLoad && Array.from(currentOrderIds).some(id => !knownOrderIds.has(id));
+            
+            // Atualizar IDs conhecidos
+            knownOrderIds = currentOrderIds;
+            
+            // Ordenar
             activeOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
             finishedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
             
             myOrders = activeOrders;
             finalizedOrders = finishedOrders;
             renderMyOrdersPage();
+            
+            // Só notificar se for um pedido NOVO (não atualização de status)
+            if (hasNewOrder) {
+                showNewOrderNotification();
+            }
         }
         
         async function loadOrdersFromFirebase() {
@@ -457,6 +434,7 @@
                 const snapshot = await get(ordersRef);
                 const data = snapshot.val();
                 updateOrdersList(data);
+                if (isFirstLoad) isFirstLoad = false;
             } catch (err) {
                 console.error('Erro ao carregar pedidos:', err);
                 showMessage('Erro ao carregar pedidos: ' + err.message, 'error');
@@ -466,19 +444,21 @@
         function printOrder(orderId) {
             const order = myOrders.find(o => o.id === orderId) || finalizedOrders.find(o => o.id === orderId);
             if (!order) {
-                showMessage('Pedido não encontrado para impressão.', 'error');
+                showMessage('Pedido não encontrado.', 'error');
                 return;
             }
         
             const printWindow = window.open('', '_blank');
             if (!printWindow) {
-                showMessage('Habilite os pop-ups do navegador para imprimir!', 'error');
+                showMessage('Habilite os pop-ups!', 'error');
                 return;
             }
             
             let orderItemsHtml = '';
-            if (order.items && Array.isArray(order.items)) {
-                order.items.forEach(item => {
+            const items = order.items && Array.isArray(order.items) ? order.items : [];
+            
+            if (items.length > 0) {
+                items.forEach(item => {
                     let complementsHtml = '';
                     if (item.complements && Object.keys(item.complements).length > 0) {
                         for (const groupName in item.complements) {
@@ -503,10 +483,11 @@
                         </div>
                     `;
                 });
+            } else {
+                orderItemsHtml = '<p>Nenhum item encontrado.</p>';
             }
 
             let deliveryFee = order.taxaEntrega || order.deliveryFee || 0;
-            let deliveryFeeHtml = deliveryFee > 0 ? `R$ ${deliveryFee.toFixed(2).replace('.', ',')}` : 'Grátis';
             const totalGeral = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
             const clientName = order.customer ? order.customer.name : 'N/A';
             const clientPhone = order.customer ? order.customer.phone : 'N/A';
@@ -536,7 +517,7 @@
                     
                     <div style="border-top: 1px solid #333; padding-top: 8px; margin-top: 10px;">
                         <div style="display: flex; justify-content: space-between; font-size: 11px;">
-                            <span>Taxa de entrega:</span> <span>${deliveryFeeHtml}</span>
+                            <span>Taxa de entrega:</span> <span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span>
                         </div>
                         <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 5px;">
                             <span>TOTAL:</span> <span>R$ ${totalGeral}</span>
@@ -554,9 +535,7 @@
                     <style>
                         * { margin: 0; padding: 0; box-sizing: border-box; }
                         body { font-family: Arial, sans-serif; padding: 10px; }
-                        @media print {
-                            @page { size: auto; margin: 5mm; }
-                        }
+                        @media print { @page { size: auto; margin: 5mm; } }
                     </style>
                 </head>
                 <body>${printContent}</body>
@@ -572,7 +551,6 @@
         function handleOrderActions(e) {
             const target = e.target;
             
-            // Botão Despachar
             if (target.classList.contains('dispatch-order-btn') && !target.disabled) {
                 e.stopPropagation();
                 const orderId = target.getAttribute('data-order-id');
@@ -582,7 +560,6 @@
                 return;
             }
             
-            // Botão Finalizar
             if (target.classList.contains('finish-order-btn')) {
                 e.stopPropagation();
                 const orderId = target.getAttribute('data-order-id');
@@ -592,37 +569,29 @@
                 return;
             }
             
-            // Botão Excluir
             if (target.classList.contains('remove-order-btn')) {
                 e.stopPropagation();
                 const orderId = target.getAttribute('data-order-id');
                 if (orderId) {
-                    showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir o pedido #${orderId.slice(-6)}? Esta ação não pode ser desfeita.`, orderId, 'remove');
+                    showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir o pedido #${orderId.slice(-6)}?`, orderId, 'remove');
                 }
                 return;
             }
             
-            // Botão Imprimir
             if (target.classList.contains('print-order-btn')) {
                 e.stopPropagation();
                 const orderId = target.getAttribute('data-order-id');
-                if (orderId) {
-                    printOrder(orderId);
-                }
+                if (orderId) printOrder(orderId);
                 return;
             }
             
-            // Expandir/Recolher detalhes (clicar no card)
             const orderCard = target.closest('[data-order-id]');
             if (orderCard) {
                 const details = orderCard.querySelector('.order-details');
-                if (details) {
-                    details.classList.toggle('hidden');
-                }
+                if (details) details.classList.toggle('hidden');
             }
         }
         
-        // Executar ação após confirmação
         async function executeConfirmedAction() {
             if (currentActionType === 'dispatch' && currentActionOrderId) {
                 await dispatchOrder(currentActionOrderId);
@@ -641,14 +610,14 @@
         window.addEventListener('DOMContentLoaded', async () => {
             await loadProfileData();
             await loadOrdersFromFirebase();
+            isFirstLoad = false;
         });
 
         refreshBtn.addEventListener('click', async () => {
-            showMessage('🔄 Atualizando pedidos...', 'blue');
+            showMessage('🔄 Atualizando...', 'blue');
             await loadOrdersFromFirebase();
         });
 
-        // Delegar eventos
         myOrdersList.addEventListener('click', handleOrderActions);
         finalizedOrdersList.addEventListener('click', handleOrderActions);
         
@@ -661,14 +630,9 @@
         confirmActionBtn.addEventListener('click', executeConfirmedAction);
         
         // Monitorar mudanças em tempo real
-        let isFirstLoad = true;
-        
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
             updateOrdersList(data);
-            if (isFirstLoad) {
-                isFirstLoad = false;
-            }
         });
     </script>
 </body>
