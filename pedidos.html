@@ -34,9 +34,6 @@
                 width: 100%;
                 font-family: 'Inter', sans-serif;
             }
-            .print-area h1, .print-area h2, .print-area h3, .print-area h4 {
-                color: #000;
-            }
         }
         .notification-box {
             position: fixed;
@@ -61,6 +58,10 @@
         .dispatched-order-highlight {
             background-color: #e0f2fe !important;
         }
+        .btn-disabled {
+            opacity: 0.6;
+            cursor: not-allowed !important;
+        }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen">
@@ -78,11 +79,18 @@
                 <span class="bg-amber-100 text-amber-800 font-semibold px-4 py-1.5 rounded-full text-sm">Monitor Ativo</span>
             </div>
             
+            <div class="flex gap-4 mb-6">
+                <button id="refreshBtn" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    Atualizar
+                </button>
+            </div>
+
             <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
                 <span class="h-3 w-3 rounded-full bg-orange-500 animate-pulse"></span> Pedidos em Andamento
             </h2>
             <div id="my-orders-list" class="space-y-4 mb-10">
-                <p class="text-center text-gray-500 py-4">Buscando novos pedidos no Firebase...</p>
+                <p class="text-center text-gray-500 py-4">Carregando pedidos...</p>
             </div>
 
             <div class="mt-12 pt-6 border-t border-gray-200">
@@ -90,7 +98,7 @@
                     <span class="h-3 w-3 rounded-full bg-green-500"></span> Finalizados / Concluídos
                 </h2>
                 <div id="finalized-orders-list" class="space-y-3 opacity-75">
-                    <p class="text-sm text-gray-400 italic">Nenhum pedido finalizado nesta sessão.</p>
+                    <p class="text-sm text-gray-400 italic">Nenhum pedido finalizado.</p>
                 </div>
             </div>
         </div>
@@ -109,7 +117,7 @@
         </div>
     </div>
 
-    <div id="newOrderNotification" class="notification-box hidden">Novo pedido chegou!</div>
+    <div id="newOrderNotification" class="notification-box hidden">🔔 Novo pedido chegou!</div>
     
     <script type="module">
         import { db, ref, onValue, update, remove, get } from './firebase-config.js';
@@ -127,6 +135,7 @@
 
         const myOrdersList = document.getElementById('my-orders-list');
         const finalizedOrdersList = document.getElementById('finalized-orders-list');
+        const refreshBtn = document.getElementById('refreshBtn');
         const messageBox = document.getElementById('messageBox');
         const confirmationModal = document.getElementById('confirmationModal');
         const confirmationModalTitle = document.getElementById('confirmationModalTitle');
@@ -142,7 +151,6 @@
             else if (type === 'error') messageBox.classList.add('bg-red-500');
             else if (type === 'blue') messageBox.classList.add('bg-blue-500');
             else messageBox.classList.add('bg-yellow-500');
-            
             messageBox.classList.remove('hidden');
             setTimeout(() => { messageBox.classList.add('hidden'); }, 3000);
         }
@@ -164,7 +172,7 @@
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
             try {
                 const notificationSound = new Audio('som.mp3');
-                notificationSound.play();
+                notificationSound.play().catch(e => console.log("Áudio não reproduzido"));
             } catch (e) { console.log("Áudio bloqueado."); }
             setTimeout(() => {
                 newOrderNotification.classList.remove('show');
@@ -175,6 +183,9 @@
         function highlightNewOrder(orderId) {
             const orderElement = myOrdersList.querySelector(`[data-order-id="${orderId}"]`);
             if (orderElement) orderElement.classList.add('new-order-highlight');
+            setTimeout(() => {
+                if (orderElement) orderElement.classList.remove('new-order-highlight');
+            }, 10000);
         }
 
         async function loadProfileData() {
@@ -182,7 +193,7 @@
                 const profileRef = ref(db, 'restaurantProfile');
                 const snapshot = await get(profileRef);
                 if (snapshot.exists()) restaurantProfile = snapshot.val();
-                else restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
+                else restaurantProfile = {};
             } catch (e) { restaurantProfile = {}; }
         }
 
@@ -193,19 +204,23 @@
                     let complementsHtml = '';
                     if (item.complements && Object.keys(item.complements).length > 0) {
                         for (const groupName in item.complements) {
-                            complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
-                            complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
-                            complementsHtml += item.complements[groupName].map(comp => `<li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>`).join('');
-                            complementsHtml += `</ul>`;
+                            if (item.complements[groupName] && Array.isArray(item.complements[groupName])) {
+                                complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
+                                complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
+                                complementsHtml += item.complements[groupName].map(comp => 
+                                    `<li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>`
+                                ).join('');
+                                complementsHtml += `</ul>`;
+                            }
                         }
                     }
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
                     const prodName = item.product ? item.product.name : 'Produto';
                     itemsHtml += `
-                        <li class="text-sm text-gray-600">
+                        <li class="text-sm text-gray-600 border-b border-gray-100 pb-2 mb-2">
                             <div class="flex justify-between items-center">
-                                <span>${item.quantity}x ${prodName}</span>
-                                <span class="font-bold">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
+                                <span class="font-medium">${item.quantity}x ${prodName}</span>
+                                <span class="font-bold text-gray-800">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
                             </div>
                             ${complementsHtml}
                         </li>
@@ -217,60 +232,77 @@
 
             let actionButtonsHtml = '';
             if (isActive) {
+                const isDispatched = order.status === "Saiu para entrega" || order.status === "Despachado";
+                const isDelivered = order.status === "Entregue";
+                
                 let dispatchBtnHtml = '';
-                if (order.status === "Saiu para entrega" || order.status === "Despachado") {
-                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1 px-3 rounded-full text-sm cursor-not-allowed" disabled>✓ Despachado</button>`;
-                } else if (order.status === "Entregue") {
-                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-green-100 text-green-700 font-bold py-1 px-3 rounded-full text-sm cursor-not-allowed" disabled>✓ Recebido</button>`;
+                if (isDispatched) {
+                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1.5 px-3 rounded-full text-sm cursor-not-allowed" disabled data-order-id="${order.id}">✅ Despachado</button>`;
+                } else if (isDelivered) {
+                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-green-100 text-green-700 font-bold py-1.5 px-3 rounded-full text-sm cursor-not-allowed" disabled data-order-id="${order.id}">✓ Entregue</button>`;
                 } else {
-                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-blue-600 transition-colors">Despachar</button>`;
+                    dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1.5 px-3 rounded-full text-sm hover:bg-blue-600 transition-colors" data-order-id="${order.id}">🚚 Despachar</button>`;
                 }
+                
                 actionButtonsHtml = `
                     ${dispatchBtnHtml}
-                    <button class="finish-order-btn bg-green-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-green-600 transition-colors">Finalizar Pedido</button>
-                    <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded-full text-sm transition-colors">Imprimir</button>
-                    <button class="remove-order-btn bg-red-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-red-600 transition-colors">Excluir</button>
+                    <button class="finish-order-btn bg-green-500 text-white font-bold py-1.5 px-3 rounded-full text-sm hover:bg-green-600 transition-colors" data-order-id="${order.id}">✓ Finalizar</button>
+                    <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded-full text-sm transition-colors" data-order-id="${order.id}">🖨️ Imprimir</button>
+                    <button class="remove-order-btn bg-red-500 text-white font-bold py-1.5 px-3 rounded-full text-sm hover:bg-red-600 transition-colors" data-order-id="${order.id}">🗑️ Excluir</button>
                 `;
             } else {
                 actionButtonsHtml = `
-                    <span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-medium">Status: ${order.status}</span>
-                    <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-3 rounded-full text-sm transition-colors">Imprimir</button>
-                    <button class="remove-order-btn bg-red-100 text-red-600 font-bold py-1 px-3 rounded-full text-sm hover:bg-red-200 transition-colors">Excluir</button>
+                    <span class="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full font-medium">Status: ${order.status || 'Finalizado'}</span>
+                    <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded-full text-sm transition-colors" data-order-id="${order.id}">🖨️ Imprimir</button>
+                    <button class="remove-order-btn bg-red-100 text-red-600 font-bold py-1.5 px-3 rounded-full text-sm hover:bg-red-200 transition-colors" data-order-id="${order.id}">🗑️ Excluir</button>
                 `;
             }
 
             const totalExibido = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
             const clientName = order.customer ? order.customer.name : 'N/A';
             const clientPhone = order.customer ? order.customer.phone : 'N/A';
-            const clientAddress = order.customer ? `${order.customer.address}, ${order.customer.number || ''}` : 'Não informado';
+            const clientAddress = order.customer ? `${order.customer.address || ''}, ${order.customer.number || ''}` : 'Não informado';
+            const orderDate = order.date || new Date(order.createdAt).toLocaleString('pt-BR') || 'Data não informada';
+            
+            let statusBadge = '';
+            if (order.status === 'Pendente') statusBadge = '<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">⏳ Pendente</span>';
+            else if (order.status === 'Saiu para entrega') statusBadge = '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">🚚 Saiu para entrega</span>';
+            else if (order.status === 'Finalizado') statusBadge = '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">✅ Finalizado</span>';
+            else statusBadge = `<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">${order.status || 'Pendente'}</span>`;
 
             return `
-                <div class="flex justify-between items-center order-header">
-                    <h4 class="text-xl font-bold text-gray-800">Pedido #${order.id.slice(-6)}</h4>
-                    <div class="flex items-center gap-2 flex-wrap justify-end">
-                        <span class="text-sm text-gray-500 hidden md:block">${order.date || ''}</span>
-                        <span class="text-xl font-bold text-green-600">R$ ${totalExibido}</span>
-                        ${actionButtonsHtml}
+                <div class="flex flex-wrap justify-between items-center order-header gap-2">
+                    <div class="flex items-center gap-3">
+                        <h4 class="text-lg font-bold text-gray-800">Pedido #${order.id.slice(-6)}</h4>
+                        ${statusBadge}
                     </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-sm text-gray-500">${orderDate}</span>
+                        <span class="text-xl font-bold text-green-600">R$ ${totalExibido}</span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 mt-2">
+                    ${actionButtonsHtml}
                 </div>
                 <div class="order-details mt-4 pt-4 border-t hidden">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <h5 class="font-bold text-gray-700 mb-1">Dados do Cliente:</h5>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <h5 class="font-bold text-gray-700 mb-2">📋 Dados do Cliente:</h5>
                             <p class="text-sm text-gray-600"><strong>Nome:</strong> ${clientName}</p>
-                            <p class="text-sm text-gray-600"><strong>Tel:</strong> ${clientPhone}</p>
+                            <p class="text-sm text-gray-600"><strong>Telefone:</strong> ${clientPhone}</p>
                             <p class="text-sm text-gray-600"><strong>Endereço:</strong> ${clientAddress}</p>
-                            ${order.customer && order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
-                            ${order.customer && order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
+                            ${order.customer && order.customer.complement ? `<p class="text-sm text-gray-600"><strong>Complemento:</strong> ${order.customer.complement}</p>` : ''}
+                            ${order.customer && order.customer.reference ? `<p class="text-sm text-gray-600"><strong>Referência:</strong> ${order.customer.reference}</p>` : ''}
                         </div>
-                        <div>
-                            <h5 class="font-bold text-gray-700 mb-1">Forma de Pagamento:</h5>
-                            <span class="inline-block bg-green-50 text-green-800 font-bold px-3 py-1 rounded border border-green-200 text-sm">${order.paymentMethod || 'A combinar'}</span>
+                        <div class="bg-gray-50 p-3 rounded-lg">
+                            <h5 class="font-bold text-gray-700 mb-2">💳 Pagamento:</h5>
+                            <span class="inline-block bg-green-100 text-green-800 font-bold px-3 py-1 rounded-full text-sm">${order.paymentMethod || 'A combinar'}</span>
+                            ${order.taxaEntrega ? `<p class="text-sm text-gray-600 mt-2"><strong>Taxa de entrega:</strong> R$ ${order.taxaEntrega.toFixed(2).replace('.', ',')}</p>` : ''}
                         </div>
                     </div>
                     <div class="mb-4">
-                        <h5 class="font-bold text-gray-700 mb-2">Itens do Pedido:</h5>
-                        <ul class="space-y-2 pl-4 border-l-2 border-gray-100">
+                        <h5 class="font-bold text-gray-700 mb-2">🍽️ Itens do Pedido:</h5>
+                        <ul class="space-y-2 pl-2">
                             ${itemsHtml}
                         </ul>
                     </div>
@@ -281,13 +313,13 @@
         function renderMyOrdersPage() {
             myOrdersList.innerHTML = '';
             if (myOrders.length === 0) {
-                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-4">Nenhum pedido ativo em andamento.</p>';
+                myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-8">✅ Nenhum pedido ativo no momento.</p>';
             } else {
                 myOrders.forEach(order => {
                     const orderDiv = document.createElement('div');
-                    let orderClass = 'bg-white p-5 rounded-xl shadow-sm border border-gray-200 cursor-pointer transition-all hover:shadow-md';
-                    if (order.status === 'Novo' || order.status === 'Pendente') orderClass += ' new-order-highlight';
-                    else if (order.status === 'Saiu para entrega' || order.status === 'Despachado') orderClass += ' dispatched-order-highlight';
+                    let orderClass = 'bg-white p-5 rounded-xl shadow-sm border border-gray-200 cursor-pointer transition-all hover:shadow-md mb-4';
+                    if (order.status === 'Pendente') orderClass += ' new-order-highlight';
+                    else if (order.status === 'Saiu para entrega') orderClass += ' dispatched-order-highlight';
                     
                     orderDiv.className = orderClass;
                     orderDiv.dataset.orderId = order.id;
@@ -298,11 +330,11 @@
 
             finalizedOrdersList.innerHTML = '';
             if (finalizedOrders.length === 0) {
-                finalizedOrdersList.innerHTML = '<p class="text-sm text-gray-400 italic">Nenhum pedido finalizado ainda.</p>';
+                finalizedOrdersList.innerHTML = '<p class="text-sm text-gray-400 italic text-center py-4">Nenhum pedido finalizado.</p>';
             } else {
                 finalizedOrders.forEach(order => {
                     const orderDiv = document.createElement('div');
-                    orderDiv.className = 'bg-gray-50 p-4 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors';
+                    orderDiv.className = 'bg-gray-50 p-4 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors mb-3';
                     orderDiv.dataset.orderId = order.id;
                     orderDiv.innerHTML = buildOrderHtml(order, false);
                     finalizedOrdersList.appendChild(orderDiv);
@@ -310,42 +342,97 @@
             }
         }
         
+        // ==================== FUNÇÕES CORRIGIDAS ====================
+        
         async function removeOrder(orderId) {
-            const singleOrderRef = ref(db, `myOrders/${orderId}`);
             try {
+                const singleOrderRef = ref(db, `myOrders/${orderId}`);
                 await remove(singleOrderRef);
-                showMessage('Pedido excluído permanentemente!', 'success');
+                showMessage('🗑️ Pedido excluído permanentemente!', 'success');
+                // Forçar recarregamento dos dados
+                await loadOrdersFromFirebase();
             } catch (err) {
-                showMessage('Erro ao excluir: ' + err.message, 'error');
+                console.error('Erro ao excluir:', err);
+                showMessage('Erro ao excluir pedido: ' + err.message, 'error');
             }
         }
 
         async function dispatchOrder(orderId) {
-            const singleOrderRef = ref(db, `myOrders/${orderId}`);
             try {
-                await update(singleOrderRef, { status: "Saiu para entrega" });
-                showMessage('Pedido despachado com sucesso!', 'blue');
+                const singleOrderRef = ref(db, `myOrders/${orderId}`);
+                await update(singleOrderRef, { 
+                    status: "Saiu para entrega",
+                    dispatchedAt: Date.now()
+                });
+                showMessage('🚚 Pedido despachado com sucesso!', 'blue');
+                // Forçar recarregamento dos dados
+                await loadOrdersFromFirebase();
             } catch (err) {
-                showMessage('Erro ao despachar: ' + err.message, 'error');
+                console.error('Erro ao despachar:', err);
+                showMessage('Erro ao despachar pedido: ' + err.message, 'error');
             }
         }
 
         async function finishOrder(orderId) {
-            const singleOrderRef = ref(db, `myOrders/${orderId}`);
             try {
-                await update(singleOrderRef, { status: "Finalizado" });
-                showMessage('Pedido finalizado com sucesso!', 'success');
+                const singleOrderRef = ref(db, `myOrders/${orderId}`);
+                await update(singleOrderRef, { 
+                    status: "Finalizado",
+                    finishedAt: Date.now()
+                });
+                showMessage('✅ Pedido finalizado com sucesso!', 'success');
+                // Forçar recarregamento dos dados
+                await loadOrdersFromFirebase();
             } catch (err) {
-                showMessage('Erro ao finalizar: ' + err.message, 'error');
+                console.error('Erro ao finalizar:', err);
+                showMessage('Erro ao finalizar pedido: ' + err.message, 'error');
+            }
+        }
+        
+        async function loadOrdersFromFirebase() {
+            try {
+                const snapshot = await get(ordersRef);
+                const data = snapshot.val();
+                let activeOrders = [];
+                let finishedOrders = [];
+                
+                if (data) {
+                    Object.keys(data).forEach(key => {
+                        const order = data[key];
+                        if (order) {
+                            const formattedOrder = { id: key, ...order };
+                            if (order.status === 'Finalizado' || order.status === 'Finalizado (Auto)') {
+                                finishedOrders.push(formattedOrder);
+                            } else {
+                                activeOrders.push(formattedOrder);
+                            }
+                        }
+                    });
+                }
+                
+                // Ordenar: mais recentes primeiro
+                activeOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                finishedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+                
+                myOrders = activeOrders;
+                finalizedOrders = finishedOrders;
+                renderMyOrdersPage();
+            } catch (err) {
+                console.error('Erro ao carregar pedidos:', err);
+                showMessage('Erro ao carregar pedidos: ' + err.message, 'error');
             }
         }
         
         async function autoFinalizeOldOrders() {
             const now = Date.now();
             for (const order of myOrders) {
-                if (order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS) {
-                    const singleOrderRef = ref(db, `myOrders/${order.id}`);
-                    await update(singleOrderRef, { status: 'Finalizado (Auto)' });
+                if (order.status !== 'Finalizado' && order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS) {
+                    try {
+                        const singleOrderRef = ref(db, `myOrders/${order.id}`);
+                        await update(singleOrderRef, { status: 'Finalizado (Auto)' });
+                    } catch (err) {
+                        console.error('Erro ao finalizar automaticamente:', err);
+                    }
                 }
             }
         }
@@ -359,7 +446,7 @@
         
             const printWindow = window.open('', '_blank');
             if (!printWindow) {
-                showMessage('Habilite os pop-ups do navegador para conseguir imprimir!', 'error');
+                showMessage('Habilite os pop-ups do navegador para imprimir!', 'error');
                 return;
             }
             const printDocument = printWindow.document;
@@ -370,24 +457,26 @@
                     let complementsHtml = '';
                     if (item.complements && Object.keys(item.complements).length > 0) {
                         for (const groupName in item.complements) {
-                            const optionsHtml = item.complements[groupName].map(comp => `
-                                <div style="display: flex; justify-content: space-between; font-size: 12px;">
-                                    <span>- ${comp.name}</span>
-                                    ${comp.price > 0 ? `<span>(+R$ ${comp.price.toFixed(2).replace('.', ',')})</span>` : ''}
-                                </div>
-                            `).join('');
-                            complementsHtml += `
-                                <div style="margin-top: 5px; padding-left: 10px;">
-                                    <div style="font-weight: bold; font-size: 12px; color: #555;">${groupName}:</div>
-                                    ${optionsHtml}
-                                </div>
-                            `;
+                            if (item.complements[groupName] && Array.isArray(item.complements[groupName])) {
+                                const optionsHtml = item.complements[groupName].map(comp => `
+                                    <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                                        <span>- ${comp.name}</span>
+                                        ${comp.price > 0 ? `<span>(+R$ ${comp.price.toFixed(2).replace('.', ',')})</span>` : ''}
+                                    </div>
+                                `).join('');
+                                complementsHtml += `
+                                    <div style="margin-top: 5px; padding-left: 10px;">
+                                        <div style="font-weight: bold; font-size: 11px; color: #555;">${groupName}:</div>
+                                        ${optionsHtml}
+                                    </div>
+                                `;
+                            }
                         }
                     }
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
                     const prodName = item.product ? item.product.name : 'Produto';
                     orderItemsHtml += `
-                        <div style="font-size: 14px; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 8px;">
+                        <div style="font-size: 12px; margin-bottom: 8px; border-bottom: 1px dashed #ccc; padding-bottom: 6px;">
                             <div style="display: flex; justify-content: space-between;">
                                 <span style="font-weight: bold;">${item.quantity}x ${prodName}</span>
                                 <span style="font-weight: bold;">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
@@ -407,45 +496,47 @@
             
             const clientName = order.customer ? order.customer.name : 'N/A';
             const clientPhone = order.customer ? order.customer.phone : 'N/A';
-            const clientAddress = order.customer ? `${order.customer.address}, ${order.customer.number || ''}` : 'Não informado';
+            const clientAddress = order.customer ? `${order.customer.address || ''}, ${order.customer.number || ''}` : 'Não informado';
+            const orderDate = order.date || new Date(order.createdAt).toLocaleString('pt-BR') || 'Data não informada';
         
             const printContent = `
-                <div class="print-area" style="padding: 10px; max-width: 280px; margin: 0 auto; line-height: 1.4; font-family: sans-serif;">
+                <div class="print-area" style="padding: 10px; max-width: 300px; margin: 0 auto; line-height: 1.4; font-family: sans-serif;">
                     <div style="text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px;">
-                        ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto 5px; display:block;"/>` : ''}
-                        <h1 style="font-size: 20px; font-weight: bold; margin: 0;">${restaurantProfile.name || 'Tutu Bebidas'}</h1>
-                        ${restaurantProfile.phone ? `<p style="font-size: 12px; margin: 3px 0 0;">Tel: ${restaurantProfile.phone}</p>` : ''}
+                        ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 60px; margin: 0 auto 5px; display:block;"/>` : ''}
+                        <h1 style="font-size: 18px; font-weight: bold; margin: 0;">${restaurantProfile.name || 'Delivery'}</h1>
+                        ${restaurantProfile.phone ? `<p style="font-size: 11px; margin: 3px 0 0;">Tel: ${restaurantProfile.phone}</p>` : ''}
                     </div>
                     
-                    <h2 style="font-size: 15px; font-weight: bold; text-align: center; margin-bottom: 15px;">Pedido #${order.id.slice(-6)}</h2>
+                    <h2 style="font-size: 14px; font-weight: bold; text-align: center; margin-bottom: 12px;">Pedido #${order.id.slice(-6)}</h2>
+                    <p style="text-align: center; font-size: 10px; color: #666; margin-top: -10px; margin-bottom: 12px;">${orderDate}</p>
                     
-                    <div style="margin-bottom: 15px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
-                        <h3 style="font-size: 13px; font-weight: bold; margin-top: 0; margin-bottom: 5px;">Cliente:</h3>
-                        <p style="margin: 0;"><strong>Nome:</strong> ${clientName}</p>
-                        <p style="margin: 0;"><strong>Tel:</strong> ${clientPhone}</p>
-                        <p style="margin: 0;"><strong>End:</strong> ${clientAddress}</p>
-                        ${order.customer && order.customer.complement ? `<p style="margin: 0;"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
-                        ${order.customer && order.customer.reference ? `<p style="margin: 0;"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
+                    <div style="margin-bottom: 12px; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 11px;">
+                        <h3 style="font-size: 12px; font-weight: bold; margin-top: 0; margin-bottom: 5px;">Cliente:</h3>
+                        <p style="margin: 2px 0;"><strong>Nome:</strong> ${clientName}</p>
+                        <p style="margin: 2px 0;"><strong>Tel:</strong> ${clientPhone}</p>
+                        <p style="margin: 2px 0;"><strong>End:</strong> ${clientAddress}</p>
+                        ${order.customer && order.customer.complement ? `<p style="margin: 2px 0;"><strong>Comp:</strong> ${order.customer.complement}</p>` : ''}
+                        ${order.customer && order.customer.reference ? `<p style="margin: 2px 0;"><strong>Ref:</strong> ${order.customer.reference}</p>` : ''}
                     </div>
         
-                    <div style="margin-bottom: 15px;">
-                        <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 5px;">Itens:</h3>
+                    <div style="margin-bottom: 12px;">
+                        <h3 style="font-size: 12px; font-weight: bold; margin-bottom: 5px;">Itens:</h3>
                         ${orderItemsHtml}
                     </div>
         
-                    <div style="border-top: 2px solid #333; padding-top: 8px; margin-top: 15px; font-size: 14px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; color: #555;">
+                    <div style="border-top: 2px solid #333; padding-top: 8px; margin-top: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px;">
                             <span>Taxa de Entrega:</span>
-                            <span style="font-weight: bold;">${deliveryFeeHtml}</span>
+                            <span>${deliveryFeeHtml}</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 4px; border-top: 1px dashed #aaa; padding-top: 4px;">
-                            <span>TOTAL GERAL:</span>
+                        <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: bold; margin-top: 5px; padding-top: 5px; border-top: 1px dashed #aaa;">
+                            <span>TOTAL:</span>
                             <span>R$ ${totalGeral}</span>
                         </div>
-                        <p style="font-size: 13px; margin-top: 8px; margin-bottom: 0;"><strong>Forma de Pagto:</strong> ${order.paymentMethod || 'A combinar'}</p>
+                        <p style="font-size: 11px; margin-top: 8px; margin-bottom: 0;"><strong>Pagamento:</strong> ${order.paymentMethod || 'A combinar'}</p>
                     </div>
         
-                    <div style="text-align: center; margin-top: 25px; font-size: 11px; color: #666; border-top: 1px solid #eee; padding-top: 5px;">
+                    <div style="text-align: center; margin-top: 20px; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 5px;">
                         <p style="margin:0;">Impresso em: ${new Date().toLocaleString()}</p>
                     </div>
                 </div>
@@ -455,11 +546,13 @@
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Impressão de Pedido #${order.id.slice(-6)}</title>
+                    <title>Pedido #${order.id.slice(-6)}</title>
                     <style>
+                        * { margin: 0; padding: 0; box-sizing: border-box; }
+                        body { font-family: Arial, sans-serif; padding: 10px; }
                         @media print {
-                            @page { size: auto; margin: 0mm; }
-                            body { margin: 5mm; }
+                            @page { size: auto; margin: 5mm; }
+                            body { margin: 0; padding: 0; }
                         }
                     </style>
                 </head>
@@ -468,87 +561,63 @@
             `);
             printDocument.close();
             printWindow.focus();
-            setTimeout(() => { printWindow.print(); }, 500);
+            setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
         }
 
+        // ==================== INICIALIZAÇÃO E EVENTOS ====================
+        
         window.addEventListener('DOMContentLoaded', async () => {
             await loadProfileData();
+            await loadOrdersFromFirebase();
             setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
-
-            onValue(ordersRef, (snapshot) => {
-                const data = snapshot.val();
-                let activeOrders = [];
-                let finishedOrders = [];
-                let latestOrder = null;
-
-                const existingOrderIds = new Set(myOrders.map(o => o.id));
-
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        const order = data[key];
-                        if (order) {
-                            const formattedOrder = { id: key, ...order };
-                            if (order.status === 'Finalizado' || order.status === 'Finalizado (Auto)') {
-                                finishedOrders.push(formattedOrder);
-                            } else {
-                                activeOrders.push(formattedOrder);
-                            }
-                        }
-                    });
-                }
-
-                if (!isFirstLoad && activeOrders.length > myOrders.length) {
-                    activeOrders.forEach(order => {
-                        if (!existingOrderIds.has(order.id)) latestOrder = order;
-                    });
-                    if (latestOrder) showNewOrderNotification();
-                }
-
-                myOrders = activeOrders;
-                finalizedOrders = finishedOrders;
-                isFirstLoad = false;
-                renderMyOrdersPage();
-                
-                if (latestOrder) {
-                    highlightNewOrder(latestOrder.id);
-                    setTimeout(() => { printOrder(latestOrder.id); }, 2500);
-                }
-            });
         });
 
+        // Botão de atualizar manual
+        refreshBtn.addEventListener('click', async () => {
+            showMessage('🔄 Atualizando pedidos...', 'blue');
+            await loadOrdersFromFirebase();
+        });
+
+        // LISTENER PRINCIPAL DE CLIQUE (funciona para todos os botões)
         function handleListClicks(e) {
             const orderDiv = e.target.closest('[data-order-id]');
             if (!orderDiv) return;
 
             const orderId = orderDiv.dataset.orderId;
-            if (orderDiv.classList.contains('new-order-highlight')) orderDiv.classList.remove('new-order-highlight');
+            
+            // Botão Despachar
+            if (e.target.closest('.dispatch-order-btn') && !e.target.closest('.dispatch-order-btn').disabled) {
+                e.stopPropagation();
+                showConfirmationModal('Despachar Pedido', 'Confirma que o pedido saiu para entrega?', () => dispatchOrder(orderId));
+                return;
+            }
+            
+            // Botão Finalizar
+            if (e.target.closest('.finish-order-btn')) {
+                e.stopPropagation();
+                showConfirmationModal('Finalizar Pedido', 'Confirma que este pedido foi concluído?', () => finishOrder(orderId));
+                return;
+            }
+            
+            // Botão Excluir
+            if (e.target.closest('.remove-order-btn')) {
+                e.stopPropagation();
+                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}? Esta ação não pode ser desfeita.`, () => removeOrder(orderId));
+                return;
+            }
 
+            // Botão Imprimir
             if (e.target.closest('.print-order-btn')) {
                 e.stopPropagation();
                 printOrder(orderId);
                 return;
             }
-            
-            if (e.target.closest('.remove-order-btn')) {
-                e.stopPropagation();
-                showConfirmationModal('Excluir Pedido', `Tem certeza que deseja excluir permanentemente o pedido #${orderId.slice(-6)}?`, () => removeOrder(orderId));
-                return;
-            }
 
-            if (e.target.closest('.dispatch-order-btn')) {
-                e.stopPropagation();
-                dispatchOrder(orderId);
-                return;
-            }
-
-            if (e.target.closest('.finish-order-btn')) {
-                e.stopPropagation();
-                finishOrder(orderId);
-                return;
-            }
-
+            // Expandir/Recolher detalhes
             const details = orderDiv.querySelector('.order-details');
-            if (details) details.classList.toggle('hidden');
+            if (details) {
+                details.classList.toggle('hidden');
+            }
         }
 
         myOrdersList.addEventListener('click', handleListClicks);
@@ -561,6 +630,27 @@
                 confirmationCallback = null;
             }
             toggleModal(confirmationModal, false);
+        });
+
+        // Monitorar novos pedidos em tempo real
+        let lastOrderCount = 0;
+        
+        onValue(ordersRef, async (snapshot) => {
+            const data = snapshot.val();
+            const currentCount = data ? Object.keys(data).length : 0;
+            
+            // Verificar se tem pedido novo
+            if (!isFirstLoad && currentCount > lastOrderCount) {
+                showNewOrderNotification();
+                // Recarregar para mostrar o novo pedido
+                await loadOrdersFromFirebase();
+            }
+            
+            lastOrderCount = currentCount;
+            isFirstLoad = false;
+            
+            // Sempre recarregar os dados quando houver mudança
+            await loadOrdersFromFirebase();
         });
     </script>
 </body>
