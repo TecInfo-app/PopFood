@@ -13,13 +13,11 @@
             font-family: 'Inter', sans-serif;
             background-color: #f7fafc;
         }
-        /* Estilos personalizados para botões desabilitados, melhorando a UX */
         .disabled-btn {
             background-color: #e5e7eb;
             color: #9ca3af;
             cursor: not-allowed;
         }
-        /* Animação de entrada para os modais */
         .modal-enter {
             animation: fadeIn 0.3s ease-out;
         }
@@ -27,17 +25,13 @@
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
-        
         .product-card {
             transition: transform 0.2s, box-shadow 0.2s;
         }
-        
         .product-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-        
-        /* Estilo do toggle de visibilidade */
         .toggle-switch {
             position: relative;
             display: inline-block;
@@ -77,13 +71,11 @@
         input:checked + .toggle-slider:before {
             transform: translateX(20px);
         }
-
-        /* Estilo da caixa de notificação */
         .notification-box {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            background-color: #4CAF50; /* Verde */
+            background-color: #4CAF50;
             color: white;
             padding: 15px;
             border-radius: 5px;
@@ -97,8 +89,6 @@
         .notification-box.show {
             opacity: 1;
         }
-
-        /* Estilo de impressão */
         @media print {
             body * {
                 visibility: hidden;
@@ -113,9 +103,6 @@
                 width: 100%;
                 font-family: 'Inter', sans-serif;
             }
-            .print-area h1, .print-area h2, .print-area h3, .print-area h4 {
-                color: #000;
-            }
         }
     </style>
 </head>
@@ -126,11 +113,28 @@
         <div id="login-page" class="flex flex-col items-center justify-center min-h-[50vh]">
             <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Login do Master</h1>
             <div class="w-full max-w-sm p-6 bg-gray-50 rounded-xl">
-                <input type="text" id="usernameInput" placeholder="Usuário (master)" value="master" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                <input type="password" id="passwordInput" placeholder="Senha (123)" value="123" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <input type="email" id="usernameInput" placeholder="E-mail (master@exemplo.com)" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <input type="password" id="passwordInput" placeholder="Senha" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
                 <button id="loginBtn" class="w-full bg-sky-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-sky-700 transition-colors duration-200">
                     Entrar
                 </button>
+                <p class="text-center text-sm text-gray-500 mt-4">
+                    Não tem conta? <a href="#" id="showRegisterBtn" class="text-sky-600 hover:underline">Cadastrar</a>
+                </p>
+            </div>
+        </div>
+
+        <div id="register-page" class="hidden flex flex-col items-center justify-center min-h-[50vh]">
+            <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Cadastro Master</h1>
+            <div class="w-full max-w-sm p-6 bg-gray-50 rounded-xl">
+                <input type="email" id="registerEmailInput" placeholder="E-mail" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <input type="password" id="registerPasswordInput" placeholder="Senha (mínimo 6 caracteres)" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                <button id="registerBtn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">
+                    Cadastrar
+                </button>
+                <p class="text-center text-sm text-gray-500 mt-4">
+                    Já tem conta? <a href="#" id="showLoginBtn" class="text-sky-600 hover:underline">Fazer Login</a>
+                </p>
             </div>
         </div>
 
@@ -158,6 +162,10 @@
                     Clientes Cadastrados
                 </a>
             </div>
+            
+            <button id="logoutMasterBtn" class="mt-8 bg-red-500 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-red-600 transition-colors">
+                Sair da Conta
+            </button>
         </div>
         
         <div id="admin-page" class="hidden">
@@ -176,8 +184,7 @@
                         Adicionar Categoria
                     </button>
                 </div>
-                <div id="categoryList" class="flex flex-wrap gap-2">
-                    </div>
+                <div id="categoryList" class="flex flex-wrap gap-2"></div>
             </div>
 
             <div class="mb-8 p-6 bg-gray-50 rounded-xl">
@@ -231,8 +238,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
-            <div id="complementList" class="max-h-[60vh] overflow-y-auto mb-4 p-2 -mx-2">
-                </div>
+            <div id="complementList" class="max-h-[60vh] overflow-y-auto mb-4 p-2 -mx-2"></div>
             <div class="mt-4 p-4 bg-sky-50 rounded-xl">
                 <h4 class="text-xl font-semibold text-gray-700 mb-2">Adicionar Novo Grupo de Complemento</h4>
                 <div class="flex flex-col md:flex-row gap-2 mb-2">
@@ -268,10 +274,7 @@
     </div>
 
     <script type="module">
-	
-	import { auth } from './firebase-config.js';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-
+        import { db, auth, ref, onValue, set, update, remove, push, get, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from './firebase-config.js';
 
         // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
         let allProducts = [];
@@ -282,8 +285,8 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
         let currentImageBase64 = null;
         let localComplements = null;
         let confirmationCallback = null;
+        let currentUser = null;
         
-        // Objeto para armazenar o perfil do restaurante
         let restaurantProfile = {
             logo: null,
             name: '',
@@ -292,32 +295,32 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             address: '',
             email: '',
             hours: '',
-            show: {
-                name: true,
-                description: true,
-                phone: true,
-                address: true,
-                email: true,
-                hours: true
-            }
+            show: { name: true, description: true, phone: true, address: true, email: true, hours: true }
         };
 
         // ======================= REFERÊNCIAS AOS ELEMENTOS DO DOM =======================
-        // Páginas
         const loginPage = document.getElementById('login-page');
+        const registerPage = document.getElementById('register-page');
         const masterMenuPage = document.getElementById('master-menu-page');
         const adminPage = document.getElementById('admin-page');
-        // Botões de Navegação
+        
         const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const showRegisterBtn = document.getElementById('showRegisterBtn');
+        const showLoginBtn = document.getElementById('showLoginBtn');
         const adminBtn = document.getElementById('adminBtn');
         const backToMenuBtnAdmin = document.getElementById('backToMenuBtnAdmin');
+        const logoutMasterBtn = document.getElementById('logoutMasterBtn');
         
-        // Elementos de Categoria (Admin)
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const registerEmailInput = document.getElementById('registerEmailInput');
+        const registerPasswordInput = document.getElementById('registerPasswordInput');
+        
         const categoryNameInput = document.getElementById('categoryNameInput');
         const addCategoryBtn = document.getElementById('addCategoryBtn');
         const categoryList = document.getElementById('categoryList');
 
-        // Elementos de Produto (Admin)
         const productFormTitle = document.getElementById('productFormTitle');
         const productNameInput = document.getElementById('productNameInput');
         const productPdvCodeInput = document.getElementById('productPdvCodeInput');
@@ -332,15 +335,12 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
         const searchProductInput = document.getElementById('searchProductInput');
         const productList = document.getElementById('productList');
         const loadingIndicator = document.getElementById('loadingIndicator');
-        
-        // Elementos de exibição do perfil no menu master
+
         const restaurantInfoMaster = document.getElementById('restaurant-info-master');
         const restaurantLogoMaster = document.getElementById('restaurant-logo-master');
         const restaurantNameMaster = document.getElementById('restaurant-name-master');
         const restaurantDescriptionMaster = document.getElementById('restaurant-description-master');
 
-
-        // Modais
         const messageBox = document.getElementById('messageBox');
         const complementModal = document.getElementById('complementModal');
         const complementProductName = document.getElementById('complementProductName');
@@ -362,112 +362,110 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
         const confirmActionBtn = document.getElementById('confirmActionBtn');
 
         // ======================= FUNÇÕES AUXILIARES =======================
-        // Função para mostrar/esconder uma página
-        function showPage(page) {
-            const pages = [loginPage, masterMenuPage, adminPage];
-            pages.forEach(p => p.classList.add('hidden'));
-            page.classList.remove('hidden');
-            renderRestaurantInfo(page);
-        }
-
-        // Função para mostrar mensagens de feedback (Toast)
         function showMessage(message, type = 'success') {
             messageBox.textContent = message;
             messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500');
-            if (type === 'success') {
-                messageBox.classList.add('bg-green-500');
-            } else if (type === 'error') {
-                messageBox.classList.add('bg-red-500');
-            } else {
-                messageBox.classList.add('bg-yellow-500');
-            }
-            setTimeout(() => {
-                messageBox.classList.add('hidden');
-            }, 3000);
+            if (type === 'success') messageBox.classList.add('bg-green-500');
+            else if (type === 'error') messageBox.classList.add('bg-red-500');
+            else messageBox.classList.add('bg-yellow-500');
+            setTimeout(() => messageBox.classList.add('hidden'), 3000);
         }
 
-        // Função para alternar a exibição de um modal
         function toggleModal(modal, show) {
-            if (show) {
-                modal.classList.remove('hidden');
-            } else {
-                modal.classList.add('hidden');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        function showPage(page) {
+            const pages = [loginPage, registerPage, masterMenuPage, adminPage];
+            pages.forEach(p => p.classList.add('hidden'));
+            page.classList.remove('hidden');
+            if (page === masterMenuPage) loadRestaurantProfile();
+        }
+
+        // ======================= FIREBASE: CARREGAR DADOS =======================
+        async function loadRestaurantProfile() {
+            const profileRef = ref(db, 'restaurantProfile');
+            const snapshot = await get(profileRef);
+            if (snapshot.exists()) {
+                restaurantProfile = snapshot.val();
+                renderRestaurantInfo();
             }
         }
 
-        // ======================= PERSISTÊNCIA DE DADOS COM LOCALSTORAGE =======================
-        // Funções para salvar e carregar dados no localStorage. Isso simula um banco de dados.
-        function saveToLocalStorage(key, data) {
-            localStorage.setItem(key, JSON.stringify(data));
+        function renderRestaurantInfo() {
+            if (restaurantProfile.logo && restaurantLogoMaster) {
+                restaurantLogoMaster.src = restaurantProfile.logo;
+                restaurantLogoMaster.classList.remove('hidden');
+            } else if (restaurantLogoMaster) {
+                restaurantLogoMaster.classList.add('hidden');
+            }
+
+            if (restaurantProfile.show?.name && restaurantProfile.name && restaurantNameMaster) {
+                restaurantNameMaster.textContent = restaurantProfile.name;
+                restaurantNameMaster.classList.remove('hidden');
+            } else if (restaurantNameMaster) {
+                restaurantNameMaster.classList.add('hidden');
+            }
+
+            if (restaurantProfile.show?.description && restaurantProfile.description && restaurantDescriptionMaster) {
+                restaurantDescriptionMaster.textContent = restaurantProfile.description;
+                restaurantDescriptionMaster.classList.remove('hidden');
+            } else if (restaurantDescriptionMaster) {
+                restaurantDescriptionMaster.classList.add('hidden');
+            }
+
+            const hasInfo = (restaurantProfile.name && restaurantProfile.show?.name) || 
+                           (restaurantProfile.description && restaurantProfile.show?.description);
+            if (restaurantInfoMaster) {
+                if (hasInfo) restaurantInfoMaster.classList.remove('hidden');
+                else restaurantInfoMaster.classList.add('hidden');
+            }
         }
 
-        function loadFromLocalStorage(key) {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : [];
-        }
-        
-        function loadAllData() {
-            allCategories = loadFromLocalStorage('allCategories');
-            allProducts = loadFromLocalStorage('allProducts');
-            productComplementsCache = JSON.parse(localStorage.getItem('productComplementsCache')) || {};
-
-            const savedProfile = localStorage.getItem('restaurantProfile');
-            if (savedProfile) {
-                restaurantProfile = JSON.parse(savedProfile);
+        async function loadCategories() {
+            const categoriesRef = ref(db, 'allCategories');
+            const snapshot = await get(categoriesRef);
+            if (snapshot.exists()) {
+                allCategories = snapshot.val();
+            } else {
+                allCategories = [];
             }
             renderCategories();
+        }
+
+        async function loadProducts() {
+            const productsRef = ref(db, 'allProducts');
+            const snapshot = await get(productsRef);
+            if (snapshot.exists()) {
+                allProducts = snapshot.val();
+            } else {
+                allProducts = [];
+            }
             renderProductList(allProducts);
-            renderRestaurantInfo(loginPage);
             loadingIndicator.classList.add('hidden');
         }
 
-        // ======================= FUNÇÕES DA PÁGINA DE PERFIL (APENAS REFERÊNCIA) =======================
-        // A lógica do perfil foi movida para perfil.html.
-        function renderRestaurantInfo(page) {
-            let logoElem, nameElem, descElem;
-            
-            if (page === masterMenuPage) {
-                logoElem = restaurantLogoMaster;
-                nameElem = restaurantNameMaster;
-                descElem = restaurantDescriptionMaster;
+        async function loadComplementsCache() {
+            const complementsRef = ref(db, 'productComplementsCache');
+            const snapshot = await get(complementsRef);
+            if (snapshot.exists()) {
+                productComplementsCache = snapshot.val();
             } else {
-                return;
-            }
-
-            const showRestaurantInfoMaster = restaurantProfile.name || restaurantProfile.description;
-
-            if (page === masterMenuPage) {
-                if (showRestaurantInfoMaster) {
-                    restaurantInfoMaster.classList.remove('hidden');
-                } else {
-                    restaurantInfoMaster.classList.add('hidden');
-                }
-            }
-            
-            if (restaurantProfile.logo && logoElem) {
-                logoElem.src = restaurantProfile.logo;
-                logoElem.classList.remove('hidden');
-            } else if (logoElem) {
-                logoElem.classList.add('hidden');
-            }
-
-            if (restaurantProfile.show.name && restaurantProfile.name && nameElem) {
-                nameElem.textContent = restaurantProfile.name;
-                nameElem.classList.remove('hidden');
-            } else if (nameElem) {
-                nameElem.classList.add('hidden');
-            }
-
-            if (restaurantProfile.show.description && restaurantProfile.description && descElem) {
-                descElem.textContent = restaurantProfile.description;
-                descElem.classList.remove('hidden');
-            } else if (descElem) {
-                descElem.classList.add('hidden');
+                productComplementsCache = {};
             }
         }
 
-        // ======================= FUNÇÕES DA PÁGINA DE ADMIN =======================
-        // ----- CATEGORIAS -----
+        async function loadAllData() {
+            loadingIndicator.classList.remove('hidden');
+            await Promise.all([
+                loadCategories(),
+                loadProducts(),
+                loadComplementsCache()
+            ]);
+        }
+
+        // ======================= FUNÇÕES DE CATEGORIAS =======================
         function renderCategories() {
             categoryList.innerHTML = '';
             productCategorySelect.innerHTML = '<option value="" disabled selected>Selecione uma categoria</option>';
@@ -488,10 +486,9 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
                 option.textContent = category.name;
                 productCategorySelect.appendChild(option);
             });
-            saveToLocalStorage('allCategories', allCategories);
         }
 
-        function addCategory() {
+        async function addCategory() {
             const name = categoryNameInput.value.trim();
             if (name === '') {
                 showMessage('O nome da categoria não pode estar vazio.', 'error');
@@ -501,30 +498,32 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
                 showMessage('Esta categoria já existe.', 'error');
                 return;
             }
-            const newCategory = {
-                id: Date.now().toString(),
-                name
-            };
+            const newCategory = { id: Date.now().toString(), name };
             allCategories.push(newCategory);
+            
+            const categoriesRef = ref(db, 'allCategories');
+            await set(categoriesRef, allCategories);
+            
             categoryNameInput.value = '';
             renderCategories();
             showMessage('Categoria adicionada!', 'success');
         }
         
-        function removeCategory(id) {
+        async function removeCategory(id) {
             allCategories = allCategories.filter(category => category.id !== id);
             allProducts.forEach(product => {
-                if (product.categoryId === id) {
-                    product.categoryId = '';
-                }
+                if (product.categoryId === id) product.categoryId = '';
             });
-            saveToLocalStorage('allProducts', allProducts);
+            
+            await set(ref(db, 'allCategories'), allCategories);
+            await set(ref(db, 'allProducts'), allProducts);
+            
             renderCategories();
             renderProductList(allProducts);
             showMessage('Categoria removida.', 'success');
         }
 
-        // ----- PRODUTOS -----
+        // ======================= FUNÇÕES DE PRODUTOS =======================
         function renderProductList(productsToRender) {
             productList.innerHTML = '';
             if (productsToRender.length === 0) {
@@ -558,11 +557,11 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             });
         }
 
-        function toggleProductPause(id) {
+        async function toggleProductPause(id) {
             const product = allProducts.find(p => p.id === id);
             if (product) {
                 product.paused = !product.paused;
-                saveToLocalStorage('allProducts', allProducts);
+                await set(ref(db, 'allProducts'), allProducts);
                 renderProductList(allProducts);
                 showMessage(`Produto ${product.paused ? 'pausado' : 'retomado'} com sucesso!`, 'success');
             }
@@ -583,7 +582,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             return true;
         }
 
-        function saveProduct() {
+        async function saveProduct() {
             if (!validateProductForm()) return;
             
             const name = productNameInput.value.trim();
@@ -597,11 +596,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
                 if (productIndex > -1) {
                     allProducts[productIndex] = {
                         ...allProducts[productIndex],
-                        name,
-                        pdvCode,
-                        price,
-                        description,
-                        categoryId,
+                        name, pdvCode, price, description, categoryId,
                         image: currentImageBase64 || allProducts[productIndex].image
                     };
                     showMessage('Produto atualizado com sucesso!', 'success');
@@ -609,19 +604,14 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             } else {
                 const newProduct = {
                     id: Date.now().toString(),
-                    name,
-                    pdvCode,
-                    price,
-                    description,
-                    categoryId,
-                    image: currentImageBase64,
-                    paused: false
+                    name, pdvCode, price, description, categoryId,
+                    image: currentImageBase64, paused: false
                 };
                 allProducts.push(newProduct);
                 showMessage('Produto adicionado com sucesso!', 'success');
             }
 
-            saveToLocalStorage('allProducts', allProducts);
+            await set(ref(db, 'allProducts'), allProducts);
             resetProductForm();
             renderProductList(allProducts);
         }
@@ -647,11 +637,13 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             cancelEditBtn.classList.remove('hidden');
         }
 
-        function removeProduct(id) {
+        async function removeProduct(id) {
             allProducts = allProducts.filter(product => product.id !== id);
             delete productComplementsCache[id];
-            saveToLocalStorage('allProducts', allProducts);
-            localStorage.setItem('productComplementsCache', JSON.stringify(productComplementsCache));
+            
+            await set(ref(db, 'allProducts'), allProducts);
+            await set(ref(db, 'productComplementsCache'), productComplementsCache);
+            
             renderProductList(allProducts);
             showMessage('Produto removido.', 'success');
         }
@@ -672,7 +664,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             cancelEditBtn.classList.add('hidden');
         }
 
-        // ----- COMPLEMENTOS -----
+        // ======================= FUNÇÕES DE COMPLEMENTOS =======================
         function renderComplementGroups(productId) {
             const complements = localComplements;
             complementList.innerHTML = '';
@@ -699,8 +691,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
                     </div>
                     ${group.description ? `<p class="text-sm text-gray-500 mb-2">${group.description}</p>` : ''}
                     ${group.isMandatory ? `<p class="text-xs text-red-500 mb-2">Selecione no mínimo ${group.minSelection} e no máximo ${group.maxSelection} opções.</p>` : ''}
-                    <ul id="options-list-${groupIndex}" class="mt-2 space-y-2">
-                        </ul>
+                    <ul id="options-list-${groupIndex}" class="mt-2 space-y-2"></ul>
                     <div class="flex mt-4 gap-2 bg-white p-2 rounded-lg">
                         <input type="text" placeholder="Nome da Opção" data-group-index="${groupIndex}" class="option-name-input flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm">
                         <input type="number" placeholder="Preço (R$)" min="0" step="0.01" data-group-index="${groupIndex}" class="option-price-input w-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm">
@@ -733,32 +724,12 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             });
         }
 
-        function toggleComplementGroupPause(groupIndex) {
-            const group = localComplements[groupIndex];
-            if (group) {
-                group.paused = !group.paused;
-                renderComplementGroups(currentProductId);
-            }
-        }
-        
-        function toggleComplementOptionPause(groupIndex, optionIndex) {
-            const option = localComplements[groupIndex].options[optionIndex];
-            if (option) {
-                option.paused = !option.paused;
-                renderComplementGroups(currentProductId);
-            }
-        }
-        
         function openComplementModal(productId) {
             currentProductId = productId;
             const product = allProducts.find(p => p.id === productId);
             if (!product) return;
-
             complementProductName.textContent = product.name;
-            if (!productComplementsCache[productId]) {
-                productComplementsCache[productId] = [];
-            }
-            localComplements = JSON.parse(JSON.stringify(productComplementsCache[productId]));
+            localComplements = JSON.parse(JSON.stringify(productComplementsCache[productId] || []));
             renderComplementGroups(currentProductId);
             toggleModal(complementModal, true);
         }
@@ -779,15 +750,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
                 return;
             }
 
-            const newGroup = {
-                name,
-                description,
-                isMandatory,
-                minSelection,
-                maxSelection,
-                options: [],
-                paused: false
-            };
+            const newGroup = { name, description, isMandatory, minSelection, maxSelection, options: [], paused: false };
             localComplements.push(newGroup);
             renderComplementGroups(currentProductId);
             
@@ -802,12 +765,10 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
         function addOptionToGroup(groupIndex, name, price) {
             const group = localComplements[groupIndex];
             if (!group) return;
-
             if (name === '' || isNaN(price) || price < 0) {
                 showMessage('Nome e preço da opção são obrigatórios e devem ser válidos.', 'error');
                 return;
             }
-
             group.options.push({ name, price, paused: false });
             renderComplementGroups(currentProductId);
         }
@@ -822,9 +783,24 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             renderComplementGroups(currentProductId);
         }
 
-        function saveComplements() {
+        function toggleComplementGroupPause(groupIndex) {
+            if (localComplements[groupIndex]) {
+                localComplements[groupIndex].paused = !localComplements[groupIndex].paused;
+                renderComplementGroups(currentProductId);
+            }
+        }
+        
+        function toggleComplementOptionPause(groupIndex, optionIndex) {
+            const option = localComplements[groupIndex]?.options[optionIndex];
+            if (option) {
+                option.paused = !option.paused;
+                renderComplementGroups(currentProductId);
+            }
+        }
+
+        async function saveComplements() {
             productComplementsCache[currentProductId] = localComplements;
-            localStorage.setItem('productComplementsCache', JSON.stringify(productComplementsCache));
+            await set(ref(db, 'productComplementsCache'), productComplementsCache);
             showMessage('Complementos salvos com sucesso!', 'success');
             toggleModal(complementModal, false);
             localComplements = null;
@@ -835,7 +811,6 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             localComplements = null;
         }
         
-        // ======================= MODAL DE CONFIRMAÇÃO GENÉRICA =======================
         function showConfirmationModal(title, message, callback) {
             confirmationModalTitle.textContent = title;
             confirmationModalMessage.textContent = message;
@@ -843,13 +818,20 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             toggleModal(confirmationModal, true);
         }
 
+        // ======================= AUTENTICAÇÃO =======================
+        function checkAuthState() {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    showPage(masterMenuPage);
+                } else {
+                    currentUser = null;
+                    showPage(loginPage);
+                }
+            });
+        }
 
-        // ======================= LISTENERS DE EVENTOS =======================
-        window.addEventListener('DOMContentLoaded', loadAllData);
-        
-        // Navegação
-        // Substitua as linhas 851 a 859 por este bloco:
-        loginBtn.addEventListener('click', () => {
+        async function handleLogin() {
             const email = usernameInput.value.trim();
             const password = passwordInput.value.trim();
 
@@ -858,40 +840,100 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
                 return;
             }
 
-            // Faz o login real consultando os usuários cadastrados no Firebase
-            signInWithEmailAndPassword(auth, email, password)
-                .then((userCredential) => {
-                    showMessage('Login efetuado com sucesso!', 'success');
-                    showPage(masterMenuPage); // Abre o seu menu master
-                })
-                .catch((error) => {
-                    console.error("Erro no login:", error.code);
-                    if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-                        showMessage('Usuário ou senha incorretos!', 'error');
-                    } else {
-                        showMessage('Erro ao entrar: ' + error.message, 'error');
-                    }
-                });
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                showMessage('Login efetuado com sucesso!', 'success');
+            } catch (error) {
+                console.error("Erro no login:", error.code);
+                if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+                    showMessage('Usuário ou senha incorretos!', 'error');
+                } else {
+                    showMessage('Erro ao entrar: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function handleRegister() {
+            const email = registerEmailInput.value.trim();
+            const password = registerPasswordInput.value.trim();
+
+            if (!email || !password) {
+                showMessage('Preencha todos os campos!', 'error');
+                return;
+            }
+            if (password.length < 6) {
+                showMessage('A senha deve ter pelo menos 6 caracteres.', 'error');
+                return;
+            }
+
+            try {
+                await createUserWithEmailAndPassword(auth, email, password);
+                showMessage('Cadastro realizado com sucesso!', 'success');
+            } catch (error) {
+                console.error("Erro no cadastro:", error.code);
+                if (error.code === 'auth/email-already-in-use') {
+                    showMessage('Este e-mail já está cadastrado.', 'error');
+                } else {
+                    showMessage('Erro ao cadastrar: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function handleLogout() {
+            try {
+                await signOut(auth);
+                showMessage('Logout realizado com sucesso!', 'success');
+            } catch (error) {
+                showMessage('Erro ao sair: ' + error.message, 'error');
+            }
+        }
+
+        // ======================= LISTENERS DE EVENTOS =======================
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAuthState();
+            loadAllData();
         });
-		
-        adminBtn.addEventListener('click', () => showPage(adminPage));
+
+        loginBtn.addEventListener('click', handleLogin);
+        registerBtn.addEventListener('click', handleRegister);
+        showRegisterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showPage(registerPage);
+        });
+        showLoginBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showPage(loginPage);
+        });
+        logoutMasterBtn.addEventListener('click', handleLogout);
+        
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleLogin();
+        });
+        registerPasswordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleRegister();
+        });
+
+        adminBtn.addEventListener('click', () => {
+            showPage(adminPage);
+            loadAllData();
+        });
         backToMenuBtnAdmin.addEventListener('click', () => showPage(masterMenuPage));
 
-        // Administração de Categorias
         addCategoryBtn.addEventListener('click', addCategory);
         categoryNameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') addCategory();
         });
+        
         categoryList.addEventListener('click', (e) => {
             if (e.target.closest('.remove-category-btn')) {
                 const id = e.target.closest('.remove-category-btn').dataset.id;
-                showConfirmationModal('Remover Categoria', 'Tem certeza que deseja remover esta categoria? Produtos associados a ela ficarão "Sem Categoria".', () => removeCategory(id));
+                showConfirmationModal('Remover Categoria', 'Tem certeza que deseja remover esta categoria?', () => removeCategory(id));
             }
         });
 
-        // Administração de Produtos
         addProductBtn.addEventListener('click', saveProduct);
         cancelEditBtn.addEventListener('click', resetProductForm);
+        
         productImageFileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (file) {
@@ -911,19 +953,10 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             const complementsBtn = e.target.closest('.manage-complements-btn');
             const pauseBtn = e.target.closest('.toggle-product-pause-btn');
 
-            if (editBtn) {
-                const id = editBtn.dataset.id;
-                editProduct(id);
-            } else if (removeBtn) {
-                const id = removeBtn.dataset.id;
-                showConfirmationModal('Remover Produto', 'Tem certeza que deseja remover este produto?', () => removeProduct(id));
-            } else if (complementsBtn) {
-                const id = complementsBtn.dataset.id;
-                openComplementModal(id);
-            } else if (pauseBtn) {
-                const id = pauseBtn.dataset.id;
-                toggleProductPause(id);
-            }
+            if (editBtn) editProduct(editBtn.dataset.id);
+            else if (removeBtn) showConfirmationModal('Remover Produto', 'Tem certeza que deseja remover este produto?', () => removeProduct(removeBtn.dataset.id));
+            else if (complementsBtn) openComplementModal(complementsBtn.dataset.id);
+            else if (pauseBtn) toggleProductPause(pauseBtn.dataset.id);
         });
 
         searchProductInput.addEventListener('input', (e) => {
@@ -937,14 +970,10 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             renderProductList(filteredProducts);
         });
 
-        // Modais de Complemento (ADMIN)
         closeModalBtn.addEventListener('click', () => toggleModal(complementModal, false));
         isMandatoryCheckbox.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                mandatoryOptions.classList.remove('hidden');
-            } else {
-                mandatoryOptions.classList.add('hidden');
-            }
+            if (e.target.checked) mandatoryOptions.classList.remove('hidden');
+            else mandatoryOptions.classList.add('hidden');
         });
         addComplementBtn.addEventListener('click', addComplementGroup);
         saveComplementsBtn.addEventListener('click', saveComplements);
@@ -982,76 +1011,40 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthState
             }
         });
 
-        // Modal de Confirmação Genérico
         cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
         confirmActionBtn.addEventListener('click', () => {
             if (confirmationCallback) {
                 confirmationCallback();
+                confirmationCallback = null;
             }
-            confirmationCallback = null;
             toggleModal(confirmationModal, false);
         });
 
-        // Notificação de novos pedidos
-        let lastKnownOrderCount = 0;
-
+        // Monitorar pedidos em tempo real
+        let lastKnownOrderCount = -1;
         function showNewOrderNotification() {
             const notificationDiv = document.createElement('div');
             notificationDiv.className = 'notification-box';
             notificationDiv.textContent = 'Novo pedido chegou!';
             document.body.appendChild(notificationDiv);
-
-            setTimeout(() => {
-                notificationDiv.classList.add('show');
-            }, 10);
-
-            const notificationSound = new Audio('som.mp3');
-            notificationSound.play();
-
+            setTimeout(() => notificationDiv.classList.add('show'), 10);
+            try {
+                new Audio('som.mp3').play();
+            } catch(e) {}
             setTimeout(() => {
                 notificationDiv.classList.remove('show');
-                setTimeout(() => {
-                    document.body.removeChild(notificationDiv);
-                }, 500);
+                setTimeout(() => notificationDiv.remove(), 500);
             }, 5000);
         }
 
-        // --- SISTEMA DE PEDIDOS EM TEMPO REAL COM FIREBASE ---
-        lastKnownOrderCount = -1;
-
-        window.addEventListener('DOMContentLoaded', () => {
-            // Cria a ligação direta com a pasta 'myOrders' na nuvem
-            const ordersRef = ref(db, 'myOrders');
-            
-            // O 'onValue' monitora o Firebase. Entrou pedido novo, ele roda na hora!
-            onValue(ordersRef, (snapshot) => {
-                const data = snapshot.val();
-                
-                // Converte os dados recebidos do Firebase (Objeto) em um Array para o seu sistema entender
-                const ordersArray = [];
-                if (data) {
-                    Object.keys(data).forEach(key => {
-                        ordersArray.push({ id: key, ...data[key] });
-                    });
-                }
-
-                // CONTROLE DE NOTIFICAÇÃO SONORA (ALERTA DE NOVO PEDIDO)
-                if (lastKnownOrderCount !== -1 && ordersArray.length > lastKnownOrderCount) {
-                    showNewOrderNotification(); // Toca o som do delivery e mostra o aviso na tela
-                }
-                lastKnownOrderCount = ordersArray.length;
-
-                // RECARREGA OS DADOS NA SUA TELA ONLINE
-                if (typeof loadAllData === "function") {
-                    // Atualiza a lista global de pedidos que a sua função antiga já utilizava
-                    window.myOrders = ordersArray; 
-					
-					
-                    
-                    // Executa a sua função que redesenha os cartões de pedidos na tela
-                    loadAllData(); 
-                }
-            });
+        const ordersRef = ref(db, 'myOrders');
+        onValue(ordersRef, (snapshot) => {
+            const data = snapshot.val();
+            const ordersArray = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
+            if (lastKnownOrderCount !== -1 && ordersArray.length > lastKnownOrderCount) {
+                showNewOrderNotification();
+            }
+            lastKnownOrderCount = ordersArray.length;
         });
     </script>
 </body>
