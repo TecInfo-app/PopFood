@@ -206,7 +206,7 @@
 
 <script type="module">
     import { 
-        db, auth, collection, doc, getDocs, getDoc, addDoc, updateDoc, 
+        db, auth, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc,
         query, where, orderBy, onSnapshot, Timestamp, COLLECTIONS 
     } from './firebase-config.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -226,7 +226,6 @@
     let totalCartPrice = 0;
     let confirmationCallback = null;
     let unsubscribeProducts = null;
-    let unsubscribeOrders = null;
 
     // DOM Elements
     const customerProductList = document.getElementById('customerProductList');
@@ -454,7 +453,7 @@
         for (const catName in productsByCategory) {
             const section = document.createElement('div');
             section.className = 'col-span-full mb-4 mt-6';
-            section.innerHTML = `<h2 class="text-2xl font-bold text-gray-800">${catName}</h2>`;
+            section.innerHTML = `<h2 class="text-2xl font-bold text-gray-800">${escapeHtml(catName)}</h2>`;
             customerProductList.appendChild(section);
             
             productsByCategory[catName].forEach(product => {
@@ -695,11 +694,9 @@
     }
     
     function getDeliveryFee() {
-        // Tenta pegar a taxa do perfil do restaurante
         if (restaurantProfile.deliveryFee && typeof restaurantProfile.deliveryFee === 'number') {
             return restaurantProfile.deliveryFee;
         }
-        // Taxa padrão
         return 5.00;
     }
 
@@ -723,7 +720,7 @@
         updateCartCount();
     }
 
-    // Checkout e Pedido
+    // Função para criar pedido - CORRIGIDA: NÃO cria ID manualmente
     async function createOrder(customerData, paymentMethod, items, subtotal) {
         const deliveryFee = getDeliveryFee();
         
@@ -735,8 +732,9 @@
         if (!paymentMethod) throw new Error("Forma de pagamento é obrigatória");
         if (!items || items.length === 0) throw new Error("Carrinho vazio");
         
-        const order = {
-            id: Date.now().toString(),
+        // IMPORTANTE: NÃO adicionar campo 'id' manualmente!
+        // Deixe o Firestore gerar o ID automaticamente
+        const orderData = {
             date: new Date().toLocaleString('pt-BR'),
             createdAt: Timestamp.now(),
             customer: {
@@ -766,8 +764,10 @@
             status: 'Pendente'
         };
         
-        // Salvar no Firestore
-        const docRef = await addDoc(collection(db, COLLECTIONS.ORDERS), order);
+        // Salvar no Firestore - Deixe o Firebase gerar o ID automaticamente
+        const docRef = await addDoc(collection(db, COLLECTIONS.ORDERS), orderData);
+        
+        console.log("✅ Pedido salvo com ID:", docRef.id);
         
         // Salvar cliente
         try {
@@ -782,10 +782,9 @@
             }, { merge: true });
         } catch (clientError) {
             console.error("Erro ao salvar cliente:", clientError);
-            // Não impede o pedido de ser salvo
         }
         
-        return { ...order, id: docRef.id };
+        return { ...orderData, id: docRef.id };
     }
 
     // Event Listeners
@@ -984,7 +983,6 @@
             
             const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
             
-            // Desabilitar botão para evitar duplo clique
             confirmOrderBtn.disabled = true;
             confirmOrderBtn.textContent = 'Processando...';
             
@@ -1020,6 +1018,17 @@
             toggleModal(document.getElementById('customer-info-modal'), false));
     }
     
+    // Fechar modais ao clicar fora
+    window.addEventListener('click', (e) => {
+        const modals = ['product-detail-modal', 'cart-modal', 'customer-info-modal', 'payment-modal', 'profile-modal', 'login-modal'];
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (modal && !modal.classList.contains('hidden') && e.target === modal) {
+                toggleModal(modal, false);
+            }
+        });
+    });
+
     // Inicialização
     async function init() {
         startProductsListener();
@@ -1029,9 +1038,6 @@
     }
     
     init();
-    
-    // Função setDoc precisa ser importada
-    import { setDoc } from './firebase-config.js';
 </script>
 </body>
 </html>
