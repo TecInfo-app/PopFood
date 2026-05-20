@@ -60,12 +60,20 @@
             background-color: #e0f2fe !important;
             border-left: 4px solid #3b82f6 !important;
         }
+        .pedido-finalizado {
+            background-color: #f0fdf4 !important;
+            border-left: 4px solid #22c55e !important;
+        }
         .order-card {
             transition: all 0.3s ease;
         }
         .order-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .btn-desabilitado {
+            opacity: 0.6;
+            cursor: not-allowed !important;
         }
     </style>
 </head>
@@ -126,20 +134,15 @@
     <div id="newOrderNotification" class="notification-box hidden">🔔 Novo pedido chegou!</div>
     
     <script type="module">
-        import { db, ref, onValue, update, remove, get } from './firebase-config.js';
+        import { db, ref, onValue, update, remove, get, set } from './firebase-config.js';
 
         const ordersRef = ref(db, 'myOrders');
 
         let myOrders = [];
         let finalizedOrders = [];
         let restaurantProfile = {};
-        let confirmationCallback = null;
         let currentActionOrderId = null;
         let currentActionType = null;
-        
-        // Controle para evitar notificações falsas
-        let knownOrderIds = new Set();
-        let isFirstLoad = true;
         
         const myOrdersList = document.getElementById('my-orders-list');
         const finalizedOrdersList = document.getElementById('finalized-orders-list');
@@ -245,37 +248,39 @@
             const currentStatus = order.status || 'Pendente';
             
             if (isActive) {
-                // Botão Despachar (só mostra se não estiver despachado nem entregue)
-                if (currentStatus !== 'Saiu para entrega' && currentStatus !== 'Despachado' && currentStatus !== 'Entregue') {
+                // Botão Despachar (só mostra se estiver Pendente)
+                if (currentStatus === 'Pendente') {
                     actionButtonsHtml += `
                         <button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-blue-600 transition-colors shadow-sm" data-order-id="${orderId}">
                             🚚 Despachar
                         </button>
                     `;
-                } else if (currentStatus === 'Saiu para entrega' || currentStatus === 'Despachado') {
+                } else if (currentStatus === 'Saiu para entrega') {
                     actionButtonsHtml += `
-                        <button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1.5 px-3 rounded-lg text-sm cursor-not-allowed" disabled data-order-id="${orderId}">
+                        <button class="dispatch-order-btn bg-blue-100 text-blue-700 font-bold py-1.5 px-3 rounded-lg text-sm cursor-not-allowed btn-desabilitado" disabled data-order-id="${orderId}">
                             ✅ Já Despachado
                         </button>
                     `;
                 }
                 
-                // Botão Finalizar
-                actionButtonsHtml += `
-                    <button class="finish-order-btn bg-green-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-green-600 transition-colors shadow-sm" data-order-id="${orderId}">
-                        ✓ Finalizar
-                    </button>
-                `;
+                // Botão Finalizar (só mostra se não estiver finalizado)
+                if (currentStatus !== 'Finalizado') {
+                    actionButtonsHtml += `
+                        <button class="finish-order-btn bg-green-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-green-600 transition-colors shadow-sm" data-order-id="${orderId}">
+                            ✓ Finalizar
+                        </button>
+                    `;
+                }
             }
             
-            // Botão Imprimir
+            // Botão Imprimir (para todos)
             actionButtonsHtml += `
                 <button class="print-order-btn bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1.5 px-3 rounded-lg text-sm transition-colors shadow-sm" data-order-id="${orderId}">
                     🖨️ Imprimir
                 </button>
             `;
             
-            // Botão Excluir
+            // Botão Excluir (para todos)
             actionButtonsHtml += `
                 <button class="remove-order-btn bg-red-500 text-white font-bold py-1.5 px-3 rounded-lg text-sm hover:bg-red-600 transition-colors shadow-sm" data-order-id="${orderId}">
                     🗑️ Excluir
@@ -293,14 +298,15 @@
             // Badge de status
             let statusBadge = '';
             if (currentStatus === 'Pendente') statusBadge = '<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">⏳ Pendente</span>';
-            else if (currentStatus === 'Saiu para entrega' || currentStatus === 'Despachado') statusBadge = '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">🚚 Saiu para entrega</span>';
+            else if (currentStatus === 'Saiu para entrega') statusBadge = '<span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">🚚 Saiu para entrega</span>';
             else if (currentStatus === 'Finalizado') statusBadge = '<span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">✅ Finalizado</span>';
             else statusBadge = `<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-full">${currentStatus}</span>`;
             
             // Classe CSS baseada no status
             let cardClass = 'bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden order-card';
             if (currentStatus === 'Pendente') cardClass += ' pedido-pendente';
-            else if (currentStatus === 'Saiu para entrega' || currentStatus === 'Despachado') cardClass += ' pedido-despachado';
+            else if (currentStatus === 'Saiu para entrega') cardClass += ' pedido-despachado';
+            else if (currentStatus === 'Finalizado') cardClass += ' pedido-finalizado';
 
             return `
                 <div class="${cardClass}" data-order-id="${orderId}" data-status="${currentStatus}">
@@ -348,7 +354,7 @@
         }
 
         function renderMyOrdersPage() {
-            // Renderizar pedidos ativos
+            // Renderizar pedidos ativos (Pendente e Saiu para entrega)
             myOrdersList.innerHTML = '';
             if (myOrders.length === 0) {
                 myOrdersList.innerHTML = '<p class="text-center text-gray-500 py-8">📭 Nenhum pedido ativo no momento.</p>';
@@ -379,13 +385,13 @@
         
         async function dispatchOrder(orderId) {
             try {
-                const singleOrderRef = ref(db, `myOrders/${orderId}`);
-                await update(singleOrderRef, { 
+                // Usar ref diretamente com o ID e fazer update apenas do status
+                const orderRef = ref(db, `myOrders/${orderId}`);
+                await update(orderRef, { 
                     status: "Saiu para entrega",
                     dispatchedAt: Date.now()
                 });
                 showMessage('🚚 Pedido despachado com sucesso!', 'blue');
-                // Não precisa chamar loadOrdersFromFirebase aqui porque o onValue vai atualizar
             } catch (err) {
                 console.error('Erro ao despachar:', err);
                 showMessage('Erro ao despachar pedido: ' + err.message, 'error');
@@ -394,8 +400,8 @@
 
         async function finishOrder(orderId) {
             try {
-                const singleOrderRef = ref(db, `myOrders/${orderId}`);
-                await update(singleOrderRef, { 
+                const orderRef = ref(db, `myOrders/${orderId}`);
+                await update(orderRef, { 
                     status: "Finalizado",
                     finishedAt: Date.now()
                 });
@@ -408,8 +414,8 @@
         
         async function removeOrder(orderId) {
             try {
-                const singleOrderRef = ref(db, `myOrders/${orderId}`);
-                await remove(singleOrderRef);
+                const orderRef = ref(db, `myOrders/${orderId}`);
+                await remove(orderRef);
                 showMessage('🗑️ Pedido excluído permanentemente!', 'success');
             } catch (err) {
                 console.error('Erro ao excluir:', err);
@@ -417,20 +423,18 @@
             }
         }
         
-        // Função para atualizar a lista de pedidos sem disparar notificação falsa
+        // Função para atualizar a lista de pedidos
         function updateOrdersList(data) {
             const activeOrders = [];
             const finishedOrders = [];
-            const newOrderIds = new Set();
             
             if (data) {
                 Object.keys(data).forEach(key => {
                     const order = data[key];
                     if (order) {
                         const formattedOrder = { id: key, ...order };
-                        newOrderIds.add(key);
                         const status = order.status || 'Pendente';
-                        if (status === 'Finalizado' || status === 'Finalizado (Auto)') {
+                        if (status === 'Finalizado') {
                             finishedOrders.push(formattedOrder);
                         } else {
                             activeOrders.push(formattedOrder);
@@ -439,12 +443,6 @@
                 });
             }
             
-            // Verificar se há NOVOS pedidos (IDs que não existiam antes)
-            const hasNewOrder = !isFirstLoad && Array.from(newOrderIds).some(id => !knownOrderIds.has(id));
-            
-            // Atualizar o conjunto de IDs conhecidos
-            knownOrderIds = newOrderIds;
-            
             // Ordenar: mais recentes primeiro
             activeOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
             finishedOrders.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -452,11 +450,6 @@
             myOrders = activeOrders;
             finalizedOrders = finishedOrders;
             renderMyOrdersPage();
-            
-            // Só mostra notificação se for um pedido NOVO (não uma atualização de status)
-            if (hasNewOrder) {
-                showNewOrderNotification();
-            }
         }
         
         async function loadOrdersFromFirebase() {
@@ -648,7 +641,6 @@
         window.addEventListener('DOMContentLoaded', async () => {
             await loadProfileData();
             await loadOrdersFromFirebase();
-            isFirstLoad = false;
         });
 
         refreshBtn.addEventListener('click', async () => {
@@ -668,11 +660,12 @@
         
         confirmActionBtn.addEventListener('click', executeConfirmedAction);
         
-        // Monitorar mudanças em tempo real (sem notificação falsa)
+        // Monitorar mudanças em tempo real
+        let isFirstLoad = true;
+        
         onValue(ordersRef, (snapshot) => {
             const data = snapshot.val();
             updateOrdersList(data);
-            // Marcar que não é mais o primeiro carregamento após receber dados
             if (isFirstLoad) {
                 isFirstLoad = false;
             }
