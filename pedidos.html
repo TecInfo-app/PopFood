@@ -112,22 +112,9 @@
     <div id="newOrderNotification" class="notification-box hidden">Novo pedido chegou!</div>
     
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { db, ref, onValue, update, remove, get } from './firebase-config.js';
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDBHaHN0WWnesZtH8Z76n5RmTsy3Sn8EBI",
-            authDomain: "tutubebidasapp-28b77.firebaseapp.com",
-            databaseURL: "https://tutubebidasapp-28b77-default-rtdb.firebaseio.com",
-            projectId: "tutubebidasapp-28b77",
-            storageBucket: "tutubebidasapp-28b77.firebasestorage.app",
-            messagingSenderId: "92833412828",
-            appId: "1:92833412828:web:cbeb1ba840bfcbbd686619"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
-        const ordersRef = ref(database, 'myOrders');
+        const ordersRef = ref(db, 'myOrders');
 
         let myOrders = [];
         let finalizedOrders = [];
@@ -175,14 +162,10 @@
         function showNewOrderNotification() {
             newOrderNotification.classList.remove('hidden');
             setTimeout(() => { newOrderNotification.classList.add('show'); }, 10);
-        
             try {
                 const notificationSound = new Audio('som.mp3');
                 notificationSound.play();
-            } catch (e) {
-                console.log("Áudio bloqueado.");
-            }
-        
+            } catch (e) { console.log("Áudio bloqueado."); }
             setTimeout(() => {
                 newOrderNotification.classList.remove('show');
                 setTimeout(() => { newOrderNotification.classList.add('hidden'); }, 500);
@@ -191,17 +174,16 @@
 
         function highlightNewOrder(orderId) {
             const orderElement = myOrdersList.querySelector(`[data-order-id="${orderId}"]`);
-            if (orderElement) {
-                orderElement.classList.add('new-order-highlight');
-            }
+            if (orderElement) orderElement.classList.add('new-order-highlight');
         }
 
-        function loadProfileData() {
+        async function loadProfileData() {
             try {
-                restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
-            } catch (e) {
-                restaurantProfile = {};
-            }
+                const profileRef = ref(db, 'restaurantProfile');
+                const snapshot = await get(profileRef);
+                if (snapshot.exists()) restaurantProfile = snapshot.val();
+                else restaurantProfile = JSON.parse(localStorage.getItem('restaurantProfile')) || {};
+            } catch (e) { restaurantProfile = {}; }
         }
 
         function buildOrderHtml(order, isActive = true) {
@@ -213,16 +195,12 @@
                         for (const groupName in item.complements) {
                             complementsHtml += `<p class="font-bold text-xs text-gray-600 mt-2">${groupName}:</p>`;
                             complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
-                            complementsHtml += item.complements[groupName].map(comp => `
-                                <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
-                            `).join('');
+                            complementsHtml += item.complements[groupName].map(comp => `<li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>`).join('');
                             complementsHtml += `</ul>`;
                         }
                     }
-
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
                     const prodName = item.product ? item.product.name : 'Produto';
-
                     itemsHtml += `
                         <li class="text-sm text-gray-600">
                             <div class="flex justify-between items-center">
@@ -247,7 +225,6 @@
                 } else {
                     dispatchBtnHtml = `<button class="dispatch-order-btn bg-blue-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-blue-600 transition-colors">Despachar</button>`;
                 }
-
                 actionButtonsHtml = `
                     ${dispatchBtnHtml}
                     <button class="finish-order-btn bg-green-500 text-white font-bold py-1 px-3 rounded-full text-sm hover:bg-green-600 transition-colors">Finalizar Pedido</button>
@@ -333,45 +310,44 @@
             }
         }
         
-        // ================= CONSERTO DA EXCLUSÃO AQUI =================
-        function removeOrder(orderId) {
-            // Remove direto o nó no Firebase Realtime Database
-            const singleOrderRef = ref(database, `myOrders/${orderId}`);
-            remove(singleOrderRef)
-                .then(() => {
-                    // Remove localmente do array para evitar leitura fantasma no onValue
-                    myOrders = myOrders.filter(o => o.id !== orderId);
-                    finalizedOrders = finalizedOrders.filter(o => o.id !== orderId);
-                    renderMyOrdersPage();
-                    showMessage('Pedido excluído permanentemente!', 'success');
-                })
-                .catch(err => {
-                    showMessage('Erro ao excluir do Firebase: ' + err.message, 'error');
-                });
+        async function removeOrder(orderId) {
+            const singleOrderRef = ref(db, `myOrders/${orderId}`);
+            try {
+                await remove(singleOrderRef);
+                showMessage('Pedido excluído permanentemente!', 'success');
+            } catch (err) {
+                showMessage('Erro ao excluir: ' + err.message, 'error');
+            }
         }
 
-        function dispatchOrder(orderId) {
-            const singleOrderRef = ref(database, `myOrders/${orderId}`);
-            update(singleOrderRef, { status: "Saiu para entrega" })
-                .then(() => showMessage('Pedido despachado com sucesso!', 'blue'))
-                .catch(err => showMessage('Erro ao despachar: ' + err.message, 'error'));
+        async function dispatchOrder(orderId) {
+            const singleOrderRef = ref(db, `myOrders/${orderId}`);
+            try {
+                await update(singleOrderRef, { status: "Saiu para entrega" });
+                showMessage('Pedido despachado com sucesso!', 'blue');
+            } catch (err) {
+                showMessage('Erro ao despachar: ' + err.message, 'error');
+            }
         }
 
-        function finishOrder(orderId) {
-            const singleOrderRef = ref(database, `myOrders/${orderId}`);
-            update(singleOrderRef, { status: "Finalizado" })
-                .then(() => showMessage('Pedido finalizado com sucesso!', 'success'))
-                .catch(err => showMessage('Erro ao finalizar: ' + err.message, 'error'));
+        async function finishOrder(orderId) {
+            const singleOrderRef = ref(db, `myOrders/${orderId}`);
+            try {
+                await update(singleOrderRef, { status: "Finalizado" });
+                showMessage('Pedido finalizado com sucesso!', 'success');
+            } catch (err) {
+                showMessage('Erro ao finalizar: ' + err.message, 'error');
+            }
         }
         
-        function autoFinalizeOldOrders() {
+        async function autoFinalizeOldOrders() {
             const now = Date.now();
-            myOrders.forEach(order => {
+            for (const order of myOrders) {
                 if (order.createdAt && (now - order.createdAt) > AUTO_FINALIZE_TIME_MS) {
-                    const singleOrderRef = ref(database, `myOrders/${order.id}`);
-                    update(singleOrderRef, { status: 'Finalizado (Auto)' });
+                    const singleOrderRef = ref(db, `myOrders/${order.id}`);
+                    await update(singleOrderRef, { status: 'Finalizado (Auto)' });
                 }
-            });
+            }
         }
 
         function printOrder(orderId) {
@@ -400,7 +376,6 @@
                                     ${comp.price > 0 ? `<span>(+R$ ${comp.price.toFixed(2).replace('.', ',')})</span>` : ''}
                                 </div>
                             `).join('');
-
                             complementsHtml += `
                                 <div style="margin-top: 5px; padding-left: 10px;">
                                     <div style="font-weight: bold; font-size: 12px; color: #555;">${groupName}:</div>
@@ -409,10 +384,8 @@
                             `;
                         }
                     }
-                    
                     const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
                     const prodName = item.product ? item.product.name : 'Produto';
-            
                     orderItemsHtml += `
                         <div style="font-size: 14px; margin-bottom: 10px; border-bottom: 1px dashed #ccc; padding-bottom: 8px;">
                             <div style="display: flex; justify-content: space-between;">
@@ -498,8 +471,8 @@
             setTimeout(() => { printWindow.print(); }, 500);
         }
 
-        window.addEventListener('DOMContentLoaded', () => {
-            loadProfileData();
+        window.addEventListener('DOMContentLoaded', async () => {
+            await loadProfileData();
             setInterval(autoFinalizeOldOrders, AUTO_FINALIZE_INTERVAL_MS);
 
             onValue(ordersRef, (snapshot) => {
@@ -526,20 +499,14 @@
 
                 if (!isFirstLoad && activeOrders.length > myOrders.length) {
                     activeOrders.forEach(order => {
-                        if (!existingOrderIds.has(order.id)) {
-                            latestOrder = order;
-                        }
+                        if (!existingOrderIds.has(order.id)) latestOrder = order;
                     });
-
-                    if (latestOrder) {
-                        showNewOrderNotification();
-                    }
+                    if (latestOrder) showNewOrderNotification();
                 }
 
                 myOrders = activeOrders;
                 finalizedOrders = finishedOrders;
                 isFirstLoad = false;
-
                 renderMyOrdersPage();
                 
                 if (latestOrder) {
@@ -554,10 +521,7 @@
             if (!orderDiv) return;
 
             const orderId = orderDiv.dataset.orderId;
-
-            if (orderDiv.classList.contains('new-order-highlight')) {
-                orderDiv.classList.remove('new-order-highlight');
-            }
+            if (orderDiv.classList.contains('new-order-highlight')) orderDiv.classList.remove('new-order-highlight');
 
             if (e.target.closest('.print-order-btn')) {
                 e.stopPropagation();
@@ -584,9 +548,7 @@
             }
 
             const details = orderDiv.querySelector('.order-details');
-            if (details) {
-                details.classList.toggle('hidden');
-            }
+            if (details) details.classList.toggle('hidden');
         }
 
         myOrdersList.addEventListener('click', handleListClicks);
@@ -596,8 +558,8 @@
         confirmActionBtn.addEventListener('click', () => {
             if (confirmationCallback) {
                 confirmationCallback();
+                confirmationCallback = null;
             }
-            confirmationCallback = null;
             toggleModal(confirmationModal, false);
         });
     </script>
