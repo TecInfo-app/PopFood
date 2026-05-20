@@ -1035,6 +1035,68 @@
         });
     });
 
+// LOCALIZE esta função no seu cliente.html e SUBSTITUA:
+
+function handleProfileClick() {
+    // Se o cliente já fez algum pedido (tem telefone salvo)
+    if (customerInfo && customerInfo.phone) {
+        // Salva o telefone no sessionStorage para a página de acompanhamento
+        sessionStorage.setItem('customerPhone', customerInfo.phone);
+        // Redireciona para a página de acompanhamento
+        window.location.href = 'acompanhamento.html';
+    } else {
+        // Se não está logado, mostra o modal de login
+        toggleModal(loginModal, true);
+    }
+}
+
+// Depois de fazer login, ao invés de abrir modal de perfil, redireciona
+async function executeLogin() {
+    const name = loginNameInput.value.trim();
+    const phone = loginPhoneInput.value.trim(); // Use o ID correto do seu input
+
+    if (!name || !phone) {
+        showMessage('Preencha os campos para fazer login!', 'error');
+        return;
+    }
+
+    const clientId = phone.replace(/\D/g, '');
+    const clients = JSON.parse(localStorage.getItem('clients')) || {};
+    const savedClient = clients[clientId];
+
+    if (savedClient && savedClient.name.toLowerCase() === name.toLowerCase()) {
+        customerInfo = {
+            name: savedClient.name,
+            phone: savedClient.phone,
+            address: savedClient.address.split(', Nº')[0] || savedClient.address,
+            cep: savedClient.cep,
+            email: savedClient.email,
+            number: savedClient.address.split('Nº ')[1]?.split(' ')[0] || '',
+            complement: '',
+            reference: ''
+        };
+        
+        localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
+        prefillCustomerForm(customerInfo);
+        toggleModal(loginModal, false);
+        
+        // Salva o telefone e redireciona para acompanhamento
+        sessionStorage.setItem('customerPhone', customerInfo.phone);
+        showMessage('Login efetuado! Redirecionando...', 'success');
+        
+        // Redireciona para página de acompanhamento
+        setTimeout(() => {
+            window.location.href = 'acompanhamento.html';
+        }, 1500);
+    } else {
+        showMessage('Cadastro não encontrado! Verifique o nome e o número informados.', 'error');
+    }
+}
+
+// E no event listener do botão de perfil, use a nova função:
+openProfileBtn.addEventListener('click', handleProfileClick);
+
+                            
     // Inicialização
     async function init() {
         startProductsListener();
