@@ -14,25 +14,6 @@
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         .modal-enter { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        
-        /* Timeline de status */
-        .status-timeline { display: flex; justify-content: space-between; margin: 20px 0; position: relative; }
-        .status-step { text-align: center; flex: 1; position: relative; z-index: 2; }
-        .status-step .step-icon { width: 40px; height: 40px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: 18px; transition: all 0.3s; }
-        .status-step.completed .step-icon { background: #22c55e; color: white; }
-        .status-step.active .step-icon { background: #f59e0b; color: white; animation: pulse 1.5s infinite; }
-        .status-step .step-label { font-size: 10px; font-weight: 500; color: #6b7280; }
-        .status-step.completed .step-label { color: #22c55e; font-weight: bold; }
-        .status-step.active .step-label { color: #f59e0b; font-weight: bold; }
-        .status-line { position: absolute; top: 20px; left: 0; right: 0; height: 3px; background: #e5e7eb; z-index: 1; }
-        .status-line-fill { position: absolute; top: 0; left: 0; height: 100%; background: #22c55e; transition: width 0.5s; }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
-        .status-Pendente { background: #fef3c7; color: #d97706; }
-        .status-Preparando { background: #dbeafe; color: #2563eb; }
-        .status-Saiu-para-entrega { background: #dcfce7; color: #16a34a; }
-        .status-Entregue { background: #e0e7ff; color: #4f46e5; }
-        .status-Cancelado { background: #fee2e2; color: #dc2626; }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen">
@@ -52,16 +33,12 @@
                     <h1 class="text-3xl font-bold text-gray-800">Cardápio</h1>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="openProfileBtn" class="bg-white p-2 rounded-full shadow-lg text-gray-600 hover:text-gray-800 transition-colors" title="Meus Pedidos">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
+                    <button id="openProfileBtn" class="bg-white p-2 rounded-full shadow-lg text-gray-600 hover:text-gray-800" title="Minha Conta">
+                        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     </button>
                     <div class="relative">
                         <button id="openCartBtn" class="bg-white p-2 rounded-full shadow-lg text-gray-600 hover:text-gray-800">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                            </svg>
+                            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         </button>
                         <span id="cart-count" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-white bg-red-600 rounded-full hidden">0</span>
                     </div>
@@ -106,65 +83,58 @@
     </div>
 </div>
 
-<!-- MODAL DE ACOMPANHAMENTO DE PEDIDOS -->
-<div id="tracking-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto modal-enter">
-        <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <img id="trackingLogo" src="#" alt="Logo" class="h-10 hidden">
-                <h3 class="text-xl font-bold text-gray-800">📦 Meus Pedidos</h3>
-            </div>
-            <button id="closeTrackingModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+<!-- Modal de Perfil -->
+<div id="profile-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl modal-enter">
+        <div class="flex justify-between items-center mb-4 border-b pb-4">
+            <h3 class="text-2xl font-bold">Minha Conta</h3>
+            <button id="closeProfileModalBtn" class="text-gray-500 hover:text-gray-800">✕</button>
         </div>
-        
-        <div class="p-6">
-            <div id="trackingCustomerInfo" class="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 mb-6 text-white hidden">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="text-sm opacity-90">Olá,</p>
-                        <p id="trackingCustomerName" class="text-lg font-bold"></p>
-                        <p id="trackingCustomerPhone" class="text-xs opacity-90"></p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xs opacity-90">Total de pedidos</p>
-                        <p id="trackingTotalOrders" class="text-2xl font-bold">0</p>
-                    </div>
-                </div>
+        <div class="max-h-[65vh] overflow-y-auto p-2">
+            <div class="bg-gray-50 p-4 rounded-xl mb-6">
+                <p><strong>Nome:</strong> <span id="profile-name"></span></p>
+                <p><strong>WhatsApp:</strong> <span id="profile-phone"></span></p>
+                <p><strong>Endereço:</strong> <span id="profile-address"></span></p>
             </div>
-
-            <div id="trackingNotLogged" class="text-center py-8">
-                <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg class="h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                </div>
-                <p class="text-gray-500 mb-4">Faça login para ver seus pedidos</p>
-                <button id="trackingGoToLoginBtn" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
-                    Fazer Login
-                </button>
-            </div>
-
-            <div id="trackingOrdersList" class="space-y-4 hidden">
-                <div class="text-center text-gray-500 py-8">Carregando pedidos...</div>
-            </div>
-
-            <div id="trackingLogoutDiv" class="mt-6 pt-4 border-t text-center hidden">
-                <button id="trackingLogoutBtn" class="text-red-500 hover:text-red-700 text-sm font-semibold">
-                    Sair da conta
-                </button>
-            </div>
+            <h4 class="text-xl font-bold mb-4">Meus Pedidos</h4>
+            <div id="profile-orders-list" class="space-y-4"></div>
+        </div>
+        <div class="mt-4 pt-4 border-t flex flex-col gap-2">
+            <button id="trackOrdersBtn" class="w-full bg-blue-500 text-white font-bold py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                📦 Acompanhar Meus Pedidos
+            </button>
+            <button id="logoutBtn" class="w-full bg-red-500 text-white font-bold py-2 rounded-lg hover:bg-red-600 transition-colors">
+                Sair da Conta
+            </button>
         </div>
     </div>
 </div>
 
-<!-- Modal de Detalhes do Pedido -->
-<div id="orderDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto modal-enter">
-        <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
-            <h3 id="modalOrderTitle" class="text-lg font-bold">Detalhes do Pedido</h3>
-            <button id="closeOrderDetailModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+<!-- Modal de Detalhe do Produto -->
+<div id="product-detail-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl modal-enter">
+        <div class="flex justify-between items-center mb-4 border-b pb-4">
+            <h3 id="modal-product-name" class="text-2xl font-bold"></h3>
+            <button id="closeProductDetailModalBtn" class="text-gray-500 hover:text-gray-800">✕</button>
         </div>
-        <div id="modalOrderContent" class="p-5"></div>
+        <div class="max-h-[60vh] overflow-y-auto mb-4 p-2">
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <img id="modal-product-image" src="#" class="w-full md:w-1/3 h-48 object-cover rounded-xl border">
+                <div class="flex-1">
+                    <p id="modal-product-description" class="text-gray-600 mb-2"></p>
+                    <p class="text-2xl font-bold text-green-600">Preço: <span id="modal-product-price">R$ 0,00</span></p>
+                </div>
+            </div>
+            <div id="modal-complements-list" class="space-y-6"></div>
+        </div>
+        <div class="mt-4 pt-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <button id="quantity-minus" class="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-full hover:bg-gray-300">-</button>
+                <span id="quantity-display" class="text-xl font-bold">1</span>
+                <button id="quantity-plus" class="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-full hover:bg-gray-300">+</button>
+            </div>
+            <button id="addToCartBtn" class="w-full sm:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-green-700">Adicionar ao Carrinho</button>
+        </div>
     </div>
 </div>
 
@@ -227,6 +197,7 @@
     </div>
 </div>
 
+<!-- Modal de Confirmação -->
 <div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
     <div class="bg-white rounded-2xl p-6 w-full max-w-sm modal-enter">
         <h3 id="confirmationModalTitle" class="text-xl font-bold mb-4">Confirmação</h3>
@@ -240,27 +211,28 @@
 
 <script type="module">
     import { 
-        db, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc,
+        db, auth, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc,
         query, where, orderBy, onSnapshot, Timestamp, COLLECTIONS 
     } from './firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-    // ==================== ESTADO GLOBAL ====================
+    // Estado Global
     let allProducts = [];
     let allCategories = [];
     let productComplementsCache = {};
     let cart = [];
+    let myOrders = [];
     let restaurantProfile = {};
     let customerInfo = null;
     let selectedProductForCart = null;
     let selectedComplements = {};
     let currentQuantity = 1;
     let selectedPaymentMethod = null;
-    
-    // Estado para acompanhamento
-    let customerOrders = [];
-    let unsubscribeOrders = null;
+    let totalCartPrice = 0;
+    let confirmationCallback = null;
+    let unsubscribeProducts = null;
 
-    // ==================== DOM ELEMENTS ====================
+    // DOM Elements
     const customerProductList = document.getElementById('customerProductList');
     const loadingIndicator = document.getElementById('loadingIndicatorCustomer');
     const messageBox = document.getElementById('messageBox');
@@ -268,20 +240,7 @@
     const openCartBtn = document.getElementById('openCartBtn');
     const openProfileBtn = document.getElementById('openProfileBtn');
     
-    // Elementos do tracking
-    const trackingModal = document.getElementById('tracking-modal');
-    const trackingCustomerInfo = document.getElementById('trackingCustomerInfo');
-    const trackingNotLogged = document.getElementById('trackingNotLogged');
-    const trackingOrdersList = document.getElementById('trackingOrdersList');
-    const trackingLogoutDiv = document.getElementById('trackingLogoutDiv');
-    const trackingCustomerName = document.getElementById('trackingCustomerName');
-    const trackingCustomerPhone = document.getElementById('trackingCustomerPhone');
-    const trackingTotalOrders = document.getElementById('trackingTotalOrders');
-    const trackingGoToLoginBtn = document.getElementById('trackingGoToLoginBtn');
-    const trackingLogoutBtn = document.getElementById('trackingLogoutBtn');
-    const trackingLogo = document.getElementById('trackingLogo');
-
-    // ==================== FUNÇÕES AUXILIARES ====================
+    // Funções Auxiliares
     function showMessage(message, type = 'success') {
         messageBox.textContent = message;
         messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500');
@@ -292,30 +251,14 @@
     }
 
     function toggleModal(modal, show) {
-        if (show) modal.classList.remove('hidden');
-        else modal.classList.add('hidden');
-    }
-
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    function formatDate(dateValue) {
-        if (!dateValue) return 'Data não disponível';
-        if (dateValue && typeof dateValue.toDate === 'function') {
-            return dateValue.toDate().toLocaleString('pt-BR');
+        if (show) {
+            modal.classList.remove('hidden');
+        } else {
+            modal.classList.add('hidden');
         }
-        if (typeof dateValue === 'string') return dateValue;
-        if (dateValue && dateValue.seconds) {
-            return new Date(dateValue.seconds * 1000).toLocaleString('pt-BR');
-        }
-        return new Date(dateValue).toLocaleString('pt-BR');
     }
 
-    // ==================== CARRINHO ====================
+    // Salvar carrinho no localStorage
     function saveCart() {
         const guestId = customerInfo?.phone || 'guest';
         localStorage.setItem('cart_' + guestId, JSON.stringify(cart));
@@ -325,23 +268,26 @@
         const guestId = customerInfo?.phone || 'guest';
         const saved = localStorage.getItem('cart_' + guestId);
         if (saved) {
-            try { cart = JSON.parse(saved); } catch(e) { cart = []; }
-        } else { cart = []; }
+            try {
+                cart = JSON.parse(saved);
+            } catch(e) { cart = []; }
+        } else {
+            cart = [];
+        }
         updateCartCount();
     }
 
     function updateCartCount() {
         const total = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
         cartCount.textContent = total;
-        if (total > 0) cartCount.classList.remove('hidden');
-        else cartCount.classList.add('hidden');
+        if (total > 0) {
+            cartCount.classList.remove('hidden');
+        } else {
+            cartCount.classList.add('hidden');
+        }
     }
 
-    function getDeliveryFee() {
-        return (restaurantProfile.deliveryFee && typeof restaurantProfile.deliveryFee === 'number') ? restaurantProfile.deliveryFee : 5.00;
-    }
-
-    // ==================== PERFIL DO RESTAURANTE ====================
+    // Carregar dados do Firebase
     async function loadRestaurantProfile() {
         try {
             const docRef = doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main');
@@ -351,12 +297,10 @@
                 renderRestaurantInfo();
                 initCarousel();
                 checkStoreHours();
-                if (restaurantProfile.logo) {
-                    trackingLogo.src = restaurantProfile.logo;
-                    trackingLogo.classList.remove('hidden');
-                }
             }
-        } catch (error) { console.error("Erro:", error); }
+        } catch (error) {
+            console.error("Erro ao carregar perfil:", error);
+        }
     }
 
     function renderRestaurantInfo() {
@@ -368,27 +312,57 @@
         const emailEl = document.getElementById('restaurant-email-customer');
         const hoursEl = document.getElementById('restaurant-hours-customer');
 
-        if (restaurantProfile.logo) { logo.src = restaurantProfile.logo; logo.classList.remove('hidden'); }
-        if (restaurantProfile.show?.name && restaurantProfile.name) { nameEl.textContent = restaurantProfile.name; nameEl.classList.remove('hidden'); }
-        if (restaurantProfile.show?.description && restaurantProfile.description) { descEl.textContent = restaurantProfile.description; descEl.classList.remove('hidden'); }
-        if (restaurantProfile.show?.phone && restaurantProfile.phone) { phoneEl.querySelector('a').textContent = restaurantProfile.phone; phoneEl.classList.remove('hidden'); }
-        if (restaurantProfile.show?.address && restaurantProfile.address) { addressEl.querySelector('span').textContent = restaurantProfile.address; addressEl.classList.remove('hidden'); }
-        if (restaurantProfile.show?.hours && restaurantProfile.openTime) { hoursEl.querySelector('span').textContent = `${restaurantProfile.openTime} às ${restaurantProfile.closeTime || '23:59'}`; hoursEl.classList.remove('hidden'); }
+        if (restaurantProfile.logo) {
+            logo.src = restaurantProfile.logo;
+            logo.classList.remove('hidden');
+        }
+        if (restaurantProfile.show?.name && restaurantProfile.name) {
+            nameEl.textContent = restaurantProfile.name;
+            nameEl.classList.remove('hidden');
+        }
+        if (restaurantProfile.show?.description && restaurantProfile.description) {
+            descEl.textContent = restaurantProfile.description;
+            descEl.classList.remove('hidden');
+        }
+        if (restaurantProfile.show?.phone && restaurantProfile.phone) {
+            const link = phoneEl.querySelector('a');
+            link.textContent = restaurantProfile.phone;
+            link.href = `tel:${restaurantProfile.phone}`;
+            phoneEl.classList.remove('hidden');
+        }
+        if (restaurantProfile.show?.address && restaurantProfile.address) {
+            addressEl.querySelector('span').textContent = restaurantProfile.address;
+            addressEl.classList.remove('hidden');
+        }
+        if (restaurantProfile.show?.email && restaurantProfile.email) {
+            const link = emailEl.querySelector('a');
+            link.textContent = restaurantProfile.email;
+            link.href = `mailto:${restaurantProfile.email}`;
+            emailEl.classList.remove('hidden');
+        }
+        if (restaurantProfile.show?.hours && restaurantProfile.openTime) {
+            hoursEl.querySelector('span').textContent = `${restaurantProfile.openTime} às ${restaurantProfile.closeTime || '23:59'}`;
+            hoursEl.classList.remove('hidden');
+        }
     }
 
     function initCarousel() {
         const banners = (restaurantProfile.banners || []).filter(b => b);
         if (banners.length === 0) return;
+        
         const container = document.getElementById('carousel-container');
         const slidesWrapper = document.getElementById('carousel-slides');
         slidesWrapper.innerHTML = '';
+        
         banners.forEach(src => {
             const slide = document.createElement('div');
             slide.className = 'min-w-full h-full';
             slide.innerHTML = `<img src="${src}" class="w-full h-full object-cover">`;
             slidesWrapper.appendChild(slide);
         });
+        
         container.classList.remove('hidden');
+        
         if (banners.length > 1) {
             let index = 0;
             setInterval(() => {
@@ -401,27 +375,45 @@
     function checkStoreHours() {
         const aviso = document.getElementById('aviso-loja-fechada');
         if (!restaurantProfile.openTime || !restaurantProfile.closeTime) return;
+        
         const now = new Date();
         const current = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
         let isOpen = false;
+        
         if (restaurantProfile.openTime <= restaurantProfile.closeTime) {
             isOpen = current >= restaurantProfile.openTime && current < restaurantProfile.closeTime;
         } else {
             isOpen = current >= restaurantProfile.openTime || current < restaurantProfile.closeTime;
         }
-        if (aviso) isOpen ? aviso.classList.add('hidden') : aviso.classList.remove('hidden');
+        
+        if (aviso) {
+            if (isOpen) {
+                aviso.classList.add('hidden');
+            } else {
+                aviso.classList.remove('hidden');
+            }
+        }
     }
+
     setInterval(checkStoreHours, 30000);
 
-    // ==================== PRODUTOS ====================
+    // Produtos e Cardápio
     function startProductsListener() {
-        onSnapshot(collection(db, COLLECTIONS.PRODUCTS), (snapshot) => {
+        unsubscribeProducts = onSnapshot(collection(db, COLLECTIONS.PRODUCTS), (snapshot) => {
             allProducts = [];
             snapshot.forEach(doc => {
                 const data = doc.data();
-                allProducts.push({ id: doc.id, ...data, price: data.price || 0, paused: data.paused || false });
+                allProducts.push({ 
+                    id: doc.id, 
+                    ...data,
+                    price: data.price || 0,
+                    paused: data.paused || false
+                });
             });
             loadCategoriesAndRender();
+        }, (error) => {
+            console.error("Erro nos produtos:", error);
+            loadingIndicator.textContent = "Erro ao carregar cardápio. Tente novamente.";
         });
     }
 
@@ -429,20 +421,27 @@
         try {
             const catSnapshot = await getDocs(collection(db, COLLECTIONS.CATEGORIES));
             allCategories = [];
-            catSnapshot.forEach(doc => allCategories.push({ id: doc.id, ...doc.data() }));
+            catSnapshot.forEach(doc => {
+                allCategories.push({ id: doc.id, ...doc.data() });
+            });
             
             const compSnapshot = await getDocs(collection(db, COLLECTIONS.COMPLEMENTS));
             productComplementsCache = {};
-            compSnapshot.forEach(doc => { productComplementsCache[doc.id] = doc.data().groups || []; });
+            compSnapshot.forEach(doc => {
+                productComplementsCache[doc.id] = doc.data().groups || [];
+            });
             
             renderProductList();
-        } catch (error) { console.error(error); }
+        } catch (error) {
+            console.error("Erro ao carregar categorias:", error);
+            loadingIndicator.textContent = "Erro ao carregar cardápio.";
+        }
     }
 
     function renderProductList() {
         const activeProducts = allProducts.filter(p => !p.paused);
         if (activeProducts.length === 0) {
-            customerProductList.innerHTML = '<div class="text-center text-gray-500 col-span-full">Nenhum item disponível.</div>';
+            customerProductList.innerHTML = '<div class="text-center text-gray-500 col-span-full">Nenhum item disponível no momento.</div>';
             loadingIndicator.classList.add('hidden');
             return;
         }
@@ -469,6 +468,7 @@
                 card.innerHTML = `
                     <img src="${product.image || ''}" class="w-full h-40 object-cover rounded-lg mb-4" onerror="this.src='https://placehold.co/400x300?text=Sem+Imagem'">
                     <h3 class="text-lg font-bold">${escapeHtml(product.name)}</h3>
+                    ${product.pdvCode ? `<p class="text-xs text-gray-400">Cód: ${escapeHtml(product.pdvCode)}</p>` : ''}
                     <p class="text-sm text-gray-500 flex-1">${escapeHtml(product.description || 'Sem descrição.')}</p>
                     <p class="text-xl font-bold text-green-600 mt-2">R$ ${(product.price || 0).toFixed(2).replace('.', ',')}</p>
                     <button data-id="${product.id}" class="add-to-cart-simple mt-4 bg-green-500 text-white font-bold py-2 rounded-lg hover:bg-green-600">Adicionar</button>
@@ -479,7 +479,14 @@
         loadingIndicator.classList.add('hidden');
     }
 
-    // ==================== DETALHE DO PRODUTO ====================
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Detalhe do Produto
     function openProductDetailModal(productId) {
         const product = allProducts.find(p => p.id === productId);
         if (!product || product.paused) return;
@@ -502,7 +509,11 @@
         const container = document.getElementById('modal-complements-list');
         const groups = productComplementsCache[productId] || [];
         container.innerHTML = '';
-        if (groups.length === 0) { container.innerHTML = '<p class="text-gray-500 text-center">Sem complementos</p>'; return; }
+        
+        if (groups.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center">Sem complementos</p>';
+            return;
+        }
         
         groups.forEach((group, idx) => {
             if (group.paused) return;
@@ -541,12 +552,17 @@
                 const groupIdx = parseInt(e.target.dataset.group);
                 const optName = e.target.dataset.optName;
                 const price = parseFloat(e.target.dataset.price) || 0;
+                
                 if (!selectedComplements[groupIdx]) selectedComplements[groupIdx] = [];
+                
                 if (e.target.type === 'radio') {
                     selectedComplements[groupIdx] = [{ name: optName, price }];
                 } else {
-                    if (e.target.checked) selectedComplements[groupIdx].push({ name: optName, price });
-                    else selectedComplements[groupIdx] = selectedComplements[groupIdx].filter(o => o.name !== optName);
+                    if (e.target.checked) {
+                        selectedComplements[groupIdx].push({ name: optName, price });
+                    } else {
+                        selectedComplements[groupIdx] = selectedComplements[groupIdx].filter(o => o.name !== optName);
+                    }
                 }
                 updateModalPrice();
             });
@@ -564,10 +580,14 @@
         document.getElementById('addToCartBtn').textContent = `Adicionar (R$ ${total.toFixed(2).replace('.', ',')})`;
     }
 
+    // Carrinho
     function addToCart() {
         if (!selectedProductForCart) return;
         
+        // Validar complementos obrigatórios
         const groups = productComplementsCache[selectedProductForCart.id] || [];
+        let isValid = true;
+        
         for (let i = 0; i < groups.length; i++) {
             const group = groups[i];
             if (group.paused) continue;
@@ -577,10 +597,12 @@
                 const max = group.maxSelection || 999;
                 if (selected.length < min || selected.length > max) {
                     showMessage(`Selecione entre ${min} e ${max} opções para "${group.name}"`, 'error');
-                    return;
+                    isValid = false;
+                    break;
                 }
             }
         }
+        if (!isValid) return;
         
         let complementTotal = 0;
         const complementsObj = {};
@@ -610,12 +632,11 @@
         showMessage('Produto adicionado!', 'success');
     }
 
-    // ==================== CARRINHO - RENDER ====================
     function renderCartItems() {
         const container = document.getElementById('cart-items-list');
         const totalSpan = document.getElementById('cart-total-price');
         container.innerHTML = '';
-        let totalCartPrice = 0;
+        totalCartPrice = 0;
         
         if (cart.length === 0) {
             container.innerHTML = '<p class="text-center text-gray-500">Carrinho vazio</p>';
@@ -630,7 +651,9 @@
                     if (item.complements[group] && item.complements[group].length) {
                         complementsHtml += `<p class="text-xs font-bold mt-1">${escapeHtml(group)}:</p>`;
                         complementsHtml += `<ul class="text-xs text-gray-500 pl-4">`;
-                        complementsHtml += item.complements[group].map(c => `<li>${escapeHtml(c.name)} (+R$ ${(c.price || 0).toFixed(2).replace('.', ',')})</li>`).join('');
+                        complementsHtml += item.complements[group].map(c => 
+                            `<li>${escapeHtml(c.name)} (+R$ ${(c.price || 0).toFixed(2).replace('.', ',')})</li>`
+                        ).join('');
                         complementsHtml += `</ul>`;
                     }
                 }
@@ -658,17 +681,28 @@
             totalCartPrice += (item.totalPrice || 0);
         });
         
+        // Calcular taxa de entrega
         const subtotal = totalCartPrice;
         const deliveryFee = getDeliveryFee();
         const totalFinal = subtotal + deliveryFee;
         
-        totalSpan.innerHTML = `
-            <div class="space-y-1 text-right">
-                <div class="text-sm">Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}</div>
-                <div class="text-sm">Taxa entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}</div>
-                <div class="text-lg font-bold border-t pt-1">Total: R$ ${totalFinal.toFixed(2).replace('.', ',')}</div>
-            </div>
-        `;
+        const totalElement = document.getElementById('cart-total-price');
+        if (totalElement) {
+            totalElement.innerHTML = `
+                <div class="space-y-1 text-right">
+                    <div class="text-sm">Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}</div>
+                    <div class="text-sm">Taxa entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}</div>
+                    <div class="text-lg font-bold border-t pt-1">Total: R$ ${totalFinal.toFixed(2).replace('.', ',')}</div>
+                </div>
+            `;
+        }
+    }
+    
+    function getDeliveryFee() {
+        if (restaurantProfile.deliveryFee && typeof restaurantProfile.deliveryFee === 'number') {
+            return restaurantProfile.deliveryFee;
+        }
+        return 5.00;
     }
 
     function updateCartQuantity(index, delta) {
@@ -679,8 +713,10 @@
         } else {
             const basePrice = cart[index].product.price || 0;
             let complementPrice = 0;
-            for (const group in cart[index].complements) {
-                complementPrice += (cart[index].complements[group] || []).reduce((s, o) => s + (o.price || 0), 0);
+            if (cart[index].complements) {
+                for (const group in cart[index].complements) {
+                    complementPrice += (cart[index].complements[group] || []).reduce((s, o) => s + (o.price || 0), 0);
+                }
             }
             cart[index].totalPrice = (basePrice + complementPrice) * cart[index].quantity;
         }
@@ -689,9 +725,16 @@
         updateCartCount();
     }
 
-    // ==================== PEDIDOS ====================
+    // Função para criar pedido - NÃO cria ID manualmente
     async function createOrder(customerData, paymentMethod, items, subtotal) {
         const deliveryFee = getDeliveryFee();
+        
+        if (!customerData.name) throw new Error("Nome é obrigatório");
+        if (!customerData.phone) throw new Error("Telefone é obrigatório");
+        if (!customerData.address) throw new Error("Endereço é obrigatório");
+        if (!customerData.number) throw new Error("Número é obrigatório");
+        if (!paymentMethod) throw new Error("Forma de pagamento é obrigatória");
+        if (!items || items.length === 0) throw new Error("Carrinho vazio");
         
         const orderData = {
             date: new Date().toLocaleString('pt-BR'),
@@ -725,218 +768,156 @@
         
         const docRef = await addDoc(collection(db, COLLECTIONS.ORDERS), orderData);
         
-        const clientRef = doc(db, COLLECTIONS.CLIENTS, customerData.phone.replace(/\D/g, ''));
-        await setDoc(clientRef, {
-            name: customerData.name,
-            phone: customerData.phone,
-            email: customerData.email || '',
-            address: `${customerData.address}, ${customerData.number}`,
-            cep: customerData.cep || '',
-            lastOrder: Timestamp.now()
-        }, { merge: true });
+        console.log("✅ Pedido salvo com ID:", docRef.id);
+        
+        try {
+            const clientRef = doc(db, COLLECTIONS.CLIENTS, customerData.phone.replace(/\D/g, ''));
+            await setDoc(clientRef, {
+                name: customerData.name,
+                phone: customerData.phone,
+                email: customerData.email || '',
+                address: `${customerData.address}, ${customerData.number}`,
+                cep: customerData.cep || '',
+                lastOrder: Timestamp.now()
+            }, { merge: true });
+        } catch (clientError) {
+            console.error("Erro ao salvar cliente:", clientError);
+        }
         
         return { ...orderData, id: docRef.id };
     }
 
-    // ==================== ACOMPANHAMENTO ====================
-    function startOrdersTrackingListener() {
-        if (!customerInfo || !customerInfo.phone) return;
-        if (unsubscribeOrders) unsubscribeOrders();
-        
-        const q = query(collection(db, COLLECTIONS.ORDERS), where('customer.phone', '==', customerInfo.phone), orderBy('createdAt', 'desc'));
-        
-        unsubscribeOrders = onSnapshot(q, (snapshot) => {
-            customerOrders = [];
-            snapshot.forEach(doc => { customerOrders.push({ id: doc.id, ...doc.data() }); });
-            trackingTotalOrders.textContent = customerOrders.length;
-            renderTrackingOrders();
-        }, (error) => { console.error("Erro:", error); });
-    }
-
-    function renderTrackingOrders() {
-        if (!customerOrders.length) {
-            trackingOrdersList.innerHTML = `<div class="text-center text-gray-500 py-8">Você ainda não tem pedidos</div>`;
-            return;
-        }
-        
-        trackingOrdersList.innerHTML = '';
-        customerOrders.forEach(order => {
-            const card = createTrackingOrderCard(order);
-            trackingOrdersList.appendChild(card);
-        });
-    }
-
-    function getStatusIcon(status) {
-        const icons = { 'Pendente': '⏳', 'Preparando': '👨‍🍳', 'Saiu para entrega': '🛵', 'Entregue': '✅', 'Cancelado': '❌' };
-        return icons[status] || '📋';
-    }
-
-    function getStatusClass(orderStatus, stepStatus) {
-        const steps = ['Pendente', 'Preparando', 'Saiu para entrega', 'Entregue'];
-        const orderIndex = steps.indexOf(orderStatus);
-        const stepIndex = steps.indexOf(stepStatus);
-        if (orderStatus === 'Cancelado') return '';
-        if (orderIndex >= stepIndex) return 'completed';
-        if (orderIndex === stepIndex - 1) return 'active';
-        return '';
-    }
-
-    function getStatusWidth(status) {
-        if (status === 'Cancelado') return 0;
-        const widths = { 'Pendente': 0, 'Preparando': 33, 'Saiu para entrega': 66, 'Entregue': 100 };
-        return widths[status] || 0;
-    }
-
-    function createTrackingOrderCard(order) {
-        const div = document.createElement('div');
-        div.className = 'bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition';
-        
-        const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
-        const itemCount = order.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
-        const statusClass = `status-${order.status?.replace(/ /g, '-') || 'Pendente'}`;
-        
-        div.innerHTML = `
-            <div class="p-4">
-                <div class="flex justify-between items-start flex-wrap gap-2 mb-3">
-                    <div>
-                        <span class="text-xs text-gray-400">${formatDate(order.createdAt || order.date)}</span>
-                        <p class="text-sm font-bold text-gray-800">Pedido #${(order.id || '').slice(-6)}</p>
-                    </div>
-                    <span class="status-badge ${statusClass} text-xs">${getStatusIcon(order.status)} ${order.status || 'Pendente'}</span>
-                </div>
-                
-                <div class="status-timeline my-3">
-                    <div class="status-line"></div>
-                    <div class="status-line-fill" style="width: ${getStatusWidth(order.status)}%"></div>
-                    <div class="status-step ${getStatusClass(order.status, 'Pendente')}"><div class="step-icon">📝</div><div class="step-label">Pedido</div></div>
-                    <div class="status-step ${getStatusClass(order.status, 'Preparando')}"><div class="step-icon">👨‍🍳</div><div class="step-label">Preparo</div></div>
-                    <div class="status-step ${getStatusClass(order.status, 'Saiu para entrega')}"><div class="step-icon">🛵</div><div class="step-label">Entrega</div></div>
-                    <div class="status-step ${getStatusClass(order.status, 'Entregue')}"><div class="step-icon">✅</div><div class="step-label">Entregue</div></div>
-                </div>
-                
-                <div class="flex justify-between items-center text-sm text-gray-600 mb-3">
-                    <span>${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</span>
-                    <span class="font-bold text-green-600">R$ ${total.toFixed(2).replace('.', ',')}</span>
-                </div>
-                
-                <div class="flex gap-2">
-                    <button class="view-order-detail flex-1 bg-blue-50 text-blue-600 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-100" data-order-id="${order.id}">📋 Detalhes</button>
-                    ${order.status !== 'Entregue' && order.status !== 'Cancelado' ? `<button class="cancel-order-tracking flex-1 bg-red-50 text-red-600 py-1.5 rounded-lg text-sm font-semibold hover:bg-red-100" data-order-id="${order.id}">❌ Cancelar</button>` : ''}
-                </div>
-            </div>
-        `;
-        return div;
-    }
-
-    function openOrderDetail(orderId) {
-        const order = customerOrders.find(o => o.id === orderId);
-        if (!order) return;
-        
-        const modal = document.getElementById('orderDetailModal');
-        const modalTitle = document.getElementById('modalOrderTitle');
-        const modalContent = document.getElementById('modalOrderContent');
-        
-        modalTitle.textContent = `Pedido #${orderId.slice(-6)}`;
-        
-        const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
-        let itemsHtml = '';
-        
-        order.items?.forEach(item => {
-            let complementsHtml = '';
-            if (item.complements) {
-                for (const group in item.complements) {
-                    if (item.complements[group] && item.complements[group].length) {
-                        complementsHtml += `<div class="mt-2 pl-3 border-l-2 border-orange-200"><p class="text-xs font-bold text-gray-600">${group}:</p><ul class="text-xs text-gray-500">`;
-                        item.complements[group].forEach(opt => { complementsHtml += `<li>• ${opt.name} ${opt.price > 0 ? `(+R$ ${opt.price.toFixed(2).replace('.', ',')})` : ''}</li>`; });
-                        complementsHtml += `</ul></div>`;
-                    }
-                }
-            }
-            itemsHtml += `<div class="flex justify-between py-2 border-b text-sm"><div><span class="font-bold">${item.quantity}x</span> ${item.product?.name}${complementsHtml}</div><span class="font-bold text-green-600">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span></div>`;
-        });
-        
-        modalContent.innerHTML = `
-            <div class="space-y-4">
-                <div class="flex justify-between items-center"><span class="status-badge ${`status-${order.status?.replace(/ /g, '-')}`}">${getStatusIcon(order.status)} ${order.status}</span><span class="text-xs text-gray-400">${formatDate(order.createdAt || order.date)}</span></div>
-                <div class="bg-gray-50 p-3 rounded-lg"><p class="font-bold text-sm mb-1">📍 Endereço</p><p class="text-sm">${order.customer?.address || 'Não informado'}</p>${order.customer?.complement ? `<p class="text-xs text-gray-500 mt-1">Complemento: ${order.customer.complement}</p>` : ''}</div>
-                <div><p class="font-bold text-sm mb-2">🍔 Itens</p><div class="bg-gray-50 p-3 rounded-lg">${itemsHtml || '<p class="text-gray-500">Nenhum item</p>'}</div></div>
-                <div class="border-t pt-3 space-y-1"><div class="flex justify-between text-sm"><span>Subtotal:</span><span>R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}</span></div><div class="flex justify-between text-sm"><span>Taxa entrega:</span><span>R$ ${(order.deliveryFee || 5.00).toFixed(2).replace('.', ',')}</span></div><div class="flex justify-between font-bold text-green-600 pt-2 border-t"><span>TOTAL:</span><span>R$ ${total.toFixed(2).replace('.', ',')}</span></div></div>
-                <div class="bg-gray-50 p-2 rounded-lg text-center text-sm">💳 Pagamento: ${order.paymentMethod || 'Não informado'}</div>
-            </div>
-        `;
-        modal.classList.remove('hidden');
-    }
-
-    async function cancelCustomerOrder(orderId) {
-        const order = customerOrders.find(o => o.id === orderId);
-        if (!order || (order.status !== 'Pendente' && order.status !== 'Preparando')) {
-            showMessage('Este pedido não pode ser cancelado', 'error');
-            return;
-        }
-        try {
-            const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
-            await updateDoc(orderRef, { status: 'Cancelado', updatedAt: Timestamp.now() });
-            showMessage('✅ Pedido cancelado!', 'success');
-        } catch (error) { showMessage('Erro ao cancelar', 'error'); }
-    }
-
-    // ==================== LOGIN ====================
-    function openTrackingModal() {
-        toggleModal(trackingModal, true);
+    // ==================== FUNÇÃO PARA REDIRECIONAR PARA ACOMPANHAMENTO ====================
+    function goToTracking() {
         if (customerInfo && customerInfo.phone) {
-            trackingCustomerInfo.classList.remove('hidden');
-            trackingNotLogged.classList.add('hidden');
-            trackingOrdersList.classList.remove('hidden');
-            trackingLogoutDiv.classList.remove('hidden');
-            trackingCustomerName.textContent = customerInfo.name || 'Cliente';
-            trackingCustomerPhone.textContent = customerInfo.phone;
-            startOrdersTrackingListener();
+            sessionStorage.setItem('customerPhone', customerInfo.phone);
+            window.location.href = 'acompanhamento.html';
         } else {
-            trackingCustomerInfo.classList.add('hidden');
-            trackingNotLogged.classList.remove('hidden');
-            trackingOrdersList.classList.add('hidden');
-            trackingLogoutDiv.classList.add('hidden');
+            showMessage('Faça login primeiro para ver seus pedidos', 'error');
+            toggleModal(profileModal, false);
+            toggleModal(loginModal, true);
+        }
+    }
+
+    // ==================== FUNÇÕES DE LOGIN E PERFIL ====================
+    
+    // Função para carregar os pedidos do cliente no modal de perfil
+    async function loadCustomerOrders() {
+        if (!customerInfo || !customerInfo.phone) return;
+        
+        const phoneDigits = customerInfo.phone.replace(/\D/g, '');
+        const q = query(
+            collection(db, COLLECTIONS.ORDERS),
+            where('customer.phone', '==', customerInfo.phone),
+            orderBy('createdAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(q);
+        const ordersList = document.getElementById('profile-orders-list');
+        
+        if (querySnapshot.empty) {
+            ordersList.innerHTML = '<p class="text-gray-500 text-center">Nenhum pedido encontrado</p>';
+            return;
+        }
+        
+        ordersList.innerHTML = '';
+        querySnapshot.forEach(doc => {
+            const order = { id: doc.id, ...doc.data() };
+            const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
+            
+            const orderDiv = document.createElement('div');
+            orderDiv.className = 'bg-gray-50 p-3 rounded-lg border-l-4 border-green-500';
+            orderDiv.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold">Pedido #${order.id.slice(-6)}</p>
+                        <p class="text-xs text-gray-500">${new Date(order.createdAt?.seconds * 1000).toLocaleString('pt-BR') || order.date}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-green-600">R$ ${total.toFixed(2).replace('.', ',')}</p>
+                        <p class="text-xs ${order.status === 'Pendente' ? 'text-yellow-600' : order.status === 'Preparando' ? 'text-blue-600' : order.status === 'Saiu para entrega' ? 'text-green-600' : 'text-gray-500'}">
+                            ${order.status || 'Pendente'}
+                        </p>
+                    </div>
+                </div>
+                <p class="text-sm mt-1">${order.items?.length || 0} item(ns)</p>
+            `;
+            ordersList.appendChild(orderDiv);
+        });
+    }
+
+    function openProfileModal() {
+        if (customerInfo) {
+            document.getElementById('profile-name').textContent = customerInfo.name || 'Cliente';
+            document.getElementById('profile-phone').textContent = customerInfo.phone || '-';
+            document.getElementById('profile-address').textContent = customerInfo.address || 'Não informado';
+            loadCustomerOrders();
+            toggleModal(profileModal, true);
+        } else {
+            toggleModal(loginModal, true);
         }
     }
 
     async function executeLogin() {
         const name = document.getElementById('loginName').value.trim();
         const phone = document.getElementById('loginPhone').value.trim();
-        if (!name || !phone) { showMessage('Preencha todos os campos', 'error'); return; }
-        
+
+        if (!name || !phone) {
+            showMessage('Preencha os campos para fazer login!', 'error');
+            return;
+        }
+
         const clientId = phone.replace(/\D/g, '');
         const clients = JSON.parse(localStorage.getItem('clients')) || {};
         const savedClient = clients[clientId];
-        
+
         if (savedClient && savedClient.name.toLowerCase() === name.toLowerCase()) {
             customerInfo = {
-                name: savedClient.name, phone: savedClient.phone, address: savedClient.address,
-                cep: savedClient.cep, email: savedClient.email, number: '', complement: '', reference: ''
+                name: savedClient.name,
+                phone: savedClient.phone,
+                address: savedClient.address.split(', Nº')[0] || savedClient.address,
+                cep: savedClient.cep,
+                email: savedClient.email,
+                number: savedClient.address.split('Nº ')[1]?.split(' ')[0] || '',
+                complement: '',
+                reference: ''
             };
+            
             localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
             prefillCustomerForm(customerInfo);
-            toggleModal(document.getElementById('login-modal'), false);
-            showMessage('Login efetuado!', 'success');
-            if (!trackingModal.classList.contains('hidden')) { toggleModal(trackingModal, false); openTrackingModal(); }
+            toggleModal(loginModal, false);
+            showMessage('Login efetuado com sucesso!', 'success');
+            openProfileModal();
         } else {
-            showMessage('Cadastro não encontrado', 'error');
+            showMessage('Cadastro não encontrado! Verifique o nome e o número informados.', 'error');
         }
     }
 
     function prefillCustomerForm(info) {
-        const fields = ['customerName', 'customerPhone', 'customerEmail', 'customerCep', 'customerAddress', 'customerNumber', 'customerComplement', 'customerReference'];
-        const ids = { customerName: 'name', customerPhone: 'phone', customerEmail: 'email', customerCep: 'cep', customerAddress: 'address', customerNumber: 'number', customerComplement: 'complement', customerReference: 'reference' };
-        fields.forEach(field => { const el = document.getElementById(field); if (el && info[ids[field]]) el.value = info[ids[field]]; });
+        const nameInput = document.getElementById('customerName');
+        const phoneInput = document.getElementById('customerPhone');
+        const emailInput = document.getElementById('customerEmail');
+        const cepInput = document.getElementById('customerCep');
+        const addressInput = document.getElementById('customerAddress');
+        const numberInput = document.getElementById('customerNumber');
+        const complementInput = document.getElementById('customerComplement');
+        const referenceInput = document.getElementById('customerReference');
+        
+        if (nameInput) nameInput.value = info.name || '';
+        if (phoneInput) phoneInput.value = info.phone || '';
+        if (emailInput) emailInput.value = info.email || '';
+        if (cepInput) cepInput.value = info.cep || '';
+        if (addressInput) addressInput.value = info.address || '';
+        if (numberInput) numberInput.value = info.number || '';
+        if (complementInput) complementInput.value = info.complement || '';
+        if (referenceInput) referenceInput.value = info.reference || '';
     }
 
     function executeLogout() {
         customerInfo = null;
         localStorage.removeItem('currentLoggedCustomer');
-        if (unsubscribeOrders) unsubscribeOrders();
-        customerOrders = [];
-        toggleModal(trackingModal, false);
-        showMessage('Saiu da conta', 'yellow');
-        openTrackingModal();
+        toggleModal(profileModal, false);
+        showMessage('Você saiu da sua conta.', 'yellow');
     }
 
     // ==================== EVENT LISTENERS ====================
@@ -945,128 +926,305 @@
     customerProductList.addEventListener('click', (e) => {
         const card = e.target.closest('.product-card');
         const addBtn = e.target.closest('.add-to-cart-simple');
-        if (card && !addBtn) { const id = card.dataset.id; if (id) openProductDetailModal(id); }
-        else if (addBtn) {
+        
+        if (card && !addBtn) {
+            const productId = card.dataset.id;
+            if (productId) openProductDetailModal(productId);
+        } else if (addBtn) {
             const productId = addBtn.dataset.id;
             const product = allProducts.find(p => p.id === productId);
             if (product) {
                 const complements = productComplementsCache[productId] || [];
-                if (complements.some(g => g.isMandatory && !g.paused) || complements.length > 0) openProductDetailModal(productId);
-                else {
-                    cart.push({ product: { id: product.id, name: product.name, price: product.price || 0, image: product.image || '' }, quantity: 1, complements: {}, totalPrice: product.price || 0 });
-                    saveCart(); updateCartCount(); showMessage('Produto adicionado!', 'success');
+                const hasMandatory = complements.some(g => g.isMandatory && !g.paused);
+                
+                if (hasMandatory || complements.length > 0) {
+                    openProductDetailModal(productId);
+                } else {
+                    cart.push({
+                        product: {
+                            id: product.id,
+                            name: product.name,
+                            price: product.price || 0,
+                            image: product.image || ''
+                        },
+                        quantity: 1,
+                        complements: {},
+                        totalPrice: product.price || 0
+                    });
+                    saveCart();
+                    updateCartCount();
+                    showMessage('Produto adicionado!', 'success');
                 }
             }
         }
     });
-    
+
     // Modal Produto
-    document.getElementById('quantity-minus')?.addEventListener('click', () => { if (currentQuantity > 1) { currentQuantity--; document.getElementById('quantity-display').textContent = currentQuantity; updateModalPrice(); } });
-    document.getElementById('quantity-plus')?.addEventListener('click', () => { currentQuantity++; document.getElementById('quantity-display').textContent = currentQuantity; updateModalPrice(); });
-    document.getElementById('addToCartBtn')?.addEventListener('click', addToCart);
-    document.getElementById('closeProductDetailModalBtn')?.addEventListener('click', () => toggleModal(document.getElementById('product-detail-modal'), false));
+    const quantityMinus = document.getElementById('quantity-minus');
+    const quantityPlus = document.getElementById('quantity-plus');
+    const quantityDisplay = document.getElementById('quantity-display');
+    const closeProductDetailBtn = document.getElementById('closeProductDetailModalBtn');
+    const addToCartBtnModal = document.getElementById('addToCartBtn');
+    
+    if (quantityMinus) {
+        quantityMinus.addEventListener('click', () => {
+            if (currentQuantity > 1) {
+                currentQuantity--;
+                quantityDisplay.textContent = currentQuantity;
+                updateModalPrice();
+            }
+        });
+    }
+    
+    if (quantityPlus) {
+        quantityPlus.addEventListener('click', () => {
+            currentQuantity++;
+            quantityDisplay.textContent = currentQuantity;
+            updateModalPrice();
+        });
+    }
+    
+    if (addToCartBtnModal) addToCartBtnModal.addEventListener('click', addToCart);
+    if (closeProductDetailBtn) {
+        closeProductDetailBtn.addEventListener('click', () => 
+            toggleModal(document.getElementById('product-detail-modal'), false));
+    }
     
     // Carrinho
-    openCartBtn?.addEventListener('click', () => { renderCartItems(); toggleModal(document.getElementById('cart-modal'), true); });
-    document.getElementById('closeCartModalBtn')?.addEventListener('click', () => toggleModal(document.getElementById('cart-modal'), false));
-    document.getElementById('cart-items-list')?.addEventListener('click', (e) => {
-        const minus = e.target.closest('.qty-minus');
-        const plus = e.target.closest('.qty-plus');
-        const remove = e.target.closest('.remove-item');
-        if (minus) updateCartQuantity(parseInt(minus.dataset.index), -1);
-        if (plus) updateCartQuantity(parseInt(plus.dataset.index), 1);
-        if (remove) { const idx = parseInt(remove.dataset.index); cart.splice(idx, 1); saveCart(); renderCartItems(); updateCartCount(); }
-    });
-    document.getElementById('checkoutBtn')?.addEventListener('click', () => {
-        if (cart.length === 0) showMessage('Carrinho vazio!', 'error');
-        else { toggleModal(document.getElementById('cart-modal'), false); toggleModal(document.getElementById('customer-info-modal'), true); }
-    });
+    if (openCartBtn) {
+        openCartBtn.addEventListener('click', () => {
+            renderCartItems();
+            toggleModal(cartModal, true);
+        });
+    }
+    
+    const closeCartBtn = document.getElementById('closeCartModalBtn');
+    if (closeCartBtn) {
+        closeCartBtn.addEventListener('click', () => 
+            toggleModal(cartModal, false));
+    }
+    
+    const cartItemsContainer = document.getElementById('cart-items-list');
+    if (cartItemsContainer) {
+        cartItemsContainer.addEventListener('click', (e) => {
+            const minus = e.target.closest('.qty-minus');
+            const plus = e.target.closest('.qty-plus');
+            const remove = e.target.closest('.remove-item');
+            
+            if (minus) updateCartQuantity(parseInt(minus.dataset.index), -1);
+            if (plus) updateCartQuantity(parseInt(plus.dataset.index), 1);
+            if (remove) {
+                const idx = parseInt(remove.dataset.index);
+                cart.splice(idx, 1);
+                saveCart();
+                renderCartItems();
+                updateCartCount();
+            }
+        });
+    }
     
     // Checkout
-    document.getElementById('backToCartBtn')?.addEventListener('click', () => { toggleModal(document.getElementById('customer-info-modal'), false); toggleModal(document.getElementById('cart-modal'), true); });
-    document.getElementById('continueToPaymentBtn')?.addEventListener('click', () => {
-        const name = document.getElementById('customerName')?.value.trim();
-        const phone = document.getElementById('customerPhone')?.value.trim();
-        const address = document.getElementById('customerAddress')?.value.trim();
-        const number = document.getElementById('customerNumber')?.value.trim();
-        if (!name || !phone || !address || !number) { showMessage('Preencha todos os dados', 'error'); return; }
-        customerInfo = { name, phone, email: document.getElementById('customerEmail')?.value || '', cep: document.getElementById('customerCep')?.value || '', address, number, complement: document.getElementById('customerComplement')?.value || '', reference: document.getElementById('customerReference')?.value || '' };
-        localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
-        const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
-        const total = subtotal + getDeliveryFee();
-        document.getElementById('payment-total-price').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-        selectedPaymentMethod = null;
-        document.getElementById('confirmOrderBtn').disabled = true;
-        document.querySelectorAll('.payment-option-btn').forEach(btn => btn.classList.remove('bg-green-500', 'text-white'));
-        toggleModal(document.getElementById('customer-info-modal'), false);
-        toggleModal(document.getElementById('payment-modal'), true);
-    });
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', () => {
+            if (cart.length === 0) {
+                showMessage('Carrinho vazio!', 'error');
+                return;
+            }
+            toggleModal(cartModal, false);
+            toggleModal(customerInfoModal, true);
+        });
+    }
+    
+    const backToCart = document.getElementById('backToCartBtn');
+    if (backToCart) {
+        backToCart.addEventListener('click', () => {
+            toggleModal(customerInfoModal, false);
+            toggleModal(cartModal, true);
+        });
+    }
+    
+    const continueToPayment = document.getElementById('continueToPaymentBtn');
+    if (continueToPayment) {
+        continueToPayment.addEventListener('click', () => {
+            const name = document.getElementById('customerName')?.value.trim();
+            const phone = document.getElementById('customerPhone')?.value.trim();
+            const address = document.getElementById('customerAddress')?.value.trim();
+            const number = document.getElementById('customerNumber')?.value.trim();
+            
+            if (!name || !phone || !address || !number) {
+                showMessage('Preencha nome, telefone, endereço e número', 'error');
+                return;
+            }
+            
+            customerInfo = {
+                name: name,
+                phone: phone,
+                email: document.getElementById('customerEmail')?.value || '',
+                cep: document.getElementById('customerCep')?.value || '',
+                address: address,
+                number: number,
+                complement: document.getElementById('customerComplement')?.value || '',
+                reference: document.getElementById('customerReference')?.value || ''
+            };
+            
+            localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
+            
+            const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
+            const deliveryFee = getDeliveryFee();
+            const total = subtotal + deliveryFee;
+            
+            const paymentTotal = document.getElementById('payment-total-price');
+            if (paymentTotal) {
+                paymentTotal.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            }
+            
+            selectedPaymentMethod = null;
+            const confirmBtn = document.getElementById('confirmOrderBtn');
+            if (confirmBtn) confirmBtn.disabled = true;
+            
+            document.querySelectorAll('.payment-option-btn').forEach(btn => {
+                btn.classList.remove('bg-green-500', 'text-white');
+            });
+            
+            toggleModal(customerInfoModal, false);
+            toggleModal(paymentModal, true);
+        });
+    }
     
     // Pagamento
     document.querySelectorAll('.payment-option-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            document.querySelectorAll('.payment-option-btn').forEach(b => b.classList.remove('bg-green-500', 'text-white'));
+            document.querySelectorAll('.payment-option-btn').forEach(b => 
+                b.classList.remove('bg-green-500', 'text-white'));
             btn.classList.add('bg-green-500', 'text-white');
             selectedPaymentMethod = btn.dataset.payment;
-            document.getElementById('confirmOrderBtn').disabled = false;
+            const confirmBtn = document.getElementById('confirmOrderBtn');
+            if (confirmBtn) confirmBtn.disabled = false;
         });
     });
-    document.getElementById('confirmOrderBtn')?.addEventListener('click', async () => {
-        if (!selectedPaymentMethod) { showMessage('Selecione pagamento', 'error'); return; }
-        const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
-        const btn = document.getElementById('confirmOrderBtn');
-        btn.disabled = true; btn.textContent = 'Processando...';
-        try {
-            await createOrder(customerInfo, selectedPaymentMethod, cart, subtotal);
-            cart = []; saveCart(); updateCartCount();
-            toggleModal(document.getElementById('payment-modal'), false);
-            showMessage('Pedido realizado! ✅', 'success');
-            if (!trackingModal.classList.contains('hidden') && customerInfo) startOrdersTrackingListener();
-        } catch (error) { showMessage('Erro: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Confirmar Pedido'; }
-    });
-    document.getElementById('closePaymentModalBtn')?.addEventListener('click', () => toggleModal(document.getElementById('payment-modal'), false));
-    document.getElementById('closeCustomerInfoModalBtn')?.addEventListener('click', () => toggleModal(document.getElementById('customer-info-modal'), false));
     
-    // Login
-    document.getElementById('submitLoginBtn')?.addEventListener('click', executeLogin);
-    document.getElementById('closeLoginModalBtn')?.addEventListener('click', () => toggleModal(document.getElementById('login-modal'), false));
+    const confirmOrderBtn = document.getElementById('confirmOrderBtn');
+    if (confirmOrderBtn) {
+        confirmOrderBtn.addEventListener('click', async () => {
+            if (!selectedPaymentMethod) {
+                showMessage('Selecione uma forma de pagamento', 'error');
+                return;
+            }
+            
+            if (!customerInfo) {
+                showMessage('Dados do cliente não informados', 'error');
+                return;
+            }
+            
+            if (cart.length === 0) {
+                showMessage('Carrinho vazio', 'error');
+                return;
+            }
+            
+            const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
+            
+            confirmOrderBtn.disabled = true;
+            confirmOrderBtn.textContent = 'Processando...';
+            
+            try {
+                await createOrder(customerInfo, selectedPaymentMethod, cart, subtotal);
+                
+                cart = [];
+                saveCart();
+                updateCartCount();
+                
+                toggleModal(paymentModal, false);
+                showMessage('Pedido realizado com sucesso! ✅', 'success');
+                
+            } catch (error) {
+                console.error("Erro ao finalizar pedido:", error);
+                showMessage('Erro ao finalizar pedido: ' + error.message, 'error');
+                confirmOrderBtn.disabled = false;
+                confirmOrderBtn.textContent = 'Confirmar Pedido';
+            }
+        });
+    }
     
-    // Tracking Modal
-    openProfileBtn?.addEventListener('click', openTrackingModal);
-    document.getElementById('closeTrackingModalBtn')?.addEventListener('click', () => toggleModal(trackingModal, false));
-    trackingGoToLoginBtn?.addEventListener('click', () => { toggleModal(trackingModal, false); toggleModal(document.getElementById('login-modal'), true); });
-    trackingLogoutBtn?.addEventListener('click', executeLogout);
-    trackingModal?.addEventListener('click', (e) => { if (e.target === trackingModal) toggleModal(trackingModal, false); });
+    // Modais
+    const closePaymentModal = document.getElementById('closePaymentModalBtn');
+    if (closePaymentModal) {
+        closePaymentModal.addEventListener('click', () =>
+            toggleModal(paymentModal, false));
+    }
     
-    // Tracking actions
-    trackingOrdersList?.addEventListener('click', async (e) => {
-        const viewBtn = e.target.closest('.view-order-detail');
-        const cancelBtn = e.target.closest('.cancel-order-tracking');
-        if (viewBtn) openOrderDetail(viewBtn.dataset.orderId);
-        if (cancelBtn) if (confirm('Cancelar este pedido?')) await cancelCustomerOrder(cancelBtn.dataset.orderId);
-    });
-    document.getElementById('closeOrderDetailModalBtn')?.addEventListener('click', () => document.getElementById('orderDetailModal').classList.add('hidden'));
-    window.addEventListener('click', (e) => { if (e.target === document.getElementById('orderDetailModal')) document.getElementById('orderDetailModal').classList.add('hidden'); });
+    const closeCustomerModal = document.getElementById('closeCustomerInfoModalBtn');
+    if (closeCustomerModal) {
+        closeCustomerModal.addEventListener('click', () =>
+            toggleModal(customerInfoModal, false));
+    }
     
-    // Modal de confirmação
-    document.getElementById('cancelConfirmationBtn')?.addEventListener('click', () => toggleModal(document.getElementById('confirmationModal'), false));
-    document.getElementById('confirmActionBtn')?.addEventListener('click', () => { if (window.confirmationCallback) window.confirmationCallback(); window.confirmationCallback = null; toggleModal(document.getElementById('confirmationModal'), false); });
+    // Perfil e Login
+    const profileModal = document.getElementById('profile-modal');
+    const customerInfoModal = document.getElementById('customer-info-modal');
+    const paymentModal = document.getElementById('payment-modal');
+    const cartModal = document.getElementById('cart-modal');
+    const loginModal = document.getElementById('login-modal');
+    
+    if (openProfileBtn) {
+        openProfileBtn.addEventListener('click', openProfileModal);
+    }
+    
+    const closeProfileModalBtn = document.getElementById('closeProfileModalBtn');
+    if (closeProfileModalBtn) {
+        closeProfileModalBtn.addEventListener('click', () => toggleModal(profileModal, false));
+    }
+    
+    const submitLoginBtn = document.getElementById('submitLoginBtn');
+    if (submitLoginBtn) {
+        submitLoginBtn.addEventListener('click', executeLogin);
+    }
+    
+    const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
+    if (closeLoginModalBtn) {
+        closeLoginModalBtn.addEventListener('click', () => toggleModal(loginModal, false));
+    }
+    
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', executeLogout);
+    }
+    
+    // ==================== BOTÃO PARA ACOMPANHAR PEDIDOS (REDIRECIONA) ====================
+    const trackOrdersBtn = document.getElementById('trackOrdersBtn');
+    if (trackOrdersBtn) {
+        trackOrdersBtn.addEventListener('click', goToTracking);
+    }
     
     // Fechar modais ao clicar fora
     window.addEventListener('click', (e) => {
-        const modals = ['product-detail-modal', 'cart-modal', 'customer-info-modal', 'payment-modal', 'login-modal'];
-        modals.forEach(modalId => { const modal = document.getElementById(modalId); if (modal && !modal.classList.contains('hidden') && e.target === modal) toggleModal(modal, false); });
+        const modals = ['product-detail-modal', 'cart-modal', 'customer-info-modal', 'payment-modal', 'profile-modal', 'login-modal'];
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            if (modal && !modal.classList.contains('hidden') && e.target === modal) {
+                toggleModal(modal, false);
+            }
+        });
     });
     
     // Carregar dados salvos
     const savedCustomer = localStorage.getItem('currentLoggedCustomer');
-    if (savedCustomer) { try { customerInfo = JSON.parse(savedCustomer); prefillCustomerForm(customerInfo); } catch(e) {} }
+    if (savedCustomer) {
+        try {
+            customerInfo = JSON.parse(savedCustomer);
+            prefillCustomerForm(customerInfo);
+        } catch(e) {}
+    }
     
     // Inicialização
-    startProductsListener();
-    loadRestaurantProfile();
-    loadCart();
-    setInterval(checkStoreHours, 30000);
+    async function init() {
+        startProductsListener();
+        await loadRestaurantProfile();
+        loadCart();
+        setInterval(checkStoreHours, 30000);
+    }
+    
+    init();
 </script>
 </body>
 </html>
