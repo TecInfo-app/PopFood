@@ -14,6 +14,25 @@
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         .modal-enter { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Estilos para o timeline de status */
+        .status-timeline { display: flex; justify-content: space-between; margin: 20px 0; position: relative; }
+        .status-step { text-align: center; flex: 1; position: relative; z-index: 2; }
+        .status-step .step-icon { width: 40px; height: 40px; background: #e5e7eb; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: 18px; transition: all 0.3s; }
+        .status-step.completed .step-icon { background: #22c55e; color: white; }
+        .status-step.active .step-icon { background: #f59e0b; color: white; animation: pulse 1.5s infinite; }
+        .status-step .step-label { font-size: 10px; font-weight: 500; color: #6b7280; }
+        .status-step.completed .step-label { color: #22c55e; font-weight: bold; }
+        .status-step.active .step-label { color: #f59e0b; font-weight: bold; }
+        .status-line { position: absolute; top: 20px; left: 0; right: 0; height: 3px; background: #e5e7eb; z-index: 1; }
+        .status-line-fill { position: absolute; top: 0; left: 0; height: 100%; background: #22c55e; transition: width 0.5s; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+        .status-Pendente { background: #fef3c7; color: #d97706; }
+        .status-Preparando { background: #dbeafe; color: #2563eb; }
+        .status-Saiu-para-entrega { background: #dcfce7; color: #16a34a; }
+        .status-Entregue { background: #e0e7ff; color: #4f46e5; }
+        .status-Cancelado { background: #fee2e2; color: #dc2626; }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen">
@@ -33,12 +52,16 @@
                     <h1 class="text-3xl font-bold text-gray-800">Cardápio</h1>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="openProfileBtn" class="bg-white p-2 rounded-full shadow-lg text-gray-600 hover:text-gray-800" title="Minha Conta">
-                        <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    <button id="openProfileBtn" class="bg-white p-2 rounded-full shadow-lg text-gray-600 hover:text-gray-800 transition-colors" title="Meus Pedidos">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
                     </button>
                     <div class="relative">
                         <button id="openCartBtn" class="bg-white p-2 rounded-full shadow-lg text-gray-600 hover:text-gray-800">
-                            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                            </svg>
                         </button>
                         <span id="cart-count" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold text-white bg-red-600 rounded-full hidden">0</span>
                     </div>
@@ -83,53 +106,69 @@
     </div>
 </div>
 
-<!-- Modal de Perfil -->
-<div id="profile-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl modal-enter">
-        <div class="flex justify-between items-center mb-4 border-b pb-4">
-            <h3 class="text-2xl font-bold">Minha Conta</h3>
-            <button id="closeProfileModalBtn" class="text-gray-500 hover:text-gray-800">✕</button>
-        </div>
-        <div class="max-h-[65vh] overflow-y-auto p-2">
-            <div class="bg-gray-50 p-4 rounded-xl mb-6">
-                <p><strong>Nome:</strong> <span id="profile-name"></span></p>
-                <p><strong>WhatsApp:</strong> <span id="profile-phone"></span></p>
-                <p><strong>Endereço:</strong> <span id="profile-address"></span></p>
+<!-- MODAL DE ACOMPANHAMENTO DE PEDIDOS (SUBSTITUI O MODAL DE PERFIL ANTIGO) -->
+<div id="tracking-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto modal-enter">
+        <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img id="trackingLogo" src="#" alt="Logo" class="h-10 hidden">
+                <h3 class="text-xl font-bold text-gray-800">📦 Meus Pedidos</h3>
             </div>
-            <h4 class="text-xl font-bold mb-4">Meus Pedidos</h4>
-            <div id="profile-orders-list" class="space-y-4"></div>
+            <button id="closeTrackingModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
         </div>
-        <div class="mt-4 pt-4 border-t flex justify-end">
-            <button id="logoutBtn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Sair</button>
+        
+        <div class="p-6">
+            <!-- Info do Cliente (se logado) -->
+            <div id="trackingCustomerInfo" class="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 mb-6 text-white hidden">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-sm opacity-90">Olá,</p>
+                        <p id="trackingCustomerName" class="text-lg font-bold"></p>
+                        <p id="trackingCustomerPhone" class="text-xs opacity-90"></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs opacity-90">Total de pedidos</p>
+                        <p id="trackingTotalOrders" class="text-2xl font-bold">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Estado não logado -->
+            <div id="trackingNotLogged" class="text-center py-8">
+                <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                </div>
+                <p class="text-gray-500 mb-4">Faça login para ver seus pedidos</p>
+                <button id="trackingGoToLoginBtn" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                    Fazer Login
+                </button>
+            </div>
+
+            <!-- Lista de Pedidos (quando logado) -->
+            <div id="trackingOrdersList" class="space-y-4 hidden">
+                <div class="text-center text-gray-500 py-8">Carregando pedidos...</div>
+            </div>
+
+            <!-- Botão Sair -->
+            <div id="trackingLogoutDiv" class="mt-6 pt-4 border-t text-center hidden">
+                <button id="trackingLogoutBtn" class="text-red-500 hover:text-red-700 text-sm font-semibold">
+                    Sair da conta
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- Modal de Detalhe do Produto -->
-<div id="product-detail-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl modal-enter">
-        <div class="flex justify-between items-center mb-4 border-b pb-4">
-            <h3 id="modal-product-name" class="text-2xl font-bold"></h3>
-            <button id="closeProductDetailModalBtn" class="text-gray-500 hover:text-gray-800">✕</button>
+<!-- Modal de Detalhes do Pedido (dentro do acompanhamento) -->
+<div id="orderDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto modal-enter">
+        <div class="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+            <h3 id="modalOrderTitle" class="text-lg font-bold">Detalhes do Pedido</h3>
+            <button id="closeOrderDetailModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
         </div>
-        <div class="max-h-[60vh] overflow-y-auto mb-4 p-2">
-            <div class="flex flex-col md:flex-row gap-4 mb-6">
-                <img id="modal-product-image" src="#" class="w-full md:w-1/3 h-48 object-cover rounded-xl border">
-                <div class="flex-1">
-                    <p id="modal-product-description" class="text-gray-600 mb-2"></p>
-                    <p class="text-2xl font-bold text-green-600">Preço: <span id="modal-product-price">R$ 0,00</span></p>
-                </div>
-            </div>
-            <div id="modal-complements-list" class="space-y-6"></div>
-        </div>
-        <div class="mt-4 pt-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-                <button id="quantity-minus" class="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-full hover:bg-gray-300">-</button>
-                <span id="quantity-display" class="text-xl font-bold">1</span>
-                <button id="quantity-plus" class="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-full hover:bg-gray-300">+</button>
-            </div>
-            <button id="addToCartBtn" class="w-full sm:w-auto bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-green-700">Adicionar ao Carrinho</button>
-        </div>
+        <div id="modalOrderContent" class="p-5"></div>
     </div>
 </div>
 
@@ -216,7 +255,6 @@
     let allCategories = [];
     let productComplementsCache = {};
     let cart = [];
-    let myOrders = [];
     let restaurantProfile = {};
     let customerInfo = null;
     let selectedProductForCart = null;
@@ -226,6 +264,11 @@
     let totalCartPrice = 0;
     let confirmationCallback = null;
     let unsubscribeProducts = null;
+    
+    // Estado para acompanhamento
+    let customerOrders = [];
+    let currentFilter = 'todos';
+    let unsubscribeOrders = null;
 
     // DOM Elements
     const customerProductList = document.getElementById('customerProductList');
@@ -234,6 +277,20 @@
     const cartCount = document.getElementById('cart-count');
     const openCartBtn = document.getElementById('openCartBtn');
     const openProfileBtn = document.getElementById('openProfileBtn');
+    
+    // Elementos do modal de acompanhamento
+    const trackingModal = document.getElementById('tracking-modal');
+    const closeTrackingModalBtn = document.getElementById('closeTrackingModalBtn');
+    const trackingCustomerInfo = document.getElementById('trackingCustomerInfo');
+    const trackingNotLogged = document.getElementById('trackingNotLogged');
+    const trackingOrdersList = document.getElementById('trackingOrdersList');
+    const trackingLogoutDiv = document.getElementById('trackingLogoutDiv');
+    const trackingCustomerName = document.getElementById('trackingCustomerName');
+    const trackingCustomerPhone = document.getElementById('trackingCustomerPhone');
+    const trackingTotalOrders = document.getElementById('trackingTotalOrders');
+    const trackingGoToLoginBtn = document.getElementById('trackingGoToLoginBtn');
+    const trackingLogoutBtn = document.getElementById('trackingLogoutBtn');
+    const trackingLogo = document.getElementById('trackingLogo');
     
     // Funções Auxiliares
     function showMessage(message, type = 'success') {
@@ -292,6 +349,12 @@
                 renderRestaurantInfo();
                 initCarousel();
                 checkStoreHours();
+                
+                // Carregar logo no modal de tracking
+                if (restaurantProfile.logo) {
+                    trackingLogo.src = restaurantProfile.logo;
+                    trackingLogo.classList.remove('hidden');
+                }
             }
         } catch (error) {
             console.error("Erro ao carregar perfil:", error);
@@ -481,7 +544,373 @@
         return div.innerHTML;
     }
 
-    // Detalhe do Produto
+    // ==================== FUNÇÕES DE ACOMPANHAMENTO ====================
+    
+    function startOrdersTrackingListener() {
+        if (!customerInfo || !customerInfo.phone) return;
+        
+        if (unsubscribeOrders) unsubscribeOrders();
+        
+        const q = query(
+            collection(db, COLLECTIONS.ORDERS),
+            where('customer.phone', '==', customerInfo.phone),
+            orderBy('createdAt', 'desc')
+        );
+        
+        unsubscribeOrders = onSnapshot(q, 
+            (snapshot) => {
+                customerOrders = [];
+                snapshot.forEach(doc => {
+                    customerOrders.push({ id: doc.id, ...doc.data() });
+                });
+                
+                trackingTotalOrders.textContent = customerOrders.length;
+                renderTrackingOrders();
+            },
+            (error) => {
+                console.error("Erro ao carregar pedidos:", error);
+            }
+        );
+    }
+
+    function renderTrackingOrders() {
+        if (!customerOrders.length) {
+            trackingOrdersList.innerHTML = `
+                <div class="text-center text-gray-500 py-12 bg-gray-50 rounded-xl">
+                    <svg class="h-16 w-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p>Você ainda não tem pedidos</p>
+                    <p class="text-sm mt-2">Faça seu primeiro pedido no cardápio! 🍔</p>
+                </div>
+            `;
+            return;
+        }
+        
+        trackingOrdersList.innerHTML = '';
+        customerOrders.forEach(order => {
+            const card = createTrackingOrderCard(order);
+            trackingOrdersList.appendChild(card);
+        });
+    }
+
+    function createTrackingOrderCard(order) {
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition';
+        
+        const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
+        const itemCount = order.items?.reduce((sum, item) => sum + (item.quantity || 1), 0) || 0;
+        const statusClass = `status-${order.status?.replace(/ /g, '-') || 'Pendente'}`;
+        
+        div.innerHTML = `
+            <div class="p-4">
+                <div class="flex justify-between items-start flex-wrap gap-2 mb-3">
+                    <div>
+                        <span class="text-xs text-gray-400">${formatDate(order.createdAt || order.date)}</span>
+                        <p class="text-sm font-bold text-gray-800">Pedido #${(order.id || '').slice(-6)}</p>
+                    </div>
+                    <span class="status-badge ${statusClass} text-xs">
+                        ${getStatusIcon(order.status)} ${order.status || 'Pendente'}
+                    </span>
+                </div>
+                
+                <!-- Timeline -->
+                <div class="status-timeline my-3">
+                    <div class="status-line"></div>
+                    <div class="status-line-fill" style="width: ${getStatusWidth(order.status)}%"></div>
+                    
+                    <div class="status-step ${getStatusClass(order.status, 'Pendente')}">
+                        <div class="step-icon">📝</div>
+                        <div class="step-label">Pedido</div>
+                    </div>
+                    <div class="status-step ${getStatusClass(order.status, 'Preparando')}">
+                        <div class="step-icon">👨‍🍳</div>
+                        <div class="step-label">Preparo</div>
+                    </div>
+                    <div class="status-step ${getStatusClass(order.status, 'Saiu para entrega')}">
+                        <div class="step-icon">🛵</div>
+                        <div class="step-label">Entrega</div>
+                    </div>
+                    <div class="status-step ${getStatusClass(order.status, 'Entregue')}">
+                        <div class="step-icon">✅</div>
+                        <div class="step-label">Entregue</div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center text-sm text-gray-600 mb-3">
+                    <span>${itemCount} ${itemCount === 1 ? 'item' : 'itens'}</span>
+                    <span class="font-bold text-green-600">R$ ${total.toFixed(2).replace('.', ',')}</span>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button class="view-order-detail flex-1 bg-blue-50 text-blue-600 py-1.5 rounded-lg text-sm font-semibold hover:bg-blue-100 transition" data-order-id="${order.id}">
+                        📋 Detalhes
+                    </button>
+                    ${order.status !== 'Entregue' && order.status !== 'Cancelado' ? `
+                        <button class="cancel-order-tracking flex-1 bg-red-50 text-red-600 py-1.5 rounded-lg text-sm font-semibold hover:bg-red-100 transition" data-order-id="${order.id}">
+                            ❌ Cancelar
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+        
+        return div;
+    }
+
+    function getStatusIcon(status) {
+        const icons = {
+            'Pendente': '⏳',
+            'Preparando': '👨‍🍳',
+            'Saiu para entrega': '🛵',
+            'Entregue': '✅',
+            'Cancelado': '❌'
+        };
+        return icons[status] || '📋';
+    }
+
+    function getStatusClass(orderStatus, stepStatus) {
+        const steps = ['Pendente', 'Preparando', 'Saiu para entrega', 'Entregue'];
+        const orderIndex = steps.indexOf(orderStatus);
+        const stepIndex = steps.indexOf(stepStatus);
+        
+        if (orderStatus === 'Cancelado') return '';
+        if (orderIndex >= stepIndex) return 'completed';
+        if (orderIndex === stepIndex - 1) return 'active';
+        return '';
+    }
+
+    function getStatusWidth(status) {
+        if (status === 'Cancelado') return 0;
+        const widths = {
+            'Pendente': 0,
+            'Preparando': 33,
+            'Saiu para entrega': 66,
+            'Entregue': 100
+        };
+        return widths[status] || 0;
+    }
+
+    function formatDate(dateValue) {
+        if (!dateValue) return 'Data não disponível';
+        if (dateValue && typeof dateValue.toDate === 'function') {
+            return dateValue.toDate().toLocaleString('pt-BR');
+        }
+        if (typeof dateValue === 'string') return dateValue;
+        if (dateValue && dateValue.seconds) {
+            return new Date(dateValue.seconds * 1000).toLocaleString('pt-BR');
+        }
+        return new Date(dateValue).toLocaleString('pt-BR');
+    }
+
+    function openOrderDetail(orderId) {
+        const order = customerOrders.find(o => o.id === orderId);
+        if (!order) return;
+        
+        const modal = document.getElementById('orderDetailModal');
+        const modalTitle = document.getElementById('modalOrderTitle');
+        const modalContent = document.getElementById('modalOrderContent');
+        
+        modalTitle.textContent = `Pedido #${orderId.slice(-6)}`;
+        
+        const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
+        
+        let itemsHtml = '';
+        order.items?.forEach(item => {
+            let complementsHtml = '';
+            if (item.complements) {
+                for (const group in item.complements) {
+                    if (item.complements[group] && item.complements[group].length) {
+                        complementsHtml += `<div class="mt-2 pl-3 border-l-2 border-orange-200">`;
+                        complementsHtml += `<p class="text-xs font-bold text-gray-600">${group}:</p>`;
+                        complementsHtml += `<ul class="text-xs text-gray-500">`;
+                        item.complements[group].forEach(opt => {
+                            complementsHtml += `<li>• ${opt.name} ${opt.price > 0 ? `(+R$ ${opt.price.toFixed(2).replace('.', ',')})` : ''}</li>`;
+                        });
+                        complementsHtml += `</ul></div>`;
+                    }
+                }
+            }
+            
+            itemsHtml += `
+                <div class="flex justify-between py-2 border-b text-sm">
+                    <div>
+                        <span class="font-bold">${item.quantity}x</span> ${item.product?.name}
+                        ${complementsHtml}
+                    </div>
+                    <span class="font-bold text-green-600">R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
+                </div>
+            `;
+        });
+        
+        modalContent.innerHTML = `
+            <div class="space-y-4">
+                <div class="flex justify-between items-center">
+                    <span class="status-badge ${`status-${order.status?.replace(/ /g, '-')}`}">
+                        ${getStatusIcon(order.status)} ${order.status}
+                    </span>
+                    <span class="text-xs text-gray-400">${formatDate(order.createdAt || order.date)}</span>
+                </div>
+                
+                <div class="bg-gray-50 p-3 rounded-lg">
+                    <p class="font-bold text-sm mb-1">📍 Endereço de entrega</p>
+                    <p class="text-sm">${order.customer?.address || 'Não informado'}</p>
+                    ${order.customer?.complement ? `<p class="text-xs text-gray-500 mt-1">Complemento: ${order.customer.complement}</p>` : ''}
+                </div>
+                
+                <div>
+                    <p class="font-bold text-sm mb-2">🍔 Itens</p>
+                    <div class="bg-gray-50 p-3 rounded-lg">${itemsHtml || '<p class="text-gray-500">Nenhum item</p>'}</div>
+                </div>
+                
+                <div class="border-t pt-3 space-y-1">
+                    <div class="flex justify-between text-sm">
+                        <span>Subtotal:</span>
+                        <span>R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span>Taxa entrega:</span>
+                        <span>R$ ${(order.deliveryFee || 5.00).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div class="flex justify-between font-bold text-green-600 pt-2 border-t">
+                        <span>TOTAL:</span>
+                        <span>R$ ${total.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </div>
+                
+                <div class="bg-gray-50 p-2 rounded-lg text-center text-sm">
+                    💳 Pagamento: ${order.paymentMethod || 'Não informado'}
+                </div>
+            </div>
+        `;
+        
+        modal.classList.remove('hidden');
+    }
+
+    async function cancelCustomerOrder(orderId) {
+        const order = customerOrders.find(o => o.id === orderId);
+        if (!order) return;
+        
+        if (order.status !== 'Pendente' && order.status !== 'Preparando') {
+            showMessage('Este pedido não pode mais ser cancelado', 'error');
+            return;
+        }
+        
+        try {
+            const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
+            await updateDoc(orderRef, { 
+                status: 'Cancelado',
+                updatedAt: Timestamp.now()
+            });
+            showMessage('✅ Pedido cancelado com sucesso!', 'success');
+        } catch (error) {
+            console.error("Erro ao cancelar:", error);
+            showMessage('Erro ao cancelar pedido', 'error');
+        }
+    }
+
+    // ==================== FUNÇÕES DE LOGIN ====================
+    
+    function openTrackingModal() {
+        toggleModal(trackingModal, true);
+        
+        if (customerInfo && customerInfo.phone) {
+            // Cliente já logado
+            trackingCustomerInfo.classList.remove('hidden');
+            trackingNotLogged.classList.add('hidden');
+            trackingOrdersList.classList.remove('hidden');
+            trackingLogoutDiv.classList.remove('hidden');
+            
+            trackingCustomerName.textContent = customerInfo.name || 'Cliente';
+            trackingCustomerPhone.textContent = customerInfo.phone;
+            
+            startOrdersTrackingListener();
+        } else {
+            // Cliente não logado
+            trackingCustomerInfo.classList.add('hidden');
+            trackingNotLogged.classList.remove('hidden');
+            trackingOrdersList.classList.add('hidden');
+            trackingLogoutDiv.classList.add('hidden');
+        }
+    }
+
+    async function executeLogin() {
+        const name = document.getElementById('loginName').value.trim();
+        const phone = document.getElementById('loginPhone').value.trim();
+
+        if (!name || !phone) {
+            showMessage('Preencha os campos para fazer login!', 'error');
+            return;
+        }
+
+        const clientId = phone.replace(/\D/g, '');
+        const clients = JSON.parse(localStorage.getItem('clients')) || {};
+        const savedClient = clients[clientId];
+
+        if (savedClient && savedClient.name.toLowerCase() === name.toLowerCase()) {
+            customerInfo = {
+                name: savedClient.name,
+                phone: savedClient.phone,
+                address: savedClient.address,
+                cep: savedClient.cep,
+                email: savedClient.email,
+                number: '',
+                complement: '',
+                reference: ''
+            };
+            
+            localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
+            prefillCustomerForm(customerInfo);
+            toggleModal(document.getElementById('login-modal'), false);
+            
+            showMessage('Login efetuado com sucesso!', 'success');
+            
+            // Fechar modal de tracking se estiver aberto e reabrir com dados
+            if (!trackingModal.classList.contains('hidden')) {
+                toggleModal(trackingModal, false);
+                openTrackingModal();
+            }
+        } else {
+            showMessage('Cadastro não encontrado! Verifique o nome e o número informados.', 'error');
+        }
+    }
+
+    function prefillCustomerForm(info) {
+        const nameInput = document.getElementById('customerName');
+        const phoneInput = document.getElementById('customerPhone');
+        const emailInput = document.getElementById('customerEmail');
+        const cepInput = document.getElementById('customerCep');
+        const addressInput = document.getElementById('customerAddress');
+        const numberInput = document.getElementById('customerNumber');
+        const complementInput = document.getElementById('customerComplement');
+        const referenceInput = document.getElementById('customerReference');
+        
+        if (nameInput) nameInput.value = info.name || '';
+        if (phoneInput) phoneInput.value = info.phone || '';
+        if (emailInput) emailInput.value = info.email || '';
+        if (cepInput) cepInput.value = info.cep || '';
+        if (addressInput) addressInput.value = info.address || '';
+        if (numberInput) numberInput.value = info.number || '';
+        if (complementInput) complementInput.value = info.complement || '';
+        if (referenceInput) referenceInput.value = info.reference || '';
+    }
+
+    function executeLogout() {
+        customerInfo = null;
+        localStorage.removeItem('currentLoggedCustomer');
+        
+        if (unsubscribeOrders) unsubscribeOrders();
+        customerOrders = [];
+        
+        toggleModal(trackingModal, false);
+        showMessage('Você saiu da sua conta', 'yellow');
+        
+        // Reabrir modal no estado não logado se estiver visível
+        openTrackingModal();
+    }
+
+    // ==================== FUNÇÕES DO PRODUTO E CARRINHO ====================
+    
     function openProductDetailModal(productId) {
         const product = allProducts.find(p => p.id === productId);
         if (!product || product.paused) return;
@@ -575,11 +1004,9 @@
         document.getElementById('addToCartBtn').textContent = `Adicionar (R$ ${total.toFixed(2).replace('.', ',')})`;
     }
 
-    // Carrinho
     function addToCart() {
         if (!selectedProductForCart) return;
         
-        // Validar complementos obrigatórios
         const groups = productComplementsCache[selectedProductForCart.id] || [];
         let isValid = true;
         
@@ -676,7 +1103,6 @@
             totalCartPrice += (item.totalPrice || 0);
         });
         
-        // Calcular taxa de entrega
         const subtotal = totalCartPrice;
         const deliveryFee = getDeliveryFee();
         const totalFinal = subtotal + deliveryFee;
@@ -720,11 +1146,9 @@
         updateCartCount();
     }
 
-    // Função para criar pedido - CORRIGIDA: NÃO cria ID manualmente
     async function createOrder(customerData, paymentMethod, items, subtotal) {
         const deliveryFee = getDeliveryFee();
         
-        // Validar todos os campos obrigatórios
         if (!customerData.name) throw new Error("Nome é obrigatório");
         if (!customerData.phone) throw new Error("Telefone é obrigatório");
         if (!customerData.address) throw new Error("Endereço é obrigatório");
@@ -732,8 +1156,6 @@
         if (!paymentMethod) throw new Error("Forma de pagamento é obrigatória");
         if (!items || items.length === 0) throw new Error("Carrinho vazio");
         
-        // IMPORTANTE: NÃO adicionar campo 'id' manualmente!
-        // Deixe o Firestore gerar o ID automaticamente
         const orderData = {
             date: new Date().toLocaleString('pt-BR'),
             createdAt: Timestamp.now(),
@@ -764,30 +1186,24 @@
             status: 'Pendente'
         };
         
-        // Salvar no Firestore - Deixe o Firebase gerar o ID automaticamente
         const docRef = await addDoc(collection(db, COLLECTIONS.ORDERS), orderData);
         
-        console.log("✅ Pedido salvo com ID:", docRef.id);
-        
         // Salvar cliente
-        try {
-            const clientRef = doc(db, COLLECTIONS.CLIENTS, customerData.phone.replace(/\D/g, ''));
-            await setDoc(clientRef, {
-                name: customerData.name,
-                phone: customerData.phone,
-                email: customerData.email || '',
-                address: `${customerData.address}, ${customerData.number}`,
-                cep: customerData.cep || '',
-                lastOrder: Timestamp.now()
-            }, { merge: true });
-        } catch (clientError) {
-            console.error("Erro ao salvar cliente:", clientError);
-        }
+        const clientRef = doc(db, COLLECTIONS.CLIENTS, customerData.phone.replace(/\D/g, ''));
+        await setDoc(clientRef, {
+            name: customerData.name,
+            phone: customerData.phone,
+            email: customerData.email || '',
+            address: `${customerData.address}, ${customerData.number}`,
+            cep: customerData.cep || '',
+            lastOrder: Timestamp.now()
+        }, { merge: true });
         
         return { ...orderData, id: docRef.id };
     }
 
-    // Event Listeners
+    // ==================== EVENT LISTENERS ====================
+    
     customerProductList.addEventListener('click', (e) => {
         const card = e.target.closest('.product-card');
         const addBtn = e.target.closest('.add-to-cart-simple');
@@ -930,6 +1346,8 @@
                 reference: document.getElementById('customerReference')?.value || ''
             };
             
+            localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
+            
             const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
             const deliveryFee = getDeliveryFee();
             const total = subtotal + deliveryFee;
@@ -989,13 +1407,17 @@
             try {
                 await createOrder(customerInfo, selectedPaymentMethod, cart, subtotal);
                 
-                // Limpar carrinho
                 cart = [];
                 saveCart();
                 updateCartCount();
                 
                 toggleModal(document.getElementById('payment-modal'), false);
                 showMessage('Pedido realizado com sucesso! ✅', 'success');
+                
+                // Atualizar lista de pedidos se o modal de tracking estiver aberto
+                if (!trackingModal.classList.contains('hidden') && customerInfo) {
+                    startOrdersTrackingListener();
+                }
                 
             } catch (error) {
                 console.error("Erro ao finalizar pedido:", error);
@@ -1018,9 +1440,57 @@
             toggleModal(document.getElementById('customer-info-modal'), false));
     }
     
+    // ==================== EVENTOS DO MODAL DE ACOMPANHAMENTO ====================
+    
+    openProfileBtn.addEventListener('click', openTrackingModal);
+    closeTrackingModalBtn.addEventListener('click', () => toggleModal(trackingModal, false));
+    trackingGoToLoginBtn.addEventListener('click', () => {
+        toggleModal(trackingModal, false);
+        toggleModal(document.getElementById('login-modal'), true);
+    });
+    trackingLogoutBtn.addEventListener('click', executeLogout);
+    
+    // Fechar modal de tracking ao clicar fora
+    trackingModal.addEventListener('click', (e) => {
+        if (e.target === trackingModal) {
+            toggleModal(trackingModal, false);
+        }
+    });
+    
+    // Eventos para os botões dentro da lista de pedidos (delegação)
+    trackingOrdersList.addEventListener('click', async (e) => {
+        const viewBtn = e.target.closest('.view-order-detail');
+        const cancelBtn = e.target.closest('.cancel-order-tracking');
+        
+        if (viewBtn) {
+            openOrderDetail(viewBtn.dataset.orderId);
+        } else if (cancelBtn) {
+            const orderId = cancelBtn.dataset.orderId;
+            if (confirm('❌ Tem certeza que deseja cancelar este pedido?')) {
+                await cancelCustomerOrder(orderId);
+            }
+        }
+    });
+    
+    // Fechar modal de detalhes
+    const closeOrderDetailModalBtn = document.getElementById('closeOrderDetailModalBtn');
+    if (closeOrderDetailModalBtn) {
+        closeOrderDetailModalBtn.addEventListener('click', () => {
+            document.getElementById('orderDetailModal').classList.add('hidden');
+        });
+    }
+    
+    // Fechar modal de detalhes ao clicar fora
+    window.addEventListener('click', (e) => {
+        const modal = document.getElementById('orderDetailModal');
+        if (e.target === modal) {
+            modal.classList.add('hidden');
+        }
+    });
+    
     // Fechar modais ao clicar fora
     window.addEventListener('click', (e) => {
-        const modals = ['product-detail-modal', 'cart-modal', 'customer-info-modal', 'payment-modal', 'profile-modal', 'login-modal'];
+        const modals = ['product-detail-modal', 'cart-modal', 'customer-info-modal', 'payment-modal', 'login-modal'];
         modals.forEach(modalId => {
             const modal = document.getElementById(modalId);
             if (modal && !modal.classList.contains('hidden') && e.target === modal) {
@@ -1028,6 +1498,20 @@
             }
         });
     });
+    
+    // Eventos de login
+    document.getElementById('submitLoginBtn')?.addEventListener('click', executeLogin);
+    document.getElementById('closeLoginModalBtn')?.addEventListener('click', () => 
+        toggleModal(document.getElementById('login-modal'), false));
+    
+    // Carregar dados salvos
+    const savedCustomer = localStorage.getItem('currentLoggedCustomer');
+    if (savedCustomer) {
+        try {
+            customerInfo = JSON.parse(savedCustomer);
+            prefillCustomerForm(customerInfo);
+        } catch(e) {}
+    }
 
     // Inicialização
     async function init() {
