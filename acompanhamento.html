@@ -29,6 +29,10 @@
         .status-Cancelado { background: #fee2e2; color: #dc2626; }
         .modal-enter { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .btn-whatsapp { background-color: #25D366; transition: all 0.3s; }
+        .btn-whatsapp:hover { background-color: #1da851; transform: scale(1.02); }
+        .btn-confirm { background-color: #10B981; transition: all 0.3s; }
+        .btn-confirm:hover { background-color: #059669; transform: scale(1.02); }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen flex items-center justify-center">
@@ -88,6 +92,22 @@
             </div>
         </div>
 
+        <!-- Botões de Ação -->
+        <div id="actionButtons" class="mt-6 flex gap-3">
+            <button id="whatsappBtn" class="btn-whatsapp flex-1 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
+                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.513 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.713-1.457L0 24zm6.59-4.846c1.66.986 3.288 1.489 4.954 1.49 5.305 0 9.621-4.321 9.624-9.629.002-2.572-1.002-4.99-2.83-6.817C16.512 2.371 14.095 1.366 11.52 1.366c-5.308 0-9.625 4.322-9.628 9.63-.001 1.82.478 3.526 1.39 5.098L2.257 21.8l5.83-1.531z"/>
+                </svg>
+                Falar com a Loja
+            </button>
+            <button id="confirmDeliveryBtn" class="btn-confirm flex-1 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hidden">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Confirmar Recebimento
+            </button>
+        </div>
+
         <!-- Botão Sair -->
         <div class="mt-6 text-center">
             <button id="logoutBtn" class="text-red-500 hover:text-red-700 text-sm">Sair da conta</button>
@@ -119,6 +139,7 @@
     let currentPhone = null;
     let currentOrder = null;
     let unsubscribeOrder = null;
+    let restaurantPhone = null;
 
     // DOM Elements
     const loginSection = document.getElementById('loginSection');
@@ -133,6 +154,8 @@
     const orderStatusBadge = document.getElementById('orderStatusBadge');
     const restaurantLogo = document.getElementById('restaurantLogo');
     const messageBox = document.getElementById('messageBox');
+    const whatsappBtn = document.getElementById('whatsappBtn');
+    const confirmDeliveryBtn = document.getElementById('confirmDeliveryBtn');
 
     function showMessage(msg, type = 'success') {
         messageBox.textContent = msg;
@@ -161,17 +184,20 @@
         return div.innerHTML;
     }
 
-    async function loadRestaurantLogo() {
+    async function loadRestaurantProfile() {
         try {
             const { getDoc, doc } = await import('./firebase-config.js');
             const docRef = doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main');
             const docSnap = await getDoc(docRef);
-            if (docSnap.exists() && docSnap.data().logo) {
-                restaurantLogo.src = docSnap.data().logo;
-                restaurantLogo.classList.remove('hidden');
+            if (docSnap.exists()) {
+                if (docSnap.data().logo) {
+                    restaurantLogo.src = docSnap.data().logo;
+                    restaurantLogo.classList.remove('hidden');
+                }
+                restaurantPhone = docSnap.data().phone || '';
             }
         } catch (error) {
-            console.error("Erro ao carregar logo:", error);
+            console.error("Erro ao carregar perfil:", error);
         }
     }
 
@@ -220,6 +246,69 @@
         return widths[status] || 0;
     }
 
+    function openWhatsApp() {
+        if (!restaurantPhone) {
+            showMessage('Número da loja não disponível', 'error');
+            return;
+        }
+        
+        const orderNumber = currentOrder?.id?.slice(-6) || '';
+        const message = encodeURIComponent(
+            `🍔 *Pedido #${orderNumber}*\n\n` +
+            `Olá! Gostaria de informações sobre meu pedido.\n\n` +
+            `📦 Status atual: ${currentOrder?.status || 'Pendente'}\n` +
+            `👤 Cliente: ${customerNameSpan.textContent}\n` +
+            `📞 Telefone: ${currentPhone}`
+        );
+        
+        const cleanPhone = restaurantPhone.replace(/\D/g, '');
+        window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+    }
+
+    async function confirmDelivery() {
+        if (!currentOrder) return;
+        
+        if (currentOrder.status !== 'Saiu para entrega') {
+            showMessage('Apenas pedidos "Saiu para entrega" podem ser confirmados', 'error');
+            return;
+        }
+        
+        try {
+            const orderRef = doc(db, COLLECTIONS.ORDERS, currentOrder.id);
+            await updateDoc(orderRef, { 
+                status: 'Entregue',
+                deliveredAt: Timestamp.now(),
+                updatedAt: Timestamp.now()
+            });
+            
+            showMessage('✅ Pedido confirmado como entregue! Obrigado!', 'success');
+            
+            // Esconder o botão de confirmar após clicar
+            confirmDeliveryBtn.classList.add('hidden');
+            
+        } catch (error) {
+            console.error("Erro ao confirmar entrega:", error);
+            showMessage('Erro ao confirmar entrega: ' + error.message, 'error');
+        }
+    }
+
+    function updateActionButtons(order) {
+        // Botão WhatsApp sempre visível
+        whatsappBtn.classList.remove('hidden');
+        
+        // Botão Confirmar Recebimento: só aparece se o status for "Saiu para entrega"
+        if (order.status === 'Saiu para entrega') {
+            confirmDeliveryBtn.classList.remove('hidden');
+        } else {
+            confirmDeliveryBtn.classList.add('hidden');
+        }
+        
+        // Se o pedido já foi entregue, esconde o botão de confirmar permanentemente
+        if (order.status === 'Entregue') {
+            confirmDeliveryBtn.classList.add('hidden');
+        }
+    }
+
     function renderOrder(order) {
         const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
         const statusClass = `status-${order.status?.replace(/ /g, '-') || 'Pendente'}`;
@@ -227,6 +316,9 @@
         // Atualizar badge de status
         orderStatusBadge.innerHTML = `${getStatusIcon(order.status)} ${order.status || 'Pendente'}`;
         orderStatusBadge.className = `text-lg font-bold ${statusClass}`;
+        
+        // Atualizar botões de ação
+        updateActionButtons(order);
         
         let itemsHtml = '';
         order.items?.forEach(item => {
@@ -316,7 +408,7 @@
                     <p class="text-sm"><strong>💳 Pagamento:</strong> ${order.paymentMethod || 'Não informado'}</p>
                 </div>
                 
-                ${order.status !== 'Entregue' && order.status !== 'Cancelado' ? `
+                ${order.status !== 'Entregue' && order.status !== 'Cancelado' && order.status !== 'Saiu para entrega' ? `
                     <div class="mt-4 p-3 bg-yellow-50 rounded-lg text-center">
                         <p class="text-sm text-yellow-700">
                             ⏱️ Seu pedido está sendo preparado! Em breve sairá para entrega.
@@ -327,7 +419,7 @@
                 ${order.status === 'Saiu para entrega' ? `
                     <div class="mt-4 p-3 bg-green-50 rounded-lg text-center">
                         <p class="text-sm text-green-700">
-                            🛵 Seu pedido saiu para entrega! Fique atento ao entregador.
+                            🛵 Seu pedido saiu para entrega! Clique em "Confirmar Recebimento" quando chegar.
                         </p>
                     </div>
                 ` : ''}
@@ -351,7 +443,7 @@
         `;
     }
 
-    // Buscar APENAS o pedido mais recente - SEM ORDERBY (funciona sem índice!)
+    // Buscar APENAS o pedido mais recente - SEM ORDERBY
     function startOrderListener(phone) {
         if (unsubscribeOrder) unsubscribeOrder();
         
@@ -359,11 +451,10 @@
         
         console.log("Buscando pedido atual para:", originalPhone);
         
-        // SEM orderBy - não precisa de índice composto!
         const q = query(
             collection(db, COLLECTIONS.ORDERS),
             where('customer.phone', '==', originalPhone),
-            where('status', 'in', ['Pendente', 'Preparando', 'Saiu para entrega'])
+            where('status', 'in', ['Pendente', 'Preparando', 'Saiu para entrega', 'Entregue'])
         );
         
         unsubscribeOrder = onSnapshot(q, 
@@ -442,6 +533,8 @@
     });
     
     logoutBtn.addEventListener('click', doLogout);
+    whatsappBtn.addEventListener('click', openWhatsApp);
+    confirmDeliveryBtn.addEventListener('click', confirmDelivery);
     
     // Verificar se já tem sessão ativa
     const savedPhone = sessionStorage.getItem('customerPhone');
@@ -455,8 +548,8 @@
         startOrderListener(savedPhone);
     }
     
-    // Carregar logo
-    loadRestaurantLogo();
+    // Carregar perfil do restaurante (logo e telefone)
+    loadRestaurantProfile();
 </script>
 </body>
 </html>
