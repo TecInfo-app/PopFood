@@ -3,255 +3,162 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clientes - Gerenciador de Delivery</title>
+    <title>PopFood - Clientes</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7fafc;
-        }
-        .modal-enter {
-            animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-    </style>
 </head>
-<body class="p-4 bg-gray-100 flex items-center justify-center min-h-screen">
+<body class="p-4 bg-gray-100 min-h-screen">
 
-    <div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
-
-        <div id="clients-page">
-            <div class="flex items-center gap-4 mb-6">
-                <a href="index.html" class="text-gray-500 hover:text-gray-800 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
-                </a>
-                <h1 class="text-3xl font-bold text-gray-800">Clientes</h1>
-            </div>
-            
-            <div id="clients-list" class="space-y-4">
-                <p class="text-center text-gray-500">Carregando clientes...</p>
-            </div>
-        </div>
-
-        <div id="clientDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-            <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl modal-enter">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-2xl font-bold text-gray-800" id="modal-client-name">Nome do Cliente</h3>
-                    <button id="closeClientDetailModalBtn" class="text-gray-500 hover:text-gray-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <p class="text-sm font-bold text-gray-700">Telefone:</p>
-                        <p class="text-md text-gray-600" id="client-phone"></p>
-                    </div>
-                    <div>
-                        <p class="text-sm font-bold text-gray-700">Endereço:</p>
-                        <p class="text-md text-gray-600" id="client-address"></p>
-                    </div>
-                    <div class="md:col-span-2">
-                        <p class="text-sm font-bold text-gray-700">Total de Pedidos:</p>
-                        <p class="text-md text-gray-600" id="client-order-count"></p>
-                    </div>
-                </div>
-
-                <div class="mt-8">
-                    <h4 class="text-xl font-bold text-gray-800 mb-4">Histórico de Pedidos</h4>
-                    <div id="client-orders-list" class="space-y-4 max-h-96 overflow-y-auto pr-2">
-                        <p class="text-center text-gray-500">Nenhum pedido encontrado para este cliente.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+<div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
+    <div class="flex items-center gap-4 mb-6">
+        <a href="index.html" class="text-gray-500 hover:text-gray-800">
+            <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
+        </a>
+        <h1 class="text-3xl font-bold">Clientes</h1>
     </div>
-    
-    <script type="module">
-        import { db, ref, onValue, get } from './firebase-config.js';
 
-        // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
-        let clients = {};
-        let allOrders = [];
+    <div id="clients-list" class="space-y-4">
+        <p class="text-center text-gray-500">Carregando...</p>
+    </div>
+</div>
 
-        // ======================= REFERÊNCIAS AOS ELEMENTOS DO DOM =======================
-        const clientsList = document.getElementById('clients-list');
-        const clientDetailModal = document.getElementById('clientDetailModal');
-        const closeClientDetailModalBtn = document.getElementById('closeClientDetailModalBtn');
-        const modalClientName = document.getElementById('modal-client-name');
-        const clientPhone = document.getElementById('client-phone');
-        const clientAddress = document.getElementById('client-address');
-        const clientOrderCount = document.getElementById('client-order-count');
-        const clientOrdersList = document.getElementById('client-orders-list');
-        
-        // ======================= FUNÇÕES =======================
-        async function loadAllData() {
-            // Carregar clientes do Firebase
-            const clientsRef = ref(db, 'clients');
-            const clientsSnapshot = await get(clientsRef);
-            if (clientsSnapshot.exists()) {
-                clients = clientsSnapshot.val();
-            } else {
-                clients = {};
-            }
+<!-- Modal de Detalhes -->
+<div id="clientModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 id="clientName" class="text-2xl font-bold"></h3>
+            <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800">✕</button>
+        </div>
+        <div class="mb-6">
+            <p><strong>Telefone:</strong> <span id="clientPhone"></span></p>
+            <p><strong>Endereço:</strong> <span id="clientAddress"></span></p>
+            <p><strong>Email:</strong> <span id="clientEmail"></span></p>
+            <p><strong>Total pedidos:</strong> <span id="clientOrderCount"></span></p>
+        </div>
+        <h4 class="text-xl font-bold mb-4">Histórico de Pedidos</h4>
+        <div id="clientOrders" class="space-y-4"></div>
+    </div>
+</div>
 
-            // Carregar pedidos do Firebase
-            const ordersRef = ref(db, 'myOrders');
-            const ordersSnapshot = await get(ordersRef);
-            if (ordersSnapshot.exists()) {
-                const data = ordersSnapshot.val();
-                allOrders = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-            } else {
-                allOrders = [];
-            }
+<script type="module">
+    import { db, auth, collection, getDocs, query, orderBy, COLLECTIONS } from './firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-            renderClientsPage();
+    let clients = new Map();
+    let orders = [];
+
+    const clientsList = document.getElementById('clients-list');
+    const clientModal = document.getElementById('clientModal');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+
+    async function loadData() {
+        // Carregar clientes
+        const clientsSnap = await getDocs(collection(db, COLLECTIONS.CLIENTS));
+        clients.clear();
+        clientsSnap.forEach(doc => {
+            clients.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+
+        // Carregar pedidos
+        const ordersSnap = await getDocs(query(collection(db, COLLECTIONS.ORDERS), orderBy('createdAt', 'desc')));
+        orders = [];
+        ordersSnap.forEach(doc => {
+            orders.push({ id: doc.id, ...doc.data() });
+        });
+
+        renderClients();
+    }
+
+    function renderClients() {
+        if (clients.size === 0) {
+            clientsList.innerHTML = '<p class="text-center text-gray-500">Nenhum cliente cadastrado</p>';
+            return;
         }
 
-        function renderClientsPage() {
-            clientsList.innerHTML = '';
-            if (Object.keys(clients).length === 0) {
-                clientsList.innerHTML = '<p class="text-center text-gray-500">Nenhum cliente cadastrado ainda.</p>';
-                return;
-            }
-
-            for (const phone in clients) {
-                if (Object.prototype.hasOwnProperty.call(clients, phone)) {
-                    const client = clients[phone];
-                    const ordersCount = allOrders.filter(order => {
-                        if (!order.customer) return false;
-                        const orderPhone = order.customer.phone ? order.customer.phone.replace(/\D/g, '') : '';
-                        return orderPhone === phone;
-                    }).length;
-                    
-                    const clientDiv = document.createElement('div');
-                    clientDiv.className = 'bg-white p-6 rounded-xl shadow-md border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors';
-                    clientDiv.dataset.clientId = phone;
-                    clientDiv.innerHTML = `
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <h4 class="text-xl font-bold text-gray-800">${client.name || 'Nome não informado'}</h4>
-                                <p class="text-sm text-gray-600">${client.phone || phone}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-lg font-bold text-green-600">${ordersCount}</p>
-                                <p class="text-sm text-gray-500">Pedidos</p>
-                            </div>
-                        </div>
-                    `;
-                    clientsList.appendChild(clientDiv);
-                }
-            }
+        clientsList.innerHTML = '';
+        for (const [phone, client] of clients) {
+            const clientOrders = orders.filter(o => o.customer?.phone?.replace(/\D/g, '') === phone);
+            const div = document.createElement('div');
+            div.className = 'bg-white p-6 rounded-xl shadow-md border cursor-pointer hover:bg-gray-50';
+            div.dataset.phone = phone;
+            div.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h4 class="text-xl font-bold">${client.name || 'Cliente'}</h4>
+                        <p class="text-sm text-gray-600">${client.phone}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-2xl font-bold text-green-600">${clientOrders.length}</p>
+                        <p class="text-sm text-gray-500">pedidos</p>
+                    </div>
+                </div>
+            `;
+            clientsList.appendChild(div);
         }
+    }
+
+    function openClientModal(phone) {
+        const client = clients.get(phone);
+        if (!client) return;
+
+        const clientOrders = orders.filter(o => o.customer?.phone?.replace(/\D/g, '') === phone);
         
-        function openClientDetailModal(clientId) {
-            const client = clients[clientId];
-            if (!client) return;
+        document.getElementById('clientName').textContent = client.name || 'Cliente';
+        document.getElementById('clientPhone').textContent = client.phone;
+        document.getElementById('clientAddress').textContent = client.address || 'Não informado';
+        document.getElementById('clientEmail').textContent = client.email || 'Não informado';
+        document.getElementById('clientOrderCount').textContent = clientOrders.length;
 
-            const ordersForClient = allOrders.filter(order => {
-                if (!order.customer) return false;
-                const orderPhone = order.customer.phone ? order.customer.phone.replace(/\D/g, '') : '';
-                return orderPhone === clientId;
-            });
+        const ordersContainer = document.getElementById('clientOrders');
+        ordersContainer.innerHTML = '';
 
-            modalClientName.textContent = client.name || 'Cliente';
-            clientPhone.textContent = client.phone || clientId;
-            clientAddress.textContent = client.address || 'Não informado';
-            clientOrderCount.textContent = ordersForClient.length;
-
-            clientOrdersList.innerHTML = '';
-            if (ordersForClient.length === 0) {
-                clientOrdersList.innerHTML = '<p class="text-center text-gray-500">Nenhum pedido encontrado para este cliente.</p>';
-            } else {
-                ordersForClient.forEach(order => {
-                    const orderCard = document.createElement('div');
-                    orderCard.className = 'bg-white p-4 rounded-lg shadow-sm border border-gray-200';
-
-                    let itemsHtml = '';
-                    if (order.items && Array.isArray(order.items)) {
-                        order.items.forEach(item => {
-                            let complementsHtml = '';
-                            if (item.complements && Object.keys(item.complements).length > 0) {
-                                for (const groupName in item.complements) {
-                                    if (Object.prototype.hasOwnProperty.call(item.complements, groupName) && Array.isArray(item.complements[groupName])) {
-                                        complementsHtml += `<div class="mt-2 text-sm">`;
-                                        complementsHtml += `<span class="font-bold text-gray-600">${groupName}:</span>`;
-                                        complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
-                                        complementsHtml += item.complements[groupName].map(comp => `
-                                            <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
-                                        `).join('');
-                                        complementsHtml += `</ul></div>`;
-                                    }
-                                }
-                            }
-                            const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
-                            const prodName = item.product ? item.product.name : 'Produto';
-                            itemsHtml += `
-                                <li class="mt-2 text-sm">
-                                    <div class="flex justify-between items-center">
-                                        <span class="font-bold">${item.quantity}x ${prodName}</span>
-                                        <span class="text-gray-500">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
-                                    </div>
-                                    ${complementsHtml}
-                                </li>
-                            `;
-                        });
-                    } else {
-                        itemsHtml = '<p class="text-xs text-gray-400">Nenhum item discriminado.</p>';
-                    }
-
-                    const totalExibido = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
-                    const orderDate = order.date || 'Data não informada';
-                    const paymentMethod = order.paymentMethod || 'A combinar';
-
-                    orderCard.innerHTML = `
-                        <p class="text-gray-800 font-bold">Pedido #${order.id.slice(-6)} <span class="text-sm font-normal text-gray-500">- ${orderDate}</span></p>
-                        <div class="mt-2">
-                            <h5 class="text-sm font-bold text-gray-700">Itens do Pedido:</h5>
-                            <ul class="space-y-1 pl-4">
-                                ${itemsHtml}
-                            </ul>
-                        </div>
-                        <div class="flex justify-between items-center border-t pt-2 mt-2">
-                            <span class="text-sm font-bold text-gray-800">Total: <span class="text-green-600">R$ ${totalExibido}</span></span>
-                            <span class="text-sm font-medium text-gray-600">Pagamento: <span class="font-semibold">${paymentMethod}</span></span>
-                        </div>
-                    `;
-                    clientOrdersList.appendChild(orderCard);
+        if (clientOrders.length === 0) {
+            ordersContainer.innerHTML = '<p class="text-gray-500">Nenhum pedido</p>';
+        } else {
+            clientOrders.forEach(order => {
+                let itemsHtml = '';
+                order.items?.forEach(item => {
+                    itemsHtml += `<li class="text-sm">${item.quantity}x ${item.product.name} - R$ ${item.totalPrice.toFixed(2).replace('.', ',')}</li>`;
                 });
-            }
-
-            clientDetailModal.classList.remove('hidden');
+                
+                const div = document.createElement('div');
+                div.className = 'bg-gray-50 p-4 rounded-lg border';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold">#${order.id.slice(-6)}</span>
+                        <span class="text-sm text-gray-500">${order.date}</span>
+                    </div>
+                    <ul class="mt-2 pl-4">${itemsHtml}</ul>
+                    <div class="flex justify-between mt-2 pt-2 border-t">
+                        <span>${order.paymentMethod}</span>
+                        <span class="font-bold text-green-600">R$ ${order.total?.toFixed(2).replace('.', ',') || '0,00'}</span>
+                    </div>
+                    <span class="inline-block mt-2 px-2 py-1 rounded-full text-xs font-semibold bg-${order.status === 'Entregue' ? 'green' : 'yellow'}-100">
+                        ${order.status}
+                    </span>
+                `;
+                ordersContainer.appendChild(div);
+            });
         }
 
-        // ======================= LISTENERS DE EVENTOS =======================
-        window.addEventListener('DOMContentLoaded', () => {
-            loadAllData();
-            
-            // Monitorar mudanças em tempo real
-            const clientsRef = ref(db, 'clients');
-            onValue(clientsRef, () => loadAllData());
-            
-            const ordersRef = ref(db, 'myOrders');
-            onValue(ordersRef, () => loadAllData());
-        });
+        clientModal.classList.remove('hidden');
+    }
 
-        clientsList.addEventListener('click', (e) => {
-            const clientDiv = e.target.closest('[data-clientId]');
-            if (clientDiv) {
-                openClientDetailModal(clientDiv.dataset.clientId);
-            }
-        });
+    clientsList.addEventListener('click', (e) => {
+        const div = e.target.closest('[data-phone]');
+        if (div) openClientModal(div.dataset.phone);
+    });
 
-        closeClientDetailModalBtn.addEventListener('click', () => {
-            clientDetailModal.classList.add('hidden');
-        });
-    </script>
+    closeModalBtn.addEventListener('click', () => clientModal.classList.add('hidden'));
+
+    // Autenticação
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            window.location.href = 'index.html';
+            return;
+        }
+        await loadData();
+    });
+</script>
 </body>
 </html>
