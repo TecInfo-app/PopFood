@@ -95,6 +95,15 @@
 <button id="trackOrdersBtn" class="w-full bg-blue-500 text-white font-bold py-2 rounded-lg mt-2 hover:bg-blue-600">
     📦 Acompanhar Meus Pedidos
 </button>
+
+        <!-- Dentro do modal de perfil, antes do botão Sair -->
+<div class="mt-4">
+    <button id="trackOrdersFromProfileBtn" class="w-full bg-blue-500 text-white font-bold py-2 rounded-lg hover:bg-blue-600">
+        📦 Acompanhar Meus Pedidos
+    </button>
+</div>
+
+        
         
         <div class="max-h-[65vh] overflow-y-auto p-2">
             <div class="bg-gray-50 p-4 rounded-xl mb-6">
@@ -794,6 +803,24 @@
     }
 
     // Event Listeners
+
+// Adicione este event listener
+const trackOrdersBtn = document.getElementById('trackOrdersFromProfileBtn');
+if (trackOrdersBtn) {
+    trackOrdersBtn.addEventListener('click', () => {
+        if (customerInfo && customerInfo.phone) {
+            sessionStorage.setItem('customerPhone', customerInfo.phone);
+            window.location.href = 'acompanhamento.html';
+        } else {
+            showMessage('Faça login primeiro', 'error');
+            toggleModal(profileModal, false);
+            toggleModal(loginModal, true);
+        }
+    });
+}
+
+
+    
     customerProductList.addEventListener('click', (e) => {
         const card = e.target.closest('.product-card');
         const addBtn = e.target.closest('.add-to-cart-simple');
