@@ -49,7 +49,7 @@
     <div class="border-t pt-6">
         <h2 class="text-xl font-bold mb-4">✅ Finalizados</h2>
         <div id="completed-orders-list" class="space-y-3">
-            <div class="text-center text-gray-400 italic">Carregando...</div>
+            <div class="text-center text-gray-400 italic py-4">Carregando...</div>
         </div>
     </div>
 </div>
@@ -58,15 +58,13 @@
 <div id="newOrderNotification" class="notification-box hidden">🔔 NOVO PEDIDO! Verifique a lista</div>
 
 <script type="module">
-    import { db, auth, collection, getDocs, updateDoc, doc, query, orderBy, onSnapshot, Timestamp, COLLECTIONS } from './firebase-config.js';
+    import { db, auth, collection, doc, getDocs, updateDoc, query, orderBy, onSnapshot, Timestamp, COLLECTIONS } from './firebase-config.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     let allOrders = [];
-    let activeOrders = [];
-    let completedOrders = [];
-    let restaurantProfile = {};
     let currentFilter = 'todos';
     let unsubscribeOrders = null;
+    let restaurantProfile = {};
 
     const activeList = document.getElementById('active-orders-list');
     const completedList = document.getElementById('completed-orders-list');
@@ -106,18 +104,15 @@
         }
     }
 
-    function getDeliveryFee(order) {
-        if (order.deliveryFee && typeof order.deliveryFee === 'number') return order.deliveryFee;
-        if (restaurantProfile.deliveryFee) return restaurantProfile.deliveryFee;
-        return 5.00;
-    }
-
     function formatDate(dateValue) {
         if (!dateValue) return 'Data não disponível';
-        if (dateValue.toDate) {
+        if (dateValue && typeof dateValue.toDate === 'function') {
             return dateValue.toDate().toLocaleString('pt-BR');
         }
         if (typeof dateValue === 'string') return dateValue;
+        if (dateValue && dateValue.seconds) {
+            return new Date(dateValue.seconds * 1000).toLocaleString('pt-BR');
+        }
         return new Date(dateValue).toLocaleString('pt-BR');
     }
 
@@ -128,15 +123,15 @@
         return div.innerHTML;
     }
 
-    function updateOrderLists() {
+    function renderOrders() {
         // Separar pedidos ativos e finalizados
-        activeOrders = allOrders.filter(order => 
+        const activeOrders = allOrders.filter(order => 
             order.status !== 'Entregue' && 
             order.status !== 'Cancelado' && 
             order.status !== 'Finalizado'
         );
         
-        completedOrders = allOrders.filter(order => 
+        const completedOrders = allOrders.filter(order => 
             order.status === 'Entregue' || 
             order.status === 'Cancelado' || 
             order.status === 'Finalizado'
@@ -181,15 +176,17 @@
     function createOrderCard(order, isActive) {
         const div = document.createElement('div');
         
-        // Determinar classe de destaque
         let highlightClass = '';
         if (isActive) {
             if (order.status === 'Pendente') highlightClass = 'new-order';
             if (order.status === 'Saiu para entrega') highlightClass = 'dispatched-order';
         }
         
+        // IMPORTANTE: Usar order.id que vem do Firestore (document ID)
+        const orderId = order.id;
+        
         div.className = `bg-white p-5 rounded-xl shadow-sm border cursor-pointer hover:shadow-md transition-all ${highlightClass}`;
-        div.dataset.orderId = order.id;
+        div.setAttribute('data-order-id', orderId);
         
         // Itens do pedido
         let itemsHtml = '';
@@ -222,7 +219,7 @@
             `;
         });
 
-        const deliveryFee = getDeliveryFee(order);
+        const deliveryFee = order.deliveryFee || 5.00;
         const subtotal = order.subtotal || (order.total - deliveryFee);
         const total = order.total || (subtotal + deliveryFee);
         
@@ -248,16 +245,16 @@
         if (isActive && order.status !== 'Cancelado' && order.status !== 'Entregue') {
             actionButtons = `
                 <div class="flex gap-2 mt-4 pt-2 border-t">
-                    <button class="update-status-btn bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-600 transition-colors" data-status="Preparando">
+                    <button class="update-status-btn bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-600 transition-colors" data-status="Preparando" data-order-id="${orderId}">
                         👨‍🍳 Preparar
                     </button>
-                    <button class="update-status-btn bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-600 transition-colors" data-status="Saiu para entrega">
+                    <button class="update-status-btn bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-600 transition-colors" data-status="Saiu para entrega" data-order-id="${orderId}">
                         🛵 Despachar
                     </button>
-                    <button class="print-order-btn bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300 transition-colors">
+                    <button class="print-order-btn bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300 transition-colors" data-order-id="${orderId}">
                         🖨️ Imprimir
                     </button>
-                    <button class="cancel-order-btn bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600 transition-colors">
+                    <button class="cancel-order-btn bg-red-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-600 transition-colors" data-order-id="${orderId}">
                         ❌ Cancelar
                     </button>
                 </div>
@@ -265,7 +262,7 @@
         } else if (!isActive && order.status !== 'Cancelado') {
             actionButtons = `
                 <div class="flex gap-2 mt-3">
-                    <button class="print-order-btn bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300 transition-colors">
+                    <button class="print-order-btn bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm hover:bg-gray-300 transition-colors" data-order-id="${orderId}">
                         🖨️ Imprimir
                     </button>
                 </div>
@@ -277,7 +274,7 @@
         div.innerHTML = `
             <div class="flex justify-between items-start flex-wrap gap-2">
                 <div>
-                    <h4 class="text-xl font-bold">Pedido #${(order.id || '').slice(-6)}</h4>
+                    <h4 class="text-xl font-bold">Pedido #${(orderId || '').slice(-6)}</h4>
                     <p class="text-sm text-gray-500">📅 ${formatDate(order.createdAt || order.date)}</p>
                     <p class="text-sm text-gray-500 mt-1">👤 ${escapeHtml(customer.name || 'Cliente')} | 📞 ${escapeHtml(customer.phone || '-')}</p>
                 </div>
@@ -321,11 +318,18 @@
 
     async function updateOrderStatus(orderId, newStatus) {
         try {
+            if (!orderId) {
+                throw new Error("ID do pedido não informado");
+            }
+            
+            console.log("Atualizando pedido:", orderId, "para status:", newStatus);
+            
             const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
             await updateDoc(orderRef, { 
                 status: newStatus,
                 updatedAt: Timestamp.now()
             });
+            
             showMessage(`✅ Status atualizado para "${newStatus}"`, 'success');
         } catch (error) {
             console.error("Erro ao atualizar status:", error);
@@ -335,6 +339,10 @@
 
     async function cancelOrder(orderId) {
         try {
+            if (!orderId) {
+                throw new Error("ID do pedido não informado");
+            }
+            
             const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
             await updateDoc(orderRef, { 
                 status: 'Cancelado',
@@ -348,10 +356,11 @@
     }
 
     function printOrder(order) {
-        const deliveryFee = getDeliveryFee(order);
+        const deliveryFee = order.deliveryFee || 5.00;
         const subtotal = order.subtotal || (order.total - deliveryFee);
         const total = order.total || (subtotal + deliveryFee);
         const customer = order.customer || {};
+        const orderId = order.id || '';
         
         let itemsHtml = '';
         const items = order.items || [];
@@ -388,7 +397,7 @@
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Pedido #${(order.id || '').slice(-6)}</title>
+                <title>Pedido #${(orderId || '').slice(-6)}</title>
                 <style>
                     body { font-family: Arial, sans-serif; padding: 20px; max-width: 350px; margin: 0 auto; line-height: 1.4; }
                     @media print { @page { margin: 5mm; } body { margin: 0; } }
@@ -404,7 +413,7 @@
                     <p>${restaurantProfile.phone || ''}</p>
                 </div>
                 
-                <h3 style="text-align:center;">Pedido #${(order.id || '').slice(-6)}</h3>
+                <h3 style="text-align:center;">Pedido #${(orderId || '').slice(-6)}</h3>
                 <p style="text-align:center; font-size:12px;">${formatDate(order.createdAt || order.date)}</p>
                 
                 <div class="info">
@@ -454,13 +463,6 @@
         unsubscribeOrders = onSnapshot(q, 
             (snapshot) => {
                 const previousCount = allOrders.length;
-                const newOrderIds = [];
-                
-                snapshot.docChanges().forEach(change => {
-                    if (change.type === 'added') {
-                        newOrderIds.push(change.doc.id);
-                    }
-                });
                 
                 allOrders = [];
                 snapshot.forEach(doc => {
@@ -468,12 +470,15 @@
                     allOrders.push(order);
                 });
                 
-                updateOrderLists();
+                renderOrders();
                 
                 // Verificar se tem novo pedido
-                if (newOrderIds.length > 0 && allOrders.length > previousCount) {
+                if (allOrders.length > previousCount && previousCount > 0) {
                     showNewOrderNotification();
-                    showMessage(`🔔 Novo pedido recebido! ID: #${newOrderIds[0].slice(-6)}`, 'yellow');
+                    const newestOrder = allOrders[0];
+                    if (newestOrder) {
+                        showMessage(`🔔 Novo pedido recebido! ID: #${newestOrder.id.slice(-6)}`, 'yellow');
+                    }
                 }
             },
             (error) => {
@@ -483,43 +488,58 @@
         );
     }
 
-    // Event delegation para os botões
+    // Event delegation para os botões - USANDO data-order-id
     document.addEventListener('click', async (e) => {
-        const orderDiv = e.target.closest('[data-order-id]');
-        if (!orderDiv) return;
-        
-        const orderId = orderDiv.dataset.orderId;
-        const details = orderDiv.querySelector('.order-details');
-        
-        // Abrir/fechar detalhes (exceto se clicou em botão)
-        if (details && !e.target.closest('button')) {
-            details.classList.toggle('hidden');
-            return;
-        }
-        
-        // Botão de imprimir
-        if (e.target.closest('.print-order-btn')) {
-            const order = allOrders.find(o => o.id === orderId);
-            if (order) printOrder(order);
+        // Botão de atualizar status
+        const statusBtn = e.target.closest('.update-status-btn');
+        if (statusBtn) {
+            e.stopPropagation();
+            const orderId = statusBtn.getAttribute('data-order-id');
+            const newStatus = statusBtn.getAttribute('data-status');
+            
+            if (!orderId) {
+                showMessage('Erro: ID do pedido não encontrado', 'error');
+                return;
+            }
+            
+            if (confirm(`Alterar status do pedido #${orderId.slice(-6)} para "${newStatus}"?`)) {
+                await updateOrderStatus(orderId, newStatus);
+            }
             return;
         }
         
         // Botão de cancelar
-        if (e.target.closest('.cancel-order-btn')) {
-            if (confirm('❌ Tem certeza que deseja cancelar este pedido?')) {
+        const cancelBtn = e.target.closest('.cancel-order-btn');
+        if (cancelBtn) {
+            e.stopPropagation();
+            const orderId = cancelBtn.getAttribute('data-order-id');
+            if (confirm(`❌ Tem certeza que deseja cancelar o pedido #${orderId?.slice(-6)}?`)) {
                 await cancelOrder(orderId);
             }
             return;
         }
         
-        // Botão de atualizar status
-        const statusBtn = e.target.closest('.update-status-btn');
-        if (statusBtn) {
-            const newStatus = statusBtn.dataset.status;
-            if (confirm(`Alterar status do pedido para "${newStatus}"?`)) {
-                await updateOrderStatus(orderId, newStatus);
+        // Botão de imprimir
+        const printBtn = e.target.closest('.print-order-btn');
+        if (printBtn) {
+            e.stopPropagation();
+            const orderId = printBtn.getAttribute('data-order-id');
+            const order = allOrders.find(o => o.id === orderId);
+            if (order) {
+                printOrder(order);
+            } else {
+                showMessage('Pedido não encontrado para impressão', 'error');
             }
             return;
+        }
+        
+        // Abrir/fechar detalhes
+        const orderDiv = e.target.closest('[data-order-id]');
+        if (orderDiv && !e.target.closest('button')) {
+            const details = orderDiv.querySelector('.order-details');
+            if (details) {
+                details.classList.toggle('hidden');
+            }
         }
     });
 
@@ -534,7 +554,7 @@
             btn.classList.add('bg-orange-500', 'text-white');
             
             currentFilter = btn.dataset.filter;
-            updateOrderLists();
+            renderOrders();
         });
     });
 
