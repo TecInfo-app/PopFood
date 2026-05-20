@@ -1046,6 +1046,21 @@
         });
     });
 
+            // Adicione este event listener
+const trackOrdersBtn = document.getElementById('trackOrdersFromProfileBtn');
+if (trackOrdersBtn) {
+    trackOrdersBtn.addEventListener('click', () => {
+        if (customerInfo && customerInfo.phone) {
+            sessionStorage.setItem('customerPhone', customerInfo.phone);
+            window.location.href = 'acompanhamento.html';
+        } else {
+            showMessage('Faça login primeiro', 'error');
+            toggleModal(profileModal, false);
+            toggleModal(loginModal, true);
+        }
+    });
+}"
+
 // LOCALIZE esta função no seu cliente.html e SUBSTITUA:
 
 function handleProfileClick() {
@@ -1108,20 +1123,7 @@ async function executeLogin() {
 openProfileBtn.addEventListener('click', handleProfileClick);
 
 
-    // Adicione este event listener
-const trackOrdersBtn = document.getElementById('trackOrdersFromProfileBtn');
-if (trackOrdersBtn) {
-    trackOrdersBtn.addEventListener('click', () => {
-        if (customerInfo && customerInfo.phone) {
-            sessionStorage.setItem('customerPhone', customerInfo.phone);
-            window.location.href = 'acompanhamento.html';
-        } else {
-            showMessage('Faça login primeiro', 'error');
-            toggleModal(profileModal, false);
-            toggleModal(loginModal, true);
-        }
-    });
-}
+    
 
                             
     // Inicialização
