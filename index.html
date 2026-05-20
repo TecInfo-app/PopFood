@@ -3,1049 +3,785 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciador de Delivery</title>
+    <title>PopFood - Gerenciador de Delivery</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7fafc;
-        }
-        .disabled-btn {
-            background-color: #e5e7eb;
-            color: #9ca3af;
-            cursor: not-allowed;
-        }
-        .modal-enter {
-            animation: fadeIn 0.3s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .product-card {
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .product-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .toggle-switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-        .toggle-slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 24px;
-        }
-        .toggle-slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 4px;
-            bottom: 4px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .toggle-slider {
-            background-color: #2563eb;
-        }
-        input:checked + .toggle-slider:before {
-            transform: translateX(20px);
-        }
-        .notification-box {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: #4CAF50;
-            color: white;
-            padding: 15px;
-            border-radius: 5px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            z-index: 1000;
-            font-size: 16px;
-            font-weight: bold;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-        }
-        .notification-box.show {
-            opacity: 1;
-        }
-        @media print {
-            body * {
-                visibility: hidden;
-            }
-            .print-area, .print-area * {
-                visibility: visible;
-            }
-            .print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                font-family: 'Inter', sans-serif;
-            }
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .product-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .modal-enter { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .toggle-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: #2563eb; }
+        input:checked + .toggle-slider:before { transform: translateX(20px); }
+        .notification-box { position: fixed; bottom: 20px; right: 20px; background-color: #ef4444; color: white; padding: 15px; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 1000; font-weight: bold; opacity: 0; transition: opacity 0.5s ease-in-out; }
+        .notification-box.show { opacity: 1; }
+        @media print { body * { visibility: hidden; } .print-area, .print-area * { visibility: visible; } .print-area { position: absolute; left: 0; top: 0; width: 100%; } }
     </style>
 </head>
-<body class="p-4 bg-gray-100 flex items-center justify-center min-h-screen">
+<body class="p-4 bg-gray-100 min-h-screen">
 
-    <div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
+<div id="app-container" class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-5xl mx-auto my-8">
 
-        <div id="login-page" class="flex flex-col items-center justify-center min-h-[50vh]">
-            <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Login do Master</h1>
-            <div class="w-full max-w-sm p-6 bg-gray-50 rounded-xl">
-                <input type="email" id="usernameInput" placeholder="E-mail (master@exemplo.com)" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                <input type="password" id="passwordInput" placeholder="Senha" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                <button id="loginBtn" class="w-full bg-sky-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-sky-700 transition-colors duration-200">
-                    Entrar
-                </button>
-                <p class="text-center text-sm text-gray-500 mt-4">
-                    Não tem conta? <a href="#" id="showRegisterBtn" class="text-sky-600 hover:underline">Cadastrar</a>
-                </p>
-            </div>
+    <!-- Página de Login -->
+    <div id="login-page" class="flex flex-col items-center justify-center min-h-[50vh]">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">PopFood Delivery</h1>
+        <div class="w-full max-w-sm p-6 bg-gray-50 rounded-xl">
+            <input type="email" id="loginEmail" placeholder="E-mail" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <input type="password" id="loginPassword" placeholder="Senha" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <button id="loginBtn" class="w-full bg-orange-500 text-white font-bold py-3 rounded-lg shadow-md hover:bg-orange-600 transition-colors">Entrar</button>
+            <p class="text-center text-sm text-gray-500 mt-4">
+                Não tem conta? <button id="goToRegisterBtn" class="text-orange-500 hover:underline">Cadastre-se</button>
+            </p>
         </div>
-
-        <div id="register-page" class="hidden flex flex-col items-center justify-center min-h-[50vh]">
-            <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Cadastro Master</h1>
-            <div class="w-full max-w-sm p-6 bg-gray-50 rounded-xl">
-                <input type="email" id="registerEmailInput" placeholder="E-mail" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                <input type="password" id="registerPasswordInput" placeholder="Senha (mínimo 6 caracteres)" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                <button id="registerBtn" class="w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">
-                    Cadastrar
-                </button>
-                <p class="text-center text-sm text-gray-500 mt-4">
-                    Já tem conta? <a href="#" id="showLoginBtn" class="text-sky-600 hover:underline">Fazer Login</a>
-                </p>
-            </div>
-        </div>
-
-        <div id="master-menu-page" class="hidden flex flex-col items-center justify-center min-h-[50vh]">
-            <div id="restaurant-info-master" class="w-full max-w-xl p-6 mb-8 bg-blue-50 rounded-xl shadow-inner text-center hidden">
-                <img id="restaurant-logo-master" src="#" alt="Logo do Restaurante" class="h-20 mx-auto mb-4 hidden">
-                <h2 id="restaurant-name-master" class="text-3xl font-bold text-blue-900"></h2>
-                <p id="restaurant-description-master" class="text-blue-800"></p>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-6 w-full max-w-4xl">
-                <button id="adminBtn" class="bg-sky-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-sky-700 transition-colors duration-200 text-xl">
-                    Cadastrar Produtos
-                </button>
-                <a href="cliente.html" class="bg-green-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200 text-xl text-center">
-                    Faça seu Pedido
-                </a>
-                <a href="perfil.html" class="bg-blue-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200 text-xl text-center">
-                    Editar Perfil
-                </a>
-                <a href="pedidos.html" class="bg-purple-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-purple-700 transition-colors duration-200 text-xl text-center">
-                    Meus Pedidos
-                </a>
-                <a href="clientes.html" class="bg-indigo-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-indigo-700 transition-colors duration-200 text-xl text-center">
-                    Clientes Cadastrados
-                </a>
-            </div>
-            
-            <button id="logoutMasterBtn" class="mt-8 bg-red-500 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-red-600 transition-colors">
-                Sair da Conta
-            </button>
-        </div>
-        
-        <div id="admin-page" class="hidden">
-            <div class="flex items-center gap-4 mb-6">
-                <button id="backToMenuBtnAdmin" class="text-gray-500 hover:text-gray-800 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
-                </button>
-                <h1 class="text-3xl font-bold text-gray-800">Cadastro de Produtos</h1>
-            </div>
-
-            <div class="mb-8 p-6 bg-yellow-50 rounded-xl">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Gerenciar Categorias</h2>
-                <div class="flex flex-col md:flex-row gap-2 mb-4">
-                    <input type="text" id="categoryNameInput" placeholder="Nome da Categoria" class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500">
-                    <button id="addCategoryBtn" class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:bg-yellow-600 transition-colors duration-200">
-                        Adicionar Categoria
-                    </button>
-                </div>
-                <div id="categoryList" class="flex flex-wrap gap-2"></div>
-            </div>
-
-            <div class="mb-8 p-6 bg-gray-50 rounded-xl">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4" id="productFormTitle">Adicionar Novo Produto</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <input type="text" id="productNameInput" placeholder="Nome do Produto" class="col-span-2 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                    <input type="text" id="productPdvCodeInput" placeholder="Código PDV (Opcional)" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <input type="number" id="productPriceInput" placeholder="Preço (R$)" min="0" step="0.01" class="p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                    <select id="productCategorySelect" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                        <option value="" disabled selected>Selecione uma categoria</option>
-                    </select>
-                </div>
-                <textarea id="productDescriptionInput" placeholder="Descrição do Produto" rows="3" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"></textarea>
-                
-                <div class="mb-4">
-                    <label for="productImageFileInput" class="block text-sm font-medium text-gray-700 mb-1">Imagem do Produto (Upload)</label>
-                    <input type="file" id="productImageFileInput" accept="image/*" class="w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer">
-                    <div id="imagePreviewContainer" class="mt-4 hidden">
-                        <img id="imagePreview" src="#" alt="Pré-visualização da imagem" class="w-32 h-32 object-cover rounded-lg border border-gray-300">
-                    </div>
-                </div>
-                <div class="flex gap-2">
-                    <button id="addProductBtn" class="flex-1 bg-sky-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-sky-700 transition-colors">
-                        Adicionar Produto
-                    </button>
-                    <button id="cancelEditBtn" class="hidden flex-1 bg-gray-300 text-gray-800 font-bold py-3 rounded-lg shadow-md hover:bg-gray-400 transition-colors">
-                        Cancelar Edição
-                    </button>
-                </div>
-            </div>
-            
-            <div class="relative mb-6">
-                <input type="text" id="searchProductInput" placeholder="Pesquisar produtos..." class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-            </div>
-
-            <div id="productList" class="grid gap-6">
-                <div class="text-center text-gray-500" id="loadingIndicator">Carregando produtos...</div>
-            </div>
-        </div>
-
-        <div id="messageBox" class="fixed bottom-4 right-4 p-4 text-white rounded-lg shadow-lg z-50 hidden transition-all duration-300"></div>
     </div>
 
+    <!-- Página de Cadastro -->
+    <div id="register-page" class="flex flex-col items-center justify-center min-h-[50vh] hidden">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-6">Cadastrar Admin</h1>
+        <div class="w-full max-w-sm p-6 bg-gray-50 rounded-xl">
+            <input type="email" id="registerEmail" placeholder="E-mail" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <input type="password" id="registerPassword" placeholder="Senha" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <input type="password" id="registerConfirmPassword" placeholder="Confirmar Senha" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
+            <button id="registerBtn" class="w-full bg-green-500 text-white font-bold py-3 rounded-lg shadow-md hover:bg-green-600 transition-colors">Cadastrar</button>
+            <p class="text-center text-sm text-gray-500 mt-4">
+                Já tem conta? <button id="goToLoginBtn" class="text-orange-500 hover:underline">Faça login</button>
+            </p>
+        </div>
+    </div>
+
+    <!-- Menu Master -->
+    <div id="master-menu-page" class="hidden">
+        <div id="restaurant-info-master" class="w-full max-w-xl p-6 mb-8 bg-orange-50 rounded-xl shadow-inner text-center mx-auto hidden">
+            <img id="restaurant-logo-master" src="#" alt="Logo" class="h-20 mx-auto mb-4 hidden">
+            <h2 id="restaurant-name-master" class="text-3xl font-bold text-orange-900"></h2>
+            <p id="restaurant-description-master" class="text-orange-800"></p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-6 w-full max-w-4xl mx-auto">
+            <button id="adminBtn" class="bg-orange-500 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-orange-600 text-xl">Cardápio</button>
+            <a href="cliente.html" class="bg-green-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-green-700 text-xl text-center">Faça seu Pedido</a>
+            <a href="perfil.html" class="bg-blue-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-blue-700 text-xl text-center">Editar Perfil</a>
+            <a href="pedidos.html" class="bg-purple-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-purple-700 text-xl text-center">Meus Pedidos</a>
+            <a href="clientes.html" class="bg-indigo-600 text-white font-bold py-6 px-4 rounded-lg shadow-md hover:bg-indigo-700 text-xl text-center">Clientes</a>
+        </div>
+        <div class="text-center mt-8">
+            <button id="logoutMasterBtn" class="bg-red-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-red-600">Sair</button>
+        </div>
+    </div>
+
+    <!-- Página Admin (Cardápio) -->
+    <div id="admin-page" class="hidden">
+        <div class="flex items-center gap-4 mb-6">
+            <button id="backToMenuBtnAdmin" class="text-gray-500 hover:text-gray-800">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" /></svg>
+            </button>
+            <h1 class="text-3xl font-bold text-gray-800">Gerenciar Cardápio</h1>
+        </div>
+
+        <!-- Categorias -->
+        <div class="mb-8 p-6 bg-yellow-50 rounded-xl">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Categorias</h2>
+            <div class="flex flex-col md:flex-row gap-2 mb-4">
+                <input type="text" id="categoryNameInput" placeholder="Nome da Categoria" class="flex-1 p-3 border border-gray-300 rounded-lg">
+                <button id="addCategoryBtn" class="bg-yellow-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-yellow-600">Adicionar</button>
+            </div>
+            <div id="categoryList" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Produtos -->
+        <div class="mb-8 p-6 bg-gray-50 rounded-xl">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4" id="productFormTitle">Novo Produto</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <input type="text" id="productNameInput" placeholder="Nome" class="col-span-2 p-3 border border-gray-300 rounded-lg">
+                <input type="text" id="productPdvCodeInput" placeholder="Código PDV" class="p-3 border border-gray-300 rounded-lg">
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <input type="number" id="productPriceInput" placeholder="Preço (R$)" step="0.01" class="p-3 border border-gray-300 rounded-lg">
+                <select id="productCategorySelect" class="p-3 border border-gray-300 rounded-lg">
+                    <option value="">Selecione uma categoria</option>
+                </select>
+            </div>
+            <textarea id="productDescriptionInput" placeholder="Descrição" rows="3" class="w-full p-3 mb-4 border border-gray-300 rounded-lg"></textarea>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Imagem do Produto</label>
+                <input type="file" id="productImageFileInput" accept="image/*" class="w-full text-gray-500">
+                <div id="imagePreviewContainer" class="mt-4 hidden">
+                    <img id="imagePreview" src="#" class="w-32 h-32 object-cover rounded-lg border">
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="addProductBtn" class="flex-1 bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600">Salvar Produto</button>
+                <button id="cancelEditBtn" class="hidden flex-1 bg-gray-300 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-400">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- Lista de Produtos -->
+        <input type="text" id="searchProductInput" placeholder="Buscar produtos..." class="w-full p-3 pl-10 border border-gray-300 rounded-lg mb-4">
+        <div id="productList" class="grid gap-4">
+            <div class="text-center text-gray-500">Carregando...</div>
+        </div>
+    </div>
+
+    <!-- Modal de Complementos -->
     <div id="complementModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl modal-enter">
             <div class="flex justify-between items-center mb-4 border-b pb-4">
-                <h3 class="text-2xl font-bold text-gray-800">Gerenciar Complementos para <span id="complementProductName" class="text-sky-600"></span></h3>
-                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+                <h3 class="text-2xl font-bold">Complementos para <span id="complementProductName" class="text-orange-600"></span></h3>
+                <button id="closeModalBtn" class="text-gray-500 hover:text-gray-800"><svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
             </div>
-            <div id="complementList" class="max-h-[60vh] overflow-y-auto mb-4 p-2 -mx-2"></div>
-            <div class="mt-4 p-4 bg-sky-50 rounded-xl">
-                <h4 class="text-xl font-semibold text-gray-700 mb-2">Adicionar Novo Grupo de Complemento</h4>
+            <div id="complementList" class="max-h-[60vh] overflow-y-auto mb-4"></div>
+            <div class="mt-4 p-4 bg-orange-50 rounded-xl">
+                <h4 class="text-xl font-semibold mb-2">Novo Grupo</h4>
                 <div class="flex flex-col md:flex-row gap-2 mb-2">
-                    <input type="text" id="complementNameInput" placeholder="Nome do Grupo (Ex: Tamanho)" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                    <input type="text" id="complementDescriptionInput" placeholder="Descrição do Grupo (Opcional)" class="flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <input type="text" id="complementNameInput" placeholder="Nome do Grupo" class="flex-1 p-2 border rounded-lg">
+                    <input type="text" id="complementDescriptionInput" placeholder="Descrição" class="flex-1 p-2 border rounded-lg">
                 </div>
                 <div class="flex items-center gap-2 mb-2">
-                    <input type="checkbox" id="isMandatoryCheckbox" class="h-4 w-4 text-sky-600 border-gray-300 rounded focus:ring-sky-500">
-                    <label for="isMandatoryCheckbox" class="text-gray-700">Obrigatório</label>
+                    <input type="checkbox" id="isMandatoryCheckbox" class="h-4 w-4">
+                    <label>Obrigatório</label>
                 </div>
                 <div id="mandatoryOptions" class="hidden grid grid-cols-2 gap-2 mb-2">
-                    <input type="number" id="minSelectionInput" placeholder="Mínimo (Ex: 1)" min="0" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
-                    <input type="number" id="maxSelectionInput" placeholder="Máximo (Ex: 2)" min="0" class="p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    <input type="number" id="minSelectionInput" placeholder="Mínimo" class="p-2 border rounded-lg">
+                    <input type="number" id="maxSelectionInput" placeholder="Máximo" class="p-2 border rounded-lg">
                 </div>
-                <button id="addComplementBtn" class="w-full bg-sky-500 text-white py-2 px-4 rounded-lg shadow-md hover:bg-sky-600 transition-colors">Adicionar Grupo</button>
+                <button id="addComplementBtn" class="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600">Adicionar Grupo</button>
             </div>
             <div class="mt-4 pt-4 border-t flex gap-2 justify-end">
-                <button id="saveComplementsBtn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg shadow-md hover:bg-green-700">Salvar</button>
-                <button id="cancelComplementsBtn" class="bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg shadow-md hover:bg-gray-400">Cancelar</button>
+                <button id="saveComplementsBtn" class="bg-green-600 text-white font-bold py-2 px-6 rounded-lg">Salvar</button>
+                <button id="cancelComplementsBtn" class="bg-gray-300 text-gray-800 font-bold py-2 px-6 rounded-lg">Cancelar</button>
             </div>
         </div>
     </div>
-    
+
+    <!-- Modal de Confirmação -->
     <div id="confirmationModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm modal-enter">
-            <h3 id="confirmationModalTitle" class="text-xl font-bold text-gray-800 mb-4">Confirmação</h3>
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm modal-enter">
+            <h3 id="confirmationModalTitle" class="text-xl font-bold mb-4">Confirmação</h3>
             <p id="confirmationModalMessage" class="text-gray-600 mb-6"></p>
             <div class="flex justify-end gap-2">
-                <button id="cancelConfirmationBtn" class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg shadow-md hover:bg-gray-400">Cancelar</button>
-                <button id="confirmActionBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:bg-red-700">Confirmar</button>
+                <button id="cancelConfirmationBtn" class="bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                <button id="confirmActionBtn" class="bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Confirmar</button>
             </div>
         </div>
     </div>
+</div>
 
-    <script type="module">
-        import { db, auth, ref, onValue, set, update, remove, push, get, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from './firebase-config.js';
+<div id="messageBox" class="fixed bottom-4 right-4 p-4 text-white rounded-lg shadow-lg z-50 hidden"></div>
 
-        // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
-        let allProducts = [];
-        let allCategories = [];
-        let productComplementsCache = {};
-        let editingProductId = null;
-        let currentProductId = null;
-        let currentImageBase64 = null;
-        let localComplements = null;
-        let confirmationCallback = null;
-        let currentUser = null;
-        
-        let restaurantProfile = {
-            logo: null,
-            name: '',
-            description: '',
-            phone: '',
-            address: '',
-            email: '',
-            hours: '',
-            show: { name: true, description: true, phone: true, address: true, email: true, hours: true }
-        };
+<script type="module">
+    import { 
+        db, storage, auth, 
+        collection, doc, getDocs, getDoc, setDoc, updateDoc, 
+        deleteDoc, query, where, orderBy, addDoc, onSnapshot,
+        arrayUnion, arrayRemove, writeBatch, Timestamp,
+        COLLECTIONS 
+    } from './firebase-config.js';
+    import { 
+        signInWithEmailAndPassword, createUserWithEmailAndPassword,
+        signOut, onAuthStateChanged 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { 
+        ref, uploadBytes, getDownloadURL, deleteObject 
+    } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
-        // ======================= REFERÊNCIAS AOS ELEMENTOS DO DOM =======================
-        const loginPage = document.getElementById('login-page');
-        const registerPage = document.getElementById('register-page');
-        const masterMenuPage = document.getElementById('master-menu-page');
-        const adminPage = document.getElementById('admin-page');
-        
-        const loginBtn = document.getElementById('loginBtn');
-        const registerBtn = document.getElementById('registerBtn');
-        const showRegisterBtn = document.getElementById('showRegisterBtn');
-        const showLoginBtn = document.getElementById('showLoginBtn');
-        const adminBtn = document.getElementById('adminBtn');
-        const backToMenuBtnAdmin = document.getElementById('backToMenuBtnAdmin');
-        const logoutMasterBtn = document.getElementById('logoutMasterBtn');
-        
-        const usernameInput = document.getElementById('usernameInput');
-        const passwordInput = document.getElementById('passwordInput');
-        const registerEmailInput = document.getElementById('registerEmailInput');
-        const registerPasswordInput = document.getElementById('registerPasswordInput');
-        
-        const categoryNameInput = document.getElementById('categoryNameInput');
-        const addCategoryBtn = document.getElementById('addCategoryBtn');
-        const categoryList = document.getElementById('categoryList');
+    // Estado Global
+    let allProducts = [];
+    let allCategories = [];
+    let productComplementsCache = {};
+    let editingProductId = null;
+    let currentProductId = null;
+    let currentImageFile = null;
+    let localComplements = null;
+    let confirmationCallback = null;
+    let restaurantProfile = { show: {} };
+    let unsubscribeProducts = null;
+    let unsubscribeCategories = null;
+    let unsubscribeProfile = null;
 
-        const productFormTitle = document.getElementById('productFormTitle');
-        const productNameInput = document.getElementById('productNameInput');
-        const productPdvCodeInput = document.getElementById('productPdvCodeInput');
-        const productPriceInput = document.getElementById('productPriceInput');
-        const productDescriptionInput = document.getElementById('productDescriptionInput');
-        const productCategorySelect = document.getElementById('productCategorySelect');
-        const productImageFileInput = document.getElementById('productImageFileInput');
-        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
-        const imagePreview = document.getElementById('imagePreview');
-        const addProductBtn = document.getElementById('addProductBtn');
-        const cancelEditBtn = document.getElementById('cancelEditBtn');
-        const searchProductInput = document.getElementById('searchProductInput');
-        const productList = document.getElementById('productList');
-        const loadingIndicator = document.getElementById('loadingIndicator');
+    // DOM Elements
+    const loginPage = document.getElementById('login-page');
+    const registerPage = document.getElementById('register-page');
+    const masterMenuPage = document.getElementById('master-menu-page');
+    const adminPage = document.getElementById('admin-page');
+    
+    const loginBtn = document.getElementById('loginBtn');
+    const goToRegisterBtn = document.getElementById('goToRegisterBtn');
+    const goToLoginBtn = document.getElementById('goToLoginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+    const logoutMasterBtn = document.getElementById('logoutMasterBtn');
+    const adminBtn = document.getElementById('adminBtn');
+    const backToMenuBtnAdmin = document.getElementById('backToMenuBtnAdmin');
 
-        const restaurantInfoMaster = document.getElementById('restaurant-info-master');
-        const restaurantLogoMaster = document.getElementById('restaurant-logo-master');
-        const restaurantNameMaster = document.getElementById('restaurant-name-master');
-        const restaurantDescriptionMaster = document.getElementById('restaurant-description-master');
+    const categoryNameInput = document.getElementById('categoryNameInput');
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    const categoryList = document.getElementById('categoryList');
 
-        const messageBox = document.getElementById('messageBox');
-        const complementModal = document.getElementById('complementModal');
-        const complementProductName = document.getElementById('complementProductName');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-        const complementList = document.getElementById('complementList');
-        const complementNameInput = document.getElementById('complementNameInput');
-        const complementDescriptionInput = document.getElementById('complementDescriptionInput');
-        const isMandatoryCheckbox = document.getElementById('isMandatoryCheckbox');
-        const mandatoryOptions = document.getElementById('mandatoryOptions');
-        const minSelectionInput = document.getElementById('minSelectionInput');
-        const maxSelectionInput = document.getElementById('maxSelectionInput');
-        const addComplementBtn = document.getElementById('addComplementBtn');
-        const saveComplementsBtn = document.getElementById('saveComplementsBtn');
-        const cancelComplementsBtn = document.getElementById('cancelComplementsBtn');
-        const confirmationModal = document.getElementById('confirmationModal');
-        const confirmationModalTitle = document.getElementById('confirmationModalTitle');
-        const confirmationModalMessage = document.getElementById('confirmationModalMessage');
-        const cancelConfirmationBtn = document.getElementById('cancelConfirmationBtn');
-        const confirmActionBtn = document.getElementById('confirmActionBtn');
+    const productNameInput = document.getElementById('productNameInput');
+    const productPdvCodeInput = document.getElementById('productPdvCodeInput');
+    const productPriceInput = document.getElementById('productPriceInput');
+    const productDescriptionInput = document.getElementById('productDescriptionInput');
+    const productCategorySelect = document.getElementById('productCategorySelect');
+    const productImageFileInput = document.getElementById('productImageFileInput');
+    const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+    const imagePreview = document.getElementById('imagePreview');
+    const addProductBtn = document.getElementById('addProductBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const searchProductInput = document.getElementById('searchProductInput');
+    const productList = document.getElementById('productList');
 
-        // ======================= FUNÇÕES AUXILIARES =======================
-        function showMessage(message, type = 'success') {
-            messageBox.textContent = message;
-            messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500');
-            if (type === 'success') messageBox.classList.add('bg-green-500');
-            else if (type === 'error') messageBox.classList.add('bg-red-500');
-            else messageBox.classList.add('bg-yellow-500');
-            setTimeout(() => messageBox.classList.add('hidden'), 3000);
-        }
+    const complementModal = document.getElementById('complementModal');
+    const complementProductName = document.getElementById('complementProductName');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const complementList = document.getElementById('complementList');
+    const complementNameInput = document.getElementById('complementNameInput');
+    const complementDescriptionInput = document.getElementById('complementDescriptionInput');
+    const isMandatoryCheckbox = document.getElementById('isMandatoryCheckbox');
+    const mandatoryOptions = document.getElementById('mandatoryOptions');
+    const minSelectionInput = document.getElementById('minSelectionInput');
+    const maxSelectionInput = document.getElementById('maxSelectionInput');
+    const addComplementBtn = document.getElementById('addComplementBtn');
+    const saveComplementsBtn = document.getElementById('saveComplementsBtn');
+    const cancelComplementsBtn = document.getElementById('cancelComplementsBtn');
 
-        function toggleModal(modal, show) {
-            if (show) modal.classList.remove('hidden');
-            else modal.classList.add('hidden');
-        }
+    const confirmationModal = document.getElementById('confirmationModal');
+    const confirmationModalTitle = document.getElementById('confirmationModalTitle');
+    const confirmationModalMessage = document.getElementById('confirmationModalMessage');
+    const cancelConfirmationBtn = document.getElementById('cancelConfirmationBtn');
+    const confirmActionBtn = document.getElementById('confirmActionBtn');
+    const messageBox = document.getElementById('messageBox');
 
-        function showPage(page) {
-            const pages = [loginPage, registerPage, masterMenuPage, adminPage];
-            pages.forEach(p => p.classList.add('hidden'));
-            page.classList.remove('hidden');
-            if (page === masterMenuPage) loadRestaurantProfile();
-        }
+    const restaurantInfoMaster = document.getElementById('restaurant-info-master');
+    const restaurantLogoMaster = document.getElementById('restaurant-logo-master');
+    const restaurantNameMaster = document.getElementById('restaurant-name-master');
+    const restaurantDescriptionMaster = document.getElementById('restaurant-description-master');
 
-        // ======================= FIREBASE: CARREGAR DADOS =======================
-        async function loadRestaurantProfile() {
-            const profileRef = ref(db, 'restaurantProfile');
-            const snapshot = await get(profileRef);
-            if (snapshot.exists()) {
-                restaurantProfile = snapshot.val();
-                renderRestaurantInfo();
-            }
-        }
+    // Funções Auxiliares
+    function showMessage(message, type = 'success') {
+        messageBox.textContent = message;
+        messageBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500', 'bg-yellow-500');
+        if (type === 'success') messageBox.classList.add('bg-green-500');
+        else if (type === 'error') messageBox.classList.add('bg-red-500');
+        else messageBox.classList.add('bg-yellow-500');
+        setTimeout(() => messageBox.classList.add('hidden'), 3000);
+    }
 
-        function renderRestaurantInfo() {
-            if (restaurantProfile.logo && restaurantLogoMaster) {
-                restaurantLogoMaster.src = restaurantProfile.logo;
-                restaurantLogoMaster.classList.remove('hidden');
-            } else if (restaurantLogoMaster) {
-                restaurantLogoMaster.classList.add('hidden');
-            }
+    function toggleModal(modal, show) {
+        show ? modal.classList.remove('hidden') : modal.classList.add('hidden');
+    }
 
-            if (restaurantProfile.show?.name && restaurantProfile.name && restaurantNameMaster) {
-                restaurantNameMaster.textContent = restaurantProfile.name;
-                restaurantNameMaster.classList.remove('hidden');
-            } else if (restaurantNameMaster) {
-                restaurantNameMaster.classList.add('hidden');
-            }
+    function showConfirmationModal(title, message, callback) {
+        confirmationModalTitle.textContent = title;
+        confirmationModalMessage.textContent = message;
+        confirmationCallback = callback;
+        toggleModal(confirmationModal, true);
+    }
 
-            if (restaurantProfile.show?.description && restaurantProfile.description && restaurantDescriptionMaster) {
-                restaurantDescriptionMaster.textContent = restaurantProfile.description;
-                restaurantDescriptionMaster.classList.remove('hidden');
-            } else if (restaurantDescriptionMaster) {
-                restaurantDescriptionMaster.classList.add('hidden');
-            }
+    async function uploadImage(file, path) {
+        if (!file) return null;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        return await getDownloadURL(storageRef);
+    }
 
-            const hasInfo = (restaurantProfile.name && restaurantProfile.show?.name) || 
-                           (restaurantProfile.description && restaurantProfile.show?.description);
-            if (restaurantInfoMaster) {
-                if (hasInfo) restaurantInfoMaster.classList.remove('hidden');
-                else restaurantInfoMaster.classList.add('hidden');
-            }
-        }
+    async function deleteImage(url) {
+        if (!url) return;
+        try {
+            const imageRef = ref(storage, url);
+            await deleteObject(imageRef);
+        } catch (e) { console.log('Erro ao deletar imagem:', e); }
+    }
 
-        async function loadCategories() {
-            const categoriesRef = ref(db, 'allCategories');
-            const snapshot = await get(categoriesRef);
-            if (snapshot.exists()) {
-                allCategories = snapshot.val();
-            } else {
-                allCategories = [];
-            }
-            renderCategories();
-        }
+    // Navegação
+    function showPage(page) {
+        [loginPage, registerPage, masterMenuPage, adminPage].forEach(p => p.classList.add('hidden'));
+        page.classList.remove('hidden');
+    }
 
-        async function loadProducts() {
-            const productsRef = ref(db, 'allProducts');
-            const snapshot = await get(productsRef);
-            if (snapshot.exists()) {
-                allProducts = snapshot.val();
-            } else {
-                allProducts = [];
-            }
-            renderProductList(allProducts);
-            loadingIndicator.classList.add('hidden');
-        }
-
-        async function loadComplementsCache() {
-            const complementsRef = ref(db, 'productComplementsCache');
-            const snapshot = await get(complementsRef);
-            if (snapshot.exists()) {
-                productComplementsCache = snapshot.val();
-            } else {
-                productComplementsCache = {};
-            }
-        }
-
-        async function loadAllData() {
-            loadingIndicator.classList.remove('hidden');
-            await Promise.all([
-                loadCategories(),
-                loadProducts(),
-                loadComplementsCache()
-            ]);
-        }
-
-        // ======================= FUNÇÕES DE CATEGORIAS =======================
-        function renderCategories() {
-            categoryList.innerHTML = '';
-            productCategorySelect.innerHTML = '<option value="" disabled selected>Selecione uma categoria</option>';
-
-            allCategories.forEach(category => {
-                const categoryDiv = document.createElement('div');
-                categoryDiv.className = 'flex items-center bg-yellow-200 text-yellow-900 rounded-full py-1 px-4 text-sm font-semibold';
-                categoryDiv.innerHTML = `
-                    <span>${category.name}</span>
-                    <button data-id="${category.id}" class="remove-category-btn ml-2 text-yellow-700 hover:text-yellow-900 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                `;
-                categoryList.appendChild(categoryDiv);
-
-                const option = document.createElement('option');
-                option.value = category.id;
-                option.textContent = category.name;
-                productCategorySelect.appendChild(option);
-            });
-        }
-
-        async function addCategory() {
-            const name = categoryNameInput.value.trim();
-            if (name === '') {
-                showMessage('O nome da categoria não pode estar vazio.', 'error');
-                return;
-            }
-            if (allCategories.some(cat => cat.name.toLowerCase() === name.toLowerCase())) {
-                showMessage('Esta categoria já existe.', 'error');
-                return;
-            }
-            const newCategory = { id: Date.now().toString(), name };
-            allCategories.push(newCategory);
-            
-            const categoriesRef = ref(db, 'allCategories');
-            await set(categoriesRef, allCategories);
-            
-            categoryNameInput.value = '';
-            renderCategories();
-            showMessage('Categoria adicionada!', 'success');
-        }
-        
-        async function removeCategory(id) {
-            allCategories = allCategories.filter(category => category.id !== id);
-            allProducts.forEach(product => {
-                if (product.categoryId === id) product.categoryId = '';
-            });
-            
-            await set(ref(db, 'allCategories'), allCategories);
-            await set(ref(db, 'allProducts'), allProducts);
-            
-            renderCategories();
-            renderProductList(allProducts);
-            showMessage('Categoria removida.', 'success');
-        }
-
-        // ======================= FUNÇÕES DE PRODUTOS =======================
-        function renderProductList(productsToRender) {
-            productList.innerHTML = '';
-            if (productsToRender.length === 0) {
-                productList.innerHTML = '<div class="text-center text-gray-500 col-span-full">Nenhum produto encontrado.</div>';
-                return;
-            }
-
-            productsToRender.forEach(product => {
-                const categoryName = allCategories.find(c => c.id === product.categoryId)?.name || 'Sem Categoria';
-                const productCard = document.createElement('div');
-                productCard.className = `bg-gray-50 p-4 rounded-xl shadow-md flex items-center gap-4 product-card relative ${product.paused ? 'opacity-50' : ''}`;
-                productCard.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}" class="w-20 h-20 object-cover rounded-lg border border-gray-200">
-                    <div class="flex-1">
-                        <h3 class="text-xl font-bold text-gray-800">${product.name}</h3>
-                        ${product.pdvCode ? `<p class="text-xs text-gray-400">Código PDV: ${product.pdvCode}</p>` : ''}
-                        <p class="text-sm text-gray-500">${categoryName}</p>
-                        <p class="text-lg font-semibold text-sky-600">R$ ${product.price.toFixed(2).replace('.', ',')}</p>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button data-id="${product.id}" class="manage-complements-btn bg-sky-100 text-sky-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-sky-200 transition-colors">Complementos</button>
-                        <button data-id="${product.id}" class="toggle-product-pause-btn bg-${product.paused ? 'green' : 'red'}-100 text-${product.paused ? 'green' : 'red'}-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-${product.paused ? 'green' : 'red'}-200 transition-colors">
-                            ${product.paused ? 'Retomar' : 'Pausar'}
-                        </button>
-                        <button data-id="${product.id}" class="edit-product-btn bg-blue-100 text-blue-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-blue-200 transition-colors">Editar</button>
-                        <button data-id="${product.id}" class="remove-product-btn bg-red-100 text-red-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-red-200 transition-colors">Remover</button>
-                    </div>
-                    ${product.paused ? '<span class="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">Pausado</span>' : ''}
-                `;
-                productList.appendChild(productCard);
-            });
-        }
-
-        async function toggleProductPause(id) {
-            const product = allProducts.find(p => p.id === id);
-            if (product) {
-                product.paused = !product.paused;
-                await set(ref(db, 'allProducts'), allProducts);
-                renderProductList(allProducts);
-                showMessage(`Produto ${product.paused ? 'pausado' : 'retomado'} com sucesso!`, 'success');
-            }
-        }
-
-        function validateProductForm() {
-            const name = productNameInput.value.trim();
-            const price = parseFloat(productPriceInput.value);
-            const categoryId = productCategorySelect.value;
-            if (!name || isNaN(price) || price < 0 || !categoryId) {
-                showMessage('Por favor, preencha todos os campos obrigatórios (Nome, Preço e Categoria).', 'error');
-                return false;
-            }
-            if (!editingProductId && !currentImageBase64) {
-                showMessage('Por favor, adicione uma imagem para o produto.', 'error');
-                return false;
-            }
-            return true;
-        }
-
-        async function saveProduct() {
-            if (!validateProductForm()) return;
-            
-            const name = productNameInput.value.trim();
-            const pdvCode = productPdvCodeInput.value.trim();
-            const price = parseFloat(productPriceInput.value);
-            const description = productDescriptionInput.value.trim();
-            const categoryId = productCategorySelect.value;
-
-            if (editingProductId) {
-                const productIndex = allProducts.findIndex(p => p.id === editingProductId);
-                if (productIndex > -1) {
-                    allProducts[productIndex] = {
-                        ...allProducts[productIndex],
-                        name, pdvCode, price, description, categoryId,
-                        image: currentImageBase64 || allProducts[productIndex].image
-                    };
-                    showMessage('Produto atualizado com sucesso!', 'success');
-                }
-            } else {
-                const newProduct = {
-                    id: Date.now().toString(),
-                    name, pdvCode, price, description, categoryId,
-                    image: currentImageBase64, paused: false
-                };
-                allProducts.push(newProduct);
-                showMessage('Produto adicionado com sucesso!', 'success');
-            }
-
-            await set(ref(db, 'allProducts'), allProducts);
-            resetProductForm();
-            renderProductList(allProducts);
-        }
-
-        function editProduct(id) {
-            const product = allProducts.find(p => p.id === id);
-            if (!product) return;
-            editingProductId = id;
-            productFormTitle.textContent = 'Editar Produto';
-            productNameInput.value = product.name;
-            productPdvCodeInput.value = product.pdvCode || '';
-            productPriceInput.value = product.price;
-            productDescriptionInput.value = product.description;
-            productCategorySelect.value = product.categoryId;
-            currentImageBase64 = product.image;
-            if (product.image) {
-                imagePreview.src = product.image;
-                imagePreviewContainer.classList.remove('hidden');
-            } else {
-                imagePreviewContainer.classList.add('hidden');
-            }
-            addProductBtn.textContent = 'Salvar Alterações';
-            cancelEditBtn.classList.remove('hidden');
-        }
-
-        async function removeProduct(id) {
-            allProducts = allProducts.filter(product => product.id !== id);
-            delete productComplementsCache[id];
-            
-            await set(ref(db, 'allProducts'), allProducts);
-            await set(ref(db, 'productComplementsCache'), productComplementsCache);
-            
-            renderProductList(allProducts);
-            showMessage('Produto removido.', 'success');
-        }
-
-        function resetProductForm() {
-            editingProductId = null;
-            productFormTitle.textContent = 'Adicionar Novo Produto';
-            productNameInput.value = '';
-            productPdvCodeInput.value = '';
-            productPriceInput.value = '';
-            productDescriptionInput.value = '';
-            productCategorySelect.value = '';
-            productImageFileInput.value = '';
-            currentImageBase64 = null;
-            imagePreview.src = '#';
-            imagePreviewContainer.classList.add('hidden');
-            addProductBtn.textContent = 'Adicionar Produto';
-            cancelEditBtn.classList.add('hidden');
-        }
-
-        // ======================= FUNÇÕES DE COMPLEMENTOS =======================
-        function renderComplementGroups(productId) {
-            const complements = localComplements;
-            complementList.innerHTML = '';
-            if (complements.length === 0) {
-                complementList.innerHTML = '<p class="text-gray-500 text-center">Nenhum grupo de complemento adicionado.</p>';
-                return;
-            }
-
-            complements.forEach((group, groupIndex) => {
-                const groupDiv = document.createElement('div');
-                groupDiv.className = `bg-gray-100 rounded-lg p-4 mb-4 relative ${group.paused ? 'opacity-50' : ''}`;
-                groupDiv.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <h5 class="text-xl font-semibold text-gray-800">${group.name}</h5>
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-medium text-gray-500">${group.isMandatory ? 'Obrigatório' : 'Opcional'}</span>
-                            <button data-group-index="${groupIndex}" class="toggle-complement-group-pause-btn bg-${group.paused ? 'green' : 'red'}-100 text-${group.paused ? 'green' : 'red'}-700 font-semibold py-1 px-2 rounded-full text-xs hover:bg-${group.paused ? 'green' : 'red'}-200 transition-colors">
-                                ${group.paused ? 'Retomar' : 'Pausar'}
-                            </button>
-                            <button data-group-index="${groupIndex}" class="remove-complement-group-btn text-red-500 hover:text-red-700 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                    </div>
-                    ${group.description ? `<p class="text-sm text-gray-500 mb-2">${group.description}</p>` : ''}
-                    ${group.isMandatory ? `<p class="text-xs text-red-500 mb-2">Selecione no mínimo ${group.minSelection} e no máximo ${group.maxSelection} opções.</p>` : ''}
-                    <ul id="options-list-${groupIndex}" class="mt-2 space-y-2"></ul>
-                    <div class="flex mt-4 gap-2 bg-white p-2 rounded-lg">
-                        <input type="text" placeholder="Nome da Opção" data-group-index="${groupIndex}" class="option-name-input flex-1 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm">
-                        <input type="number" placeholder="Preço (R$)" min="0" step="0.01" data-group-index="${groupIndex}" class="option-price-input w-24 p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 text-sm">
-                        <button data-group-index="${groupIndex}" class="add-option-btn bg-sky-500 text-white px-4 rounded-lg shadow-md hover:bg-sky-600 transition-colors text-sm">Adicionar</button>
-                    </div>
-                    ${group.paused ? '<span class="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">Pausado</span>' : ''}
-                `;
-                complementList.appendChild(groupDiv);
-
-                const optionsList = document.getElementById(`options-list-${groupIndex}`);
-                group.options.forEach((option, optionIndex) => {
-                    const optionLi = document.createElement('li');
-                    optionLi.className = `flex justify-between items-center bg-gray-50 p-2 rounded-lg ${option.paused ? 'opacity-50' : ''}`;
-                    optionLi.innerHTML = `
-                        <div>
-                            <span class="font-medium">${option.name}</span>
-                            <span class="text-sm text-gray-500 ml-2">(+ R$ ${option.price.toFixed(2).replace('.', ',')})</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <button data-group-index="${groupIndex}" data-option-index="${optionIndex}" class="toggle-complement-option-pause-btn bg-${option.paused ? 'green' : 'red'}-100 text-${option.paused ? 'green' : 'red'}-700 font-semibold py-1 px-2 rounded-full text-xs hover:bg-${option.paused ? 'green' : 'red'}-200 transition-colors">
-                                ${option.paused ? 'Retomar' : 'Pausar'}
-                            </button>
-                            <button data-group-index="${groupIndex}" data-option-index="${optionIndex}" class="remove-option-btn text-red-500 hover:text-red-700 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
-                    `;
-                    optionsList.appendChild(optionLi);
-                });
-            });
-        }
-
-        function openComplementModal(productId) {
-            currentProductId = productId;
-            const product = allProducts.find(p => p.id === productId);
-            if (!product) return;
-            complementProductName.textContent = product.name;
-            localComplements = JSON.parse(JSON.stringify(productComplementsCache[productId] || []));
-            renderComplementGroups(currentProductId);
-            toggleModal(complementModal, true);
-        }
-
-        function addComplementGroup() {
-            const name = complementNameInput.value.trim();
-            const description = complementDescriptionInput.value.trim();
-            const isMandatory = isMandatoryCheckbox.checked;
-            const minSelection = isMandatory ? parseInt(minSelectionInput.value) : 0;
-            const maxSelection = isMandatory ? parseInt(maxSelectionInput.value) : 0;
-
-            if (name === '') {
-                showMessage('O nome do grupo é obrigatório.', 'error');
-                return;
-            }
-            if (isMandatory && (isNaN(minSelection) || isNaN(maxSelection) || minSelection > maxSelection)) {
-                showMessage('Se for obrigatório, defina uma seleção mínima e máxima válidas.', 'error');
-                return;
-            }
-
-            const newGroup = { name, description, isMandatory, minSelection, maxSelection, options: [], paused: false };
-            localComplements.push(newGroup);
-            renderComplementGroups(currentProductId);
-            
-            complementNameInput.value = '';
-            complementDescriptionInput.value = '';
-            isMandatoryCheckbox.checked = false;
-            minSelectionInput.value = '';
-            maxSelectionInput.value = '';
-            mandatoryOptions.classList.add('hidden');
-        }
-
-        function addOptionToGroup(groupIndex, name, price) {
-            const group = localComplements[groupIndex];
-            if (!group) return;
-            if (name === '' || isNaN(price) || price < 0) {
-                showMessage('Nome e preço da opção são obrigatórios e devem ser válidos.', 'error');
-                return;
-            }
-            group.options.push({ name, price, paused: false });
-            renderComplementGroups(currentProductId);
-        }
-
-        function removeOptionFromGroup(groupIndex, optionIndex) {
-            localComplements[groupIndex].options.splice(optionIndex, 1);
-            renderComplementGroups(currentProductId);
-        }
-
-        function removeComplementGroup(groupIndex) {
-            localComplements.splice(groupIndex, 1);
-            renderComplementGroups(currentProductId);
-        }
-
-        function toggleComplementGroupPause(groupIndex) {
-            if (localComplements[groupIndex]) {
-                localComplements[groupIndex].paused = !localComplements[groupIndex].paused;
-                renderComplementGroups(currentProductId);
-            }
-        }
-        
-        function toggleComplementOptionPause(groupIndex, optionIndex) {
-            const option = localComplements[groupIndex]?.options[optionIndex];
-            if (option) {
-                option.paused = !option.paused;
-                renderComplementGroups(currentProductId);
-            }
-        }
-
-        async function saveComplements() {
-            productComplementsCache[currentProductId] = localComplements;
-            await set(ref(db, 'productComplementsCache'), productComplementsCache);
-            showMessage('Complementos salvos com sucesso!', 'success');
-            toggleModal(complementModal, false);
-            localComplements = null;
-        }
-
-        function cancelComplements() {
-            toggleModal(complementModal, false);
-            localComplements = null;
-        }
-        
-        function showConfirmationModal(title, message, callback) {
-            confirmationModalTitle.textContent = title;
-            confirmationModalMessage.textContent = message;
-            confirmationCallback = callback;
-            toggleModal(confirmationModal, true);
-        }
-
-        // ======================= AUTENTICAÇÃO =======================
-        function checkAuthState() {
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser = user;
-                    showPage(masterMenuPage);
-                } else {
-                    currentUser = null;
-                    showPage(loginPage);
-                }
-            });
-        }
-
-        async function handleLogin() {
-            const email = usernameInput.value.trim();
-            const password = passwordInput.value.trim();
-
-            if (!email || !password) {
-                showMessage('Por favor, preencha o e-mail e a senha.', 'error');
-                return;
-            }
-
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                showMessage('Login efetuado com sucesso!', 'success');
-            } catch (error) {
-                console.error("Erro no login:", error.code);
-                if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-                    showMessage('Usuário ou senha incorretos!', 'error');
-                } else {
-                    showMessage('Erro ao entrar: ' + error.message, 'error');
-                }
-            }
-        }
-
-        async function handleRegister() {
-            const email = registerEmailInput.value.trim();
-            const password = registerPasswordInput.value.trim();
-
-            if (!email || !password) {
-                showMessage('Preencha todos os campos!', 'error');
-                return;
-            }
-            if (password.length < 6) {
-                showMessage('A senha deve ter pelo menos 6 caracteres.', 'error');
-                return;
-            }
-
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                showMessage('Cadastro realizado com sucesso!', 'success');
-            } catch (error) {
-                console.error("Erro no cadastro:", error.code);
-                if (error.code === 'auth/email-already-in-use') {
-                    showMessage('Este e-mail já está cadastrado.', 'error');
-                } else {
-                    showMessage('Erro ao cadastrar: ' + error.message, 'error');
-                }
-            }
-        }
-
-        async function handleLogout() {
-            try {
-                await signOut(auth);
-                showMessage('Logout realizado com sucesso!', 'success');
-            } catch (error) {
-                showMessage('Erro ao sair: ' + error.message, 'error');
-            }
-        }
-
-        // ======================= LISTENERS DE EVENTOS =======================
-        window.addEventListener('DOMContentLoaded', () => {
-            checkAuthState();
-            loadAllData();
-        });
-
-        loginBtn.addEventListener('click', handleLogin);
-        registerBtn.addEventListener('click', handleRegister);
-        showRegisterBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            showPage(registerPage);
-        });
-        showLoginBtn.addEventListener('click', (e) => {
-            e.preventDefault();
+    // Autenticação
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            showPage(masterMenuPage);
+            startRealtimeListeners();
+            await loadRestaurantProfile();
+        } else {
             showPage(loginPage);
-        });
-        logoutMasterBtn.addEventListener('click', handleLogout);
-        
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleLogin();
-        });
-        registerPasswordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleRegister();
+            if (unsubscribeProducts) unsubscribeProducts();
+            if (unsubscribeCategories) unsubscribeCategories();
+            if (unsubscribeProfile) unsubscribeProfile();
+        }
+    });
+
+    loginBtn.addEventListener('click', async () => {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+            showMessage('Login realizado!', 'success');
+        } catch (error) {
+            showMessage('Erro: ' + error.message, 'error');
+        }
+    });
+
+    goToRegisterBtn.addEventListener('click', () => showPage(registerPage));
+    goToLoginBtn.addEventListener('click', () => showPage(loginPage));
+
+    registerBtn.addEventListener('click', async () => {
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+        const confirm = document.getElementById('registerConfirmPassword').value;
+        if (password !== confirm) {
+            showMessage('Senhas não coincidem', 'error');
+            return;
+        }
+        try {
+            await createUserWithEmailAndPassword(auth, email, password);
+            showMessage('Cadastro realizado!', 'success');
+        } catch (error) {
+            showMessage('Erro: ' + error.message, 'error');
+        }
+    });
+
+    logoutMasterBtn.addEventListener('click', async () => {
+        await signOut(auth);
+        showMessage('Desconectado', 'yellow');
+    });
+
+    adminBtn.addEventListener('click', () => showPage(adminPage));
+    backToMenuBtnAdmin.addEventListener('click', () => showPage(masterMenuPage));
+
+    // Realtime Listeners
+    function startRealtimeListeners() {
+        // Produtos
+        unsubscribeProducts = onSnapshot(collection(db, COLLECTIONS.PRODUCTS), (snapshot) => {
+            allProducts = [];
+            snapshot.forEach(doc => {
+                allProducts.push({ id: doc.id, ...doc.data() });
+            });
+            renderProductList(allProducts);
         });
 
-        adminBtn.addEventListener('click', () => {
-            showPage(adminPage);
-            loadAllData();
-        });
-        backToMenuBtnAdmin.addEventListener('click', () => showPage(masterMenuPage));
-
-        addCategoryBtn.addEventListener('click', addCategory);
-        categoryNameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') addCategory();
-        });
-        
-        categoryList.addEventListener('click', (e) => {
-            if (e.target.closest('.remove-category-btn')) {
-                const id = e.target.closest('.remove-category-btn').dataset.id;
-                showConfirmationModal('Remover Categoria', 'Tem certeza que deseja remover esta categoria?', () => removeCategory(id));
-            }
+        // Categorias
+        unsubscribeCategories = onSnapshot(collection(db, COLLECTIONS.CATEGORIES), (snapshot) => {
+            allCategories = [];
+            snapshot.forEach(doc => {
+                allCategories.push({ id: doc.id, ...doc.data() });
+            });
+            renderCategories();
         });
 
-        addProductBtn.addEventListener('click', saveProduct);
-        cancelEditBtn.addEventListener('click', resetProductForm);
-        
-        productImageFileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    currentImageBase64 = e.target.result;
-                    imagePreview.src = currentImageBase64;
-                    imagePreviewContainer.classList.remove('hidden');
-                };
-                reader.readAsDataURL(file);
-            }
+        // Complementos
+        onSnapshot(collection(db, COLLECTIONS.COMPLEMENTS), (snapshot) => {
+            productComplementsCache = {};
+            snapshot.forEach(doc => {
+                productComplementsCache[doc.id] = doc.data().groups || [];
+            });
         });
+    }
 
-        productList.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('.edit-product-btn');
-            const removeBtn = e.target.closest('.remove-product-btn');
-            const complementsBtn = e.target.closest('.manage-complements-btn');
-            const pauseBtn = e.target.closest('.toggle-product-pause-btn');
+    async function loadRestaurantProfile() {
+        const profileDoc = await getDoc(doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main'));
+        if (profileDoc.exists()) {
+            restaurantProfile = profileDoc.data();
+            updateMasterMenuDisplay();
+        }
+    }
 
-            if (editBtn) editProduct(editBtn.dataset.id);
-            else if (removeBtn) showConfirmationModal('Remover Produto', 'Tem certeza que deseja remover este produto?', () => removeProduct(removeBtn.dataset.id));
-            else if (complementsBtn) openComplementModal(complementsBtn.dataset.id);
-            else if (pauseBtn) toggleProductPause(pauseBtn.dataset.id);
-        });
+    function updateMasterMenuDisplay() {
+        const hasInfo = restaurantProfile.name || restaurantProfile.description;
+        if (hasInfo) restaurantInfoMaster.classList.remove('hidden');
+        else restaurantInfoMaster.classList.add('hidden');
 
-        searchProductInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredProducts = allProducts.filter(product =>
-                product.name.toLowerCase().includes(searchTerm) ||
-                (product.pdvCode && product.pdvCode.toLowerCase().includes(searchTerm)) ||
-                product.description.toLowerCase().includes(searchTerm) ||
-                (allCategories.find(c => c.id === product.categoryId)?.name.toLowerCase().includes(searchTerm))
-            );
-            renderProductList(filteredProducts);
-        });
-
-        closeModalBtn.addEventListener('click', () => toggleModal(complementModal, false));
-        isMandatoryCheckbox.addEventListener('change', (e) => {
-            if (e.target.checked) mandatoryOptions.classList.remove('hidden');
-            else mandatoryOptions.classList.add('hidden');
-        });
-        addComplementBtn.addEventListener('click', addComplementGroup);
-        saveComplementsBtn.addEventListener('click', saveComplements);
-        cancelComplementsBtn.addEventListener('click', cancelComplements);
-
-        complementModal.addEventListener('click', (e) => {
-            const addOptionBtn = e.target.closest('.add-option-btn');
-            const removeOptionBtn = e.target.closest('.remove-option-btn');
-            const removeGroupBtn = e.target.closest('.remove-complement-group-btn');
-            const pauseGroupBtn = e.target.closest('.toggle-complement-group-pause-btn');
-            const pauseOptionBtn = e.target.closest('.toggle-complement-option-pause-btn');
-            
-            if (addOptionBtn) {
-                const groupIndex = parseInt(addOptionBtn.dataset.groupIndex);
-                const groupContainer = addOptionBtn.closest('.bg-gray-100');
-                const nameInput = groupContainer.querySelector('.option-name-input');
-                const priceInput = groupContainer.querySelector('.option-price-input');
-                addOptionToGroup(groupIndex, nameInput.value.trim(), parseFloat(priceInput.value));
-                nameInput.value = '';
-                priceInput.value = '';
-            } else if (removeOptionBtn) {
-                const groupIndex = parseInt(removeOptionBtn.dataset.groupIndex);
-                const optionIndex = parseInt(removeOptionBtn.dataset.optionIndex);
-                showConfirmationModal('Remover Opção', 'Tem certeza que deseja remover esta opção?', () => removeOptionFromGroup(groupIndex, optionIndex));
-            } else if (removeGroupBtn) {
-                const groupIndex = parseInt(removeGroupBtn.dataset.groupIndex);
-                showConfirmationModal('Remover Grupo de Complemento', 'Tem certeza que deseja remover este grupo de complemento?', () => removeComplementGroup(groupIndex));
-            } else if (pauseGroupBtn) {
-                const groupIndex = parseInt(pauseGroupBtn.dataset.groupIndex);
-                toggleComplementGroupPause(groupIndex);
-            } else if (pauseOptionBtn) {
-                const groupIndex = parseInt(pauseOptionBtn.dataset.groupIndex);
-                const optionIndex = parseInt(pauseOptionBtn.dataset.optionIndex);
-                toggleComplementOptionPause(groupIndex, optionIndex);
-            }
-        });
-
-        cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
-        confirmActionBtn.addEventListener('click', () => {
-            if (confirmationCallback) {
-                confirmationCallback();
-                confirmationCallback = null;
-            }
-            toggleModal(confirmationModal, false);
-        });
-
-        // Monitorar pedidos em tempo real
-        let lastKnownOrderCount = -1;
-        function showNewOrderNotification() {
-            const notificationDiv = document.createElement('div');
-            notificationDiv.className = 'notification-box';
-            notificationDiv.textContent = 'Novo pedido chegou!';
-            document.body.appendChild(notificationDiv);
-            setTimeout(() => notificationDiv.classList.add('show'), 10);
-            try {
-                new Audio('som.mp3').play();
-            } catch(e) {}
-            setTimeout(() => {
-                notificationDiv.classList.remove('show');
-                setTimeout(() => notificationDiv.remove(), 500);
-            }, 5000);
+        if (restaurantProfile.logo) {
+            restaurantLogoMaster.src = restaurantProfile.logo;
+            restaurantLogoMaster.classList.remove('hidden');
+        } else {
+            restaurantLogoMaster.classList.add('hidden');
         }
 
-        const ordersRef = ref(db, 'myOrders');
-        onValue(ordersRef, (snapshot) => {
-            const data = snapshot.val();
-            const ordersArray = data ? Object.keys(data).map(key => ({ id: key, ...data[key] })) : [];
-            if (lastKnownOrderCount !== -1 && ordersArray.length > lastKnownOrderCount) {
-                showNewOrderNotification();
-            }
-            lastKnownOrderCount = ordersArray.length;
+        if (restaurantProfile.show?.name && restaurantProfile.name) {
+            restaurantNameMaster.textContent = restaurantProfile.name;
+            restaurantNameMaster.classList.remove('hidden');
+        } else {
+            restaurantNameMaster.classList.add('hidden');
+        }
+
+        if (restaurantProfile.show?.description && restaurantProfile.description) {
+            restaurantDescriptionMaster.textContent = restaurantProfile.description;
+            restaurantDescriptionMaster.classList.remove('hidden');
+        } else {
+            restaurantDescriptionMaster.classList.add('hidden');
+        }
+    }
+
+    // Categorias
+    function renderCategories() {
+        categoryList.innerHTML = '';
+        productCategorySelect.innerHTML = '<option value="">Selecione uma categoria</option>';
+        
+        allCategories.forEach(category => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center bg-yellow-200 text-yellow-900 rounded-full py-1 px-4 text-sm font-semibold';
+            div.innerHTML = `
+                <span>${category.name}</span>
+                <button data-id="${category.id}" class="remove-category-btn ml-2 text-yellow-700 hover:text-yellow-900">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            `;
+            categoryList.appendChild(div);
+            
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            productCategorySelect.appendChild(option);
         });
-    </script>
+    }
+
+    addCategoryBtn.addEventListener('click', async () => {
+        const name = categoryNameInput.value.trim();
+        if (!name) return showMessage('Digite um nome', 'error');
+        if (allCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+            return showMessage('Categoria já existe', 'error');
+        }
+        await addDoc(collection(db, COLLECTIONS.CATEGORIES), { name, createdAt: Timestamp.now() });
+        categoryNameInput.value = '';
+        showMessage('Categoria adicionada!', 'success');
+    });
+
+    categoryList.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.remove-category-btn');
+        if (btn) {
+            const id = btn.dataset.id;
+            showConfirmationModal('Remover Categoria', 'Tem certeza?', async () => {
+                await deleteDoc(doc(db, COLLECTIONS.CATEGORIES, id));
+                showMessage('Categoria removida', 'success');
+            });
+        }
+    });
+
+    // Produtos
+    function renderProductList(products) {
+        if (!products.length) {
+            productList.innerHTML = '<div class="text-center text-gray-500">Nenhum produto encontrado.</div>';
+            return;
+        }
+
+        productList.innerHTML = '';
+        products.forEach(product => {
+            const category = allCategories.find(c => c.id === product.categoryId);
+            const card = document.createElement('div');
+            card.className = `bg-gray-50 p-4 rounded-xl shadow-md flex items-center gap-4 ${product.paused ? 'opacity-50' : ''}`;
+            card.innerHTML = `
+                <img src="${product.image || ''}" class="w-20 h-20 object-cover rounded-lg border">
+                <div class="flex-1">
+                    <h3 class="text-xl font-bold">${product.name}</h3>
+                    ${product.pdvCode ? `<p class="text-xs text-gray-400">Cód: ${product.pdvCode}</p>` : ''}
+                    <p class="text-sm text-gray-500">${category?.name || 'Sem categoria'}</p>
+                    <p class="text-lg font-semibold text-orange-600">R$ ${product.price?.toFixed(2).replace('.', ',') || '0,00'}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                    <button data-id="${product.id}" class="manage-complements-btn bg-orange-100 text-orange-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-orange-200">Complementos</button>
+                    <button data-id="${product.id}" class="toggle-product-pause-btn bg-${product.paused ? 'green' : 'red'}-100 text-${product.paused ? 'green' : 'red'}-700 font-semibold py-2 px-4 rounded-full text-xs">
+                        ${product.paused ? 'Retomar' : 'Pausar'}
+                    </button>
+                    <button data-id="${product.id}" class="edit-product-btn bg-blue-100 text-blue-700 font-semibold py-2 px-4 rounded-full text-xs">Editar</button>
+                    <button data-id="${product.id}" class="remove-product-btn bg-red-100 text-red-700 font-semibold py-2 px-4 rounded-full text-xs">Remover</button>
+                </div>
+                ${product.paused ? '<span class="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">Pausado</span>' : ''}
+            `;
+            productList.appendChild(card);
+        });
+    }
+
+    productImageFileInput.addEventListener('change', (e) => {
+        currentImageFile = e.target.files[0];
+        if (currentImageFile) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                imagePreviewContainer.classList.remove('hidden');
+            };
+            reader.readAsDataURL(currentImageFile);
+        }
+    });
+
+    async function saveProduct() {
+        const name = productNameInput.value.trim();
+        const price = parseFloat(productPriceInput.value);
+        const categoryId = productCategorySelect.value;
+        
+        if (!name || isNaN(price) || !categoryId) {
+            return showMessage('Preencha nome, preço e categoria', 'error');
+        }
+
+        let imageUrl = null;
+        if (currentImageFile) {
+            imageUrl = await uploadImage(currentImageFile, `products/${Date.now()}_${currentImageFile.name}`);
+        }
+
+        const productData = {
+            name,
+            pdvCode: productPdvCodeInput.value.trim(),
+            price,
+            description: productDescriptionInput.value.trim(),
+            categoryId,
+            paused: false,
+            updatedAt: Timestamp.now()
+        };
+        
+        if (imageUrl) productData.image = imageUrl;
+
+        if (editingProductId) {
+            const oldProduct = allProducts.find(p => p.id === editingProductId);
+            await updateDoc(doc(db, COLLECTIONS.PRODUCTS, editingProductId), productData);
+            if (imageUrl && oldProduct?.image && oldProduct.image !== imageUrl) {
+                await deleteImage(oldProduct.image);
+            }
+            showMessage('Produto atualizado!', 'success');
+        } else {
+            productData.createdAt = Timestamp.now();
+            await addDoc(collection(db, COLLECTIONS.PRODUCTS), productData);
+            showMessage('Produto adicionado!', 'success');
+        }
+        
+        resetProductForm();
+    }
+
+    async function editProduct(id) {
+        const product = allProducts.find(p => p.id === id);
+        if (!product) return;
+        
+        editingProductId = id;
+        productNameInput.value = product.name;
+        productPdvCodeInput.value = product.pdvCode || '';
+        productPriceInput.value = product.price;
+        productDescriptionInput.value = product.description || '';
+        productCategorySelect.value = product.categoryId;
+        
+        if (product.image) {
+            imagePreview.src = product.image;
+            imagePreviewContainer.classList.remove('hidden');
+        }
+        
+        addProductBtn.textContent = 'Salvar Alterações';
+        cancelEditBtn.classList.remove('hidden');
+    }
+
+    async function removeProduct(id) {
+        const product = allProducts.find(p => p.id === id);
+        if (product?.image) await deleteImage(product.image);
+        await deleteDoc(doc(db, COLLECTIONS.PRODUCTS, id));
+        await deleteDoc(doc(db, COLLECTIONS.COMPLEMENTS, id)).catch(() => {});
+        showMessage('Produto removido', 'success');
+    }
+
+    async function toggleProductPause(id) {
+        const product = allProducts.find(p => p.id === id);
+        await updateDoc(doc(db, COLLECTIONS.PRODUCTS, id), { paused: !product?.paused });
+        showMessage(`Produto ${product?.paused ? 'reativado' : 'pausado'}`, 'success');
+    }
+
+    function resetProductForm() {
+        editingProductId = null;
+        currentImageFile = null;
+        productNameInput.value = '';
+        productPdvCodeInput.value = '';
+        productPriceInput.value = '';
+        productDescriptionInput.value = '';
+        productCategorySelect.value = '';
+        productImageFileInput.value = '';
+        imagePreviewContainer.classList.add('hidden');
+        imagePreview.src = '#';
+        addProductBtn.textContent = 'Salvar Produto';
+        cancelEditBtn.classList.add('hidden');
+    }
+
+    productList.addEventListener('click', async (e) => {
+        const editBtn = e.target.closest('.edit-product-btn');
+        const removeBtn = e.target.closest('.remove-product-btn');
+        const complementsBtn = e.target.closest('.manage-complements-btn');
+        const pauseBtn = e.target.closest('.toggle-product-pause-btn');
+        
+        if (editBtn) editProduct(editBtn.dataset.id);
+        else if (removeBtn) showConfirmationModal('Remover Produto', 'Tem certeza?', () => removeProduct(removeBtn.dataset.id));
+        else if (complementsBtn) openComplementModal(complementsBtn.dataset.id);
+        else if (pauseBtn) toggleProductPause(pauseBtn.dataset.id);
+    });
+
+    addProductBtn.addEventListener('click', saveProduct);
+    cancelEditBtn.addEventListener('click', resetProductForm);
+
+    searchProductInput.addEventListener('input', (e) => {
+        const term = e.target.value.toLowerCase();
+        const filtered = allProducts.filter(p => 
+            p.name.toLowerCase().includes(term) ||
+            (p.pdvCode && p.pdvCode.toLowerCase().includes(term))
+        );
+        renderProductList(filtered);
+    });
+
+    // Complementos
+    async function openComplementModal(productId) {
+        currentProductId = productId;
+        const product = allProducts.find(p => p.id === productId);
+        complementProductName.textContent = product?.name || '';
+        
+        const compDoc = await getDoc(doc(db, COLLECTIONS.COMPLEMENTS, productId));
+        localComplements = compDoc.exists() ? (compDoc.data().groups || []) : [];
+        renderComplementGroups();
+        toggleModal(complementModal, true);
+    }
+
+    function renderComplementGroups() {
+        complementList.innerHTML = '';
+        if (!localComplements.length) {
+            complementList.innerHTML = '<p class="text-gray-500 text-center">Nenhum grupo de complemento</p>';
+            return;
+        }
+
+        localComplements.forEach((group, groupIndex) => {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = `bg-gray-100 rounded-lg p-4 mb-4 ${group.paused ? 'opacity-50' : ''}`;
+            groupDiv.innerHTML = `
+                <div class="flex justify-between items-center mb-2">
+                    <h5 class="text-xl font-semibold">${group.name}</h5>
+                    <div class="flex gap-2">
+                        <span class="text-sm">${group.isMandatory ? 'Obrigatório' : 'Opcional'}</span>
+                        <button data-group-index="${groupIndex}" class="toggle-group-pause-btn bg-${group.paused ? 'green' : 'red'}-100 text-${group.paused ? 'green' : 'red'}-700 px-2 py-1 rounded-full text-xs">${group.paused ? 'Retomar' : 'Pausar'}</button>
+                        <button data-group-index="${groupIndex}" class="remove-group-btn text-red-500 hover:text-red-700">✕</button>
+                    </div>
+                </div>
+                ${group.description ? `<p class="text-sm text-gray-500 mb-2">${group.description}</p>` : ''}
+                ${group.isMandatory ? `<p class="text-xs text-red-500 mb-2">Mín: ${group.minSelection} | Máx: ${group.maxSelection}</p>` : ''}
+                <div id="options-list-${groupIndex}" class="space-y-2"></div>
+                <div class="flex mt-3 gap-2">
+                    <input type="text" placeholder="Opção" class="option-name-input flex-1 p-2 border rounded-lg text-sm">
+                    <input type="number" placeholder="Preço" step="0.01" class="option-price-input w-24 p-2 border rounded-lg text-sm">
+                    <button data-group-index="${groupIndex}" class="add-option-btn bg-orange-500 text-white px-4 rounded-lg">+</button>
+                </div>
+            `;
+            complementList.appendChild(groupDiv);
+
+            const optionsContainer = document.getElementById(`options-list-${groupIndex}`);
+            group.options?.forEach((option, optIndex) => {
+                const optDiv = document.createElement('div');
+                optDiv.className = `flex justify-between items-center bg-white p-2 rounded-lg ${option.paused ? 'opacity-50' : ''}`;
+                optDiv.innerHTML = `
+                    <div><span class="font-medium">${option.name}</span> <span class="text-sm text-gray-500">(+R$ ${option.price?.toFixed(2).replace('.', ',') || '0,00'})</span></div>
+                    <div class="flex gap-2">
+                        <button data-group-index="${groupIndex}" data-opt-index="${optIndex}" class="toggle-option-pause-btn bg-${option.paused ? 'green' : 'red'}-100 text-${option.paused ? 'green' : 'red'}-700 px-2 py-1 rounded-full text-xs">${option.paused ? 'Retomar' : 'Pausar'}</button>
+                        <button data-group-index="${groupIndex}" data-opt-index="${optIndex}" class="remove-option-btn text-red-500">✕</button>
+                    </div>
+                `;
+                optionsContainer.appendChild(optDiv);
+            });
+        });
+    }
+
+    function addComplementGroup() {
+        const name = complementNameInput.value.trim();
+        if (!name) return showMessage('Nome do grupo obrigatório', 'error');
+        
+        const isMandatory = isMandatoryCheckbox.checked;
+        const minSelection = parseInt(minSelectionInput.value) || 0;
+        const maxSelection = parseInt(maxSelectionInput.value) || 0;
+        
+        if (isMandatory && minSelection > maxSelection) {
+            return showMessage('Mínimo não pode ser maior que máximo', 'error');
+        }
+        
+        localComplements.push({
+            name,
+            description: complementDescriptionInput.value.trim(),
+            isMandatory,
+            minSelection,
+            maxSelection,
+            options: [],
+            paused: false
+        });
+        
+        complementNameInput.value = '';
+        complementDescriptionInput.value = '';
+        isMandatoryCheckbox.checked = false;
+        mandatoryOptions.classList.add('hidden');
+        renderComplementGroups();
+    }
+
+    function addOptionToGroup(groupIndex, name, price) {
+        if (!name) return showMessage('Nome da opção obrigatório', 'error');
+        localComplements[groupIndex].options.push({ name, price: price || 0, paused: false });
+        renderComplementGroups();
+    }
+
+    async function saveComplements() {
+        await setDoc(doc(db, COLLECTIONS.COMPLEMENTS, currentProductId), { groups: localComplements });
+        showMessage('Complementos salvos!', 'success');
+        toggleModal(complementModal, false);
+    }
+
+    isMandatoryCheckbox.addEventListener('change', (e) => {
+        e.target.checked ? mandatoryOptions.classList.remove('hidden') : mandatoryOptions.classList.add('hidden');
+    });
+
+    addComplementBtn.addEventListener('click', addComplementGroup);
+    saveComplementsBtn.addEventListener('click', saveComplements);
+    cancelComplementsBtn.addEventListener('click', () => toggleModal(complementModal, false));
+    closeModalBtn.addEventListener('click', () => toggleModal(complementModal, false));
+
+    complementList.addEventListener('click', (e) => {
+        const addBtn = e.target.closest('.add-option-btn');
+        const removeGroupBtn = e.target.closest('.remove-group-btn');
+        const removeOptBtn = e.target.closest('.remove-option-btn');
+        const toggleGroupBtn = e.target.closest('.toggle-group-pause-btn');
+        const toggleOptBtn = e.target.closest('.toggle-option-pause-btn');
+        
+        if (addBtn) {
+            const groupIndex = parseInt(addBtn.dataset.groupIndex);
+            const container = addBtn.closest('.bg-gray-100');
+            const nameInput = container.querySelector('.option-name-input');
+            const priceInput = container.querySelector('.option-price-input');
+            addOptionToGroup(groupIndex, nameInput.value, parseFloat(priceInput.value));
+            nameInput.value = '';
+            priceInput.value = '';
+        }
+        else if (removeGroupBtn) {
+            const idx = parseInt(removeGroupBtn.dataset.groupIndex);
+            localComplements.splice(idx, 1);
+            renderComplementGroups();
+        }
+        else if (removeOptBtn) {
+            const gIdx = parseInt(removeOptBtn.dataset.groupIndex);
+            const oIdx = parseInt(removeOptBtn.dataset.optIndex);
+            localComplements[gIdx].options.splice(oIdx, 1);
+            renderComplementGroups();
+        }
+        else if (toggleGroupBtn) {
+            const idx = parseInt(toggleGroupBtn.dataset.groupIndex);
+            localComplements[idx].paused = !localComplements[idx].paused;
+            renderComplementGroups();
+        }
+        else if (toggleOptBtn) {
+            const gIdx = parseInt(toggleOptBtn.dataset.groupIndex);
+            const oIdx = parseInt(toggleOptBtn.dataset.optIndex);
+            localComplements[gIdx].options[oIdx].paused = !localComplements[gIdx].options[oIdx].paused;
+            renderComplementGroups();
+        }
+    });
+
+    // Confirmação
+    cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
+    confirmActionBtn.addEventListener('click', () => {
+        if (confirmationCallback) confirmationCallback();
+        confirmationCallback = null;
+        toggleModal(confirmationModal, false);
+    });
+</script>
 </body>
 </html>
