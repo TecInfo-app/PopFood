@@ -35,7 +35,7 @@
             </div>
             
             <div id="clients-list" class="space-y-4">
-                <p class="text-center text-gray-500">Nenhum cliente cadastrado ainda.</p>
+                <p class="text-center text-gray-500">Carregando clientes...</p>
             </div>
         </div>
 
@@ -74,14 +74,11 @@
     </div>
     
     <script type="module">
-	
-	import { db } from './firebase-config.js';
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { db, ref, onValue, get } from './firebase-config.js';
+
         // ======================= ESTADO GLOBAL E VARIÁVEIS =======================
         let clients = {};
-        let myOrders = [];
-        let finalizedOrders = [];
-        let orders = [];
+        let allOrders = [];
 
         // ======================= REFERÊNCIAS AOS ELEMENTOS DO DOM =======================
         const clientsList = document.getElementById('clients-list');
@@ -93,16 +90,30 @@ import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
         const clientOrderCount = document.getElementById('client-order-count');
         const clientOrdersList = document.getElementById('client-orders-list');
         
-        // ======================= PERSISTÊNCIA DE DADOS COM LOCALSTORAGE =======================
-        function loadAllData() {
-            clients = JSON.parse(localStorage.getItem('clients')) || {};
-            myOrders = JSON.parse(localStorage.getItem('myOrders')) || [];
-            finalizedOrders = JSON.parse(localStorage.getItem('finalizedOrders')) || [];
-            orders = [...myOrders, ...finalizedOrders];
+        // ======================= FUNÇÕES =======================
+        async function loadAllData() {
+            // Carregar clientes do Firebase
+            const clientsRef = ref(db, 'clients');
+            const clientsSnapshot = await get(clientsRef);
+            if (clientsSnapshot.exists()) {
+                clients = clientsSnapshot.val();
+            } else {
+                clients = {};
+            }
+
+            // Carregar pedidos do Firebase
+            const ordersRef = ref(db, 'myOrders');
+            const ordersSnapshot = await get(ordersRef);
+            if (ordersSnapshot.exists()) {
+                const data = ordersSnapshot.val();
+                allOrders = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+            } else {
+                allOrders = [];
+            }
+
             renderClientsPage();
         }
 
-        // ======================= FUNÇÕES DA PÁGINA DE CLIENTES =======================
         function renderClientsPage() {
             clientsList.innerHTML = '';
             if (Object.keys(clients).length === 0) {
@@ -113,7 +124,11 @@ import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
             for (const phone in clients) {
                 if (Object.prototype.hasOwnProperty.call(clients, phone)) {
                     const client = clients[phone];
-                    const ordersCount = orders.filter(order => order.customer.phone.replace(/\D/g, '') === phone).length;
+                    const ordersCount = allOrders.filter(order => {
+                        if (!order.customer) return false;
+                        const orderPhone = order.customer.phone ? order.customer.phone.replace(/\D/g, '') : '';
+                        return orderPhone === phone;
+                    }).length;
                     
                     const clientDiv = document.createElement('div');
                     clientDiv.className = 'bg-white p-6 rounded-xl shadow-md border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors';
@@ -121,8 +136,8 @@ import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
                     clientDiv.innerHTML = `
                         <div class="flex justify-between items-center">
                             <div>
-                                <h4 class="text-xl font-bold text-gray-800">${client.name}</h4>
-                                <p class="text-sm text-gray-600">${client.phone}</p>
+                                <h4 class="text-xl font-bold text-gray-800">${client.name || 'Nome não informado'}</h4>
+                                <p class="text-sm text-gray-600">${client.phone || phone}</p>
                             </div>
                             <div class="text-right">
                                 <p class="text-lg font-bold text-green-600">${ordersCount}</p>
@@ -139,11 +154,15 @@ import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
             const client = clients[clientId];
             if (!client) return;
 
-            const ordersForClient = orders.filter(order => order.customer.phone.replace(/\D/g, '') === clientId);
+            const ordersForClient = allOrders.filter(order => {
+                if (!order.customer) return false;
+                const orderPhone = order.customer.phone ? order.customer.phone.replace(/\D/g, '') : '';
+                return orderPhone === clientId;
+            });
 
-            modalClientName.textContent = client.name;
-            clientPhone.textContent = client.phone;
-            clientAddress.textContent = client.address;
+            modalClientName.textContent = client.name || 'Cliente';
+            clientPhone.textContent = client.phone || clientId;
+            clientAddress.textContent = client.address || 'Não informado';
             clientOrderCount.textContent = ordersForClient.length;
 
             clientOrdersList.innerHTML = '';
@@ -155,34 +174,44 @@ import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
                     orderCard.className = 'bg-white p-4 rounded-lg shadow-sm border border-gray-200';
 
                     let itemsHtml = '';
-                    order.items.forEach(item => {
-                        let complementsHtml = '';
-                        if (item.complements && Object.keys(item.complements).length > 0) {
-                            for (const groupName in item.complements) {
-                                if (Object.prototype.hasOwnProperty.call(item.complements, groupName) && Array.isArray(item.complements[groupName])) {
-                                    complementsHtml += `<div class="mt-2 text-sm">`;
-                                    complementsHtml += `<span class="font-bold text-gray-600">${groupName}:</span>`;
-                                    complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
-                                    complementsHtml += item.complements[groupName].map(comp => `
-                                        <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
-                                    `).join('');
-                                    complementsHtml += `</ul></div>`;
+                    if (order.items && Array.isArray(order.items)) {
+                        order.items.forEach(item => {
+                            let complementsHtml = '';
+                            if (item.complements && Object.keys(item.complements).length > 0) {
+                                for (const groupName in item.complements) {
+                                    if (Object.prototype.hasOwnProperty.call(item.complements, groupName) && Array.isArray(item.complements[groupName])) {
+                                        complementsHtml += `<div class="mt-2 text-sm">`;
+                                        complementsHtml += `<span class="font-bold text-gray-600">${groupName}:</span>`;
+                                        complementsHtml += `<ul class="pl-4 mt-1 text-xs text-gray-500 space-y-0.5">`;
+                                        complementsHtml += item.complements[groupName].map(comp => `
+                                            <li>- ${comp.name} ${comp.price > 0 ? `(+R$ ${comp.price.toFixed(2).replace('.', ',')})` : ''}</li>
+                                        `).join('');
+                                        complementsHtml += `</ul></div>`;
+                                    }
                                 }
                             }
-                        }
-                        itemsHtml += `
-                            <li class="mt-2 text-sm">
-                                <div class="flex justify-between items-center">
-                                    <span class="font-bold">${item.quantity}x ${item.product.name}</span>
-                                    <span class="text-gray-500">R$ ${item.totalPrice.toFixed(2).replace('.', ',')}</span>
-                                </div>
-                                ${complementsHtml}
-                            </li>
-                        `;
-                    });
+                            const itemPrice = typeof item.totalPrice === 'number' ? item.totalPrice : 0;
+                            const prodName = item.product ? item.product.name : 'Produto';
+                            itemsHtml += `
+                                <li class="mt-2 text-sm">
+                                    <div class="flex justify-between items-center">
+                                        <span class="font-bold">${item.quantity}x ${prodName}</span>
+                                        <span class="text-gray-500">R$ ${itemPrice.toFixed(2).replace('.', ',')}</span>
+                                    </div>
+                                    ${complementsHtml}
+                                </li>
+                            `;
+                        });
+                    } else {
+                        itemsHtml = '<p class="text-xs text-gray-400">Nenhum item discriminado.</p>';
+                    }
+
+                    const totalExibido = typeof order.total === 'number' ? order.total.toFixed(2).replace('.', ',') : '0,00';
+                    const orderDate = order.date || 'Data não informada';
+                    const paymentMethod = order.paymentMethod || 'A combinar';
 
                     orderCard.innerHTML = `
-                        <p class="text-gray-800 font-bold">Pedido #${order.id.slice(-6)} <span class="text-sm font-normal text-gray-500">- ${order.date}</span></p>
+                        <p class="text-gray-800 font-bold">Pedido #${order.id.slice(-6)} <span class="text-sm font-normal text-gray-500">- ${orderDate}</span></p>
                         <div class="mt-2">
                             <h5 class="text-sm font-bold text-gray-700">Itens do Pedido:</h5>
                             <ul class="space-y-1 pl-4">
@@ -190,8 +219,8 @@ import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
                             </ul>
                         </div>
                         <div class="flex justify-between items-center border-t pt-2 mt-2">
-                            <span class="text-sm font-bold text-gray-800">Total: <span class="text-green-600">R$ ${order.total.toFixed(2).replace('.', ',')}</span></span>
-                            <span class="text-sm font-medium text-gray-600">Pagamento: <span class="font-semibold">${order.paymentMethod}</span></span>
+                            <span class="text-sm font-bold text-gray-800">Total: <span class="text-green-600">R$ ${totalExibido}</span></span>
+                            <span class="text-sm font-medium text-gray-600">Pagamento: <span class="font-semibold">${paymentMethod}</span></span>
                         </div>
                     `;
                     clientOrdersList.appendChild(orderCard);
@@ -201,30 +230,18 @@ import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
             clientDetailModal.classList.remove('hidden');
         }
 
-        // ======================= LISTENERS DE EVENTOS COM FIREBASE EM TEMPO REAL =======================
+        // ======================= LISTENERS DE EVENTOS =======================
         window.addEventListener('DOMContentLoaded', () => {
-            // Cria a ligação com a pasta 'clients' na nuvem
-            const clientsRef = ref(db, 'clients');
+            loadAllData();
             
-            // O 'onValue' monitora se algum cliente novo se cadastrou ou mudou o endereço
-            onValue(clientsRef, (snapshot) => {
-                const data = snapshot.val();
-                
-                // Se existirem dados, mantém o formato de objeto que a sua função 'loadAllData' precisa
-                if (data) {
-                    window.clients = data; 
-                } else {
-                    window.clients = {};
-                }
-                
-                // Executa a sua função atual que limpa e desenha a tabela de clientes na tela
-                if (typeof loadAllData === "function") {
-                    loadAllData();
-                }
-            });
+            // Monitorar mudanças em tempo real
+            const clientsRef = ref(db, 'clients');
+            onValue(clientsRef, () => loadAllData());
+            
+            const ordersRef = ref(db, 'myOrders');
+            onValue(ordersRef, () => loadAllData());
         });
 
-        // Mantemos os cliques na tabela para abrir o histórico do cliente exatamente igual
         clientsList.addEventListener('click', (e) => {
             const clientDiv = e.target.closest('[data-clientId]');
             if (clientDiv) {
