@@ -90,6 +90,12 @@
             <h3 class="text-2xl font-bold">Minha Conta</h3>
             <button id="closeProfileModalBtn" class="text-gray-500 hover:text-gray-800">✕</button>
         </div>
+
+<!-- Dentro do modal de perfil, adicione este botão -->
+<button id="trackOrdersBtn" class="w-full bg-blue-500 text-white font-bold py-2 rounded-lg mt-2 hover:bg-blue-600">
+    📦 Acompanhar Meus Pedidos
+</button>
+        
         <div class="max-h-[65vh] overflow-y-auto p-2">
             <div class="bg-gray-50 p-4 rounded-xl mb-6">
                 <p><strong>Nome:</strong> <span id="profile-name"></span></p>
@@ -1036,6 +1042,15 @@
         loadCart();
         setInterval(checkStoreHours, 30000);
     }
+
+
+    // Dentro do init() ou no final do script
+const trackOrdersBtn = document.getElementById('trackOrdersBtn');
+if (trackOrdersBtn) {
+    trackOrdersBtn.addEventListener('click', () => {
+        window.location.href = 'acompanhamento.html';
+    });
+}
     
     init();
 </script>
