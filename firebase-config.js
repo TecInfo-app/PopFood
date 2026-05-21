@@ -2,12 +2,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getFirestore, collection, doc, getDocs, getDoc, setDoc, updateDoc, 
-    deleteDoc, query, where, orderBy, addDoc, onSnapshot, arrayUnion, 
-    arrayRemove, writeBatch, Timestamp 
+    deleteDoc, query, where, orderBy, addDoc, onSnapshot, Timestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { 
-    getStorage, ref, uploadBytes, getDownloadURL, deleteObject 
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { 
     getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
     signOut, onAuthStateChanged 
@@ -25,7 +21,6 @@ const firebaseConfig = {
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const storage = getStorage(app);
 const auth = getAuth(app);
 
 // Nomes das coleções
@@ -35,14 +30,12 @@ const COLLECTIONS = {
     COMPLEMENTS: 'complements',
     ORDERS: 'orders',
     CLIENTS: 'clients',
-    RESTAURANT_PROFILE: 'restaurantProfile',
-    CURRENT_SESSION: 'currentSession'
+    RESTAURANT_PROFILE: 'restaurantProfile'
 };
 
 export { 
-    db, storage, auth, 
+    db, auth, 
     collection, doc, getDocs, getDoc, setDoc, updateDoc, 
     deleteDoc, query, where, orderBy, addDoc, onSnapshot, 
-    arrayUnion, arrayRemove, writeBatch, Timestamp,
-    COLLECTIONS
+    Timestamp, COLLECTIONS
 };
