@@ -14,6 +14,8 @@
         .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         .modal-enter { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .loading-taxa { display: inline-block; width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #22c55e; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen">
@@ -146,9 +148,15 @@
             <button id="closeCartModalBtn" class="text-gray-500 hover:text-gray-800">✕</button>
         </div>
         <div id="cart-items-list" class="max-h-[60vh] overflow-y-auto mb-4 space-y-4"></div>
-        <div id="cart-summary" class="mt-4 pt-4 border-t flex justify-between items-center text-xl font-bold">
-            <span>Total:</span>
-            <span id="cart-total-price">R$ 0,00</span>
+        <div id="cart-summary" class="mt-4 pt-4 border-t">
+            <div class="flex justify-between items-center text-xl font-bold">
+                <span>Total:</span>
+                <span id="cart-total-price">R$ 0,00</span>
+            </div>
+            <div id="delivery-info" class="text-sm text-gray-500 mt-2 text-right hidden">
+                <span id="distance-info"></span>
+                <span id="delivery-fee-info"></span>
+            </div>
         </div>
         <button id="checkoutBtn" class="mt-4 w-full bg-green-600 text-white font-bold py-3 rounded-lg shadow-md hover:bg-green-700">Continuar</button>
     </div>
@@ -165,13 +173,41 @@
             <input type="text" id="customerName" placeholder="Nome completo" class="w-full p-3 border rounded-lg">
             <input type="tel" id="customerPhone" placeholder="WhatsApp (99) 99999-9999" class="w-full p-3 border rounded-lg">
             <input type="email" id="customerEmail" placeholder="Email (opcional)" class="w-full p-3 border rounded-lg">
-            <input type="text" id="customerCep" placeholder="CEP" class="w-full p-3 border rounded-lg">
-            <input type="text" id="customerAddress" placeholder="Endereço" class="w-full p-3 border rounded-lg">
-            <div class="grid grid-cols-2 gap-4">
-                <input type="text" id="customerNumber" placeholder="Número" class="p-3 border rounded-lg">
-                <input type="text" id="customerComplement" placeholder="Complemento" class="p-3 border rounded-lg">
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                <div class="flex gap-2">
+                    <input type="text" id="customerCep" placeholder="00000-000" class="flex-1 p-3 border rounded-lg">
+                    <button id="searchCepBtn" type="button" class="bg-gray-500 text-white px-4 rounded-lg hover:bg-gray-600 transition-colors">
+                        🔍 Buscar
+                    </button>
+                </div>
+                <div id="cep-loading" class="hidden text-xs text-gray-500 mt-1">Buscando endereço...</div>
             </div>
-            <textarea id="customerReference" placeholder="Ponto de referência" rows="2" class="w-full p-3 border rounded-lg"></textarea>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+                <input type="text" id="customerAddress" placeholder="Rua, Bairro, Cidade" class="w-full p-3 border rounded-lg">
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                    <input type="text" id="customerNumber" placeholder="Ex: 123" class="w-full p-3 border rounded-lg">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Complemento</label>
+                    <input type="text" id="customerComplement" placeholder="Ex: Apto 101" class="w-full p-3 border rounded-lg">
+                </div>
+            </div>
+            
+            <textarea id="customerReference" placeholder="Ponto de referência (opcional)" rows="2" class="w-full p-3 border rounded-lg"></textarea>
+            
+            <!-- Informações da taxa de entrega -->
+            <div id="taxaInfoBox" class="hidden bg-blue-50 p-3 rounded-lg">
+                <p class="text-sm font-semibold text-blue-700">🚚 Taxa de entrega</p>
+                <div id="taxaInfoContent" class="text-xs text-blue-600 mt-1"></div>
+            </div>
         </div>
         <div class="mt-6 flex justify-between gap-4 border-t pt-4">
             <button id="backToCartBtn" class="w-1/3 bg-gray-300 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-400">Voltar</button>
@@ -214,7 +250,6 @@
         db, auth, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc,
         query, where, orderBy, onSnapshot, Timestamp, COLLECTIONS 
     } from './firebase-config.js';
-    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
     // Estado Global
     let allProducts = [];
@@ -228,8 +263,15 @@
     let currentQuantity = 1;
     let selectedPaymentMethod = null;
     let totalCartPrice = 0;
+    let currentDeliveryFee = 5.00;
+    let currentDistance = 0;
     let confirmationCallback = null;
     let unsubscribeProducts = null;
+
+    // Coordenadas fixas da loja (SUBSTITUA PELAS COORDENADAS DO SEU RESTAURANTE)
+    // Você pode obter essas coordenadas no Google Maps
+    const RESTAURANT_LAT = -8.054277;  // Latitude da loja
+    const RESTAURANT_LNG = -34.881256; // Longitude da loja
 
     // DOM Elements
     const customerProductList = document.getElementById('customerProductList');
@@ -266,6 +308,170 @@
             return new Date(dateValue.seconds * 1000).toLocaleString('pt-BR');
         }
         return new Date(dateValue).toLocaleString('pt-BR');
+    }
+
+    // ==================== FUNÇÕES DE GEOLOCALIZAÇÃO E TAXA ====================
+    
+    // Calcular distância entre dois pontos (Haversine formula)
+    function calcularDistancia(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Raio da Terra em km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    // Buscar coordenadas pelo endereço usando Nominatim (OpenStreetMap)
+    async function buscarCoordenadasPorEndereco(endereco) {
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}&limit=1`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data && data.length > 0) {
+                return {
+                    lat: parseFloat(data[0].lat),
+                    lng: parseFloat(data[0].lon)
+                };
+            }
+            return null;
+        } catch (error) {
+            console.error("Erro ao buscar coordenadas:", error);
+            return null;
+        }
+    }
+
+    // Calcular taxa baseada na distância (usando as regras do perfil)
+    function calcularTaxaPorDistancia(distanciaKm) {
+        const deliveryRates = restaurantProfile.deliveryRates || {};
+        
+        // Verificar se tem taxa configurada para esta distância
+        if (deliveryRates && Object.keys(deliveryRates).length > 0) {
+            // Arredondar a distância para cima (ex: 2.3km = até 3km)
+            const kmArredondado = Math.ceil(distanciaKm);
+            
+            // Buscar a taxa para a distância
+            for (let km = 1; km <= 10; km++) {
+                if (kmArredondado <= km && deliveryRates[km] !== undefined && deliveryRates[km] > 0) {
+                    return deliveryRates[km];
+                }
+            }
+        }
+        
+        // Taxa padrão se não houver configuração
+        return 5.00;
+    }
+
+    // Buscar endereço pelo CEP (ViaCEP)
+    async function buscarEnderecoPorCep(cep) {
+        const cepLimpo = cep.replace(/\D/g, '');
+        if (cepLimpo.length !== 8) {
+            showMessage('CEP inválido. Digite 8 números.', 'error');
+            return null;
+        }
+        
+        const loadingEl = document.getElementById('cep-loading');
+        if (loadingEl) loadingEl.classList.remove('hidden');
+        
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+            const data = await response.json();
+            
+            if (loadingEl) loadingEl.classList.add('hidden');
+            
+            if (data.erro) {
+                showMessage('CEP não encontrado!', 'error');
+                return null;
+            }
+            
+            return {
+                cep: data.cep,
+                logradouro: data.logradouro,
+                bairro: data.bairro,
+                cidade: data.localidade,
+                uf: data.uf,
+                enderecoCompleto: `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`
+            };
+        } catch (error) {
+            if (loadingEl) loadingEl.classList.add('hidden');
+            console.error("Erro ao buscar CEP:", error);
+            showMessage('Erro ao buscar CEP. Tente novamente.', 'error');
+            return null;
+        }
+    }
+
+    // Calcular taxa baseada no endereço do cliente
+    async function calcularTaxaPorEndereco(enderecoCompleto) {
+        const taxaBox = document.getElementById('taxaInfoBox');
+        const taxaContent = document.getElementById('taxaInfoContent');
+        
+        if (taxaBox) taxaBox.classList.add('hidden');
+        
+        try {
+            // Buscar coordenadas do endereço do cliente
+            const coordenadasCliente = await buscarCoordenadasPorEndereco(enderecoCompleto + ", Brasil");
+            
+            if (!coordenadasCliente) {
+                if (taxaContent) taxaContent.innerHTML = '⚠️ Não foi possível calcular a distância. Taxa padrão aplicada.';
+                if (taxaBox) taxaBox.classList.remove('hidden');
+                return getDeliveryFee();
+            }
+            
+            // Calcular distância
+            const distancia = calcularDistancia(RESTAURANT_LAT, RESTAURANT_LNG, coordenadasCliente.lat, coordenadasCliente.lng);
+            currentDistance = distancia;
+            
+            // Calcular taxa baseada na distância
+            const taxa = calcularTaxaPorDistancia(distancia);
+            currentDeliveryFee = taxa;
+            
+            // Mostrar informações
+            if (taxaContent) {
+                taxaContent.innerHTML = `
+                    📍 Distância: ${distancia.toFixed(1)} km<br>
+                    🚚 Taxa de entrega: R$ ${taxa.toFixed(2).replace('.', ',')}
+                `;
+            }
+            if (taxaBox) taxaBox.classList.remove('hidden');
+            
+            return taxa;
+        } catch (error) {
+            console.error("Erro ao calcular taxa:", error);
+            if (taxaContent) taxaContent.innerHTML = '⚠️ Erro ao calcular taxa. Taxa padrão aplicada.';
+            if (taxaBox) taxaBox.classList.remove('hidden');
+            return getDeliveryFee();
+        }
+    }
+
+    // Atualizar taxa no carrinho
+    function updateCartDeliveryFee() {
+        const deliveryFee = currentDeliveryFee;
+        const subtotal = totalCartPrice;
+        const totalFinal = subtotal + deliveryFee;
+        
+        const totalElement = document.getElementById('cart-total-price');
+        const deliveryInfo = document.getElementById('delivery-info');
+        const distanceInfo = document.getElementById('distance-info');
+        const deliveryFeeInfo = document.getElementById('delivery-fee-info');
+        
+        if (totalElement) {
+            totalElement.innerHTML = `
+                <div class="space-y-1 text-right">
+                    <div class="text-sm">Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}</div>
+                    <div class="text-sm">Taxa entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}</div>
+                    <div class="text-lg font-bold border-t pt-1">Total: R$ ${totalFinal.toFixed(2).replace('.', ',')}</div>
+                </div>
+            `;
+        }
+        
+        if (deliveryInfo && currentDistance > 0) {
+            deliveryInfo.classList.remove('hidden');
+            if (distanceInfo) distanceInfo.innerHTML = `📍 Distância: ${currentDistance.toFixed(1)} km`;
+            if (deliveryFeeInfo) deliveryFeeInfo.innerHTML = `🚚 Taxa: R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+        }
     }
 
     // Salvar carrinho no localStorage
@@ -643,13 +849,13 @@
 
     function renderCartItems() {
         const container = document.getElementById('cart-items-list');
-        const totalSpan = document.getElementById('cart-total-price');
         container.innerHTML = '';
         totalCartPrice = 0;
         
         if (cart.length === 0) {
             container.innerHTML = '<p class="text-center text-gray-500">Carrinho vazio</p>';
-            totalSpan.innerHTML = 'R$ 0,00';
+            const totalElement = document.getElementById('cart-total-price');
+            if (totalElement) totalElement.innerHTML = 'R$ 0,00';
             return;
         }
         
@@ -690,27 +896,11 @@
             totalCartPrice += (item.totalPrice || 0);
         });
         
-        const subtotal = totalCartPrice;
-        const deliveryFee = getDeliveryFee();
-        const totalFinal = subtotal + deliveryFee;
-        
-        const totalElement = document.getElementById('cart-total-price');
-        if (totalElement) {
-            totalElement.innerHTML = `
-                <div class="space-y-1 text-right">
-                    <div class="text-sm">Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}</div>
-                    <div class="text-sm">Taxa entrega: R$ ${deliveryFee.toFixed(2).replace('.', ',')}</div>
-                    <div class="text-lg font-bold border-t pt-1">Total: R$ ${totalFinal.toFixed(2).replace('.', ',')}</div>
-                </div>
-            `;
-        }
+        updateCartDeliveryFee();
     }
     
     function getDeliveryFee() {
-        if (restaurantProfile.deliveryFee && typeof restaurantProfile.deliveryFee === 'number') {
-            return restaurantProfile.deliveryFee;
-        }
-        return 5.00;
+        return currentDeliveryFee;
     }
 
     function updateCartQuantity(index, delta) {
@@ -734,7 +924,7 @@
     }
 
     async function createOrder(customerData, paymentMethod, items, subtotal) {
-        const deliveryFee = getDeliveryFee();
+        const deliveryFee = currentDeliveryFee;
         
         if (!customerData.name) throw new Error("Nome é obrigatório");
         if (!customerData.phone) throw new Error("Telefone é obrigatório");
@@ -769,6 +959,7 @@
             })),
             subtotal: subtotal || 0,
             deliveryFee: deliveryFee,
+            distance: currentDistance,
             total: (subtotal || 0) + deliveryFee,
             status: 'Pendente'
         };
@@ -777,7 +968,6 @@
         
         console.log("✅ Pedido salvo com ID:", docRef.id);
         
-        // Salvar cliente no Firebase
         try {
             const clientRef = doc(db, COLLECTIONS.CLIENTS, customerData.phone.replace(/\D/g, ''));
             await setDoc(clientRef, {
@@ -796,21 +986,8 @@
         return { ...orderData, id: docRef.id };
     }
 
-    // ==================== FUNÇÃO PARA REDIRECIONAR PARA ACOMPANHAMENTO ====================
-    function goToTracking() {
-        if (customerInfo && customerInfo.phone) {
-            sessionStorage.setItem('customerPhone', customerInfo.phone);
-            window.location.href = 'acompanhamento.html';
-        } else {
-            showMessage('Faça login primeiro para ver seus pedidos', 'error');
-            toggleModal(profileModal, false);
-            toggleModal(loginModal, true);
-        }
-    }
-
-    // ==================== FUNÇÕES DE LOGIN E PERFIL CORRIGIDAS ====================
+    // ==================== FUNÇÕES DE LOGIN E PERFIL ====================
     
-    // Função de login CORRIGIDA - Busca cliente no Firebase
     async function executeLogin() {
         const name = document.getElementById('loginName').value.trim();
         const phone = document.getElementById('loginPhone').value.trim();
@@ -823,14 +1000,12 @@
         const cleanPhone = phone.replace(/\D/g, '');
         
         try {
-            // Buscar cliente no Firebase
             const clientRef = doc(db, COLLECTIONS.CLIENTS, cleanPhone);
             const clientSnap = await getDoc(clientRef);
             
             if (clientSnap.exists()) {
                 const savedClient = clientSnap.data();
                 
-                // Comparar nome (case insensitive)
                 if (savedClient.name.toLowerCase() === name.toLowerCase()) {
                     customerInfo = {
                         name: savedClient.name,
@@ -843,18 +1018,10 @@
                         reference: ''
                     };
                     
-                    // Salvar no localStorage para sessão
                     localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
-                    
-                    // Preencher formulário de dados do cliente
                     prefillCustomerForm(customerInfo);
-                    
-                    // Fechar modal de login
                     toggleModal(loginModal, false);
-                    
-                    // Abrir modal de perfil
                     openProfileModal();
-                    
                     showMessage('Login efetuado com sucesso!', 'success');
                 } else {
                     showMessage('Nome não corresponde ao cadastro!', 'error');
@@ -868,7 +1035,6 @@
         }
     }
 
-    // Função para carregar os pedidos do cliente no modal de perfil
     async function loadCustomerOrders() {
         if (!customerInfo || !customerInfo.phone) return;
         
@@ -890,7 +1056,6 @@
             
             ordersList.innerHTML = '';
             
-            // Ordenar manualmente (mais recente primeiro)
             const orders = [];
             querySnapshot.forEach(doc => {
                 orders.push({ id: doc.id, ...doc.data() });
@@ -976,7 +1141,65 @@
         showMessage('Você saiu da sua conta.', 'yellow');
     }
 
+    function goToTracking() {
+        if (customerInfo && customerInfo.phone) {
+            sessionStorage.setItem('customerPhone', customerInfo.phone);
+            window.location.href = 'acompanhamento.html';
+        } else {
+            showMessage('Faça login primeiro para ver seus pedidos', 'error');
+            toggleModal(profileModal, false);
+            toggleModal(loginModal, true);
+        }
+    }
+
     // ==================== EVENT LISTENERS ====================
+    
+    // Buscar CEP
+    const searchCepBtn = document.getElementById('searchCepBtn');
+    const customerCepInput = document.getElementById('customerCep');
+    
+    async function buscarCep() {
+        const cep = customerCepInput.value;
+        const enderecoData = await buscarEnderecoPorCep(cep);
+        
+        if (enderecoData) {
+            const addressInput = document.getElementById('customerAddress');
+            if (addressInput) {
+                addressInput.value = enderecoData.enderecoCompleto;
+                showMessage(`Endereço encontrado: ${enderecoData.enderecoCompleto}`, 'success');
+            }
+        }
+    }
+    
+    if (searchCepBtn) {
+        searchCepBtn.addEventListener('click', buscarCep);
+    }
+    
+    if (customerCepInput) {
+        customerCepInput.addEventListener('blur', buscarCep);
+    }
+    
+    // Evento para calcular taxa quando o endereço for preenchido
+    const customerAddressInput = document.getElementById('customerAddress');
+    if (customerAddressInput) {
+        let debounceTimer;
+        customerAddressInput.addEventListener('blur', async () => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(async () => {
+                const address = customerAddressInput.value;
+                const number = document.getElementById('customerNumber')?.value || '';
+                if (address && number) {
+                    const enderecoCompleto = `${address}, ${number}`;
+                    await calcularTaxaPorEndereco(enderecoCompleto);
+                    
+                    // Atualizar carrinho se estiver aberto
+                    if (!cartModal.classList.contains('hidden')) {
+                        renderCartItems();
+                    }
+                }
+            }, 500);
+        });
+    }
     
     // Produtos
     customerProductList.addEventListener('click', (e) => {
@@ -1127,8 +1350,7 @@
             localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
             
             const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
-            const deliveryFee = getDeliveryFee();
-            const total = subtotal + deliveryFee;
+            const total = subtotal + currentDeliveryFee;
             
             const paymentTotal = document.getElementById('payment-total-price');
             if (paymentTotal) {
