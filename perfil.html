@@ -33,16 +33,13 @@
     </div>
 
     <div class="space-y-6">
-        <!-- Logo (Base64) -->
+        <!-- Logo -->
         <div>
-            <h2 class="text-xl font-bold mb-2">Logo do Restaurante</h2>
-            <p class="text-xs text-gray-500 mb-2">Máximo 950KB - PNG, JPG, GIF</p>
+            <h2 class="text-xl font-bold mb-2">Logo</h2>
             <input type="file" id="logoInput" accept="image/*" class="w-full text-gray-500">
             <div id="logoPreviewContainer" class="mt-4 hidden">
                 <img id="logoPreview" class="w-32 h-32 object-contain rounded-lg border p-2">
-                <button id="removeLogoBtn" class="mt-2 text-red-500 text-sm">Remover Logo</button>
             </div>
-            <div id="logoSizeWarning" class="hidden text-red-500 text-xs mt-1"></div>
         </div>
 
         <!-- Informações -->
@@ -83,10 +80,11 @@
                 <div class="flex gap-2 mb-2">
                     <input type="text" id="restaurantAddress" placeholder="Endereço completo (Ex: Rua das Flores, 123 - Centro, Cidade - UF)" class="flex-1 p-3 border rounded-lg">
                     <button id="searchCoordsBtn" type="button" class="bg-blue-500 text-white px-4 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
-                        🔍 Buscar Coordenadas
+                        🔍 Buscar
                     </button>
                 </div>
                 
+                <!-- Exibição das coordenadas -->
                 <div id="coordsInfo" class="coord-info hidden"></div>
                 <input type="hidden" id="restaurantLat" value="">
                 <input type="hidden" id="restaurantLng" value="">
@@ -115,10 +113,10 @@
                 </div>
             </div>
 
-            <!-- Banners (Base64) -->
+            <!-- Banners -->
             <div class="border-t pt-4">
                 <h2 class="text-xl font-bold mb-2">Banners Promocionais</h2>
-                <p class="text-xs text-gray-500 mb-4">Até 3 imagens (16:9) - Máximo 950KB cada</p>
+                <p class="text-xs text-gray-500 mb-4">Até 3 imagens (16:9)</p>
                 <div id="bannersContainer" class="space-y-4"></div>
             </div>
 
@@ -154,8 +152,9 @@
 <div id="messageBox" class="fixed bottom-4 right-4 p-4 text-white rounded-lg shadow-lg z-50 hidden"></div>
 
 <script type="module">
-    import { db, auth, doc, getDoc, setDoc, COLLECTIONS } from './firebase-config.js';
+    import { db, storage, auth, doc, getDoc, setDoc, updateDoc, collection, COLLECTIONS } from './firebase-config.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
     let profile = {
         logo: null,
@@ -164,15 +163,13 @@
         latitude: null, longitude: null,
         show: { name: true, description: true, phone: true, address: true, email: true, hours: true }
     };
-    let logoBase64 = null;
-    let bannerBase64 = [null, null, null];
+    let logoFile = null;
+    let bannerFiles = [null, null, null];
 
     const saveBtn = document.getElementById('saveProfileBtn');
     const logoInput = document.getElementById('logoInput');
     const logoPreview = document.getElementById('logoPreview');
     const logoPreviewContainer = document.getElementById('logoPreviewContainer');
-    const removeLogoBtn = document.getElementById('removeLogoBtn');
-    const logoSizeWarning = document.getElementById('logoSizeWarning');
     const restaurantName = document.getElementById('restaurantName');
     const restaurantDescription = document.getElementById('restaurantDescription');
     const restaurantPhone = document.getElementById('restaurantPhone');
@@ -207,33 +204,19 @@
         setTimeout(() => messageBox.classList.add('hidden'), 3000);
     }
 
-    // Converter arquivo para Base64 com validação de tamanho
-    function fileToBase64(file, maxSizeMB = 0.95) {
-        return new Promise((resolve, reject) => {
-            const maxSizeBytes = maxSizeMB * 1024 * 1024;
-            
-            if (file.size > maxSizeBytes) {
-                reject(`Imagem muito grande! Máximo ${maxSizeMB}MB. A sua tem ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-                return;
-            }
-            
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = (error) => reject(error);
-            reader.readAsDataURL(file);
-        });
-    }
-
-    // Buscar coordenadas
+    // Buscar coordenadas usando múltiplas APIs (fallback)
     async function buscarCoordenadasPorEndereco(endereco) {
         coordsInfo.classList.remove('hidden');
         coordsInfo.className = 'coord-info warning';
         coordsInfo.innerHTML = '🔍 Buscando coordenadas... <span class="loading-coords"></span>';
         
+        // Tentativa 1: OpenStreetMap Nominatim
         try {
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco + " Brasil")}&limit=1&addressdetails=1`;
             const response = await fetch(url, {
-                headers: { 'User-Agent': 'PopFood-Delivery/1.0' }
+                headers: {
+                    'User-Agent': 'PopFood-Delivery/1.0'
+                }
             });
             const data = await response.json();
             
@@ -250,11 +233,39 @@
                 return { lat, lng };
             }
         } catch (error) {
-            console.error("Erro na busca:", error);
+            console.error("Erro no Nominatim:", error);
         }
         
+        // Tentativa 2: Usar a string do endereço formatada de forma diferente
+        try {
+            const enderecoFormatado = endereco.replace(/,/g, ' ').replace(/  /g, ' ');
+            const url2 = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoFormatado)}&limit=1`;
+            const response2 = await fetch(url2, {
+                headers: {
+                    'User-Agent': 'PopFood-Delivery/1.0'
+                }
+            });
+            const data2 = await response2.json();
+            
+            if (data2 && data2.length > 0) {
+                const lat = parseFloat(data2[0].lat);
+                const lng = parseFloat(data2[0].lon);
+                
+                restaurantLat.value = lat;
+                restaurantLng.value = lng;
+                
+                coordsInfo.className = 'coord-info success';
+                coordsInfo.innerHTML = `✅ Coordenadas encontradas!<br>📍 Latitude: ${lat.toFixed(6)}<br>📍 Longitude: ${lng.toFixed(6)}`;
+                
+                return { lat, lng };
+            }
+        } catch (error) {
+            console.error("Erro na segunda tentativa:", error);
+        }
+        
+        // Se não encontrou
         coordsInfo.className = 'coord-info error';
-        coordsInfo.innerHTML = '❌ Não foi possível encontrar as coordenadas. Verifique o endereço.';
+        coordsInfo.innerHTML = '❌ Não foi possível encontrar as coordenadas. Verifique o endereço e tente novamente.<br>💡 Dica: Inclua número, bairro, cidade e UF. Ex: "Rua das Flores, 123, Centro, São Paulo - SP"';
         return null;
     }
 
@@ -311,6 +322,7 @@
             return;
         }
         
+        // Se o endereço tiver [NÚMERO], pedir para substituir
         if (endereco.includes('[NÚMERO]')) {
             showMessage('Por favor, substitua [NÚMERO] pelo número do endereço da loja!', 'error');
             return;
@@ -388,41 +400,24 @@
                     <img class="banner-preview w-full aspect-[16/9] object-cover rounded border" src="${profile.banners[i] || ''}">
                     <button class="remove-banner mt-2 text-red-500 text-sm" data-index="${i}">Remover</button>
                 </div>
-                <div class="banner-warning hidden text-red-500 text-xs mt-1" data-index="${i}"></div>
             `;
             bannersContainer.appendChild(div);
         }
 
         document.querySelectorAll('.banner-input').forEach(input => {
-            input.addEventListener('change', async (e) => {
+            input.addEventListener('change', (e) => {
                 const idx = parseInt(e.target.dataset.index);
                 const file = e.target.files[0];
-                const warningDiv = document.querySelector(`.banner-warning[data-index="${idx}"]`);
-                
                 if (file) {
-                    try {
-                        const base64 = await fileToBase64(file, 0.95);
-                        bannerBase64[idx] = base64;
-                        profile.banners[idx] = base64;
-                        
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            const container = input.closest('.bg-gray-50').querySelector('.banner-preview-container');
-                            const preview = container.querySelector('.banner-preview');
-                            preview.src = e.target.result;
-                            container.classList.remove('hidden');
-                            if (warningDiv) warningDiv.classList.add('hidden');
-                        };
-                        reader.readAsDataURL(file);
-                        showMessage(`Banner ${idx+1} carregado com sucesso!`, 'success');
-                    } catch (error) {
-                        if (warningDiv) {
-                            warningDiv.textContent = error;
-                            warningDiv.classList.remove('hidden');
-                        }
-                        showMessage(error, 'error');
-                        input.value = '';
-                    }
+                    bannerFiles[idx] = file;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const container = input.closest('.bg-gray-50').querySelector('.banner-preview-container');
+                        const preview = container.querySelector('.banner-preview');
+                        preview.src = e.target.result;
+                        container.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
                 }
             });
         });
@@ -430,17 +425,12 @@
         document.querySelectorAll('.remove-banner').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const idx = parseInt(e.target.dataset.index);
-                bannerBase64[idx] = null;
+                bannerFiles[idx] = null;
                 profile.banners[idx] = null;
                 const container = btn.closest('.banner-preview-container');
                 container.classList.add('hidden');
                 const preview = container.querySelector('.banner-preview');
                 preview.src = '';
-                const input = document.querySelector(`.banner-input[data-index="${idx}"]`);
-                if (input) input.value = '';
-                const warningDiv = document.querySelector(`.banner-warning[data-index="${idx}"]`);
-                if (warningDiv) warningDiv.classList.add('hidden');
-                showMessage(`Banner ${idx+1} removido`, 'success');
             });
         });
     }
@@ -476,57 +466,32 @@
         showMessage('Taxas salvas. Clique em Salvar Perfil para persistir.', 'success');
     });
 
-    // Logo upload
-    logoInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            try {
-                const base64 = await fileToBase64(file, 0.95);
-                logoBase64 = base64;
-                profile.logo = base64;
-                
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    logoPreview.src = e.target.result;
-                    logoPreviewContainer.classList.remove('hidden');
-                    if (logoSizeWarning) logoSizeWarning.classList.add('hidden');
-                };
-                reader.readAsDataURL(file);
-                showMessage('Logo carregada com sucesso!', 'success');
-            } catch (error) {
-                if (logoSizeWarning) {
-                    logoSizeWarning.textContent = error;
-                    logoSizeWarning.classList.remove('hidden');
-                }
-                showMessage(error, 'error');
-                logoInput.value = '';
-            }
-        }
-    });
-
-    removeLogoBtn?.addEventListener('click', () => {
-        logoBase64 = null;
-        profile.logo = null;
-        logoPreviewContainer.classList.add('hidden');
-        logoPreview.src = '';
-        logoInput.value = '';
-        showMessage('Logo removida', 'success');
-    });
-
-    // Salvar perfil
+    // Salvar
     saveBtn.addEventListener('click', async () => {
         showMessage('Salvando...', 'success');
         
+        let logoUrl = profile.logo;
+        if (logoFile) {
+            if (profile.logo) await deleteObject(ref(storage, profile.logo)).catch(() => {});
+            const logoRef = ref(storage, `logo/${Date.now()}_logo`);
+            await uploadBytes(logoRef, logoFile);
+            logoUrl = await getDownloadURL(logoRef);
+        }
+
         const bannerUrls = [...profile.banners];
         for (let i = 0; i < 3; i++) {
-            if (bannerBase64[i]) {
-                bannerUrls[i] = bannerBase64[i];
+            if (bannerFiles[i]) {
+                if (profile.banners[i]) await deleteObject(ref(storage, profile.banners[i])).catch(() => {});
+                const bannerRef = ref(storage, `banners/${Date.now()}_banner_${i}`);
+                await uploadBytes(bannerRef, bannerFiles[i]);
+                bannerUrls[i] = await getDownloadURL(bannerRef);
             }
         }
-        
+
         let latitude = parseFloat(restaurantLat.value);
         let longitude = parseFloat(restaurantLng.value);
         
+        // Se não tiver coordenadas válidas, tentar buscar
         if ((!latitude || isNaN(latitude)) && restaurantAddress.value) {
             const coords = await buscarCoordenadasPorEndereco(restaurantAddress.value);
             if (coords) {
@@ -536,7 +501,7 @@
         }
 
         const data = {
-            logo: logoBase64 || profile.logo || null,
+            logo: logoUrl,
             name: restaurantName.value,
             description: restaurantDescription.value,
             phone: restaurantPhone.value,
@@ -563,9 +528,22 @@
         await setDoc(doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main'), data);
         showMessage('Perfil salvo com sucesso!', 'success');
         
-        logoBase64 = null;
-        bannerBase64 = [null, null, null];
+        // Reset files
+        logoFile = null;
+        bannerFiles = [null, null, null];
         profile = data;
+    });
+
+    logoInput.addEventListener('change', (e) => {
+        logoFile = e.target.files[0];
+        if (logoFile) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                logoPreview.src = e.target.result;
+                logoPreviewContainer.classList.remove('hidden');
+            };
+            reader.readAsDataURL(logoFile);
+        }
     });
 </script>
 </body>
