@@ -221,7 +221,6 @@
     let allCategories = [];
     let productComplementsCache = {};
     let cart = [];
-    let myOrders = [];
     let restaurantProfile = {};
     let customerInfo = null;
     let selectedProductForCart = null;
@@ -256,6 +255,17 @@
         } else {
             modal.classList.add('hidden');
         }
+    }
+
+    function formatDate(dateValue) {
+        if (!dateValue) return 'Data não disponível';
+        if (dateValue && typeof dateValue.toDate === 'function') {
+            return dateValue.toDate().toLocaleString('pt-BR');
+        }
+        if (dateValue && dateValue.seconds) {
+            return new Date(dateValue.seconds * 1000).toLocaleString('pt-BR');
+        }
+        return new Date(dateValue).toLocaleString('pt-BR');
     }
 
     // Salvar carrinho no localStorage
@@ -584,7 +594,6 @@
     function addToCart() {
         if (!selectedProductForCart) return;
         
-        // Validar complementos obrigatórios
         const groups = productComplementsCache[selectedProductForCart.id] || [];
         let isValid = true;
         
@@ -681,7 +690,6 @@
             totalCartPrice += (item.totalPrice || 0);
         });
         
-        // Calcular taxa de entrega
         const subtotal = totalCartPrice;
         const deliveryFee = getDeliveryFee();
         const totalFinal = subtotal + deliveryFee;
@@ -725,7 +733,6 @@
         updateCartCount();
     }
 
-    // Função para criar pedido - NÃO cria ID manualmente
     async function createOrder(customerData, paymentMethod, items, subtotal) {
         const deliveryFee = getDeliveryFee();
         
@@ -770,6 +777,7 @@
         
         console.log("✅ Pedido salvo com ID:", docRef.id);
         
+        // Salvar cliente no Firebase
         try {
             const clientRef = doc(db, COLLECTIONS.CLIENTS, customerData.phone.replace(/\D/g, ''));
             await setDoc(clientRef, {
@@ -780,6 +788,7 @@
                 cep: customerData.cep || '',
                 lastOrder: Timestamp.now()
             }, { merge: true });
+            console.log("✅ Cliente salvo no Firebase");
         } catch (clientError) {
             console.error("Erro ao salvar cliente:", clientError);
         }
@@ -799,65 +808,9 @@
         }
     }
 
-    // ==================== FUNÇÕES DE LOGIN E PERFIL ====================
+    // ==================== FUNÇÕES DE LOGIN E PERFIL CORRIGIDAS ====================
     
-    // Função para carregar os pedidos do cliente no modal de perfil
-    async function loadCustomerOrders() {
-        if (!customerInfo || !customerInfo.phone) return;
-        
-        const phoneDigits = customerInfo.phone.replace(/\D/g, '');
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where('customer.phone', '==', customerInfo.phone),
-            orderBy('createdAt', 'desc')
-        );
-        
-        const querySnapshot = await getDocs(q);
-        const ordersList = document.getElementById('profile-orders-list');
-        
-        if (querySnapshot.empty) {
-            ordersList.innerHTML = '<p class="text-gray-500 text-center">Nenhum pedido encontrado</p>';
-            return;
-        }
-        
-        ordersList.innerHTML = '';
-        querySnapshot.forEach(doc => {
-            const order = { id: doc.id, ...doc.data() };
-            const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
-            
-            const orderDiv = document.createElement('div');
-            orderDiv.className = 'bg-gray-50 p-3 rounded-lg border-l-4 border-green-500';
-            orderDiv.innerHTML = `
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="font-bold">Pedido #${order.id.slice(-6)}</p>
-                        <p class="text-xs text-gray-500">${new Date(order.createdAt?.seconds * 1000).toLocaleString('pt-BR') || order.date}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-bold text-green-600">R$ ${total.toFixed(2).replace('.', ',')}</p>
-                        <p class="text-xs ${order.status === 'Pendente' ? 'text-yellow-600' : order.status === 'Preparando' ? 'text-blue-600' : order.status === 'Saiu para entrega' ? 'text-green-600' : 'text-gray-500'}">
-                            ${order.status || 'Pendente'}
-                        </p>
-                    </div>
-                </div>
-                <p class="text-sm mt-1">${order.items?.length || 0} item(ns)</p>
-            `;
-            ordersList.appendChild(orderDiv);
-        });
-    }
-
-    function openProfileModal() {
-        if (customerInfo) {
-            document.getElementById('profile-name').textContent = customerInfo.name || 'Cliente';
-            document.getElementById('profile-phone').textContent = customerInfo.phone || '-';
-            document.getElementById('profile-address').textContent = customerInfo.address || 'Não informado';
-            loadCustomerOrders();
-            toggleModal(profileModal, true);
-        } else {
-            toggleModal(loginModal, true);
-        }
-    }
-
+    // Função de login CORRIGIDA - Busca cliente no Firebase
     async function executeLogin() {
         const name = document.getElementById('loginName').value.trim();
         const phone = document.getElementById('loginPhone').value.trim();
@@ -867,29 +820,132 @@
             return;
         }
 
-        const clientId = phone.replace(/\D/g, '');
-        const clients = JSON.parse(localStorage.getItem('clients')) || {};
-        const savedClient = clients[clientId];
-
-        if (savedClient && savedClient.name.toLowerCase() === name.toLowerCase()) {
-            customerInfo = {
-                name: savedClient.name,
-                phone: savedClient.phone,
-                address: savedClient.address.split(', Nº')[0] || savedClient.address,
-                cep: savedClient.cep,
-                email: savedClient.email,
-                number: savedClient.address.split('Nº ')[1]?.split(' ')[0] || '',
-                complement: '',
-                reference: ''
-            };
+        const cleanPhone = phone.replace(/\D/g, '');
+        
+        try {
+            // Buscar cliente no Firebase
+            const clientRef = doc(db, COLLECTIONS.CLIENTS, cleanPhone);
+            const clientSnap = await getDoc(clientRef);
             
-            localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
-            prefillCustomerForm(customerInfo);
-            toggleModal(loginModal, false);
-            showMessage('Login efetuado com sucesso!', 'success');
-            openProfileModal();
+            if (clientSnap.exists()) {
+                const savedClient = clientSnap.data();
+                
+                // Comparar nome (case insensitive)
+                if (savedClient.name.toLowerCase() === name.toLowerCase()) {
+                    customerInfo = {
+                        name: savedClient.name,
+                        phone: savedClient.phone || phone,
+                        address: savedClient.address || '',
+                        cep: savedClient.cep || '',
+                        email: savedClient.email || '',
+                        number: '',
+                        complement: '',
+                        reference: ''
+                    };
+                    
+                    // Salvar no localStorage para sessão
+                    localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
+                    
+                    // Preencher formulário de dados do cliente
+                    prefillCustomerForm(customerInfo);
+                    
+                    // Fechar modal de login
+                    toggleModal(loginModal, false);
+                    
+                    // Abrir modal de perfil
+                    openProfileModal();
+                    
+                    showMessage('Login efetuado com sucesso!', 'success');
+                } else {
+                    showMessage('Nome não corresponde ao cadastro!', 'error');
+                }
+            } else {
+                showMessage('Cadastro não encontrado! Faça um pedido primeiro para se cadastrar.', 'error');
+            }
+        } catch (error) {
+            console.error("Erro ao buscar cliente:", error);
+            showMessage('Erro ao fazer login. Tente novamente.', 'error');
+        }
+    }
+
+    // Função para carregar os pedidos do cliente no modal de perfil
+    async function loadCustomerOrders() {
+        if (!customerInfo || !customerInfo.phone) return;
+        
+        const ordersList = document.getElementById('profile-orders-list');
+        ordersList.innerHTML = '<div class="text-center text-gray-500">Carregando pedidos...</div>';
+        
+        try {
+            const q = query(
+                collection(db, COLLECTIONS.ORDERS),
+                where('customer.phone', '==', customerInfo.phone)
+            );
+            
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                ordersList.innerHTML = '<p class="text-gray-500 text-center">Nenhum pedido encontrado</p>';
+                return;
+            }
+            
+            ordersList.innerHTML = '';
+            
+            // Ordenar manualmente (mais recente primeiro)
+            const orders = [];
+            querySnapshot.forEach(doc => {
+                orders.push({ id: doc.id, ...doc.data() });
+            });
+            orders.sort((a, b) => {
+                const dateA = a.createdAt?.seconds || 0;
+                const dateB = b.createdAt?.seconds || 0;
+                return dateB - dateA;
+            });
+            
+            orders.forEach(order => {
+                const total = order.total || (order.subtotal + (order.deliveryFee || 5.00));
+                
+                const statusColors = {
+                    'Pendente': 'text-yellow-600',
+                    'Preparando': 'text-blue-600',
+                    'Saiu para entrega': 'text-green-600',
+                    'Entregue': 'text-gray-500',
+                    'Cancelado': 'text-red-500'
+                };
+                
+                const orderDiv = document.createElement('div');
+                orderDiv.className = 'bg-gray-50 p-3 rounded-lg border-l-4 border-green-500';
+                orderDiv.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-bold">Pedido #${order.id.slice(-6)}</p>
+                            <p class="text-xs text-gray-500">${formatDate(order.createdAt || order.date)}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-green-600">R$ ${total.toFixed(2).replace('.', ',')}</p>
+                            <p class="text-xs ${statusColors[order.status] || 'text-gray-500'}">
+                                ${order.status || 'Pendente'}
+                            </p>
+                        </div>
+                    </div>
+                    <p class="text-sm mt-1">${order.items?.length || 0} item(ns)</p>
+                `;
+                ordersList.appendChild(orderDiv);
+            });
+        } catch (error) {
+            console.error("Erro ao carregar pedidos:", error);
+            ordersList.innerHTML = '<p class="text-gray-500 text-center">Erro ao carregar pedidos</p>';
+        }
+    }
+
+    function openProfileModal() {
+        if (customerInfo && customerInfo.name) {
+            document.getElementById('profile-name').textContent = customerInfo.name || 'Cliente';
+            document.getElementById('profile-phone').textContent = customerInfo.phone || '-';
+            document.getElementById('profile-address').textContent = customerInfo.address || 'Não informado';
+            loadCustomerOrders();
+            toggleModal(profileModal, true);
         } else {
-            showMessage('Cadastro não encontrado! Verifique o nome e o número informados.', 'error');
+            toggleModal(loginModal, true);
         }
     }
 
@@ -1190,7 +1246,7 @@
         logoutBtn.addEventListener('click', executeLogout);
     }
     
-    // ==================== BOTÃO PARA ACOMPANHAR PEDIDOS (REDIRECIONA) ====================
+    // Botão para acompanhar pedidos
     const trackOrdersBtn = document.getElementById('trackOrdersBtn');
     if (trackOrdersBtn) {
         trackOrdersBtn.addEventListener('click', goToTracking);
