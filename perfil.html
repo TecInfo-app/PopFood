@@ -14,6 +14,11 @@
         .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .toggle-slider { background-color: #2563eb; }
         input:checked + .toggle-slider:before { transform: translateX(20px); }
+        .loading-coords { display: inline-block; width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #2563eb; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .coord-info { font-size: 12px; color: #6b7280; margin-top: 4px; }
+        .coord-info.success { color: #16a34a; }
+        .coord-info.error { color: #dc2626; }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen flex items-center justify-center">
@@ -66,11 +71,25 @@
 
             <div class="mb-4">
                 <div class="flex justify-between items-center mb-1">
-                    <label class="text-sm font-medium">Endereço</label>
+                    <label class="text-sm font-medium">Endereço da Loja</label>
                     <label class="toggle-switch"><input type="checkbox" id="showAddressToggle"><span class="toggle-slider"></span></label>
                 </div>
                 <input type="text" id="restaurantCep" placeholder="CEP" class="w-full p-3 border rounded-lg mb-2">
-                <input type="text" id="restaurantAddress" placeholder="Endereço completo" class="w-full p-3 border rounded-lg">
+                
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="restaurantAddress" placeholder="Endereço completo" class="flex-1 p-3 border rounded-lg">
+                    <button id="searchCoordsBtn" type="button" class="bg-blue-500 text-white px-4 rounded-lg hover:bg-blue-600 transition-colors">
+                        🔍 Buscar Coordenadas
+                    </button>
+                </div>
+                
+                <!-- Exibição das coordenadas -->
+                <div id="coordsInfo" class="coord-info hidden">
+                    <span id="coordsText"></span>
+                    <span id="coordsLoading" class="loading-coords hidden"></span>
+                </div>
+                <input type="hidden" id="restaurantLat" value="">
+                <input type="hidden" id="restaurantLng" value="">
             </div>
 
             <div class="mb-4">
@@ -139,6 +158,7 @@
         logo: null,
         name: '', description: '', phone: '', cep: '', address: '', email: '',
         openTime: '', closeTime: '', banners: [null, null, null], deliveryRates: {},
+        latitude: null, longitude: null,
         show: { name: true, description: true, phone: true, address: true, email: true, hours: true }
     };
     let logoFile = null;
@@ -170,6 +190,12 @@
     const confirmRatesBtn = document.getElementById('confirmRatesBtn');
     const ratesContainer = document.getElementById('ratesContainer');
     const messageBox = document.getElementById('messageBox');
+    const searchCoordsBtn = document.getElementById('searchCoordsBtn');
+    const coordsInfo = document.getElementById('coordsInfo');
+    const coordsText = document.getElementById('coordsText');
+    const coordsLoading = document.getElementById('coordsLoading');
+    const restaurantLat = document.getElementById('restaurantLat');
+    const restaurantLng = document.getElementById('restaurantLng');
 
     function showMessage(msg, type = 'success') {
         messageBox.textContent = msg;
@@ -177,6 +203,95 @@
         messageBox.classList.add(type === 'success' ? 'bg-green-500' : 'bg-red-500');
         setTimeout(() => messageBox.classList.add('hidden'), 3000);
     }
+
+    // Buscar coordenadas pelo endereço
+    async function buscarCoordenadasPorEndereco(endereco) {
+        coordsLoading.classList.remove('hidden');
+        coordsInfo.classList.remove('hidden');
+        coordsText.textContent = 'Buscando coordenadas...';
+        coordsText.className = 'text-gray-500';
+        
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco + ", Brasil")}&limit=1`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            coordsLoading.classList.add('hidden');
+            
+            if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lng = parseFloat(data[0].lon);
+                
+                restaurantLat.value = lat;
+                restaurantLng.value = lng;
+                
+                coordsText.innerHTML = `📍 Coordenadas obtidas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                coordsText.className = 'text-green-600';
+                
+                return { lat, lng };
+            } else {
+                coordsText.innerHTML = '❌ Não foi possível encontrar as coordenadas. Verifique o endereço.';
+                coordsText.className = 'text-red-500';
+                return null;
+            }
+        } catch (error) {
+            coordsLoading.classList.add('hidden');
+            coordsText.innerHTML = '❌ Erro ao buscar coordenadas. Tente novamente.';
+            coordsText.className = 'text-red-500';
+            console.error("Erro ao buscar coordenadas:", error);
+            return null;
+        }
+    }
+
+    // Buscar endereço pelo CEP (ViaCEP)
+    async function buscarEnderecoPorCep(cep) {
+        const cepLimpo = cep.replace(/\D/g, '');
+        if (cepLimpo.length !== 8) {
+            showMessage('CEP inválido. Digite 8 números.', 'error');
+            return null;
+        }
+        
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+            const data = await response.json();
+            
+            if (data.erro) {
+                showMessage('CEP não encontrado!', 'error');
+                return null;
+            }
+            
+            return {
+                cep: data.cep,
+                enderecoCompleto: `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`
+            };
+        } catch (error) {
+            console.error("Erro ao buscar CEP:", error);
+            showMessage('Erro ao buscar CEP. Tente novamente.', 'error');
+            return null;
+        }
+    }
+
+    // Buscar CEP e preencher endereço
+    restaurantCep.addEventListener('blur', async () => {
+        let cep = restaurantCep.value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            const enderecoData = await buscarEnderecoPorCep(cep);
+            if (enderecoData) {
+                restaurantAddress.value = enderecoData.enderecoCompleto + ', [NÚMERO]';
+                showMessage('Endereço preenchido! Clique em "Buscar Coordenadas" para obter a localização.', 'success');
+            }
+        }
+    });
+
+    // Buscar coordenadas do endereço
+    searchCoordsBtn.addEventListener('click', async () => {
+        const endereco = restaurantAddress.value;
+        if (!endereco) {
+            showMessage('Preencha o endereço primeiro!', 'error');
+            return;
+        }
+        await buscarCoordenadasPorEndereco(endereco);
+    });
 
     // Verificar autenticação
     onAuthStateChanged(auth, async (user) => {
@@ -198,6 +313,7 @@
         }
         renderForm();
         renderBanners();
+        displayCoordinates();
     }
 
     function renderForm() {
@@ -219,6 +335,19 @@
         showAddressToggle.checked = profile.show.address !== false;
         showEmailToggle.checked = profile.show.email !== false;
         showHoursToggle.checked = profile.show.hours !== false;
+        
+        if (profile.latitude && profile.longitude) {
+            restaurantLat.value = profile.latitude;
+            restaurantLng.value = profile.longitude;
+        }
+    }
+
+    function displayCoordinates() {
+        if (profile.latitude && profile.longitude) {
+            coordsInfo.classList.remove('hidden');
+            coordsText.innerHTML = `📍 Coordenadas salvas: ${profile.latitude.toFixed(6)}, ${profile.longitude.toFixed(6)}`;
+            coordsText.className = 'text-green-600';
+        }
     }
 
     function renderBanners() {
@@ -296,7 +425,7 @@
             profile.deliveryRates[km] = val ? parseFloat(val) : 0;
         }
         closeModal();
-        showMessage('Taxas salvas localmente. Clique em Salvar Perfil para persistir.', 'success');
+        showMessage('Taxas salvas. Clique em Salvar Perfil para persistir.', 'success');
     });
 
     // Salvar
@@ -321,6 +450,18 @@
             }
         }
 
+        // Obter coordenadas do endereço se não tiver
+        let latitude = parseFloat(restaurantLat.value);
+        let longitude = parseFloat(restaurantLng.value);
+        
+        if ((!latitude || isNaN(latitude)) && restaurantAddress.value) {
+            const coords = await buscarCoordenadasPorEndereco(restaurantAddress.value);
+            if (coords) {
+                latitude = coords.lat;
+                longitude = coords.lng;
+            }
+        }
+
         const data = {
             logo: logoUrl,
             name: restaurantName.value,
@@ -333,6 +474,8 @@
             closeTime: closeTime.value,
             banners: bannerUrls,
             deliveryRates: profile.deliveryRates,
+            latitude: latitude || null,
+            longitude: longitude || null,
             show: {
                 name: showNameToggle.checked,
                 description: showDescToggle.checked,
@@ -362,20 +505,6 @@
                 logoPreviewContainer.classList.remove('hidden');
             };
             reader.readAsDataURL(logoFile);
-        }
-    });
-
-    // Busca CEP
-    restaurantCep.addEventListener('blur', async () => {
-        let cep = restaurantCep.value.replace(/\D/g, '');
-        if (cep.length === 8) {
-            try {
-                const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-                const data = await res.json();
-                if (!data.erro) {
-                    restaurantAddress.value = `${data.logradouro}, [NÚMERO] - ${data.bairro}, ${data.localidade} - ${data.uf}`;
-                }
-            } catch(e) { console.log('Erro ao buscar CEP'); }
         }
     });
 </script>
