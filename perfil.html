@@ -16,9 +16,10 @@
         input:checked + .toggle-slider:before { transform: translateX(20px); }
         .loading-coords { display: inline-block; width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #2563eb; border-radius: 50%; animation: spin 1s linear infinite; margin-left: 8px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .coord-info { font-size: 12px; color: #6b7280; margin-top: 4px; }
-        .coord-info.success { color: #16a34a; }
-        .coord-info.error { color: #dc2626; }
+        .coord-info { font-size: 12px; margin-top: 4px; padding: 8px; border-radius: 8px; }
+        .coord-info.success { background: #dcfce7; color: #166534; }
+        .coord-info.error { background: #fee2e2; color: #991b1b; }
+        .coord-info.warning { background: #fef3c7; color: #92400e; }
     </style>
 </head>
 <body class="p-4 bg-gray-100 min-h-screen flex items-center justify-center">
@@ -77,19 +78,20 @@
                 <input type="text" id="restaurantCep" placeholder="CEP" class="w-full p-3 border rounded-lg mb-2">
                 
                 <div class="flex gap-2 mb-2">
-                    <input type="text" id="restaurantAddress" placeholder="Endereço completo" class="flex-1 p-3 border rounded-lg">
-                    <button id="searchCoordsBtn" type="button" class="bg-blue-500 text-white px-4 rounded-lg hover:bg-blue-600 transition-colors">
-                        🔍 Buscar Coordenadas
+                    <input type="text" id="restaurantAddress" placeholder="Endereço completo (Ex: Rua das Flores, 123 - Centro, Cidade - UF)" class="flex-1 p-3 border rounded-lg">
+                    <button id="searchCoordsBtn" type="button" class="bg-blue-500 text-white px-4 rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">
+                        🔍 Buscar
                     </button>
                 </div>
                 
                 <!-- Exibição das coordenadas -->
-                <div id="coordsInfo" class="coord-info hidden">
-                    <span id="coordsText"></span>
-                    <span id="coordsLoading" class="loading-coords hidden"></span>
-                </div>
+                <div id="coordsInfo" class="coord-info hidden"></div>
                 <input type="hidden" id="restaurantLat" value="">
                 <input type="hidden" id="restaurantLng" value="">
+                
+                <p class="text-xs text-gray-400 mt-2">
+                    💡 Dica: Para melhor precisão, escreva o endereço completo incluindo número, bairro, cidade e UF.
+                </p>
             </div>
 
             <div class="mb-4">
@@ -192,8 +194,6 @@
     const messageBox = document.getElementById('messageBox');
     const searchCoordsBtn = document.getElementById('searchCoordsBtn');
     const coordsInfo = document.getElementById('coordsInfo');
-    const coordsText = document.getElementById('coordsText');
-    const coordsLoading = document.getElementById('coordsLoading');
     const restaurantLat = document.getElementById('restaurantLat');
     const restaurantLng = document.getElementById('restaurantLng');
 
@@ -204,19 +204,21 @@
         setTimeout(() => messageBox.classList.add('hidden'), 3000);
     }
 
-    // Buscar coordenadas pelo endereço
+    // Buscar coordenadas usando múltiplas APIs (fallback)
     async function buscarCoordenadasPorEndereco(endereco) {
-        coordsLoading.classList.remove('hidden');
         coordsInfo.classList.remove('hidden');
-        coordsText.textContent = 'Buscando coordenadas...';
-        coordsText.className = 'text-gray-500';
+        coordsInfo.className = 'coord-info warning';
+        coordsInfo.innerHTML = '🔍 Buscando coordenadas... <span class="loading-coords"></span>';
         
+        // Tentativa 1: OpenStreetMap Nominatim
         try {
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco + ", Brasil")}&limit=1`;
-            const response = await fetch(url);
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco + " Brasil")}&limit=1&addressdetails=1`;
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'PopFood-Delivery/1.0'
+                }
+            });
             const data = await response.json();
-            
-            coordsLoading.classList.add('hidden');
             
             if (data && data.length > 0) {
                 const lat = parseFloat(data[0].lat);
@@ -225,22 +227,46 @@
                 restaurantLat.value = lat;
                 restaurantLng.value = lng;
                 
-                coordsText.innerHTML = `📍 Coordenadas obtidas: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                coordsText.className = 'text-green-600';
+                coordsInfo.className = 'coord-info success';
+                coordsInfo.innerHTML = `✅ Coordenadas encontradas!<br>📍 Latitude: ${lat.toFixed(6)}<br>📍 Longitude: ${lng.toFixed(6)}`;
                 
                 return { lat, lng };
-            } else {
-                coordsText.innerHTML = '❌ Não foi possível encontrar as coordenadas. Verifique o endereço.';
-                coordsText.className = 'text-red-500';
-                return null;
             }
         } catch (error) {
-            coordsLoading.classList.add('hidden');
-            coordsText.innerHTML = '❌ Erro ao buscar coordenadas. Tente novamente.';
-            coordsText.className = 'text-red-500';
-            console.error("Erro ao buscar coordenadas:", error);
-            return null;
+            console.error("Erro no Nominatim:", error);
         }
+        
+        // Tentativa 2: Usar a string do endereço formatada de forma diferente
+        try {
+            const enderecoFormatado = endereco.replace(/,/g, ' ').replace(/  /g, ' ');
+            const url2 = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoFormatado)}&limit=1`;
+            const response2 = await fetch(url2, {
+                headers: {
+                    'User-Agent': 'PopFood-Delivery/1.0'
+                }
+            });
+            const data2 = await response2.json();
+            
+            if (data2 && data2.length > 0) {
+                const lat = parseFloat(data2[0].lat);
+                const lng = parseFloat(data2[0].lon);
+                
+                restaurantLat.value = lat;
+                restaurantLng.value = lng;
+                
+                coordsInfo.className = 'coord-info success';
+                coordsInfo.innerHTML = `✅ Coordenadas encontradas!<br>📍 Latitude: ${lat.toFixed(6)}<br>📍 Longitude: ${lng.toFixed(6)}`;
+                
+                return { lat, lng };
+            }
+        } catch (error) {
+            console.error("Erro na segunda tentativa:", error);
+        }
+        
+        // Se não encontrou
+        coordsInfo.className = 'coord-info error';
+        coordsInfo.innerHTML = '❌ Não foi possível encontrar as coordenadas. Verifique o endereço e tente novamente.<br>💡 Dica: Inclua número, bairro, cidade e UF. Ex: "Rua das Flores, 123, Centro, São Paulo - SP"';
+        return null;
     }
 
     // Buscar endereço pelo CEP (ViaCEP)
@@ -260,9 +286,14 @@
                 return null;
             }
             
+            const enderecoCompleto = `${data.logradouro || ''}, ${data.bairro || ''}, ${data.localidade || ''} - ${data.uf || ''}`;
             return {
                 cep: data.cep,
-                enderecoCompleto: `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`
+                logradouro: data.logradouro,
+                bairro: data.bairro,
+                cidade: data.localidade,
+                uf: data.uf,
+                enderecoCompleto: enderecoCompleto
             };
         } catch (error) {
             console.error("Erro ao buscar CEP:", error);
@@ -277,7 +308,7 @@
         if (cep.length === 8) {
             const enderecoData = await buscarEnderecoPorCep(cep);
             if (enderecoData) {
-                restaurantAddress.value = enderecoData.enderecoCompleto + ', [NÚMERO]';
+                restaurantAddress.value = `${enderecoData.logradouro || 'Rua'}, [NÚMERO] - ${enderecoData.bairro || 'Bairro'}, ${enderecoData.cidade || 'Cidade'} - ${enderecoData.uf || 'UF'}`;
                 showMessage('Endereço preenchido! Clique em "Buscar Coordenadas" para obter a localização.', 'success');
             }
         }
@@ -285,11 +316,18 @@
 
     // Buscar coordenadas do endereço
     searchCoordsBtn.addEventListener('click', async () => {
-        const endereco = restaurantAddress.value;
+        let endereco = restaurantAddress.value;
         if (!endereco) {
             showMessage('Preencha o endereço primeiro!', 'error');
             return;
         }
+        
+        // Se o endereço tiver [NÚMERO], pedir para substituir
+        if (endereco.includes('[NÚMERO]')) {
+            showMessage('Por favor, substitua [NÚMERO] pelo número do endereço da loja!', 'error');
+            return;
+        }
+        
         await buscarCoordenadasPorEndereco(endereco);
     });
 
@@ -345,8 +383,8 @@
     function displayCoordinates() {
         if (profile.latitude && profile.longitude) {
             coordsInfo.classList.remove('hidden');
-            coordsText.innerHTML = `📍 Coordenadas salvas: ${profile.latitude.toFixed(6)}, ${profile.longitude.toFixed(6)}`;
-            coordsText.className = 'text-green-600';
+            coordsInfo.className = 'coord-info success';
+            coordsInfo.innerHTML = `✅ Coordenadas salvas:<br>📍 Latitude: ${profile.latitude.toFixed(6)}<br>📍 Longitude: ${profile.longitude.toFixed(6)}`;
         }
     }
 
@@ -450,10 +488,10 @@
             }
         }
 
-        // Obter coordenadas do endereço se não tiver
         let latitude = parseFloat(restaurantLat.value);
         let longitude = parseFloat(restaurantLng.value);
         
+        // Se não tiver coordenadas válidas, tentar buscar
         if ((!latitude || isNaN(latitude)) && restaurantAddress.value) {
             const coords = await buscarCoordenadasPorEndereco(restaurantAddress.value);
             if (coords) {
