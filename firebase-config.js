@@ -19,12 +19,10 @@ const firebaseConfig = {
     appId: "1:677810682230:web:96bbf1b452edf9fcfb6257"
 };
 
-// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-// Nomes das coleções
 const COLLECTIONS = {
     PRODUCTS: 'products',
     CATEGORIES: 'categories',
