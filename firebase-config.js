@@ -2,7 +2,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
     getFirestore, collection, doc, getDocs, getDoc, setDoc, updateDoc, 
-    deleteDoc, query, where, orderBy, addDoc, onSnapshot, Timestamp 
+    deleteDoc, query, where, orderBy, addDoc, onSnapshot, Timestamp,
+    arrayUnion, arrayRemove, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { 
     getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
@@ -37,5 +38,5 @@ export {
     db, auth, 
     collection, doc, getDocs, getDoc, setDoc, updateDoc, 
     deleteDoc, query, where, orderBy, addDoc, onSnapshot, 
-    Timestamp, COLLECTIONS
+    Timestamp, COLLECTIONS, arrayUnion, arrayRemove, writeBatch
 };
