@@ -180,12 +180,11 @@
 
 <script type="module">
     import { 
-        db, auth, 
-        collection, doc, getDocs, getDoc, setDoc, updateDoc, 
-        deleteDoc, query, where, orderBy, addDoc, onSnapshot,
-        arrayUnion, arrayRemove, writeBatch, Timestamp,
-        COLLECTIONS 
-    } from './firebase-config.js';
+    db, auth, 
+    collection, doc, getDocs, getDoc, setDoc, updateDoc, 
+    deleteDoc, query, where, orderBy, addDoc, onSnapshot,
+    Timestamp, COLLECTIONS 
+} from './firebase-config.js';
     import { 
         signInWithEmailAndPassword, createUserWithEmailAndPassword,
         signOut, onAuthStateChanged 
