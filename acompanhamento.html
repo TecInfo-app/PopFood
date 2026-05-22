@@ -1,4 +1,5 @@
-<!DOCTYPE html>
+
+.<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -445,54 +446,61 @@
 
     // Buscar APENAS o pedido mais recente - SEM ORDERBY
     function startOrderListener(phone) {
-        if (unsubscribeOrder) unsubscribeOrder();
-        
-        const originalPhone = phone;
-        
-        console.log("Buscando pedido atual para:", originalPhone);
-        
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where('customer.phone', '==', originalPhone),
-            where('status', 'in', ['Pendente', 'Preparando', 'Saiu para entrega', 'Entregue'])
-        );
-        
-        unsubscribeOrder = onSnapshot(q, 
-            (snapshot) => {
-                const orders = [];
-                snapshot.forEach(doc => {
-                    orders.push({ id: doc.id, ...doc.data() });
+    if (unsubscribeOrder) unsubscribeOrder();
+    
+    const originalPhone = phone;
+    
+    console.log("Buscando pedido atual para:", originalPhone);
+    
+    // REMOVIDO o where com 'in' que causa erro de permissão
+    const q = query(
+        collection(db, COLLECTIONS.ORDERS),
+        where('customer.phone', '==', originalPhone)
+    );
+    
+    unsubscribeOrder = onSnapshot(q, 
+        (snapshot) => {
+            const orders = [];
+            snapshot.forEach(doc => {
+                orders.push({ id: doc.id, ...doc.data() });
+            });
+            
+            // Filtrar apenas pedidos ativos (Pendente, Preparando, Saiu para entrega)
+            const activeOrders = orders.filter(o => 
+                o.status === 'Pendente' || 
+                o.status === 'Preparando' || 
+                o.status === 'Saiu para entrega'
+            );
+            
+            if (activeOrders.length > 0) {
+                // Ordenar manualmente por data (mais recente primeiro)
+                activeOrders.sort((a, b) => {
+                    const dateA = a.createdAt?.seconds || 0;
+                    const dateB = b.createdAt?.seconds || 0;
+                    return dateB - dateA;
                 });
                 
-                if (orders.length > 0) {
-                    // Ordenar manualmente por createdAt (mais recente primeiro)
-                    orders.sort((a, b) => {
-                        const dateA = a.createdAt?.seconds || 0;
-                        const dateB = b.createdAt?.seconds || 0;
-                        return dateB - dateA;
-                    });
-                    
-                    currentOrder = orders[0];
-                    console.log("Pedido encontrado:", currentOrder.id, currentOrder.status);
-                    
-                    loginSection.classList.add('hidden');
-                    noOrderSection.classList.add('hidden');
-                    orderArea.classList.remove('hidden');
-                    
-                    renderOrder(currentOrder);
-                } else {
-                    // Nenhum pedido ativo
-                    loginSection.classList.add('hidden');
-                    orderArea.classList.add('hidden');
-                    noOrderSection.classList.remove('hidden');
-                }
-            },
-            (error) => {
-                console.error("Erro no listener:", error);
-                showMessage('Erro ao carregar pedido: ' + error.message, 'error');
+                currentOrder = activeOrders[0];
+                console.log("Pedido encontrado:", currentOrder.id, currentOrder.status);
+                
+                loginSection.classList.add('hidden');
+                noOrderSection.classList.add('hidden');
+                orderArea.classList.remove('hidden');
+                
+                renderOrder(currentOrder);
+            } else {
+                // Nenhum pedido ativo
+                loginSection.classList.add('hidden');
+                orderArea.classList.add('hidden');
+                noOrderSection.classList.remove('hidden');
             }
-        );
-    }
+        },
+        (error) => {
+            console.error("Erro no listener:", error);
+            showMessage('Erro ao carregar pedido: ' + error.message, 'error');
+        }
+    );
+}
 
     // Login
     async function doLogin() {
