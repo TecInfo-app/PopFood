@@ -252,12 +252,32 @@
             <h3 class="text-2xl font-bold">Pagamento</h3>
             <button id="closePaymentModalBtn" class="text-gray-500 hover:text-gray-800">✕</button>
         </div>
-        <p class="text-xl font-bold text-green-600 text-center" id="payment-total-price">R$ 0,00</p>
-        <div class="grid grid-cols-1 gap-2 mt-4">
+        
+        <!-- Subtotal, Taxa e Total -->
+        <div class="mb-4 space-y-2">
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-600">Subtotal:</span>
+                <span id="payment-subtotal" class="font-medium">R$ 0,00</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-600">🚚 Taxa de entrega:</span>
+                <span id="payment-delivery-fee" class="font-medium text-blue-600">R$ 0,00</span>
+            </div>
+            <div class="border-t pt-2 mt-2">
+                <div class="flex justify-between">
+                    <span class="font-bold text-gray-800">Total:</span>
+                    <span id="payment-total-price" class="text-xl font-bold text-green-600">R$ 0,00</span>
+                </div>
+            </div>
+        </div>
+        
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">Forma de pagamento:</h4>
+        <div class="grid grid-cols-1 gap-2">
             <button class="payment-option-btn bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300" data-payment="Cartão">💳 Cartão</button>
             <button class="payment-option-btn bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300" data-payment="Dinheiro">💰 Dinheiro</button>
             <button class="payment-option-btn bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300" data-payment="Pix">📱 Pix</button>
         </div>
+        
         <button id="confirmOrderBtn" class="mt-6 w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400" disabled>Confirmar Pedido</button>
     </div>
 </div>
@@ -1401,56 +1421,57 @@
         });
     }
     
-    const continueToPayment = document.getElementById('continueToPaymentBtn');
-    if (continueToPayment) {
-        continueToPayment.addEventListener('click', async () => {
-            const name = document.getElementById('customerName')?.value.trim();
-            const phone = document.getElementById('customerPhone')?.value.trim();
-            const address = document.getElementById('customerAddress')?.value.trim();
-            const number = document.getElementById('customerNumber')?.value.trim();
-            
-            if (!name || !phone || !address || !number) {
-                showMessage('Preencha nome, telefone, endereço e número', 'error');
-                return;
-            }
-            
-            customerInfo = {
-                name: name,
-                phone: phone,
-                email: document.getElementById('customerEmail')?.value || '',
-                cep: document.getElementById('customerCep')?.value || '',
-                address: address,
-                number: number,
-                complement: document.getElementById('customerComplement')?.value || '',
-                reference: document.getElementById('customerReference')?.value || ''
-            };
-            
-            localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
-            
-            // Calcular taxa com base no endereço
-            const enderecoCompleto = `${address}, ${number}`;
-            await calcularTaxaPorEndereco(enderecoCompleto);
-            
-            const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
-            const total = subtotal + currentDeliveryFee;
-            
-            const paymentTotal = document.getElementById('payment-total-price');
-            if (paymentTotal) {
-                paymentTotal.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-            }
-            
-            selectedPaymentMethod = null;
-            const confirmBtn = document.getElementById('confirmOrderBtn');
-            if (confirmBtn) confirmBtn.disabled = true;
-            
-            document.querySelectorAll('.payment-option-btn').forEach(btn => {
-                btn.classList.remove('bg-green-500', 'text-white');
-            });
-            
-            toggleModal(customerInfoModal, false);
-            toggleModal(paymentModal, true);
+    // Botão para continuar ao pagamento
+const continueToPayment = document.getElementById('continueToPaymentBtn');
+if (continueToPayment) {
+    continueToPayment.addEventListener('click', async () => {
+        const name = document.getElementById('customerName')?.value.trim();
+        const phone = document.getElementById('customerPhone')?.value.trim();
+        const address = document.getElementById('customerAddress')?.value.trim();
+        const number = document.getElementById('customerNumber')?.value.trim();
+        
+        if (!name || !phone || !address || !number) {
+            showMessage('Preencha nome, telefone, endereço e número', 'error');
+            return;
+        }
+        
+        customerInfo = {
+            name: name,
+            phone: phone,
+            email: document.getElementById('customerEmail')?.value || '',
+            cep: document.getElementById('customerCep')?.value || '',
+            address: address,
+            number: number,
+            complement: document.getElementById('customerComplement')?.value || '',
+            reference: document.getElementById('customerReference')?.value || ''
+        };
+        
+        localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
+        
+        // Calcular taxa
+        const enderecoCompleto = `${address}, ${number}`;
+        await calcularTaxaPorEndereco(enderecoCompleto);
+        
+        const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
+        const deliveryFee = currentDeliveryFee;
+        const total = subtotal + deliveryFee;
+        
+        // Atualizar valores no modal
+        document.getElementById('payment-subtotal').textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+        document.getElementById('payment-delivery-fee').textContent = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+        document.getElementById('payment-total-price').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        
+        selectedPaymentMethod = null;
+        document.getElementById('confirmOrderBtn').disabled = true;
+        
+        document.querySelectorAll('.payment-option-btn').forEach(btn => {
+            btn.classList.remove('bg-green-500', 'text-white');
         });
-    }
+        
+        toggleModal(customerInfoModal, false);
+        toggleModal(paymentModal, true);
+    });
+}
     
     // Pagamento
     document.querySelectorAll('.payment-option-btn').forEach(btn => {
