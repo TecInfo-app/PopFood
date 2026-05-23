@@ -232,20 +232,15 @@
             </div>
             
             <textarea id="customerReference" placeholder="Ponto de referência (opcional)" rows="2" class="w-full p-3 border rounded-lg"></textarea>
-
-            <!-- Área de informação de atendimento (opcional) -->
-<div id="areaAtendimentoInfo" class="hidden p-3 rounded-lg text-sm">
-    <!-- Será preenchido dinamicamente -->
-</div>
             
-            <div id="taxaInfoBox" class="hidden bg-blue-50 p-3 rounded-lg">
+            <div id="taxaInfoBox" class="hidden p-3 rounded-lg">
                 <p class="text-sm font-semibold text-blue-700">🚚 Taxa de entrega</p>
-                <div id="taxaInfoContent" class="text-xs text-blue-600 mt-1"></div>
+                <div id="taxaInfoContent" class="text-xs mt-1"></div>
             </div>
         </div>
         <div class="mt-6 flex justify-between gap-4 border-t pt-4">
             <button id="backToCartBtn" class="w-1/3 bg-gray-300 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-400">Voltar</button>
-            <button id="continueToPaymentBtn" class="w-2/3 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700">Continuar</button>
+            <button id="continueToPaymentBtn" class="w-2/3 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 transition-all">Continuar</button>
         </div>
     </div>
 </div>
@@ -322,8 +317,8 @@
     let currentDistance = 0;
     let confirmationCallback = null;
     let unsubscribeProducts = null;
-
-    // Distância máxima para entrega (em km)  ⬅️ ADICIONE AQUI
+    
+    // Distância máxima para entrega (em km)
     const DISTANCIA_MAXIMA_KM = 10;
     
     // Dados da loja para cálculo de taxa
@@ -524,105 +519,142 @@
         }
     }
 
-async function calcularTaxaPorEndereco(enderecoCompleto) {
-    const taxaBox = document.getElementById('taxaInfoBox');
-    const taxaContent = document.getElementById('taxaInfoContent');
-    
-    if (taxaBox) taxaBox.classList.add('hidden');
-    
-    if (!restaurantLat || !restaurantLng) {
-        if (taxaContent) {
-            taxaContent.innerHTML = '⚠️ Loja não configurada. Taxa padrão de R$ 5,00 aplicada.';
-        }
-        if (taxaBox) taxaBox.classList.remove('hidden');
-        currentDeliveryFee = 5.00;
-        updateCartDeliveryFee();
-        return 5.00;
-    }
-    
-    try {
-        const coordenadasCliente = await buscarCoordenadasPorEndereco(enderecoCompleto);
+    async function calcularTaxaPorEndereco(enderecoCompleto) {
+        const taxaBox = document.getElementById('taxaInfoBox');
+        const taxaContent = document.getElementById('taxaInfoContent');
+        const continueBtn = document.getElementById('continueToPaymentBtn');
         
-        if (!coordenadasCliente) {
+        if (taxaBox) {
+            taxaBox.classList.remove('bg-green-50', 'bg-red-50', 'bg-yellow-50', 'border', 'border-red-200');
+            taxaBox.classList.add('hidden');
+        }
+        
+        // Verificar se a loja tem coordenadas
+        if (!restaurantLat || !restaurantLng) {
+            console.warn("Loja sem coordenadas configuradas");
             if (taxaContent) {
-                taxaContent.innerHTML = '⚠️ Não foi possível calcular a distância. Taxa padrão aplicada.';
+                taxaContent.innerHTML = '⚠️ Loja não configurada. Taxa padrão de R$ 5,00 aplicada.';
+                taxaContent.classList.remove('text-red-600', 'text-green-600');
+                taxaContent.classList.add('text-yellow-600');
             }
-            if (taxaBox) taxaBox.classList.remove('hidden');
+            if (taxaBox) {
+                taxaBox.classList.remove('hidden');
+                taxaBox.classList.add('bg-yellow-50');
+            }
             currentDeliveryFee = 5.00;
+            if (continueBtn) {
+                continueBtn.disabled = false;
+                continueBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
             updateCartDeliveryFee();
             return 5.00;
         }
         
-        const distancia = calcularDistancia(restaurantLat, restaurantLng, coordenadasCliente.lat, coordenadasCliente.lng);
-        currentDistance = distancia;
-        
-        // VALIDAÇÃO DA DISTÂNCIA MÁXIMA
-        if (distancia > DISTANCIA_MAXIMA_KM) {
-            const erroMsg = `📍 Distância: ${distancia.toFixed(1)} km\n❌ Infelizmente não entregamos nesta região.\nDistância máxima permitida: ${DISTANCIA_MAXIMA_KM} km`;
+        try {
+            // Buscar coordenadas do endereço do cliente
+            const coordenadasCliente = await buscarCoordenadasPorEndereco(enderecoCompleto);
             
-            if (taxaContent) {
-                taxaContent.innerHTML = `❌ <strong>Não atendemos esta região!</strong><br>📍 Distância: ${distancia.toFixed(1)} km<br>📏 Limite máximo: ${DISTANCIA_MAXIMA_KM} km`;
-                taxaContent.classList.add('text-red-600');
+            if (!coordenadasCliente) {
+                if (taxaContent) {
+                    taxaContent.innerHTML = '⚠️ Não foi possível calcular a distância. Taxa padrão aplicada.';
+                    taxaContent.classList.remove('text-red-600', 'text-green-600');
+                    taxaContent.classList.add('text-yellow-600');
+                }
+                if (taxaBox) {
+                    taxaBox.classList.remove('hidden');
+                    taxaBox.classList.add('bg-yellow-50');
+                }
+                currentDeliveryFee = 5.00;
+                if (continueBtn) {
+                    continueBtn.disabled = false;
+                    continueBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+                updateCartDeliveryFee();
+                return 5.00;
             }
-            if (taxaBox) taxaBox.classList.remove('hidden');
-            taxaBox.classList.add('bg-red-50', 'border', 'border-red-200');
             
-            // Desabilitar o botão de continuar
-            const continueBtn = document.getElementById('continueToPaymentBtn');
+            // Calcular distância
+            const distancia = calcularDistancia(restaurantLat, restaurantLng, coordenadasCliente.lat, coordenadasCliente.lng);
+            currentDistance = distancia;
+            
+            // VALIDAÇÃO DA DISTÂNCIA MÁXIMA (10km)
+            if (distancia > DISTANCIA_MAXIMA_KM) {
+                if (taxaContent) {
+                    taxaContent.innerHTML = `❌ <strong>Não atendemos esta região!</strong><br>📍 Distância: ${distancia.toFixed(1)} km<br>📏 Limite máximo: ${DISTANCIA_MAXIMA_KM} km`;
+                    taxaContent.classList.remove('text-green-600', 'text-yellow-600');
+                    taxaContent.classList.add('text-red-600');
+                }
+                if (taxaBox) {
+                    taxaBox.classList.remove('hidden');
+                    taxaBox.classList.add('bg-red-50', 'border', 'border-red-200');
+                }
+                
+                // Desabilitar o botão de continuar
+                if (continueBtn) {
+                    continueBtn.disabled = true;
+                    continueBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    continueBtn.title = 'Não atendemos esta região';
+                }
+                
+                showMessage(`❌ Desculpe, não entregamos nesta região! Distância: ${distancia.toFixed(1)}km (Limite: ${DISTANCIA_MAXIMA_KM}km)`, 'error');
+                currentDeliveryFee = null;
+                return null;
+            }
+            
+            // Se estiver dentro da área, habilitar o botão
             if (continueBtn) {
-                continueBtn.disabled = true;
-                continueBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                continueBtn.title = 'Não atendemos esta região';
+                continueBtn.disabled = false;
+                continueBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                continueBtn.title = '';
             }
             
-            showMessage(`❌ Desculpe, não entregamos nesta região! Distância: ${distancia.toFixed(1)}km (Limite: ${DISTANCIA_MAXIMA_KM}km)`, 'error');
-            currentDeliveryFee = null;
-            return null;
-        }
-        
-        // Se estiver dentro da área, habilitar o botão
-        const continueBtn = document.getElementById('continueToPaymentBtn');
-        if (continueBtn) {
-            continueBtn.disabled = false;
-            continueBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            continueBtn.title = '';
-        }
-        
-        const taxa = calcularTaxaPorDistancia(distancia);
-        currentDeliveryFee = taxa;
-        
-        if (taxaContent) {
-            taxaContent.innerHTML = `✅ <strong>Entregamos!</strong><br>📍 Distância: ${distancia.toFixed(1)} km<br>🚚 Taxa de entrega: R$ ${taxa.toFixed(2).replace('.', ',')}`;
-            taxaContent.classList.remove('text-red-600');
-            taxaContent.classList.add('text-green-600');
-        }
-        if (taxaBox) {
-            taxaBox.classList.remove('hidden', 'bg-red-50', 'border', 'border-red-200');
-            taxaBox.classList.add('bg-green-50');
-        }
-        
-        console.log(`Taxa calculada: ${taxa} para distância de ${distancia.toFixed(2)}km`);
-        
-        if (cartModal && !cartModal.classList.contains('hidden')) {
+            // Calcular taxa baseada na distância
+            const taxa = calcularTaxaPorDistancia(distancia);
+            currentDeliveryFee = taxa;
+            
+            // Mostrar informações
+            if (taxaContent) {
+                taxaContent.innerHTML = `✅ <strong>Entregamos!</strong><br>📍 Distância: ${distancia.toFixed(1)} km<br>🚚 Taxa de entrega: R$ ${taxa.toFixed(2).replace('.', ',')}`;
+                taxaContent.classList.remove('text-red-600', 'text-yellow-600');
+                taxaContent.classList.add('text-green-600');
+            }
+            if (taxaBox) {
+                taxaBox.classList.remove('hidden', 'bg-red-50', 'bg-yellow-50', 'border', 'border-red-200');
+                taxaBox.classList.add('bg-green-50');
+            }
+            
+            console.log(`Taxa calculada: ${taxa} para distância de ${distancia.toFixed(2)}km`);
+            
+            // Atualizar carrinho se estiver visível
+            if (cartModal && !cartModal.classList.contains('hidden')) {
+                updateCartDeliveryFee();
+            }
+            
+            return taxa;
+        } catch (error) {
+            console.error("Erro ao calcular taxa:", error);
+            if (taxaContent) {
+                taxaContent.innerHTML = '⚠️ Erro ao calcular taxa. Taxa padrão aplicada.';
+                taxaContent.classList.remove('text-red-600', 'text-green-600');
+                taxaContent.classList.add('text-yellow-600');
+            }
+            if (taxaBox) {
+                taxaBox.classList.remove('hidden');
+                taxaBox.classList.add('bg-yellow-50');
+            }
+            currentDeliveryFee = 5.00;
+            if (continueBtn) {
+                continueBtn.disabled = false;
+                continueBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
             updateCartDeliveryFee();
+            return 5.00;
         }
-        
-        return taxa;
-    } catch (error) {
-        console.error("Erro ao calcular taxa:", error);
-        if (taxaContent) {
-            taxaContent.innerHTML = '⚠️ Erro ao calcular taxa. Tente novamente.';
-        }
-        if (taxaBox) taxaBox.classList.remove('hidden');
-        currentDeliveryFee = 5.00;
-        updateCartDeliveryFee();
-        return 5.00;
     }
-}
 
     function updateCartDeliveryFee() {
         const subtotal = totalCartPrice;
-        const totalFinal = subtotal + currentDeliveryFee;
+        const totalFinal = subtotal + (currentDeliveryFee || 0);
         
         const totalElement = document.getElementById('cart-total-price');
         const deliveryInfo = document.getElementById('delivery-info');
@@ -633,25 +665,25 @@ async function calcularTaxaPorEndereco(enderecoCompleto) {
             totalElement.innerHTML = `
                 <div class="space-y-1 text-right">
                     <div class="text-sm">Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}</div>
-                    <div class="text-sm">Taxa entrega: R$ ${currentDeliveryFee.toFixed(2).replace('.', ',')}</div>
+                    <div class="text-sm">Taxa entrega: R$ ${(currentDeliveryFee || 0).toFixed(2).replace('.', ',')}</div>
                     <div class="text-lg font-bold border-t pt-1">Total: R$ ${totalFinal.toFixed(2).replace('.', ',')}</div>
                 </div>
             `;
         }
         
-        if (deliveryInfo && currentDistance > 0) {
+        if (deliveryInfo && currentDistance > 0 && currentDeliveryFee !== null) {
             deliveryInfo.classList.remove('hidden');
             if (distanceInfo) {
                 distanceInfo.innerHTML = `📍 Distância: ${currentDistance.toFixed(1)} km`;
             }
             if (deliveryFeeInfo) {
-                deliveryFeeInfo.innerHTML = `🚚 Taxa: R$ ${currentDeliveryFee.toFixed(2).replace('.', ',')}`;
+                deliveryFeeInfo.innerHTML = `🚚 Taxa: R$ ${(currentDeliveryFee || 0).toFixed(2).replace('.', ',')}`;
             }
         }
     }
 
     function getDeliveryFee() {
-        return currentDeliveryFee;
+        return currentDeliveryFee || 5.00;
     }
 
     // ==================== CARRINHO ====================
@@ -1095,7 +1127,7 @@ async function calcularTaxaPorEndereco(enderecoCompleto) {
     }
 
     async function createOrder(customerData, paymentMethod, items, subtotal) {
-        const deliveryFee = currentDeliveryFee;
+        const deliveryFee = currentDeliveryFee || 5.00;
         
         const orderData = {
             date: new Date().toLocaleString('pt-BR'),
@@ -1435,77 +1467,84 @@ async function calcularTaxaPorEndereco(enderecoCompleto) {
         });
     }
     
-    // No evento do botão checkoutBtn, adicione esta verificação
-const checkoutBtn = document.getElementById('checkoutBtn');
-if (checkoutBtn) {
-    checkoutBtn.addEventListener('click', () => {
-        if (cart.length === 0) {
-            showMessage('Carrinho vazio!', 'error');
-            return;
-        }
-        
-        // Verificar se já calculou a taxa
-        if (currentDeliveryFee === null) {
-            showMessage('Por favor, preencha seu endereço primeiro!', 'error');
-            return;
-        }
-        
-        toggleModal(cartModal, false);
-        toggleModal(customerInfoModal, true);
-    });
-}
+    // Checkout
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', () => {
+            if (cart.length === 0) {
+                showMessage('Carrinho vazio!', 'error');
+                return;
+            }
+            toggleModal(cartModal, false);
+            toggleModal(customerInfoModal, true);
+        });
+    }
+    
+    const backToCart = document.getElementById('backToCartBtn');
+    if (backToCart) {
+        backToCart.addEventListener('click', () => {
+            toggleModal(customerInfoModal, false);
+            toggleModal(cartModal, true);
+        });
+    }
     
     // Botão para continuar ao pagamento
-const continueToPayment = document.getElementById('continueToPaymentBtn');
-if (continueToPayment) {
-    continueToPayment.addEventListener('click', async () => {
-        const name = document.getElementById('customerName')?.value.trim();
-        const phone = document.getElementById('customerPhone')?.value.trim();
-        const address = document.getElementById('customerAddress')?.value.trim();
-        const number = document.getElementById('customerNumber')?.value.trim();
-        
-        if (!name || !phone || !address || !number) {
-            showMessage('Preencha nome, telefone, endereço e número', 'error');
-            return;
-        }
-        
-        customerInfo = {
-            name: name,
-            phone: phone,
-            email: document.getElementById('customerEmail')?.value || '',
-            cep: document.getElementById('customerCep')?.value || '',
-            address: address,
-            number: number,
-            complement: document.getElementById('customerComplement')?.value || '',
-            reference: document.getElementById('customerReference')?.value || ''
-        };
-        
-        localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
-        
-        // Calcular taxa
-        const enderecoCompleto = `${address}, ${number}`;
-        await calcularTaxaPorEndereco(enderecoCompleto);
-        
-        const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
-        const deliveryFee = currentDeliveryFee;
-        const total = subtotal + deliveryFee;
-        
-        // Atualizar valores no modal
-        document.getElementById('payment-subtotal').textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
-        document.getElementById('payment-delivery-fee').textContent = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
-        document.getElementById('payment-total-price').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-        
-        selectedPaymentMethod = null;
-        document.getElementById('confirmOrderBtn').disabled = true;
-        
-        document.querySelectorAll('.payment-option-btn').forEach(btn => {
-            btn.classList.remove('bg-green-500', 'text-white');
+    const continueToPayment = document.getElementById('continueToPaymentBtn');
+    if (continueToPayment) {
+        continueToPayment.addEventListener('click', async () => {
+            const name = document.getElementById('customerName')?.value.trim();
+            const phone = document.getElementById('customerPhone')?.value.trim();
+            const address = document.getElementById('customerAddress')?.value.trim();
+            const number = document.getElementById('customerNumber')?.value.trim();
+            
+            if (!name || !phone || !address || !number) {
+                showMessage('Preencha nome, telefone, endereço e número', 'error');
+                return;
+            }
+            
+            customerInfo = {
+                name: name,
+                phone: phone,
+                email: document.getElementById('customerEmail')?.value || '',
+                cep: document.getElementById('customerCep')?.value || '',
+                address: address,
+                number: number,
+                complement: document.getElementById('customerComplement')?.value || '',
+                reference: document.getElementById('customerReference')?.value || ''
+            };
+            
+            localStorage.setItem('currentLoggedCustomer', JSON.stringify(customerInfo));
+            
+            // Calcular taxa
+            const enderecoCompleto = `${address}, ${number}`;
+            await calcularTaxaPorEndereco(enderecoCompleto);
+            
+            // Verificar se está dentro da área de entrega
+            if (currentDeliveryFee === null) {
+                showMessage('❌ Não atendemos esta região!', 'error');
+                return;
+            }
+            
+            const subtotal = cart.reduce((s, i) => s + (i.totalPrice || 0), 0);
+            const deliveryFee = currentDeliveryFee;
+            const total = subtotal + deliveryFee;
+            
+            // Atualizar valores no modal
+            document.getElementById('payment-subtotal').textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+            document.getElementById('payment-delivery-fee').textContent = `R$ ${deliveryFee.toFixed(2).replace('.', ',')}`;
+            document.getElementById('payment-total-price').textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            
+            selectedPaymentMethod = null;
+            document.getElementById('confirmOrderBtn').disabled = true;
+            
+            document.querySelectorAll('.payment-option-btn').forEach(btn => {
+                btn.classList.remove('bg-green-500', 'text-white');
+            });
+            
+            toggleModal(customerInfoModal, false);
+            toggleModal(paymentModal, true);
         });
-        
-        toggleModal(customerInfoModal, false);
-        toggleModal(paymentModal, true);
-    });
-}
+    }
     
     // Pagamento
     document.querySelectorAll('.payment-option-btn').forEach(btn => {
