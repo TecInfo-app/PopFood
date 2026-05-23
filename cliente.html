@@ -232,6 +232,13 @@
             </div>
             
             <textarea id="customerReference" placeholder="Ponto de referência (opcional)" rows="2" class="w-full p-3 border rounded-lg"></textarea>
+
+            
+<!-- BOTÃO PARA CALCULAR TAXA MANUALMENTE -->
+<button id="calcularTaxaBtn" class="w-full bg-blue-500 text-white font-bold py-2 rounded-lg mt-2 hover:bg-blue-600 transition-colors">
+    🔄 Calcular Taxa de Entrega
+</button>
+
             
             <div id="taxaInfoBox" class="hidden p-3 rounded-lg">
                 <p class="text-sm font-semibold text-blue-700">🚚 Taxa de entrega</p>
@@ -460,27 +467,52 @@
     }
 
     async function buscarCoordenadasPorEndereco(endereco) {
-        if (!endereco) return null;
+    if (!endereco) return null;
+    
+    console.log("🔍 Buscando coordenadas para:", endereco);
+    
+    // Tentativa 1: Nominatim (OpenStreetMap)
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco + " Brasil")}&limit=1`;
+        const response = await fetch(url, {
+            headers: { 'User-Agent': 'PopFood-Delivery/1.0' }
+        });
+        const data = await response.json();
         
-        try {
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco + " Brasil")}&limit=1`;
-            const response = await fetch(url, {
-                headers: { 'User-Agent': 'PopFood-Delivery/1.0' }
-            });
-            const data = await response.json();
-            
-            if (data && data.length > 0) {
-                return {
-                    lat: parseFloat(data[0].lat),
-                    lng: parseFloat(data[0].lon)
-                };
-            }
-            return null;
-        } catch (error) {
-            console.error("Erro ao buscar coordenadas:", error);
-            return null;
+        if (data && data.length > 0) {
+            console.log("✅ Coordenadas encontradas:", data[0].lat, data[0].lon);
+            return {
+                lat: parseFloat(data[0].lat),
+                lng: parseFloat(data[0].lon)
+            };
         }
+    } catch (error) {
+        console.error("Erro na tentativa 1:", error);
     }
+    
+    // Tentativa 2: Remover acentos e formatar diferente
+    try {
+        const enderecoSemAcento = endereco.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const url2 = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoSemAcento)}&limit=1`;
+        const response2 = await fetch(url2, {
+            headers: { 'User-Agent': 'PopFood-Delivery/1.0' }
+        });
+        const data2 = await response2.json();
+        
+        if (data2 && data2.length > 0) {
+            console.log("✅ Coordenadas encontradas (tentativa 2):", data2[0].lat, data2[0].lon);
+            return {
+                lat: parseFloat(data2[0].lat),
+                lng: parseFloat(data2[0].lon)
+            };
+        }
+    } catch (error) {
+        console.error("Erro na tentativa 2:", error);
+    }
+    
+    console.warn("⚠️ Nenhuma coordenada encontrada para:", endereco);
+    return null;
+}
 
     async function buscarEnderecoPorCep(cep) {
         const cepLimpo = cep.replace(/\D/g, '');
@@ -1662,6 +1694,33 @@
             customerInfo = JSON.parse(savedCustomer);
             prefillCustomerForm(customerInfo);
         } catch(e) {}
+    }
+
+    // ==================== BOTÃO PARA CALCULAR TAXA MANUALMENTE ====================
+    const calcularTaxaBtn = document.getElementById('calcularTaxaBtn');
+    if (calcularTaxaBtn) {
+        calcularTaxaBtn.addEventListener('click', async () => {
+            const address = document.getElementById('customerAddress')?.value.trim();
+            const number = document.getElementById('customerNumber')?.value.trim();
+            
+            if (!address || !number) {
+                showMessage('Preencha o endereço e número primeiro!', 'error');
+                return;
+            }
+            
+            const enderecoCompleto = `${address}, ${number}`;
+            showMessage('🔄 Calculando taxa de entrega...', 'yellow');
+            
+            await calcularTaxaPorEndereco(enderecoCompleto);
+            
+            if (currentDeliveryFee !== null && currentDeliveryFee !== 5.00) {
+                showMessage(`✅ Taxa calculada: R$ ${currentDeliveryFee.toFixed(2).replace('.', ',')}`, 'success');
+            } else if (currentDeliveryFee === 5.00) {
+                showMessage(`⚠️ Taxa padrão de R$ 5,00 aplicada. Não foi possível calcular a distância exata.`, 'yellow');
+            } else if (currentDeliveryFee === null) {
+                showMessage(`❌ Não entregamos nesta região!`, 'error');
+            }
+        });
     }
     
     // ==================== INICIALIZAÇÃO ====================
