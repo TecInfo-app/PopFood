@@ -232,6 +232,11 @@
             </div>
             
             <textarea id="customerReference" placeholder="Ponto de referência (opcional)" rows="2" class="w-full p-3 border rounded-lg"></textarea>
+
+            <!-- Área de informação de atendimento (opcional) -->
+<div id="areaAtendimentoInfo" class="hidden p-3 rounded-lg text-sm">
+    <!-- Será preenchido dinamicamente -->
+</div>
             
             <div id="taxaInfoBox" class="hidden bg-blue-50 p-3 rounded-lg">
                 <p class="text-sm font-semibold text-blue-700">🚚 Taxa de entrega</p>
@@ -317,6 +322,9 @@
     let currentDistance = 0;
     let confirmationCallback = null;
     let unsubscribeProducts = null;
+
+    // Distância máxima para entrega (em km)  ⬅️ ADICIONE AQUI
+    const DISTANCIA_MAXIMA_KM = 10;
     
     // Dados da loja para cálculo de taxa
     let restaurantLat = null;
@@ -516,74 +524,101 @@
         }
     }
 
-    async function calcularTaxaPorEndereco(enderecoCompleto) {
-        const taxaBox = document.getElementById('taxaInfoBox');
-        const taxaContent = document.getElementById('taxaInfoContent');
-        
-        if (taxaBox) taxaBox.classList.add('hidden');
-        
-        // Verificar se a loja tem coordenadas
-        if (!restaurantLat || !restaurantLng) {
-            console.warn("Loja sem coordenadas configuradas");
-            if (taxaContent) {
-                taxaContent.innerHTML = '⚠️ Loja não configurada. Taxa padrão de R$ 5,00 aplicada.';
-            }
-            if (taxaBox) taxaBox.classList.remove('hidden');
-            currentDeliveryFee = 5.00;
-            updateCartDeliveryFee();
-            return 5.00;
+async function calcularTaxaPorEndereco(enderecoCompleto) {
+    const taxaBox = document.getElementById('taxaInfoBox');
+    const taxaContent = document.getElementById('taxaInfoContent');
+    
+    if (taxaBox) taxaBox.classList.add('hidden');
+    
+    if (!restaurantLat || !restaurantLng) {
+        if (taxaContent) {
+            taxaContent.innerHTML = '⚠️ Loja não configurada. Taxa padrão de R$ 5,00 aplicada.';
         }
-        
-        try {
-            // Buscar coordenadas do endereço do cliente
-            const coordenadasCliente = await buscarCoordenadasPorEndereco(enderecoCompleto);
-            
-            if (!coordenadasCliente) {
-                if (taxaContent) {
-                    taxaContent.innerHTML = '⚠️ Não foi possível calcular a distância. Taxa padrão aplicada.';
-                }
-                if (taxaBox) taxaBox.classList.remove('hidden');
-                currentDeliveryFee = 5.00;
-                updateCartDeliveryFee();
-                return 5.00;
-            }
-            
-            // Calcular distância
-            const distancia = calcularDistancia(restaurantLat, restaurantLng, coordenadasCliente.lat, coordenadasCliente.lng);
-            currentDistance = distancia;
-            
-            // Calcular taxa baseada na distância
-            const taxa = calcularTaxaPorDistancia(distancia);
-            currentDeliveryFee = taxa;
-            
-            // Mostrar informações
-            if (taxaContent) {
-                taxaContent.innerHTML = `
-                    📍 Distância: ${distancia.toFixed(1)} km<br>
-                    🚚 Taxa de entrega: R$ ${taxa.toFixed(2).replace('.', ',')}
-                `;
-            }
-            if (taxaBox) taxaBox.classList.remove('hidden');
-            
-            console.log(`Taxa calculada: ${taxa} para distância de ${distancia.toFixed(2)}km`);
-            
-            // Atualizar carrinho se estiver visível
-            if (cartModal && !cartModal.classList.contains('hidden')) {
-                updateCartDeliveryFee();
-            }
-            
-            return taxa;
-        } catch (error) {
-            console.error("Erro ao calcular taxa:", error);
-            if (taxaContent) {
-                taxaContent.innerHTML = '⚠️ Erro ao calcular taxa. Taxa padrão aplicada.';
-            }
-            if (taxaBox) taxaBox.classList.remove('hidden');
-            currentDeliveryFee = 5.00;
-            updateCartDeliveryFee();
-            return 5.00;
-        }
+        if (taxaBox) taxaBox.classList.remove('hidden');
+        currentDeliveryFee = 5.00;
+        updateCartDeliveryFee();
+        return 5.00;
     }
+    
+    try {
+        const coordenadasCliente = await buscarCoordenadasPorEndereco(enderecoCompleto);
+        
+        if (!coordenadasCliente) {
+            if (taxaContent) {
+                taxaContent.innerHTML = '⚠️ Não foi possível calcular a distância. Taxa padrão aplicada.';
+            }
+            if (taxaBox) taxaBox.classList.remove('hidden');
+            currentDeliveryFee = 5.00;
+            updateCartDeliveryFee();
+            return 5.00;
+        }
+        
+        const distancia = calcularDistancia(restaurantLat, restaurantLng, coordenadasCliente.lat, coordenadasCliente.lng);
+        currentDistance = distancia;
+        
+        // VALIDAÇÃO DA DISTÂNCIA MÁXIMA
+        if (distancia > DISTANCIA_MAXIMA_KM) {
+            const erroMsg = `📍 Distância: ${distancia.toFixed(1)} km\n❌ Infelizmente não entregamos nesta região.\nDistância máxima permitida: ${DISTANCIA_MAXIMA_KM} km`;
+            
+            if (taxaContent) {
+                taxaContent.innerHTML = `❌ <strong>Não atendemos esta região!</strong><br>📍 Distância: ${distancia.toFixed(1)} km<br>📏 Limite máximo: ${DISTANCIA_MAXIMA_KM} km`;
+                taxaContent.classList.add('text-red-600');
+            }
+            if (taxaBox) taxaBox.classList.remove('hidden');
+            taxaBox.classList.add('bg-red-50', 'border', 'border-red-200');
+            
+            // Desabilitar o botão de continuar
+            const continueBtn = document.getElementById('continueToPaymentBtn');
+            if (continueBtn) {
+                continueBtn.disabled = true;
+                continueBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                continueBtn.title = 'Não atendemos esta região';
+            }
+            
+            showMessage(`❌ Desculpe, não entregamos nesta região! Distância: ${distancia.toFixed(1)}km (Limite: ${DISTANCIA_MAXIMA_KM}km)`, 'error');
+            currentDeliveryFee = null;
+            return null;
+        }
+        
+        // Se estiver dentro da área, habilitar o botão
+        const continueBtn = document.getElementById('continueToPaymentBtn');
+        if (continueBtn) {
+            continueBtn.disabled = false;
+            continueBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            continueBtn.title = '';
+        }
+        
+        const taxa = calcularTaxaPorDistancia(distancia);
+        currentDeliveryFee = taxa;
+        
+        if (taxaContent) {
+            taxaContent.innerHTML = `✅ <strong>Entregamos!</strong><br>📍 Distância: ${distancia.toFixed(1)} km<br>🚚 Taxa de entrega: R$ ${taxa.toFixed(2).replace('.', ',')}`;
+            taxaContent.classList.remove('text-red-600');
+            taxaContent.classList.add('text-green-600');
+        }
+        if (taxaBox) {
+            taxaBox.classList.remove('hidden', 'bg-red-50', 'border', 'border-red-200');
+            taxaBox.classList.add('bg-green-50');
+        }
+        
+        console.log(`Taxa calculada: ${taxa} para distância de ${distancia.toFixed(2)}km`);
+        
+        if (cartModal && !cartModal.classList.contains('hidden')) {
+            updateCartDeliveryFee();
+        }
+        
+        return taxa;
+    } catch (error) {
+        console.error("Erro ao calcular taxa:", error);
+        if (taxaContent) {
+            taxaContent.innerHTML = '⚠️ Erro ao calcular taxa. Tente novamente.';
+        }
+        if (taxaBox) taxaBox.classList.remove('hidden');
+        currentDeliveryFee = 5.00;
+        updateCartDeliveryFee();
+        return 5.00;
+    }
+}
 
     function updateCartDeliveryFee() {
         const subtotal = totalCartPrice;
@@ -1400,26 +1435,25 @@
         });
     }
     
-    // Checkout
-    const checkoutBtn = document.getElementById('checkoutBtn');
-    if (checkoutBtn) {
-        checkoutBtn.addEventListener('click', () => {
-            if (cart.length === 0) {
-                showMessage('Carrinho vazio!', 'error');
-                return;
-            }
-            toggleModal(cartModal, false);
-            toggleModal(customerInfoModal, true);
-        });
-    }
-    
-    const backToCart = document.getElementById('backToCartBtn');
-    if (backToCart) {
-        backToCart.addEventListener('click', () => {
-            toggleModal(customerInfoModal, false);
-            toggleModal(cartModal, true);
-        });
-    }
+    // No evento do botão checkoutBtn, adicione esta verificação
+const checkoutBtn = document.getElementById('checkoutBtn');
+if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', () => {
+        if (cart.length === 0) {
+            showMessage('Carrinho vazio!', 'error');
+            return;
+        }
+        
+        // Verificar se já calculou a taxa
+        if (currentDeliveryFee === null) {
+            showMessage('Por favor, preencha seu endereço primeiro!', 'error');
+            return;
+        }
+        
+        toggleModal(cartModal, false);
+        toggleModal(customerInfoModal, true);
+    });
+}
     
     // Botão para continuar ao pagamento
 const continueToPayment = document.getElementById('continueToPaymentBtn');
