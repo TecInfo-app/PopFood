@@ -918,41 +918,89 @@
         productsByCategory[catName].push(product);
     });
 
-    // Criar array com as categorias e sua ordem
+    // Ordenar categorias pelo campo 'order'
     const categoriasComOrdem = allCategories.map(cat => ({
         id: cat.id,
         name: cat.name,
         order: cat.order !== undefined ? cat.order : 999
     }));
-    
-    // Ordenar pelo campo 'order'
     categoriasComOrdem.sort((a, b) => a.order - b.order);
 
     customerProductList.innerHTML = '';
     
-    // Percorrer categorias na ordem definida
     for (const categoria of categoriasComOrdem) {
         const catName = categoria.name;
         if (productsByCategory[catName] && productsByCategory[catName].length > 0) {
+            // Cabeçalho da categoria
             const section = document.createElement('div');
-            section.className = 'col-span-full mb-4 mt-6';
-            section.innerHTML = `<h2 class="text-2xl font-bold text-gray-800">${escapeHtml(catName)}</h2>`;
+            section.className = 'col-span-full mb-3 mt-6';
+            section.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <h2 class="text-2xl font-bold text-gray-800 border-l-4 border-orange-500 pl-3">${escapeHtml(catName)}</h2>
+                    <span class="text-xs text-gray-400">${productsByCategory[catName].length} itens</span>
+                </div>
+            `;
             customerProductList.appendChild(section);
+            
+            // Grid de produtos
+            const gridContainer = document.createElement('div');
+            gridContainer.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5';
             
             productsByCategory[catName].forEach(product => {
                 const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-md p-4 flex flex-col product-card';
+                
+                // Calcular desconto se existir (exemplo: preço original e preço com desconto)
+                const precoOriginal = product.originalPrice || product.price;
+                const precoAtual = product.price;
+                const temDesconto = product.originalPrice && product.originalPrice > product.price;
+                const descontoPercentual = temDesconto ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
+                
+                // Verificar se é exclusivo (pode ser um campo no produto)
+                const isExclusivo = product.exclusivo || false;
+                
+                card.className = 'bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100';
                 card.dataset.id = product.id;
+                
                 card.innerHTML = `
-                    <img src="${product.image || ''}" class="w-full h-40 object-cover rounded-lg mb-4" onerror="this.src='https://placehold.co/400x300?text=Sem+Imagem'">
-                    <h3 class="text-lg font-bold">${escapeHtml(product.name)}</h3>
-                    ${product.pdvCode ? `<p class="text-xs text-gray-400">Cód: ${escapeHtml(product.pdvCode)}</p>` : ''}
-                    <p class="text-sm text-gray-500 flex-1">${escapeHtml(product.description || 'Sem descrição.')}</p>
-                    <p class="text-xl font-bold text-green-600 mt-2">R$ ${(product.price || 0).toFixed(2).replace('.', ',')}</p>
-                    <button data-id="${product.id}" class="add-to-cart-simple mt-4 bg-green-500 text-white font-bold py-2 rounded-lg hover:bg-green-600">Adicionar</button>
+                    <div class="relative">
+                        <img src="${product.image || 'https://placehold.co/400x300?text=Sem+Imagem'}" 
+                             class="w-full h-48 object-cover" 
+                             onerror="this.src='https://placehold.co/400x300?text=Sem+Imagem'">
+                        ${temDesconto ? `
+                            <div class="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                -${descontoPercentual}%
+                            </div>
+                        ` : ''}
+                        ${isExclusivo ? `
+                            <div class="absolute top-2 right-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                ⭐ Exclusivo
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="p-4">
+                        <h3 class="text-lg font-bold text-gray-800 mb-1 line-clamp-1">${escapeHtml(product.name)}</h3>
+                        <p class="text-sm text-gray-500 mb-3 line-clamp-2">${escapeHtml(product.description || 'Sem descrição.')}</p>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                ${temDesconto ? `
+                                    <span class="text-xs text-gray-400 line-through">R$ ${product.originalPrice.toFixed(2).replace('.', ',')}</span>
+                                    <span class="text-xl font-bold text-green-600 ml-2">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+                                ` : `
+                                    <span class="text-xl font-bold text-green-600">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+                                `}
+                            </div>
+                            <button data-id="${product.id}" class="add-to-cart-simple bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-full transition-colors flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Adicionar
+                            </button>
+                        </div>
+                    </div>
                 `;
-                customerProductList.appendChild(card);
+                gridContainer.appendChild(card);
             });
+            customerProductList.appendChild(gridContainer);
         }
     }
     loadingIndicator.classList.add('hidden');
