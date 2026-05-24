@@ -61,11 +61,15 @@
     import { db, auth, collection, doc, getDocs, updateDoc, query, orderBy, onSnapshot, Timestamp, COLLECTIONS } from './firebase-config.js';
     import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
+    // ==================== ESTADO GLOBAL ====================
     let allOrders = [];
     let currentFilter = 'todos';
     let unsubscribeOrders = null;
     let restaurantProfile = {};
+    let ultimoPedidoId = null;      // Para evitar som duplicado
+    let notificacaoAudio = null;    // Para o áudio personalizado
 
+    // DOM Elements
     const activeList = document.getElementById('active-orders-list');
     const completedList = document.getElementById('completed-orders-list');
     const messageBox = document.getElementById('messageBox');
@@ -81,13 +85,36 @@
         setTimeout(() => messageBox.classList.add('hidden'), 3000);
     }
 
+    // ==================== FUNÇÕES DE NOTIFICAÇÃO SONORA ====================
+    function preloadAudio() {
+        notificacaoAudio = new Audio('som.mp3');
+        notificacaoAudio.load();
+        console.log("🔊 Áudio de notificação pré-carregado");
+    }
+
+    function playNotificationSound() {
+        if (notificacaoAudio) {
+            notificacaoAudio.currentTime = 0; // Reinicia o som
+            notificacaoAudio.play().catch(e => {
+                console.log('Áudio bloqueado pelo navegador:', e);
+                // Tentativa alternativa
+                const fallbackAudio = new Audio('som.mp3');
+                fallbackAudio.play().catch(e2 => console.log('Falha no áudio fallback'));
+            });
+        } else {
+            const audio = new Audio('som.mp3');
+            audio.play().catch(e => console.log('Erro ao tocar som:', e));
+        }
+    }
+
     function showNewOrderNotification() {
+        // Notificação visual
         notification.classList.remove('hidden');
         setTimeout(() => notification.classList.add('show'), 10);
-        try {
-            const audio = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
-            audio.play().catch(e => console.log('Áudio não pôde ser reproduzido'));
-        } catch(e) {}
+        
+        // Tocar o som personalizado
+        playNotificationSound();
+        
         setTimeout(() => {
             notification.classList.remove('show');
             setTimeout(() => notification.classList.add('hidden'), 500);
@@ -182,13 +209,11 @@
             if (order.status === 'Saiu para entrega') highlightClass = 'dispatched-order';
         }
         
-        // IMPORTANTE: Usar order.id que vem do Firestore (document ID)
         const orderId = order.id;
         
         div.className = `bg-white p-5 rounded-xl shadow-sm border cursor-pointer hover:shadow-md transition-all ${highlightClass}`;
         div.setAttribute('data-order-id', orderId);
         
-        // Itens do pedido
         let itemsHtml = '';
         const items = order.items || [];
         
@@ -454,7 +479,7 @@
         setTimeout(() => printWindow.print(), 500);
     }
 
-    // Iniciar listener em tempo real
+    // ==================== LISTENER EM TEMPO REAL COM SOM ====================
     function startOrdersListener() {
         if (unsubscribeOrders) unsubscribeOrders();
         
@@ -463,6 +488,14 @@
         unsubscribeOrders = onSnapshot(q, 
             (snapshot) => {
                 const previousCount = allOrders.length;
+                const novosPedidosIds = [];
+                
+                // Identificar novos pedidos adicionados
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        novosPedidosIds.push(change.doc.id);
+                    }
+                });
                 
                 allOrders = [];
                 snapshot.forEach(doc => {
@@ -473,11 +506,16 @@
                 renderOrders();
                 
                 // Verificar se tem novo pedido
-                if (allOrders.length > previousCount && previousCount > 0) {
+                if (novosPedidosIds.length > 0 && allOrders.length > previousCount) {
+                    // Tocar o SOM personalizado
                     showNewOrderNotification();
-                    const newestOrder = allOrders[0];
-                    if (newestOrder) {
-                        showMessage(`🔔 Novo pedido recebido! ID: #${newestOrder.id.slice(-6)}`, 'yellow');
+                    
+                    const novoPedido = allOrders.find(o => o.id === novosPedidosIds[0]);
+                    if (novoPedido) {
+                        showMessage(`🔔 NOVO PEDIDO! ID: #${novoPedido.id.slice(-6)}`, 'yellow');
+                        
+                        // Rolar a página para o topo
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 }
             },
@@ -488,7 +526,7 @@
         );
     }
 
-    // Event delegation para os botões - USANDO data-order-id
+    // ==================== EVENT LISTENERS ====================
     document.addEventListener('click', async (e) => {
         // Botão de atualizar status
         const statusBtn = e.target.closest('.update-status-btn');
@@ -566,13 +604,17 @@
         });
     }
 
-    // Autenticação e inicialização
+    // ==================== INICIALIZAÇÃO ====================
     onAuthStateChanged(auth, async (user) => {
         if (!user) {
             window.location.href = 'index.html';
             return;
         }
         await loadRestaurantProfile();
+        
+        // Pré-carregar o áudio antes de iniciar o listener
+        preloadAudio();
+        
         startOrdersListener();
         showMessage('👋 Bem-vindo! Monitorando pedidos em tempo real', 'success');
     });
