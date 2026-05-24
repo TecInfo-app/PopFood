@@ -954,7 +954,7 @@
             `;
             customerProductList.appendChild(section);
             
-            // Lista de produtos (um embaixo do outro - estilo horizontal)
+            // Lista de produtos
             productsByCategory[catName].forEach(product => {
                 const card = document.createElement('div');
                 card.className = 'bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 mb-4 overflow-hidden cursor-pointer';
@@ -974,11 +974,11 @@
                             <p class="text-sm text-gray-500 mb-2 line-clamp-2">${escapeHtml(product.description || 'Sem descrição.')}</p>
                             <div class="flex items-center justify-between mt-2">
                                 <span class="text-xl font-bold text-green-600">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
-                                <button data-id="${product.id}" class="add-to-cart-simple bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-5 rounded-full text-sm transition-colors flex items-center gap-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <!-- Botão círculo com + -->
+                                <button data-id="${product.id}" class="add-to-cart-simple bg-orange-500 hover:bg-orange-600 text-white font-bold w-10 h-10 rounded-full transition-colors flex items-center justify-center shadow-md hover:shadow-lg">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                     </svg>
-                                    Adicionar
                                 </button>
                             </div>
                         </div>
