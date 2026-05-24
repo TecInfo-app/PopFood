@@ -25,17 +25,15 @@
             </a>
             <h1 class="text-3xl font-bold">📋 Pedidos</h1>
         </div>
-<div class="flex items-center gap-3">
-        <button id="togglePrintBtn" class="bg-green-500 text-white px-3 py-1 rounded-full text-sm hover:bg-green-600 transition-colors flex items-center gap-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Impressão Auto: <span id="printStatus">ON</span>
-        </button>
-
-
-        
-        <span class="bg-orange-100 text-orange-800 px-4 py-1 rounded-full text-sm">Tempo Real 🔴</span>
+        <div class="flex items-center gap-3">
+            <button id="togglePrintBtn" class="bg-green-500 text-white px-3 py-1 rounded-full text-sm hover:bg-green-600 transition-colors flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Impressão Auto: <span id="printStatus">ON</span>
+            </button>
+            <span class="bg-orange-100 text-orange-800 px-4 py-1 rounded-full text-sm">Tempo Real 🔴</span>
+        </div>
     </div>
 
     <!-- Filtros -->
@@ -76,12 +74,9 @@
     let currentFilter = 'todos';
     let unsubscribeOrders = null;
     let restaurantProfile = {};
-    let ultimoPedidoId = null;      // Para evitar som duplicado
-    let notificacaoAudio = null;    // Para o áudio personalizado
-
-/ ==================== ADICIONAR AQUI ====================
+    let ultimoPedidoId = null;
+    let notificacaoAudio = null;
     let impressaoAutomaticaAtiva = true;
-    
 
     // DOM Elements
     const activeList = document.getElementById('active-orders-list');
@@ -99,43 +94,7 @@
         setTimeout(() => messageBox.classList.add('hidden'), 3000);
     }
 
-    // ==================== FUNÇÕES DE NOTIFICAÇÃO SONORA ====================
-    function preloadAudio() {
-        notificacaoAudio = new Audio('som.mp3');
-        notificacaoAudio.load();
-        console.log("🔊 Áudio de notificação pré-carregado");
-    }
-
-    function playNotificationSound() {
-        if (notificacaoAudio) {
-            notificacaoAudio.currentTime = 0; // Reinicia o som
-            notificacaoAudio.play().catch(e => {
-                console.log('Áudio bloqueado pelo navegador:', e);
-                // Tentativa alternativa
-                const fallbackAudio = new Audio('som.mp3');
-                fallbackAudio.play().catch(e2 => console.log('Falha no áudio fallback'));
-            });
-        } else {
-            const audio = new Audio('som.mp3');
-            audio.play().catch(e => console.log('Erro ao tocar som:', e));
-        }
-    }
-
-    function showNewOrderNotification() {
-        // Notificação visual
-        notification.classList.remove('hidden');
-        setTimeout(() => notification.classList.add('show'), 10);
-        
-        // Tocar o som personalizado
-        playNotificationSound();
-        
-        setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => notification.classList.add('hidden'), 500);
-        }, 5000);
-    }
-
-        // ==================== CONTROLE DE IMPRESSÃO AUTOMÁTICA ====================
+    // ==================== CONTROLE DE IMPRESSÃO AUTOMÁTICA ====================
     function salvarPreferenciaImpressao() {
         localStorage.setItem('impressaoAutomatica', impressaoAutomaticaAtiva ? 'true' : 'false');
     }
@@ -171,6 +130,141 @@
         showMessage(`Impressão automática ${impressaoAutomaticaAtiva ? 'ativada' : 'desativada'}`, 'success');
     }
 
+    // ==================== FUNÇÕES DE NOTIFICAÇÃO SONORA ====================
+    function preloadAudio() {
+        notificacaoAudio = new Audio('som.mp3');
+        notificacaoAudio.load();
+        console.log("🔊 Áudio de notificação pré-carregado");
+    }
+
+    function playNotificationSound() {
+        if (notificacaoAudio) {
+            notificacaoAudio.currentTime = 0;
+            notificacaoAudio.play().catch(e => {
+                console.log('Áudio bloqueado pelo navegador:', e);
+                const fallbackAudio = new Audio('som.mp3');
+                fallbackAudio.play().catch(e2 => console.log('Falha no áudio fallback'));
+            });
+        } else {
+            const audio = new Audio('som.mp3');
+            audio.play().catch(e => console.log('Erro ao tocar som:', e));
+        }
+    }
+
+    function showNewOrderNotification() {
+        notification.classList.remove('hidden');
+        setTimeout(() => notification.classList.add('show'), 10);
+        playNotificationSound();
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.classList.add('hidden'), 500);
+        }, 5000);
+    }
+
+    // ==================== IMPRESSÃO DO PEDIDO ====================
+    function imprimirPedido(order) {
+        const deliveryFee = order.deliveryFee || 5.00;
+        const subtotal = order.subtotal || (order.total - deliveryFee);
+        const total = order.total || (subtotal + deliveryFee);
+        const customer = order.customer || {};
+        const orderId = order.id || '';
+        
+        let itemsHtml = '';
+        const items = order.items || [];
+        
+        items.forEach(item => {
+            let complementsHtml = '';
+            const complements = item.complements || {};
+            
+            for (const group in complements) {
+                const groupOptions = complements[group] || [];
+                if (groupOptions.length > 0) {
+                    complementsHtml += `<div style="font-weight:bold; font-size:11px; margin-top:5px;">${group}:</div>`;
+                    complementsHtml += `<ul style="padding-left:15px; margin:2px 0;">`;
+                    groupOptions.forEach(opt => {
+                        complementsHtml += `<li style="font-size:10px;">- ${opt.name} (+R$ ${(opt.price || 0).toFixed(2).replace('.', ',')})</li>`;
+                    });
+                    complementsHtml += `</ul>`;
+                }
+            }
+            
+            itemsHtml += `
+                <div style="border-bottom:1px solid #eee; padding:8px 0;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span><strong>${item.quantity || 1}x</strong> ${item.product?.name || 'Produto'}</span>
+                        <span>R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    ${complementsHtml}
+                </div>
+            `;
+        });
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Pedido #${(orderId || '').slice(-6)}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 20px; max-width: 350px; margin: 0 auto; line-height: 1.4; }
+                    @media print { @page { margin: 5mm; } body { margin: 0; } }
+                    .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
+                    .total { font-size: 18px; font-weight: bold; text-align: right; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
+                    .info { margin: 10px 0; padding: 8px; background: #f5f5f5; border-radius: 8px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto;">` : ''}
+                    <h2>${restaurantProfile.name || 'Delivery'}</h2>
+                    <p>${restaurantProfile.phone || ''}</p>
+                    <p>${new Date().toLocaleString()}</p>
+                </div>
+                
+                <h3 style="text-align:center;">Pedido #${(orderId || '').slice(-6)}</h3>
+                
+                <div class="info">
+                    <p><strong>Cliente:</strong> ${customer.name || '-'}</p>
+                    <p><strong>Telefone:</strong> ${customer.phone || '-'}</p>
+                    <p><strong>Endereço:</strong> ${customer.address || '-'} ${customer.number ? ', ' + customer.number : ''}</p>
+                    ${customer.complement ? `<p><strong>Complemento:</strong> ${customer.complement}</p>` : ''}
+                </div>
+                
+                <h4>Itens:</h4>
+                ${itemsHtml}
+                
+                <div style="margin-top: 15px;">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Subtotal:</span>
+                        <span>R$ ${(subtotal || 0).toFixed(2).replace('.', ',')}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>Taxa entrega:</span>
+                        <span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </div>
+                
+                <div class="total">
+                    <div style="display:flex; justify-content:space-between;">
+                        <span>TOTAL:</span>
+                        <span>R$ ${total.toFixed(2).replace('.', ',')}</span>
+                    </div>
+                </div>
+                
+                <p style="margin-top:15px;"><strong>Pagamento:</strong> ${order.paymentMethod || '-'}</p>
+                <p style="text-align:center; font-size:10px; margin-top:20px; color:#999;">Impresso automaticamente em: ${new Date().toLocaleString()}</p>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500);
+    }
+
     async function loadRestaurantProfile() {
         try {
             const docRef = doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main');
@@ -201,7 +295,6 @@
     }
 
     function renderOrders() {
-        // Separar pedidos ativos e finalizados
         const activeOrders = allOrders.filter(order => 
             order.status !== 'Entregue' && 
             order.status !== 'Cancelado' && 
@@ -214,7 +307,6 @@
             order.status === 'Finalizado'
         );
         
-        // Aplicar filtro nos ativos
         let filteredActive = activeOrders;
         if (currentFilter !== 'todos') {
             filteredActive = activeOrders.filter(order => order.status === currentFilter);
@@ -393,18 +485,10 @@
 
     async function updateOrderStatus(orderId, newStatus) {
         try {
-            if (!orderId) {
-                throw new Error("ID do pedido não informado");
-            }
-            
+            if (!orderId) throw new Error("ID do pedido não informado");
             console.log("Atualizando pedido:", orderId, "para status:", newStatus);
-            
             const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
-            await updateDoc(orderRef, { 
-                status: newStatus,
-                updatedAt: Timestamp.now()
-            });
-            
+            await updateDoc(orderRef, { status: newStatus, updatedAt: Timestamp.now() });
             showMessage(`✅ Status atualizado para "${newStatus}"`, 'success');
         } catch (error) {
             console.error("Erro ao atualizar status:", error);
@@ -414,15 +498,9 @@
 
     async function cancelOrder(orderId) {
         try {
-            if (!orderId) {
-                throw new Error("ID do pedido não informado");
-            }
-            
+            if (!orderId) throw new Error("ID do pedido não informado");
             const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
-            await updateDoc(orderRef, { 
-                status: 'Cancelado',
-                updatedAt: Timestamp.now()
-            });
+            await updateDoc(orderRef, { status: 'Cancelado', updatedAt: Timestamp.now() });
             showMessage('❌ Pedido cancelado!', 'yellow');
         } catch (error) {
             console.error("Erro ao cancelar pedido:", error);
@@ -487,38 +565,21 @@
                     <h2>${restaurantProfile.name || 'Delivery'}</h2>
                     <p>${restaurantProfile.phone || ''}</p>
                 </div>
-                
                 <h3 style="text-align:center;">Pedido #${(orderId || '').slice(-6)}</h3>
                 <p style="text-align:center; font-size:12px;">${formatDate(order.createdAt || order.date)}</p>
-                
                 <div class="info">
                     <p><strong>Cliente:</strong> ${customer.name || '-'}</p>
                     <p><strong>Telefone:</strong> ${customer.phone || '-'}</p>
                     <p><strong>Endereço:</strong> ${customer.address || '-'} ${customer.number ? ', ' + customer.number : ''}</p>
                     ${customer.complement ? `<p><strong>Complemento:</strong> ${customer.complement}</p>` : ''}
                 </div>
-                
                 <h4>Itens:</h4>
                 ${itemsHtml}
-                
                 <div style="margin-top: 15px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>Subtotal:</span>
-                        <span>R$ ${(subtotal || 0).toFixed(2).replace('.', ',')}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>Taxa entrega:</span>
-                        <span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span>
-                    </div>
+                    <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>R$ ${(subtotal || 0).toFixed(2).replace('.', ',')}</span></div>
+                    <div style="display:flex; justify-content:space-between;"><span>Taxa entrega:</span><span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span></div>
                 </div>
-                
-                <div class="total">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>TOTAL:</span>
-                        <span>R$ ${total.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                </div>
-                
+                <div class="total"><div style="display:flex; justify-content:space-between;"><span>TOTAL:</span><span>R$ ${total.toFixed(2).replace('.', ',')}</span></div></div>
                 <p style="margin-top:15px;"><strong>Pagamento:</strong> ${order.paymentMethod || '-'}</p>
                 <p style="text-align:center; font-size:10px; margin-top:20px; color:#999;">Impresso em: ${new Date().toLocaleString()}</p>
             </body>
@@ -529,114 +590,7 @@
         setTimeout(() => printWindow.print(), 500);
     }
 
-    // ==================== LISTENER EM TEMPO REAL COM SOM ====================
-    // Variável para controlar impressão automática
-let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
-
-        // ==================== IMPRESSÃO DO PEDIDO ====================
-    function imprimirPedido(order) {
-        const deliveryFee = order.deliveryFee || 5.00;
-        const subtotal = order.subtotal || (order.total - deliveryFee);
-        const total = order.total || (subtotal + deliveryFee);
-        const customer = order.customer || {};
-        const orderId = order.id || '';
-        
-        let itemsHtml = '';
-        const items = order.items || [];
-        
-        items.forEach(item => {
-            let complementsHtml = '';
-            const complements = item.complements || {};
-            
-            for (const group in complements) {
-                const groupOptions = complements[group] || [];
-                if (groupOptions.length > 0) {
-                    complementsHtml += `<div style="font-weight:bold; font-size:11px; margin-top:5px;">${group}:</div>`;
-                    complementsHtml += `<ul style="padding-left:15px; margin:2px 0;">`;
-                    groupOptions.forEach(opt => {
-                        complementsHtml += `<li style="font-size:10px;">- ${opt.name} (+R$ ${(opt.price || 0).toFixed(2).replace('.', ',')})</li>`;
-                    });
-                    complementsHtml += `</ul>`;
-                }
-            }
-            
-            itemsHtml += `
-                <div style="border-bottom:1px solid #eee; padding:8px 0;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span><strong>${item.quantity || 1}x</strong> ${item.product?.name || 'Produto'}</span>
-                        <span>R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
-                    </div>
-                    ${complementsHtml}
-                </div>
-            `;
-        });
-
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Pedido #${(orderId || '').slice(-6)}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; max-width: 350px; margin: 0 auto; line-height: 1.4; }
-                    @media print { @page { margin: 5mm; } body { margin: 0; } }
-                    .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
-                    .total { font-size: 18px; font-weight: bold; text-align: right; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
-                    .info { margin: 10px 0; padding: 8px; background: #f5f5f5; border-radius: 8px; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto;">` : ''}
-                    <h2>${restaurantProfile.name || 'Delivery'}</h2>
-                    <p>${restaurantProfile.phone || ''}</p>
-                    <p>${new Date().toLocaleString()}</p>
-                </div>
-                
-                <h3 style="text-align:center;">Pedido #${(orderId || '').slice(-6)}</h3>
-                
-                <div class="info">
-                    <p><strong>Cliente:</strong> ${customer.name || '-'}</p>
-                    <p><strong>Telefone:</strong> ${customer.phone || '-'}</p>
-                    <p><strong>Endereço:</strong> ${customer.address || '-'} ${customer.number ? ', ' + customer.number : ''}</p>
-                    ${customer.complement ? `<p><strong>Complemento:</strong> ${customer.complement}</p>` : ''}
-                </div>
-                
-                <h4>Itens:</h4>
-                ${itemsHtml}
-                
-                <div style="margin-top: 15px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>Subtotal:</span>
-                        <span>R$ ${(subtotal || 0).toFixed(2).replace('.', ',')}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>Taxa entrega:</span>
-                        <span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                </div>
-                
-                <div class="total">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>TOTAL:</span>
-                        <span>R$ ${total.toFixed(2).replace('.', ',')}</span>
-                    </div>
-                </div>
-                
-                <p style="margin-top:15px;"><strong>Pagamento:</strong> ${order.paymentMethod || '-'}</p>
-                <p style="text-align:center; font-size:10px; margin-top:20px; color:#999;">Impresso automaticamente em: ${new Date().toLocaleString()}</p>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 500);
-    }
-
+    // ==================== LISTENER EM TEMPO REAL COM IMPRESSÃO AUTOMÁTICA ====================
     function startOrdersListener() {
         if (unsubscribeOrders) unsubscribeOrders();
         
@@ -655,20 +609,20 @@ let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
                 
                 allOrders = [];
                 snapshot.forEach(doc => {
-                    allOrders.push({ id: doc.id, ...doc.data() });
+                    const order = { id: doc.id, ...doc.data() };
+                    allOrders.push(order);
                 });
                 
                 renderOrders();
                 
                 if (novosPedidosIds.length > 0 && allOrders.length > previousCount) {
-                    playNotificationSound();
                     showNewOrderNotification();
                     
                     const novoPedido = allOrders.find(o => o.id === novosPedidosIds[0]);
                     if (novoPedido) {
                         showMessage(`🔔 NOVO PEDIDO! ID: #${novoPedido.id.slice(-6)}`, 'yellow');
                         
-                        // ==================== IMPRESSÃO AUTOMÁTICA ====================
+                        // IMPRESSÃO AUTOMÁTICA (se ativada)
                         if (impressaoAutomaticaAtiva) {
                             console.log("🖨️ Imprimindo pedido automaticamente...");
                             setTimeout(() => {
@@ -681,7 +635,7 @@ let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
                 }
             },
             (error) => {
-                console.error("Erro no listener:", error);
+                console.error("Erro no listener de pedidos:", error);
                 activeList.innerHTML = `<div class="text-center text-red-500 py-8">⚠️ Erro ao carregar pedidos: ${error.message}</div>`;
             }
         );
@@ -689,25 +643,21 @@ let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
 
     // ==================== EVENT LISTENERS ====================
     document.addEventListener('click', async (e) => {
-        // Botão de atualizar status
         const statusBtn = e.target.closest('.update-status-btn');
         if (statusBtn) {
             e.stopPropagation();
             const orderId = statusBtn.getAttribute('data-order-id');
             const newStatus = statusBtn.getAttribute('data-status');
-            
             if (!orderId) {
                 showMessage('Erro: ID do pedido não encontrado', 'error');
                 return;
             }
-            
             if (confirm(`Alterar status do pedido #${orderId.slice(-6)} para "${newStatus}"?`)) {
                 await updateOrderStatus(orderId, newStatus);
             }
             return;
         }
         
-        // Botão de cancelar
         const cancelBtn = e.target.closest('.cancel-order-btn');
         if (cancelBtn) {
             e.stopPropagation();
@@ -718,7 +668,6 @@ let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
             return;
         }
         
-        // Botão de imprimir
         const printBtn = e.target.closest('.print-order-btn');
         if (printBtn) {
             e.stopPropagation();
@@ -732,17 +681,13 @@ let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
             return;
         }
         
-        // Abrir/fechar detalhes
         const orderDiv = e.target.closest('[data-order-id]');
         if (orderDiv && !e.target.closest('button')) {
             const details = orderDiv.querySelector('.order-details');
-            if (details) {
-                details.classList.toggle('hidden');
-            }
+            if (details) details.classList.toggle('hidden');
         }
     });
 
-    // Filtros
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.filter-btn').forEach(b => {
@@ -751,13 +696,11 @@ let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
             });
             btn.classList.remove('bg-gray-200', 'text-gray-700');
             btn.classList.add('bg-orange-500', 'text-white');
-            
             currentFilter = btn.dataset.filter;
             renderOrders();
         });
     });
 
-    // Botão de refresh manual
     if (refreshBtn) {
         refreshBtn.addEventListener('click', () => {
             showMessage('🔄 Atualizando pedidos...', 'yellow');
@@ -765,15 +708,14 @@ let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
         });
     }
 
- // Botão de toggle da impressão automática
+    // ==================== BOTÃO DE IMPRESSÃO AUTOMÁTICA ====================
     const togglePrintBtn = document.getElementById('togglePrintBtn');
     if (togglePrintBtn) {
         togglePrintBtn.addEventListener('click', toggleImpressaoAutomatica);
     }
     
-    // Carregar preferência ao iniciar
     carregarPreferenciaImpressao();
-    
+
     // ==================== INICIALIZAÇÃO ====================
     onAuthStateChanged(auth, async (user) => {
         if (!user) {
@@ -781,14 +723,10 @@ let impressaoAutomaticaAtiva = true; // Pode ser alterado pelo usuário
             return;
         }
         await loadRestaurantProfile();
-        
-        // Pré-carregar o áudio antes de iniciar o listener
         preloadAudio();
-        
         startOrdersListener();
         showMessage('👋 Bem-vindo! Monitorando pedidos em tempo real', 'success');
     });
-    
 </script>
 </body>
 </html>
