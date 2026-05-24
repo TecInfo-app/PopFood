@@ -956,36 +956,40 @@
             
             // Lista de produtos
             productsByCategory[catName].forEach(product => {
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 mb-4 overflow-hidden cursor-pointer';
-                card.dataset.id = product.id;
-                
-                card.innerHTML = `
-                    <div class="flex flex-row gap-4 p-4">
-                        <!-- Imagem -->
-                        <div class="w-28 h-28 flex-shrink-0">
-                            <img src="${product.image || 'https://placehold.co/400x300?text=Sem+Imagem'}" 
-                                 class="w-full h-full object-cover rounded-lg" 
-                                 onerror="this.src='https://placehold.co/400x300?text=Sem+Imagem'">
-                        </div>
-                        <!-- Informações -->
-                        <div class="flex-1">
-                            <h3 class="text-lg font-bold text-gray-800 mb-1">${escapeHtml(product.name)}</h3>
-                            <p class="text-sm text-gray-500 mb-2 line-clamp-2">${escapeHtml(product.description || 'Sem descrição.')}</p>
-                            <div class="flex items-center justify-between mt-2">
-                                <span class="text-xl font-bold text-green-600">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
-                                <!-- Botão círculo com + -->
-                                <button data-id="${product.id}" class="add-to-cart-simple bg-orange-500 hover:bg-orange-600 text-white font-bold w-10 h-10 rounded-full transition-colors flex items-center justify-center shadow-md hover:shadow-lg">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 mb-4 overflow-hidden cursor-pointer';
+    card.dataset.id = product.id;
+    
+    card.innerHTML = `
+        <div class="flex flex-row gap-4 p-4">
+            <!-- Imagem (clicável) -->
+            <div class="w-28 h-28 flex-shrink-0 relative product-image-click" data-id="${product.id}">
+                <img src="${product.image || 'https://placehold.co/400x300?text=Sem+Imagem'}" 
+                     class="w-full h-full object-cover rounded-lg" 
+                     onerror="this.src='https://placehold.co/400x300?text=Sem+Imagem'">
+                ${product.exclusivo ? `
+                    <div class="absolute -top-2 -right-2 bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md flex items-center gap-1">
+                        <span>⭐</span> Exclusivo
                     </div>
-                `;
-                customerProductList.appendChild(card);
-            });
+                ` : ''}
+            </div>
+            <!-- Informações (clicáveis) -->
+            <div class="flex-1 product-info-click" data-id="${product.id}">
+                <h3 class="text-lg font-bold text-gray-800 mb-1">${escapeHtml(product.name)}</h3>
+                <p class="text-sm text-gray-500 mb-2 line-clamp-2">${escapeHtml(product.description || 'Sem descrição.')}</p>
+                <div class="flex items-center justify-between mt-2">
+                    <span class="text-xl font-bold text-green-600">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+                    <button data-id="${product.id}" class="add-to-cart-simple bg-orange-500 hover:bg-orange-600 text-white font-bold w-10 h-10 rounded-full transition-colors flex items-center justify-center shadow-md hover:shadow-lg">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    customerProductList.appendChild(card);
+});
         }
     }
     loadingIndicator.classList.add('hidden');
@@ -1441,42 +1445,45 @@
         customerCepInput.addEventListener('blur', buscarCep);
     }
     
-    // Produtos
-    customerProductList.addEventListener('click', (e) => {
-        const card = e.target.closest('.product-card');
-        const addBtn = e.target.closest('.add-to-cart-simple');
-        
-        if (card && !addBtn) {
-            const productId = card.dataset.id;
-            if (productId) openProductDetailModal(productId);
-        } else if (addBtn) {
-            const productId = addBtn.dataset.id;
-            const product = allProducts.find(p => p.id === productId);
-            if (product) {
-                const complements = productComplementsCache[productId] || [];
-                const hasMandatory = complements.some(g => g.isMandatory && !g.paused);
-                
-                if (hasMandatory || complements.length > 0) {
-                    openProductDetailModal(productId);
-                } else {
-                    cart.push({
-                        product: {
-                            id: product.id,
-                            name: product.name,
-                            price: product.price || 0,
-                            image: product.image || ''
-                        },
-                        quantity: 1,
-                        complements: {},
-                        totalPrice: product.price || 0
-                    });
-                    saveCart();
-                    updateCartCount();
-                    showMessage('Produto adicionado!', 'success');
-                }
+   // Produtos
+customerProductList.addEventListener('click', (e) => {
+    const card = e.target.closest('.product-card');
+    const addBtn = e.target.closest('.add-to-cart-simple');
+    
+    if (card && !addBtn) {
+        const productId = card.dataset.id;
+        if (productId) {
+            console.log("Clicou no card, abrindo modal:", productId); // ← LINHA OPCIONAL
+            openProductDetailModal(productId);
+        }
+    } else if (addBtn) {
+        const productId = addBtn.dataset.id;
+        const product = allProducts.find(p => p.id === productId);
+        if (product) {
+            const complements = productComplementsCache[productId] || [];
+            const hasMandatory = complements.some(g => g.isMandatory && !g.paused);
+            
+            if (hasMandatory || complements.length > 0) {
+                openProductDetailModal(productId);
+            } else {
+                cart.push({
+                    product: {
+                        id: product.id,
+                        name: product.name,
+                        price: product.price || 0,
+                        image: product.image || ''
+                    },
+                    quantity: 1,
+                    complements: {},
+                    totalPrice: product.price || 0
+                });
+                saveCart();
+                updateCartCount();
+                showMessage('Produto adicionado!', 'success');
             }
         }
-    });
+    }
+});
 
     // Modal Produto
     const quantityMinus = document.getElementById('quantity-minus');
