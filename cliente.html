@@ -902,23 +902,38 @@
     }
 
     function renderProductList() {
-        const activeProducts = allProducts.filter(p => !p.paused);
-        if (activeProducts.length === 0) {
-            customerProductList.innerHTML = '<div class="text-center text-gray-500 col-span-full">Nenhum item disponível no momento.</div>';
-            loadingIndicator.classList.add('hidden');
-            return;
-        }
+    const activeProducts = allProducts.filter(p => !p.paused);
+    if (activeProducts.length === 0) {
+        customerProductList.innerHTML = '<div class="text-center text-gray-500 col-span-full">Nenhum item disponível no momento.</div>';
+        loadingIndicator.classList.add('hidden');
+        return;
+    }
 
-        const productsByCategory = {};
-        activeProducts.forEach(product => {
-            const category = allCategories.find(c => c.id === product.categoryId);
-            const catName = category?.name || 'Sem Categoria';
-            if (!productsByCategory[catName]) productsByCategory[catName] = [];
-            productsByCategory[catName].push(product);
-        });
+    // Agrupar produtos por categoria
+    const productsByCategory = {};
+    activeProducts.forEach(product => {
+        const category = allCategories.find(c => c.id === product.categoryId);
+        const catName = category?.name || 'Sem Categoria';
+        if (!productsByCategory[catName]) productsByCategory[catName] = [];
+        productsByCategory[catName].push(product);
+    });
 
-        customerProductList.innerHTML = '';
-        for (const catName in productsByCategory) {
+    // Criar array com as categorias e sua ordem
+    const categoriasComOrdem = allCategories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        order: cat.order !== undefined ? cat.order : 999
+    }));
+    
+    // Ordenar pelo campo 'order'
+    categoriasComOrdem.sort((a, b) => a.order - b.order);
+
+    customerProductList.innerHTML = '';
+    
+    // Percorrer categorias na ordem definida
+    for (const categoria of categoriasComOrdem) {
+        const catName = categoria.name;
+        if (productsByCategory[catName] && productsByCategory[catName].length > 0) {
             const section = document.createElement('div');
             section.className = 'col-span-full mb-4 mt-6';
             section.innerHTML = `<h2 class="text-2xl font-bold text-gray-800">${escapeHtml(catName)}</h2>`;
@@ -939,8 +954,9 @@
                 customerProductList.appendChild(card);
             });
         }
-        loadingIndicator.classList.add('hidden');
     }
+    loadingIndicator.classList.add('hidden');
+}
 
     // ==================== DETALHE DO PRODUTO ====================
     function openProductDetailModal(productId) {
