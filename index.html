@@ -180,11 +180,11 @@
 
 <script type="module">
     import { 
-    db, auth, 
-    collection, doc, getDocs, getDoc, setDoc, updateDoc, 
-    deleteDoc, query, where, orderBy, addDoc, onSnapshot,
-    Timestamp, COLLECTIONS 
-} from './firebase-config.js';
+        db, auth, 
+        collection, doc, getDocs, getDoc, setDoc, updateDoc, 
+        deleteDoc, query, where, orderBy, addDoc, onSnapshot,
+        Timestamp, COLLECTIONS, writeBatch
+    } from './firebase-config.js';
     import { 
         signInWithEmailAndPassword, createUserWithEmailAndPassword,
         signOut, onAuthStateChanged 
@@ -306,6 +306,82 @@
         page.classList.remove('hidden');
     }
 
+    // ==================== FUNÇÃO PARA INICIALIZAR ORDEM DAS CATEGORIAS ====================
+    async function inicializarOrdemCategorias() {
+        const precisaAtualizar = allCategories.some(cat => cat.order === undefined);
+        
+        if (precisaAtualizar && allCategories.length > 0) {
+            console.log("📦 Inicializando ordem das categorias...");
+            
+            const updatedCategories = allCategories.map((cat, idx) => ({
+                ...cat,
+                order: idx
+            }));
+            
+            const batch = writeBatch(db);
+            updatedCategories.forEach(cat => {
+                const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
+                batch.update(catRef, { order: cat.order });
+            });
+            
+            await batch.commit();
+            console.log("✅ Ordem das categorias salva!");
+            
+            // Recarregar categorias
+            const catSnapshot = await getDocs(collection(db, COLLECTIONS.CATEGORIES));
+            allCategories = [];
+            catSnapshot.forEach(doc => {
+                allCategories.push({ id: doc.id, ...doc.data() });
+            });
+            renderCategories();
+        }
+    }
+
+    // ==================== FUNÇÃO PARA MOVER CATEGORIA ====================
+    async function moveCategory(categoryId, direction) {
+        const currentIndex = allCategories.findIndex(c => c.id === categoryId);
+        if (currentIndex === -1) return;
+        
+        let newIndex;
+        if (direction === 'up') {
+            newIndex = currentIndex - 1;
+        } else if (direction === 'down') {
+            newIndex = currentIndex + 1;
+        } else {
+            return;
+        }
+        
+        if (newIndex < 0 || newIndex >= allCategories.length) return;
+        
+        // Criar nova ordem
+        const newCategories = [...allCategories];
+        const temp = newCategories[currentIndex];
+        newCategories[currentIndex] = newCategories[newIndex];
+        newCategories[newIndex] = temp;
+        
+        const updatedCategories = newCategories.map((cat, idx) => ({
+            ...cat,
+            order: idx
+        }));
+        
+        // Salvar no Firebase
+        const batch = writeBatch(db);
+        updatedCategories.forEach(cat => {
+            const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
+            batch.update(catRef, { order: cat.order });
+        });
+        
+        try {
+            await batch.commit();
+            allCategories = updatedCategories;
+            renderCategories();
+            showMessage('Ordem atualizada!', 'success');
+        } catch (error) {
+            console.error("Erro ao salvar ordem:", error);
+            showMessage('Erro ao reordenar categorias', 'error');
+        }
+    }
+
     // Autenticação
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -373,7 +449,10 @@
             snapshot.forEach(doc => {
                 allCategories.push({ id: doc.id, ...doc.data() });
             });
-            ();
+            renderCategories();
+            
+            // Inicializar ordem das categorias (se necessário)
+            inicializarOrdemCategorias();
         });
 
         onSnapshot(collection(db, COLLECTIONS.COMPLEMENTS), (snapshot) => {
@@ -383,8 +462,6 @@
             });
         });
     }
-
-    
 
     async function loadRestaurantProfile() {
         const profileDoc = await getDoc(doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main'));
@@ -421,179 +498,81 @@
         }
     }
 
-    // Categorias
+    // ==================== CATEGORIAS COM REORDENAÇÃO ====================
     function renderCategories() {
-    categoryList.innerHTML = '';
-    productCategorySelect.innerHTML = '<option value="">Selecione uma categoria</option>';
-    
-    // Ordenar categorias pelo campo 'order'
-    const sortedCategories = [...allCategories].sort((a, b) => {
-        const orderA = a.order !== undefined ? a.order : 999;
-        const orderB = b.order !== undefined ? b.order : 999;
-        return orderA - orderB;
-    });
-    
-    sortedCategories.forEach((category, index) => {
-        const div = document.createElement('div');
-        div.className = 'flex items-center bg-yellow-200 text-yellow-900 rounded-full py-1 px-3 text-sm font-semibold gap-1';
-        div.innerHTML = `
-            <span>${category.name}</span>
-            <div class="flex items-center gap-1 ml-1">
-                ${index > 0 ? `<button data-id="${category.id}" data-direction="up" class="move-category-btn text-yellow-700 hover:text-yellow-900 transition-colors" title="Mover para cima">
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
-</button>` : ''}
-${index < sortedCategories.length - 1 ? `<button data-id="${category.id}" data-direction="down" class="move-category-btn text-yellow-700 hover:text-yellow-900 transition-colors" title="Mover para baixo">
-    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-</button>` : ''}
-            </div>
-        `;
-        categoryList.appendChild(div);
+        categoryList.innerHTML = '';
+        productCategorySelect.innerHTML = '<option value="">Selecione uma categoria</option>';
         
-        const option = document.createElement('option');
-        option.value = category.id;
-        option.textContent = category.name;
-        productCategorySelect.appendChild(option);
-    });
-}
+        // Ordenar categorias pelo campo 'order'
+        const sortedCategories = [...allCategories].sort((a, b) => {
+            const orderA = a.order !== undefined ? a.order : 999;
+            const orderB = b.order !== undefined ? b.order : 999;
+            return orderA - orderB;
+        });
+        
+        sortedCategories.forEach((category, index) => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center bg-yellow-200 text-yellow-900 rounded-full py-1 px-3 text-sm font-semibold gap-1';
+            div.innerHTML = `
+                <span>${category.name}</span>
+                <div class="flex items-center gap-1 ml-1">
+                    ${index > 0 ? `<button data-id="${category.id}" data-direction="up" class="move-category-btn text-yellow-700 hover:text-yellow-900 transition-colors" title="Mover para cima">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                    </button>` : ''}
+                    ${index < sortedCategories.length - 1 ? `<button data-id="${category.id}" data-direction="down" class="move-category-btn text-yellow-700 hover:text-yellow-900 transition-colors" title="Mover para baixo">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>` : ''}
+                    <button data-id="${category.id}" class="remove-category-btn ml-1 text-yellow-700 hover:text-yellow-900 transition-colors">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+            `;
+            categoryList.appendChild(div);
+            
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            productCategorySelect.appendChild(option);
+        });
+    }
 
     addCategoryBtn.addEventListener('click', async () => {
-    const name = categoryNameInput.value.trim();
-    if (!name) return showMessage('Digite um nome', 'error');
-    if (allCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-        return showMessage('Categoria já existe', 'error');
-    }
-    
-    const nextOrder = allCategories.length;
-    
-    await addDoc(collection(db, COLLECTIONS.CATEGORIES), { 
-        name, 
-        order: nextOrder,
-        createdAt: Timestamp.now() 
+        const name = categoryNameInput.value.trim();
+        if (!name) return showMessage('Digite um nome', 'error');
+        if (allCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+            return showMessage('Categoria já existe', 'error');
+        }
+        
+        const nextOrder = allCategories.length;
+        
+        await addDoc(collection(db, COLLECTIONS.CATEGORIES), { 
+            name, 
+            order: nextOrder,
+            createdAt: Timestamp.now() 
+        });
+        categoryNameInput.value = '';
+        showMessage('Categoria adicionada!', 'success');
     });
-    categoryNameInput.value = '';
-    showMessage('Categoria adicionada!', 'success');
-});
 
     categoryList.addEventListener('click', async (e) => {
-    const moveBtn = e.target.closest('.move-category-btn');
-    if (moveBtn) {
-        e.stopPropagation();
-        const categoryId = moveBtn.dataset.id;
-        const direction = moveBtn.dataset.direction;
-        await moveCategory(categoryId, direction);
-        return;
-    }
-    
-    const removeBtn = e.target.closest('.remove-category-btn');
-    if (removeBtn) {
-        const id = removeBtn.dataset.id;
-        showConfirmationModal('Remover Categoria', 'Tem certeza?', async () => {
-            await deleteDoc(doc(db, COLLECTIONS.CATEGORIES, id));
-            showMessage('Categoria removida', 'success');
-        });
-    }
-});
-
-     // ==================== FUNÇÃO PARA INICIALIZAR ORDEM DAS CATEGORIAS ====================
-    async function inicializarOrdemCategorias() {
-        // Verificar se as categorias já têm ordem
-        const precisaAtualizar = allCategories.some(cat => cat.order === undefined);
-        
-        if (precisaAtualizar && allCategories.length > 0) {
-            console.log("📦 Inicializando ordem das categorias...");
-            
-            const updatedCategories = allCategories.map((cat, idx) => ({
-                ...cat,
-                order: idx
-            }));
-            
-            const batch = writeBatch(db);
-            updatedCategories.forEach(cat => {
-                const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
-                batch.update(catRef, { order: cat.order });
-            });
-            
-            await batch.commit();
-            console.log("✅ Ordem das categorias salva!");
-            
-            // Recarregar categorias
-            const catSnapshot = await getDocs(collection(db, COLLECTIONS.CATEGORIES));
-            allCategories = [];
-            catSnapshot.forEach(doc => {
-                allCategories.push({ id: doc.id, ...doc.data() });
-            });
-            renderCategories();
+        const moveBtn = e.target.closest('.move-category-btn');
+        if (moveBtn) {
+            e.stopPropagation();
+            const categoryId = moveBtn.dataset.id;
+            const direction = moveBtn.dataset.direction;
+            await moveCategory(categoryId, direction);
+            return;
         }
-    }
-
-// ⬇️⬇️⬇️ ADICIONE ESTA LINHA ⬇️⬇️⬇️
-        inicializarOrdemCategorias();
+        
+        const removeBtn = e.target.closest('.remove-category-btn');
+        if (removeBtn) {
+            const id = removeBtn.dataset.id;
+            showConfirmationModal('Remover Categoria', 'Tem certeza?', async () => {
+                await deleteDoc(doc(db, COLLECTIONS.CATEGORIES, id));
+                showMessage('Categoria removida', 'success');
+            });
+        }
     });
-
-    // Complementos
-    onSnapshot(collection(db, COLLECTIONS.COMPLEMENTS), (snapshot) => {
-        productComplementsCache = {};
-        snapshot.forEach(doc => {
-            productComplementsCache[doc.id] = doc.data().groups || [];
-        });
-    });
-}
-    
-
-    async function moveCategory(categoryId, direction) {
-    console.log("Movendo categoria:", categoryId, direction);
-    
-    const currentIndex = allCategories.findIndex(c => c.id === categoryId);
-    if (currentIndex === -1) {
-        console.log("Categoria não encontrada");
-        return;
-    }
-    
-    let newIndex;
-    if (direction === 'up') {
-        newIndex = currentIndex - 1;
-    } else if (direction === 'down') {
-        newIndex = currentIndex + 1;
-    } else {
-        return;
-    }
-    
-    if (newIndex < 0 || newIndex >= allCategories.length) {
-        console.log("Limite atingido");
-        return;
-    }
-    
-    console.log(`Movendo de ${currentIndex} para ${newIndex}`);
-    
-    // Criar nova ordem
-    const newCategories = [...allCategories];
-    const temp = newCategories[currentIndex];
-    newCategories[currentIndex] = newCategories[newIndex];
-    newCategories[newIndex] = temp;
-    
-    const updatedCategories = newCategories.map((cat, idx) => ({
-        ...cat,
-        order: idx
-    }));
-    
-    // Salvar no Firebase
-    const batch = writeBatch(db);
-    updatedCategories.forEach(cat => {
-        const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
-        batch.update(catRef, { order: cat.order });
-    });
-    
-    try {
-        await batch.commit();
-        console.log("✅ Ordem salva!");
-        allCategories = updatedCategories;
-        renderCategories();
-        showMessage('Ordem atualizada!', 'success');
-    } catch (error) {
-        console.error("Erro ao salvar ordem:", error);
-        showMessage('Erro ao reordenar categorias', 'error');
-    }
-}
 
     // Produtos
     function renderProductList(products) {
