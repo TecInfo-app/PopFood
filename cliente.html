@@ -957,13 +957,13 @@
             // Lista de produtos
             productsByCategory[catName].forEach(product => {
     const card = document.createElement('div');
-    card.className = 'bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 mb-4 overflow-hidden cursor-pointer';
+    card.className = 'bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 mb-4 overflow-hidden cursor-pointer product-card';
     card.dataset.id = product.id;
     
     card.innerHTML = `
         <div class="flex flex-row gap-4 p-4">
-            <!-- Imagem (clicável) -->
-            <div class="w-28 h-28 flex-shrink-0 relative product-image-click" data-id="${product.id}">
+            <!-- Imagem -->
+            <div class="w-28 h-28 flex-shrink-0 relative">
                 <img src="${product.image || 'https://placehold.co/400x300?text=Sem+Imagem'}" 
                      class="w-full h-full object-cover rounded-lg" 
                      onerror="this.src='https://placehold.co/400x300?text=Sem+Imagem'">
@@ -973,8 +973,8 @@
                     </div>
                 ` : ''}
             </div>
-            <!-- Informações (clicáveis) -->
-            <div class="flex-1 product-info-click" data-id="${product.id}">
+            <!-- Informações -->
+            <div class="flex-1">
                 <h3 class="text-lg font-bold text-gray-800 mb-1">${escapeHtml(product.name)}</h3>
                 <p class="text-sm text-gray-500 mb-2 line-clamp-2">${escapeHtml(product.description || 'Sem descrição.')}</p>
                 <div class="flex items-center justify-between mt-2">
@@ -1444,18 +1444,16 @@
     if (customerCepInput) {
         customerCepInput.addEventListener('blur', buscarCep);
     }
+  
     
-   // Produtos
+    // Produtos
 customerProductList.addEventListener('click', (e) => {
     const card = e.target.closest('.product-card');
     const addBtn = e.target.closest('.add-to-cart-simple');
     
     if (card && !addBtn) {
         const productId = card.dataset.id;
-        if (productId) {
-            console.log("Clicou no card, abrindo modal:", productId); // ← LINHA OPCIONAL
-            openProductDetailModal(productId);
-        }
+        if (productId) openProductDetailModal(productId);
     } else if (addBtn) {
         const productId = addBtn.dataset.id;
         const product = allProducts.find(p => p.id === productId);
