@@ -373,7 +373,7 @@
             snapshot.forEach(doc => {
                 allCategories.push({ id: doc.id, ...doc.data() });
             });
-            renderCategories();
+            ();
         });
 
         onSnapshot(collection(db, COLLECTIONS.COMPLEMENTS), (snapshot) => {
@@ -440,14 +440,11 @@
             <span>${category.name}</span>
             <div class="flex items-center gap-1 ml-1">
                 ${index > 0 ? `<button data-id="${category.id}" data-direction="up" class="move-category-btn text-yellow-700 hover:text-yellow-900 transition-colors" title="Mover para cima">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
-                </button>` : ''}
-                ${index < sortedCategories.length - 1 ? `<button data-id="${category.id}" data-direction="down" class="move-category-btn text-yellow-700 hover:text-yellow-900 transition-colors" title="Mover para baixo">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-                </button>` : ''}
-                <button data-id="${category.id}" class="remove-category-btn ml-1 text-yellow-700 hover:text-yellow-900 transition-colors">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+</button>` : ''}
+${index < sortedCategories.length - 1 ? `<button data-id="${category.id}" data-direction="down" class="move-category-btn text-yellow-700 hover:text-yellow-900 transition-colors" title="Mover para baixo">
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+</button>` : ''}
             </div>
         `;
         categoryList.appendChild(div);
@@ -497,9 +494,60 @@
     }
 });
 
+     // ==================== FUNÇÃO PARA INICIALIZAR ORDEM DAS CATEGORIAS ====================
+    async function inicializarOrdemCategorias() {
+        // Verificar se as categorias já têm ordem
+        const precisaAtualizar = allCategories.some(cat => cat.order === undefined);
+        
+        if (precisaAtualizar && allCategories.length > 0) {
+            console.log("📦 Inicializando ordem das categorias...");
+            
+            const updatedCategories = allCategories.map((cat, idx) => ({
+                ...cat,
+                order: idx
+            }));
+            
+            const batch = writeBatch(db);
+            updatedCategories.forEach(cat => {
+                const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
+                batch.update(catRef, { order: cat.order });
+            });
+            
+            await batch.commit();
+            console.log("✅ Ordem das categorias salva!");
+            
+            // Recarregar categorias
+            const catSnapshot = await getDocs(collection(db, COLLECTIONS.CATEGORIES));
+            allCategories = [];
+            catSnapshot.forEach(doc => {
+                allCategories.push({ id: doc.id, ...doc.data() });
+            });
+            renderCategories();
+        }
+    }
+
+// ⬇️⬇️⬇️ ADICIONE ESTA LINHA ⬇️⬇️⬇️
+        inicializarOrdemCategorias();
+    });
+
+    // Complementos
+    onSnapshot(collection(db, COLLECTIONS.COMPLEMENTS), (snapshot) => {
+        productComplementsCache = {};
+        snapshot.forEach(doc => {
+            productComplementsCache[doc.id] = doc.data().groups || [];
+        });
+    });
+}
+    
+
     async function moveCategory(categoryId, direction) {
+    console.log("Movendo categoria:", categoryId, direction);
+    
     const currentIndex = allCategories.findIndex(c => c.id === categoryId);
-    if (currentIndex === -1) return;
+    if (currentIndex === -1) {
+        console.log("Categoria não encontrada");
+        return;
+    }
     
     let newIndex;
     if (direction === 'up') {
@@ -510,8 +558,14 @@
         return;
     }
     
-    if (newIndex < 0 || newIndex >= allCategories.length) return;
+    if (newIndex < 0 || newIndex >= allCategories.length) {
+        console.log("Limite atingido");
+        return;
+    }
     
+    console.log(`Movendo de ${currentIndex} para ${newIndex}`);
+    
+    // Criar nova ordem
     const newCategories = [...allCategories];
     const temp = newCategories[currentIndex];
     newCategories[currentIndex] = newCategories[newIndex];
@@ -522,16 +576,23 @@
         order: idx
     }));
     
+    // Salvar no Firebase
     const batch = writeBatch(db);
     updatedCategories.forEach(cat => {
         const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
-        batch.set(catRef, { name: cat.name, order: cat.order, updatedAt: Timestamp.now() });
+        batch.update(catRef, { order: cat.order });
     });
     
-    await batch.commit();
-    allCategories = updatedCategories;
-    renderCategories();
-    showMessage('Ordem atualizada!', 'success');
+    try {
+        await batch.commit();
+        console.log("✅ Ordem salva!");
+        allCategories = updatedCategories;
+        renderCategories();
+        showMessage('Ordem atualizada!', 'success');
+    } catch (error) {
+        console.error("Erro ao salvar ordem:", error);
+        showMessage('Erro ao reordenar categorias', 'error');
+    }
 }
 
     // Produtos
