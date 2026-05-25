@@ -509,12 +509,20 @@
     }
 
     async function printOrder(order) {
-    // Carregar perfil do restaurante se necessário
-    if (!restaurantProfile.name) {
+    // Carregar perfil do restaurante com logo
+    let perfilRestaurante = restaurantProfile;
+    
+    if (!perfilRestaurante.name || !perfilRestaurante.logo) {
         try {
             const profileDoc = await getDoc(doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main'));
             if (profileDoc.exists()) {
-                restaurantProfile = profileDoc.data();
+                perfilRestaurante = profileDoc.data();
+                // Atualizar a variável global também
+                restaurantProfile = perfilRestaurante;
+                console.log("✅ Perfil carregado:", perfilRestaurante.name);
+                console.log("✅ Logo URL:", perfilRestaurante.logo);
+            } else {
+                console.warn("⚠️ Perfil não encontrado");
             }
         } catch (error) {
             console.error("Erro ao carregar perfil:", error);
@@ -662,9 +670,9 @@
         </head>
         <body>
             <div class="header">
-                ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" class="logo" onerror="this.style.display='none'">` : ''}
-                <div class="restaurant-name">${restaurantProfile.name || 'POPFOOD DELIVERY'}</div>
-                <div class="restaurant-phone">📞 ${restaurantProfile.phone || ''}</div>
+                ${perfilRestaurante.logo ? `<img src="${perfilRestaurante.logo}" class="logo" onerror="console.log('Erro ao carregar logo'); this.style.display='none'">` : ''}
+                <div class="restaurant-name">${perfilRestaurante.name || 'POPFOOD DELIVERY'}</div>
+                <div class="restaurant-phone">📞 ${perfilRestaurante.phone || ''}</div>
                 <div class="restaurant-phone">📅 ${new Date().toLocaleString()}</div>
             </div>
             
@@ -710,8 +718,8 @@
             </div>
             
             <div class="footer">
-                PopFood Delivery - Agradecemos sua preferência!<br>
-                ${restaurantProfile.address || ''}
+                ${perfilRestaurante.name || 'PopFood Delivery'} - Agradecemos sua preferência!<br>
+                ${perfilRestaurante.address || ''}
             </div>
         </body>
         </html>
@@ -720,6 +728,8 @@
     printWindow.focus();
     setTimeout(() => printWindow.print(), 500);
 }
+
+    
     // ==================== LISTENER EM TEMPO REAL COM IMPRESSÃO AUTOMÁTICA ====================
     function startOrdersListener() {
         if (unsubscribeOrders) unsubscribeOrders();
