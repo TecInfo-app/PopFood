@@ -30,6 +30,7 @@ const COLLECTIONS = {
     ORDERS: 'orders',
     CLIENTS: 'clients',
     RESTAURANT_PROFILE: 'restaurantProfile'
+    COUPONS: 'coupons'  // ← ADICIONAR ESTA LINHA
 };
 
 export { 
