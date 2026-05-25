@@ -509,31 +509,42 @@
     }
 
    async function printOrder(order) {
-    // Carregar perfil do restaurante diretamente do Firebase
-    let perfilRestaurante = {};
-    let carregouPerfil = false;
+    // Tentar carregar perfil de diferentes formas
+    let perfilRestaurante = { name: '', phone: '', address: '', logo: null };
     
     try {
-        console.log("🔍 Buscando perfil do restaurante...");
+        // Tentativa 1: Buscar do Firestore
+        console.log("🔍 Tentando buscar perfil do Firestore...");
         const profileDoc = await getDoc(doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main'));
         
         if (profileDoc.exists()) {
             perfilRestaurante = profileDoc.data();
-            carregouPerfil = true;
-            console.log("✅ Perfil carregado com sucesso!");
-            console.log("   Nome:", perfilRestaurante.name);
-            console.log("   Telefone:", perfilRestaurante.phone);
-            console.log("   Logo:", perfilRestaurante.logo ? "Presente" : "Ausente");
+            console.log("✅ Perfil carregado do Firestore:", perfilRestaurante.name);
         } else {
-            console.warn("⚠️ Documento 'main' não encontrado na coleção 'restaurantProfile'");
-            console.warn("   Por favor, salve o perfil em perfil.html primeiro!");
+            console.warn("⚠️ Perfil não encontrado no Firestore");
+            
+            // Tentativa 2: Buscar do localStorage (fallback)
+            const savedProfile = localStorage.getItem('restaurantProfile');
+            if (savedProfile) {
+                perfilRestaurante = JSON.parse(savedProfile);
+                console.log("✅ Perfil carregado do localStorage:", perfilRestaurante.name);
+            } else {
+                console.error("❌ Perfil não encontrado em nenhum lugar");
+            }
         }
     } catch (error) {
         console.error("❌ Erro ao carregar perfil:", error);
+        
+        // Fallback: tentar do localStorage
+        const savedProfile = localStorage.getItem('restaurantProfile');
+        if (savedProfile) {
+            perfilRestaurante = JSON.parse(savedProfile);
+            console.log("✅ Perfil carregado do localStorage (fallback):", perfilRestaurante.name);
+        }
     }
     
-    // Se não conseguiu carregar o perfil, mostrar mensagem de erro na impressão
-    if (!carregouPerfil || !perfilRestaurante.name) {
+    // Se ainda não tem nome, mostrar erro
+    if (!perfilRestaurante.name) {
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -542,21 +553,16 @@
                 <title>Erro - Perfil não configurado</title>
                 <style>
                     body { font-family: Arial; padding: 20px; text-align: center; }
-                    .error { color: red; margin: 20px 0; }
+                    .error { color: red; }
                     .info { background: #f5f5f5; padding: 15px; border-radius: 8px; text-align: left; display: inline-block; }
                 </style>
             </head>
             <body>
-                <h1 class="error">⚠️ ERRO AO IMPRIMIR</h1>
+                <h1 class="error">⚠️ Perfil do Restaurante não encontrado</h1>
                 <div class="info">
-                    <p><strong>Problema:</strong> Perfil do restaurante não configurado</p>
-                    <p><strong>Solução:</strong></p>
-                    <ol>
-                        <li>Acesse o <strong>perfil.html</strong></li>
-                        <li>Preencha o <strong>Nome do Restaurante</strong></li>
-                        <li>Clique em <strong>Salvar Perfil</strong></li>
-                        <li>Volte e tente imprimir novamente</li>
-                    </ol>
+                    <p><strong>Diagnóstico:</strong></p>
+                    <p>Firestore: ${profileDoc?.exists() ? '✅ Existe' : '❌ Não encontrado'}</p>
+                    <p>localStorage: ${localStorage.getItem('restaurantProfile') ? '✅ Existe' : '❌ Não encontrado'}</p>
                 </div>
                 <p><button onclick="window.close()">Fechar</button></p>
             </body>
@@ -613,17 +619,11 @@
             <title>Pedido #${(orderId || '').slice(-6)}</title>
             <style>
                 * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { 
-                    font-family: 'Arial', sans-serif; 
-                    padding: 20px; 
-                    max-width: 350px; 
-                    margin: 0 auto; 
-                    line-height: 1.4;
-                }
+                body { font-family: 'Arial', sans-serif; padding: 20px; max-width: 350px; margin: 0 auto; line-height: 1.4; }
                 @media print { @page { margin: 5mm; } body { margin: 0; padding: 10px; } }
                 .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
                 .logo { max-height: 50px; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto; }
-                .restaurant-name { font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+                .restaurant-name { font-size: 16px; font-weight: bold; }
                 .restaurant-phone { font-size: 10px; color: #666; margin-top: 3px; }
                 .order-title { text-align: center; font-size: 14px; font-weight: bold; margin: 10px 0 5px 0; }
                 .order-date { text-align: center; font-size: 10px; color: #888; margin-bottom: 15px; }
@@ -638,7 +638,7 @@
         </head>
         <body>
             <div class="header">
-                ${perfilRestaurante.logo && perfilRestaurante.logo !== '' ? `<img src="${perfilRestaurante.logo}" class="logo" onerror="this.style.display='none'" alt="Logo">` : ''}
+                ${perfilRestaurante.logo ? `<img src="${perfilRestaurante.logo}" class="logo" onerror="this.style.display='none'" alt="Logo">` : ''}
                 <div class="restaurant-name">${perfilRestaurante.name || ''}</div>
                 <div class="restaurant-phone">📞 ${perfilRestaurante.phone || ''}</div>
                 <div class="restaurant-phone">📅 ${new Date().toLocaleString()}</div>
@@ -652,7 +652,6 @@
                 <p><strong>Telefone:</strong> ${customer.phone || '-'}</p>
                 <p><strong>Endereço:</strong> ${customer.address || '-'} ${customer.number ? ', ' + customer.number : ''}</p>
                 ${customer.complement ? `<p><strong>Complemento:</strong> ${customer.complement}</p>` : ''}
-                ${customer.reference ? `<p><strong>Referência:</strong> ${customer.reference}</p>` : ''}
             </div>
             
             <div class="items-title">Itens:</div>
@@ -664,15 +663,9 @@
             
             <div class="total-final"><div style="display:flex; justify-content:space-between;"><span>TOTAL:</span><span>R$ ${total.toFixed(2).replace('.', ',')}</span></div></div>
             
-            <div class="payment">
-                <p><strong>Pagamento:</strong> ${order.paymentMethod || '-'}</p>
-                ${order.cupomCode ? `<p style="margin-top:5px; font-size:10px; color:#16a34a;">🎟️ Cupom aplicado: ${order.cupomCode}</p>` : ''}
-            </div>
+            <div class="payment"><p><strong>Pagamento:</strong> ${order.paymentMethod || '-'}</p></div>
             
-            <div class="footer">
-                ${perfilRestaurante.name || ''} - Agradecemos sua preferência!<br>
-                ${perfilRestaurante.address || ''}
-            </div>
+            <div class="footer">${perfilRestaurante.name || ''} - Agradecemos sua preferência!</div>
         </body>
         </html>
     `);
