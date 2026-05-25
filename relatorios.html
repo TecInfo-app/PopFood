@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PopFood - Relatórios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .stat-card { transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-5px); }
+    </style>
+</head>
+<body class="p-4 bg-gray-100 min-h-screen">
+
+<div class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-6xl mx-auto my-8">
+
+    <!-- Cabeçalho -->
+    <div class="flex items-center justify-between mb-6 pb-4 border-b">
+        <div class="flex items-center gap-4">
+            <a href="index.html" class="text-gray-500 hover:text-gray-800">
+                <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                </svg>
+            </a>
+            <h1 class="text-3xl font-bold text-gray-800">📊 Relatórios</h1>
+        </div>
+        <button id="exportBtn" class="bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Exportar CSV
+        </button>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 text-white stat-card">
+            <p class="text-sm opacity-90">Faturamento Total</p>
+            <p class="text-2xl font-bold" id="totalRevenue">R$ 0,00</p>
+            <p class="text-xs opacity-75" id="totalRevenuePeriod">últimos 30 dias</p>
+        </div>
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-4 text-white stat-card">
+            <p class="text-sm opacity-90">Total de Pedidos</p>
+            <p class="text-2xl font-bold" id="totalOrders">0</p>
+            <p class="text-xs opacity-75" id="totalOrdersPeriod">últimos 30 dias</p>
+        </div>
+        <div class="bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl p-4 text-white stat-card">
+            <p class="text-sm opacity-90">Clientes Ativos</p>
+            <p class="text-2xl font-bold" id="totalClients">0</p>
+            <p class="text-xs opacity-75">cadastrados</p>
+        </div>
+        <div class="bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl p-4 text-white stat-card">
+            <p class="text-sm opacity-90">Ticket Médio</p>
+            <p class="text-2xl font-bold" id="avgTicket">R$ 0,00</p>
+            <p class="text-xs opacity-75">por pedido</p>
+        </div>
+    </div>
+
+    <!-- Filtros de Período -->
+    <div class="flex flex-wrap gap-2 mb-6">
+        <button class="period-btn bg-orange-500 text-white px-4 py-2 rounded-lg text-sm" data-period="hoje">📅 Hoje</button>
+        <button class="period-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm" data-period="semana">📆 Esta Semana</button>
+        <button class="period-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm" data-period="mes">📅 Este Mês</button>
+        <button class="period-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm" data-period="ano">📆 Este Ano</button>
+        <div class="flex gap-2 ml-auto">
+            <input type="date" id="startDate" class="border rounded-lg px-3 py-2 text-sm">
+            <input type="date" id="endDate" class="border rounded-lg px-3 py-2 text-sm">
+            <button id="applyDateRange" class="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-600">Aplicar</button>
+        </div>
+    </div>
+
+    <!-- Gráfico de Vendas -->
+    <div class="bg-white rounded-xl shadow-md p-4 mb-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">📈 Vendas por Período</h2>
+        <canvas id="salesChart" height="100"></canvas>
+    </div>
+
+    <!-- Produtos Mais Vendidos e Vendas por Categoria -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">🍔 Produtos Mais Vendidos</h2>
+            <div id="topProductsList" class="space-y-3">
+                <p class="text-gray-500 text-center py-4">Carregando...</p>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">🏷️ Vendas por Categoria</h2>
+            <canvas id="categoryChart" height="200"></canvas>
+        </div>
+    </div>
+
+    <!-- Últimos Pedidos -->
+    <div class="bg-white rounded-xl shadow-md p-4">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">📋 Últimos Pedidos</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="p-2 text-left">Pedido</th>
+                        <th class="p-2 text-left">Cliente</th>
+                        <th class="p-2 text-left">Data</th>
+                        <th class="p-2 text-left">Status</th>
+                        <th class="p-2 text-right">Valor</th>
+                    </tr>
+                </thead>
+                <tbody id="recentOrdersList">
+                    <tr><td colspan="5" class="text-center py-4 text-gray-500">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="messageBox" class="fixed bottom-4 right-4 p-4 text-white rounded-lg shadow-lg z-50 hidden"></div>
+
+<script type="module">
+    import { db, auth, collection, getDocs, query, where, orderBy, Timestamp, COLLECTIONS } from './firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+    let allOrders = [];
+    let allClients = [];
+    let salesChart = null;
+    let categoryChart = null;
+    let currentPeriod = 'mes';
+
+    // Elementos DOM
+    const totalRevenueEl = document.getElementById('totalRevenue');
+    const totalOrdersEl = document.getElementById('totalOrders');
+    const totalClientsEl = document.getElementById('totalClients');
+    const avgTicketEl = document.getElementById('avgTicket');
+    const topProductsList = document.getElementById('topProductsList');
+    const recentOrdersList = document.getElementById('recentOrdersList');
+
+    function showMessage(msg, type = 'success') {
+        const msgBox = document.getElementById('messageBox');
+        msgBox.textContent = msg;
+        msgBox.classList.remove('hidden', 'bg-green-500', 'bg-red-500');
+        msgBox.classList.add(type === 'success' ? 'bg-green-500' : 'bg-red-500');
+        setTimeout(() => msgBox.classList.add('hidden'), 3000);
+    }
+
+    function formatDate(dateValue) {
+        if (!dateValue) return '-';
+        if (dateValue && typeof dateValue.toDate === 'function') {
+            return dateValue.toDate().toLocaleDateString('pt-BR');
+        }
+        if (dateValue && dateValue.seconds) {
+            return new Date(dateValue.seconds * 1000).toLocaleDateString('pt-BR');
+        }
+        return new Date(dateValue).toLocaleDateString('pt-BR');
+    }
+
+    function formatCurrency(value) {
+        return `R$ ${value.toFixed(2).replace('.', ',')}`;
+    }
+
+    function getDateFilter() {
+        const hoje = new Date();
+        let startDate, endDate = new Date();
+        
+        const startInput = document.getElementById('startDate').value;
+        const endInput = document.getElementById('endDate').value;
+        
+        if (startInput && endInput) {
+            return { start: new Date(startInput), end: new Date(endInput) };
+        }
+        
+        switch(currentPeriod) {
+            case 'hoje':
+                startDate = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+                endDate = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+                break;
+            case 'semana':
+                const diaSemana = hoje.getDay();
+                startDate = new Date(hoje);
+                startDate.setDate(hoje.getDate() - diaSemana);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(hoje);
+                endDate.setDate(hoje.getDate() + (6 - diaSemana));
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'mes':
+                startDate = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                endDate = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+                break;
+            case 'ano':
+                startDate = new Date(hoje.getFullYear(), 0, 1);
+                endDate = new Date(hoje.getFullYear(), 11, 31);
+                break;
+            default:
+                startDate = new Date(hoje);
+                startDate.setDate(hoje.getDate() - 30);
+        }
+        
+        return { start: startDate, end: endDate };
+    }
+
+    function filtrarPedidosPorPeriodo(orders, startDate, endDate) {
+        return orders.filter(order => {
+            if (!order.createdAt) return false;
+            let orderDate;
+            if (order.createdAt.toDate) {
+                orderDate = order.createdAt.toDate();
+            } else if (order.createdAt.seconds) {
+                orderDate = new Date(order.createdAt.seconds * 1000);
+            } else {
+                orderDate = new Date(order.createdAt);
+            }
+            return orderDate >= startDate && orderDate <= endDate;
+        });
+    }
+
+    async function carregarDados() {
+        try {
+            const ordersSnap = await getDocs(collection(db, COLLECTIONS.ORDERS));
+            allOrders = [];
+            ordersSnap.forEach(doc => { allOrders.push({ id: doc.id, ...doc.data() }); });
+            
+            const clientsSnap = await getDocs(collection(db, COLLECTIONS.CLIENTS));
+            allClients = [];
+            clientsSnap.forEach(doc => { allClients.push({ id: doc.id, ...doc.data() }); });
+            
+            totalClientsEl.textContent = allClients.length;
+            
+            await atualizarRelatorios();
+        } catch (error) {
+            console.error("Erro ao carregar dados:", error);
+            showMessage('Erro ao carregar dados', 'error');
+        }
+    }
+
+    async function atualizarRelatorios() {
+        const { start, end } = getDateFilter();
+        const pedidosFiltrados = filtrarPedidosPorPeriodo(allOrders, start, end);
+        
+        // Calcular faturamento
+        const faturamento = pedidosFiltrados.reduce((sum, order) => sum + (order.total || 0), 0);
+        totalRevenueEl.textContent = formatCurrency(faturamento);
+        totalRevenuePeriod.textContent = `${formatDate(start)} a ${formatDate(end)}`;
+        
+        // Total de pedidos
+        totalOrdersEl.textContent = pedidosFiltrados.length;
+        totalOrdersPeriod.textContent = `${formatDate(start)} a ${formatDate(end)}`;
+        
+        // Ticket médio
+        const ticketMedio = pedidosFiltrados.length > 0 ? faturamento / pedidosFiltrados.length : 0;
+        avgTicketEl.textContent = formatCurrency(ticketMedio);
+        
+        // Atualizar gráficos
+        atualizarGraficoVendas(pedidosFiltrados, start, end);
+        atualizarTopProdutos(pedidosFiltrados);
+        atualizarVendasPorCategoria(pedidosFiltrados);
+        atualizarUltimosPedidos(pedidosFiltrados);
+    }
+
+    function atualizarGraficoVendas(pedidos, startDate, endDate) {
+        const diasMap = new Map();
+        const diffDias = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+        
+        for (let i = 0; i <= diffDias; i++) {
+            const data = new Date(startDate);
+            data.setDate(startDate.getDate() + i);
+            const key = data.toLocaleDateString('pt-BR');
+            diasMap.set(key, 0);
+        }
+        
+        pedidos.forEach(pedido => {
+            let dataPedido;
+            if (pedido.createdAt?.toDate) {
+                dataPedido = pedido.createdAt.toDate();
+            } else if (pedido.createdAt?.seconds) {
+                dataPedido = new Date(pedido.createdAt.seconds * 1000);
+            } else {
+                dataPedido = new Date(pedido.createdAt);
+            }
+            const key = dataPedido.toLocaleDateString('pt-BR');
+            if (diasMap.has(key)) {
+                diasMap.set(key, (diasMap.get(key) || 0) + (pedido.total || 0));
+            }
+        });
+        
+        const labels = Array.from(diasMap.keys());
+        const valores = Array.from(diasMap.values());
+        
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        if (salesChart) salesChart.destroy();
+        
+        salesChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'Faturamento (R$)', data: valores, backgroundColor: '#f97316', borderRadius: 8 }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' } } }
+        });
+    }
+
+    function atualizarTopProdutos(pedidos) {
+        const produtosMap = new Map();
+        
+        pedidos.forEach(pedido => {
+            pedido.items?.forEach(item => {
+                const nome = item.product?.name;
+                if (nome) {
+                    const qtd = item.quantity || 1;
+                    produtosMap.set(nome, (produtosMap.get(nome) || 0) + qtd);
+                }
+            });
+        });
+        
+        const sorted = Array.from(produtosMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 10);
+        
+        if (sorted.length === 0) {
+            topProductsList.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum produto vendido no período</p>';
+            return;
+        }
+        
+        topProductsList.innerHTML = sorted.map(([nome, qtd], idx) => `
+            <div class="flex justify-between items-center p-2 bg-gray-50 rounded-lg">
+                <div class="flex items-center gap-3">
+                    <span class="text-lg font-bold text-orange-500 w-8">${idx + 1}</span>
+                    <span class="font-medium">${nome}</span>
+                </div>
+                <span class="text-sm font-semibold text-gray-600">${qtd} vendidos</span>
+            </div>
+        `).join('');
+    }
+
+    function atualizarVendasPorCategoria(pedidos) {
+        const categoriasMap = new Map();
+        let totalGeral = 0;
+        
+        pedidos.forEach(pedido => {
+            pedido.items?.forEach(item => {
+                const categoriaNome = item.categoria || 'Outros';
+                const valor = item.totalPrice || 0;
+                categoriasMap.set(categoriaNome, (categoriasMap.get(categoriaNome) || 0) + valor);
+                totalGeral += valor;
+            });
+        });
+        
+        const labels = Array.from(categoriasMap.keys());
+        const valores = Array.from(categoriasMap.values());
+        
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        if (categoryChart) categoryChart.destroy();
+        
+        categoryChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels, datasets: [{ data: valores, backgroundColor: ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#06b6d4'] }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom' } } }
+        });
+    }
+
+    function atualizarUltimosPedidos(pedidos) {
+        const recentes = [...pedidos].sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateB - dateA;
+        }).slice(0, 10);
+        
+        if (recentes.length === 0) {
+            recentOrdersList.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Nenhum pedido encontrado</td></tr>';
+            return;
+        }
+        
+        recentOrdersList.innerHTML = recentes.map(order => `
+            <tr class="border-b hover:bg-gray-50">
+                <td class="p-2 font-medium">#${order.id?.slice(-6) || '-'}</td>
+                <td class="p-2">${order.customer?.name || '-'}</td>
+                <td class="p-2">${formatDate(order.createdAt)}</td>
+                <td class="p-2"><span class="px-2 py-1 rounded-full text-xs ${order.status === 'Entregue' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${order.status || 'Pendente'}</span></td>
+                <td class="p-2 text-right font-semibold">${formatCurrency(order.total || 0)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function exportarCSV() {
+        const { start, end } = getDateFilter();
+        const pedidosFiltrados = filtrarPedidosPorPeriodo(allOrders, start, end);
+        
+        const headers = ['ID', 'Data', 'Cliente', 'Telefone', 'Endereço', 'Pagamento', 'Subtotal', 'Taxa', 'Total', 'Status'];
+        const rows = pedidosFiltrados.map(order => [
+            order.id?.slice(-6) || '-',
+            formatDate(order.createdAt),
+            order.customer?.name || '-',
+            order.customer?.phone || '-',
+            order.customer?.address || '-',
+            order.paymentMethod || '-',
+            (order.subtotal || 0).toFixed(2),
+            (order.deliveryFee || 0).toFixed(2),
+            (order.total || 0).toFixed(2),
+            order.status || 'Pendente'
+        ]);
+        
+        const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `relatorio_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        showMessage('Relatório exportado com sucesso!', 'success');
+    }
+
+    // Event Listeners
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.period-btn').forEach(b => {
+                b.classList.remove('bg-orange-500', 'text-white');
+                b.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            btn.classList.remove('bg-gray-200', 'text-gray-700');
+            btn.classList.add('bg-orange-500', 'text-white');
+            currentPeriod = btn.dataset.period;
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            atualizarRelatorios();
+        });
+    });
+    
+    document.getElementById('applyDateRange')?.addEventListener('click', () => {
+        document.querySelectorAll('.period-btn').forEach(b => {
+            b.classList.remove('bg-orange-500', 'text-white');
+            b.classList.add('bg-gray-200', 'text-gray-700');
+        });
+        currentPeriod = 'custom';
+        atualizarRelatorios();
+    });
+    
+    document.getElementById('exportBtn')?.addEventListener('click', exportarCSV);
+    
+    // Autenticação
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            window.location.href = 'index.html';
+            return;
+        }
+        await carregarDados();
+        showMessage('📊 Relatórios carregados!', 'success');
+    });
+</script>
+</body>
+</html>
