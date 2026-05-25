@@ -285,6 +285,19 @@
                 <span class="text-gray-600">🚚 Taxa de entrega:</span>
                 <span id="payment-delivery-fee" class="font-medium text-blue-600">R$ 0,00</span>
             </div>
+
+            <!-- ⬇️⬇️⬇️ ADICIONAR AQUI O CAMPO DE CUPOM ⬇️⬇️⬇️ -->
+            <div class="border-t pt-2 mt-2">
+                <div class="flex gap-2 mb-2">
+                    <input type="text" id="couponCodeInput" placeholder="Código do cupom" class="flex-1 p-2 border rounded-lg uppercase text-sm">
+                    <button id="applyCouponBtn" class="bg-blue-500 text-white px-3 rounded-lg text-sm hover:bg-blue-600 transition-colors">
+                        Aplicar
+                    </button>
+                </div>
+                <div id="couponMessage" class="text-xs hidden"></div>
+            </div>
+            <!-- ⬆️⬆️⬆️ ATÉ AQUI ⬆️⬆️⬆️ -->
+            
             <div class="border-t pt-2 mt-2">
                 <div class="flex justify-between">
                     <span class="font-bold text-gray-800">Total:</span>
@@ -339,6 +352,13 @@
     let currentDistance = 0;
     let confirmationCallback = null;
     let unsubscribeProducts = null;
+
+    // ⬇️⬇️⬇️ ADICIONAR ESTAS LINHAS ⬇️⬇️⬇️
+    let cupomAplicado = null;
+    let allCoupons = [];
+    let descontoAplicado = 0;
+    let cupomAplicadoId = null;
+    // ⬆️⬆️⬆️ ATÉ AQUI ⬆️⬆️⬆️
     
     // Distância máxima para entrega (em km)
     const DISTANCIA_MAXIMA_KM = 10;
@@ -733,6 +753,97 @@
         return currentDeliveryFee || 5.00;
     }
 
+    // ==================== SISTEMA DE CUPONS ====================
+    async function carregarCupons() {
+        try {
+            const couponsSnap = await getDocs(collection(db, COLLECTIONS.COUPONS));
+            allCoupons = [];
+            couponsSnap.forEach(doc => {
+                allCoupons.push({ id: doc.id, ...doc.data() });
+            });
+            console.log(`🎟️ ${allCoupons.length} cupons carregados`);
+        } catch (error) {
+            console.error("Erro ao carregar cupons:", error);
+        }
+    }
+
+    function validarCupom(codigo) {
+        const cupom = allCoupons.find(c => c.code === codigo.toUpperCase());
+        if (!cupom) return { valido: false, mensagem: 'Cupom inválido' };
+        
+        if (!cupom.active) return { valido: false, mensagem: 'Cupom inativo' };
+        
+        if (cupom.expiry && new Date(cupom.expiry) < new Date()) {
+            return { valido: false, mensagem: 'Cupom expirado' };
+        }
+        
+        return { valido: true, cupom, mensagem: 'Cupom aplicado!' };
+    }
+
+    function calcularDesconto(subtotal, cupom) {
+        if (!cupom) return 0;
+        if (cupom.type === 'percentual') {
+            return subtotal * (cupom.value / 100);
+        } else {
+            return Math.min(cupom.value, subtotal);
+        }
+    }
+
+    function aplicarCupom() {
+        const codigo = document.getElementById('couponCodeInput').value.trim();
+        const couponMessage = document.getElementById('couponMessage');
+        
+        if (!codigo) {
+            showMessage('Digite um código de cupom', 'error');
+            return;
+        }
+        
+        const resultado = validarCupom(codigo);
+        
+        if (resultado.valido) {
+            cupomAplicado = resultado.cupom;
+            descontoAplicado = calcularDesconto(totalCartPrice, cupomAplicado);
+            cupomAplicadoId = cupomAplicado.id;
+            
+            couponMessage.innerHTML = `✅ ${resultado.mensagem} Desconto: ${cupomAplicado.type === 'percentual' ? `${cupomAplicado.value}%` : `R$ ${cupomAplicado.value.toFixed(2).replace('.', ',')}`}`;
+            couponMessage.classList.remove('hidden', 'text-red-600');
+            couponMessage.classList.add('text-green-600');
+            atualizarTotalComCupom();
+            showMessage(`Cupom ${codigo} aplicado com sucesso!`, 'success');
+        } else {
+            cupomAplicado = null;
+            descontoAplicado = 0;
+            cupomAplicadoId = null;
+            couponMessage.innerHTML = `❌ ${resultado.mensagem}`;
+            couponMessage.classList.remove('hidden', 'text-green-600');
+            couponMessage.classList.add('text-red-600');
+            atualizarTotalComCupom();
+            showMessage(resultado.mensagem, 'error');
+        }
+    }
+
+    function atualizarTotalComCupom() {
+        const subtotal = totalCartPrice;
+        const deliveryFee = currentDeliveryFee;
+        const total = subtotal + deliveryFee - descontoAplicado;
+        
+        const paymentTotal = document.getElementById('payment-total-price');
+        const couponMessage = document.getElementById('couponMessage');
+        
+        if (paymentTotal) {
+            if (descontoAplicado > 0) {
+                paymentTotal.innerHTML = `
+                    <div class="space-y-1">
+                        <div class="text-sm text-green-600">Desconto: - R$ ${descontoAplicado.toFixed(2).replace('.', ',')}</div>
+                        <div class="text-xl font-bold text-green-600">Total: R$ ${total.toFixed(2).replace('.', ',')}</div>
+                    </div>
+                `;
+            } else {
+                paymentTotal.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            }
+        }
+    }
+    
     // ==================== CARRINHO ====================
     function saveCart() {
         const guestId = customerInfo?.phone || 'guest';
@@ -1212,7 +1323,8 @@
     }
 
     async function createOrder(customerData, paymentMethod, items, subtotal) {
-        const deliveryFee = currentDeliveryFee || 5.00;
+        const deliveryFee = currentDeliveryFee;
+        const total = subtotal + deliveryFee - descontoAplicado;
         
         const orderData = {
             date: new Date().toLocaleString('pt-BR'),
@@ -1240,8 +1352,10 @@
             })),
             subtotal: subtotal || 0,
             deliveryFee: deliveryFee,
-            distance: currentDistance,
-            total: (subtotal || 0) + deliveryFee,
+            desconto: descontoAplicado,
+            cupomId: cupomAplicadoId,
+            cupomCode: cupomAplicado?.code || null,
+            total: total,
             status: 'Pendente'
         };
         
@@ -1781,8 +1895,26 @@ customerProductList.addEventListener('click', (e) => {
     async function init() {
         startProductsListener();
         await loadRestaurantProfile();
+        await carregarCupons();  // ← ADICIONAR ESTA LINHA
         loadCart();
         setInterval(checkStoreHours, 30000);
+    }
+
+    // ==================== EVENT LISTENER DO CUPOM ====================
+    const applyCouponBtn = document.getElementById('applyCouponBtn');
+    if (applyCouponBtn) {
+        applyCouponBtn.addEventListener('click', aplicarCupom);
+    }
+    
+    // Limpar cupom quando o carrinho mudar (opcional)
+    function limparCupom() {
+        cupomAplicado = null;
+        descontoAplicado = 0;
+        cupomAplicadoId = null;
+        const couponMessage = document.getElementById('couponMessage');
+        const couponInput = document.getElementById('couponCodeInput');
+        if (couponMessage) couponMessage.classList.add('hidden');
+        if (couponInput) couponInput.value = '';
     }
     
     init();
