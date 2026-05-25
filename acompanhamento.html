@@ -19,8 +19,23 @@
         .status-step .step-label { font-size: 12px; font-weight: 500; color: #6b7280; }
         .status-step.completed .step-label { color: #22c55e; font-weight: bold; }
         .status-step.active .step-label { color: #f59e0b; font-weight: bold; }
-        .status-line { position: absolute; top: 25px; left: 0; right: 0; height: 3px; background: #e5e7eb; z-index: 1; }
-        .status-line-fill { position: absolute; top: 0; left: 0; height: 100%; background: #22c55e; transition: width 0.5s; }
+        .status-line {
+    position: absolute;
+    top: 25px;
+    left: 0;
+    right: 0;
+    height: 1px;        /* ← mudou de 3px para 1px */
+    background: #e5e7eb;
+    z-index: 1;
+}
+.status-line-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: #22c55e;
+    transition: width 0.5s;
+}
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         .status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; }
         .status-Pendente { background: #fef3c7; color: #d97706; }
