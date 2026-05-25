@@ -29,8 +29,8 @@ const COLLECTIONS = {
     COMPLEMENTS: 'complements',
     ORDERS: 'orders',
     CLIENTS: 'clients',
-    RESTAURANT_PROFILE: 'restaurantProfile'
-    COUPONS: 'coupons'  // ← ADICIONAR ESTA LINHA
+    RESTAURANT_PROFILE: 'restaurantProfile',
+    COUPONS: 'coupons'
 };
 
 export { 
