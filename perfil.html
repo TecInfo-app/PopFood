@@ -128,7 +128,59 @@
                     Configurar Taxas por KM
                 </button>
             </div>
+<!-- Gerenciar Cupons -->
+<div class="border-t pt-4 mt-4">
+    <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold">🎟️ Cupons de Desconto</h2>
+        <button id="addCouponBtn" class="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600">
+            + Adicionar Cupom
+        </button>
+    </div>
+    <div id="couponsList" class="space-y-2 max-h-60 overflow-y-auto">
+        <p class="text-gray-500 text-sm">Carregando cupons...</p>
+    </div>
+</div>
 
+<!-- Modal de Cupom -->
+<div id="couponModal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md modal-enter">
+        <div class="flex justify-between items-center mb-4 border-b pb-4">
+            <h3 id="couponModalTitle" class="text-xl font-bold">Adicionar Cupom</h3>
+            <button id="closeCouponModalBtn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+        </div>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">Código do Cupom</label>
+                <input type="text" id="couponCode" placeholder="Ex: PROMO10" class="w-full p-2 border rounded-lg uppercase">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Tipo de Desconto</label>
+                <select id="couponType" class="w-full p-2 border rounded-lg">
+                    <option value="percentual">Percentual (%)</option>
+                    <option value="fixo">Valor Fixo (R$)</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Valor do Desconto</label>
+                <input type="number" id="couponValue" placeholder="Ex: 10 (para 10% ou R$10,00)" step="0.01" class="w-full p-2 border rounded-lg">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Data de Validade</label>
+                <input type="date" id="couponExpiry" class="w-full p-2 border rounded-lg">
+            </div>
+            <div>
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="couponActive" checked class="h-4 w-4">
+                    <span class="text-sm">Ativo</span>
+                </label>
+            </div>
+            <input type="hidden" id="couponEditId" value="">
+            <button id="saveCouponBtn" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700">
+                Salvar Cupom
+            </button>
+        </div>
+    </div>
+</div>
             <button id="saveProfileBtn" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg mt-6 hover:bg-blue-700">
                 Salvar Perfil
             </button>
@@ -567,6 +619,162 @@
         bannerBase64 = [null, null, null];
         profile = data;
     });
+    // ==================== GERENCIAMENTO DE CUPONS ====================
+    let allCoupons = [];
+    let unsubscribeCoupons = null;
+
+    function renderCoupons() {
+        const container = document.getElementById('couponsList');
+        if (!container) return;
+        
+        if (allCoupons.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum cupom cadastrado</p>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        allCoupons.forEach(coupon => {
+            const div = document.createElement('div');
+            div.className = 'bg-white p-3 rounded-lg border flex justify-between items-center';
+            
+            const expiryDate = coupon.expiry ? new Date(coupon.expiry).toLocaleDateString('pt-BR') : 'Sem validade';
+            const isExpired = coupon.expiry && new Date(coupon.expiry) < new Date();
+            const tipoDesconto = coupon.type === 'percentual' ? `${coupon.value}%` : `R$ ${coupon.value.toFixed(2).replace('.', ',')}`;
+            
+            div.innerHTML = `
+                <div>
+                    <p class="font-bold text-lg">${coupon.code}</p>
+                    <p class="text-sm text-gray-600">Desconto: ${tipoDesconto}</p>
+                    <p class="text-xs text-gray-400">Válido até: ${expiryDate}</p>
+                    <p class="text-xs ${coupon.active && !isExpired ? 'text-green-600' : 'text-red-500'}">
+                        ${coupon.active && !isExpired ? '✅ Ativo' : '❌ Inativo/Expirado'}
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button data-id="${coupon.id}" class="edit-coupon-btn bg-blue-100 text-blue-600 px-2 py-1 rounded text-sm hover:bg-blue-200">✏️</button>
+                    <button data-id="${coupon.id}" class="delete-coupon-btn bg-red-100 text-red-600 px-2 py-1 rounded text-sm hover:bg-red-200">🗑️</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function openCouponModal(editId = null) {
+        const modal = document.getElementById('couponModal');
+        if (!modal) return;
+        
+        modal.classList.remove('hidden');
+        
+        if (editId) {
+            document.getElementById('couponModalTitle').textContent = 'Editar Cupom';
+            const coupon = allCoupons.find(c => c.id === editId);
+            if (coupon) {
+                document.getElementById('couponCode').value = coupon.code;
+                document.getElementById('couponType').value = coupon.type;
+                document.getElementById('couponValue').value = coupon.value;
+                document.getElementById('couponExpiry').value = coupon.expiry || '';
+                document.getElementById('couponActive').checked = coupon.active !== false;
+                document.getElementById('couponEditId').value = coupon.id;
+            }
+        } else {
+            document.getElementById('couponModalTitle').textContent = 'Adicionar Cupom';
+            document.getElementById('couponCode').value = '';
+            document.getElementById('couponType').value = 'percentual';
+            document.getElementById('couponValue').value = '';
+            document.getElementById('couponExpiry').value = '';
+            document.getElementById('couponActive').checked = true;
+            document.getElementById('couponEditId').value = '';
+        }
+    }
+
+    async function saveCoupon() {
+        const code = document.getElementById('couponCode').value.trim().toUpperCase();
+        const type = document.getElementById('couponType').value;
+        const value = parseFloat(document.getElementById('couponValue').value);
+        const expiry = document.getElementById('couponExpiry').value || null;
+        const active = document.getElementById('couponActive').checked;
+        const editId = document.getElementById('couponEditId').value;
+        
+        if (!code) {
+            showMessage('Digite o código do cupom', 'error');
+            return;
+        }
+        if (!value || value <= 0) {
+            showMessage('Digite um valor de desconto válido', 'error');
+            return;
+        }
+        
+        const couponData = { code, type, value, expiry, active, updatedAt: new Date() };
+        
+        try {
+            if (editId) {
+                await updateDoc(doc(db, COLLECTIONS.COUPONS, editId), couponData);
+                showMessage('Cupom atualizado!', 'success');
+            } else {
+                couponData.createdAt = new Date();
+                await addDoc(collection(db, COLLECTIONS.COUPONS), couponData);
+                showMessage('Cupom adicionado!', 'success');
+            }
+            document.getElementById('couponModal').classList.add('hidden');
+        } catch (error) {
+            console.error("Erro ao salvar cupom:", error);
+            showMessage('Erro ao salvar cupom', 'error');
+        }
+    }
+
+    async function deleteCoupon(id) {
+        if (confirm('Tem certeza que deseja excluir este cupom?')) {
+            try {
+                await deleteDoc(doc(db, COLLECTIONS.COUPONS, id));
+                showMessage('Cupom excluído!', 'success');
+            } catch (error) {
+                console.error("Erro ao excluir cupom:", error);
+                showMessage('Erro ao excluir cupom', 'error');
+            }
+        }
+    }
+
+    function startCouponsListener() {
+        if (unsubscribeCoupons) unsubscribeCoupons();
+        unsubscribeCoupons = onSnapshot(collection(db, COLLECTIONS.COUPONS), (snapshot) => {
+            allCoupons = [];
+            snapshot.forEach(doc => {
+                allCoupons.push({ id: doc.id, ...doc.data() });
+            });
+            renderCoupons();
+        });
+    }
+
+    // Event Listeners dos cupons
+    const addCouponBtn = document.getElementById('addCouponBtn');
+    if (addCouponBtn) {
+        addCouponBtn.addEventListener('click', () => openCouponModal());
+    }
+    
+    const closeCouponModalBtn = document.getElementById('closeCouponModalBtn');
+    if (closeCouponModalBtn) {
+        closeCouponModalBtn.addEventListener('click', () => 
+            document.getElementById('couponModal').classList.add('hidden'));
+    }
+    
+    const saveCouponBtn = document.getElementById('saveCouponBtn');
+    if (saveCouponBtn) {
+        saveCouponBtn.addEventListener('click', saveCoupon);
+    }
+    
+    const couponsList = document.getElementById('couponsList');
+    if (couponsList) {
+        couponsList.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-coupon-btn');
+            const deleteBtn = e.target.closest('.delete-coupon-btn');
+            if (editBtn) openCouponModal(editBtn.dataset.id);
+            if (deleteBtn) deleteCoupon(deleteBtn.dataset.id);
+        });
+    }
+    
+    // Iniciar listener de cupons
+    startCouponsListener();
+    
 </script>
 </body>
 </html>
