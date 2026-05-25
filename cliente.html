@@ -1895,7 +1895,7 @@ customerProductList.addEventListener('click', (e) => {
     async function init() {
         startProductsListener();
         await loadRestaurantProfile();
-        // await carregarCupons();  // ← ADICIONAR ESTA LINHA
+        await carregarCupons();  // ← ADICIONAR ESTA LINHA
         loadCart();
         setInterval(checkStoreHours, 30000);
     }
