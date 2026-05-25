@@ -508,25 +508,23 @@
         }
     }
 
-    async function printOrder(order) {
-    // Carregar perfil do restaurante com logo
-    let perfilRestaurante = restaurantProfile;
+   async function printOrder(order) {
+    // Carregar perfil do restaurante diretamente do Firebase
+    let perfilRestaurante = {};
     
-    if (!perfilRestaurante.name || !perfilRestaurante.logo) {
-        try {
-            const profileDoc = await getDoc(doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main'));
-            if (profileDoc.exists()) {
-                perfilRestaurante = profileDoc.data();
-                // Atualizar a variável global também
-                restaurantProfile = perfilRestaurante;
-                console.log("✅ Perfil carregado:", perfilRestaurante.name);
-                console.log("✅ Logo URL:", perfilRestaurante.logo);
-            } else {
-                console.warn("⚠️ Perfil não encontrado");
-            }
-        } catch (error) {
-            console.error("Erro ao carregar perfil:", error);
+    try {
+        const profileDoc = await getDoc(doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main'));
+        if (profileDoc.exists()) {
+            perfilRestaurante = profileDoc.data();
+            console.log("✅ Perfil carregado:", perfilRestaurante.name);
+            console.log("✅ Logo URL:", perfilRestaurante.logo);
+        } else {
+            console.warn("⚠️ Perfil não encontrado");
+            perfilRestaurante = { name: 'POPFOOD DELIVERY', phone: '', address: '', logo: null };
         }
+    } catch (error) {
+        console.error("Erro ao carregar perfil:", error);
+        perfilRestaurante = { name: 'POPFOOD DELIVERY', phone: '', address: '', logo: null };
     }
     
     const deliveryFee = order.deliveryFee || 5.00;
@@ -594,6 +592,9 @@
                 .logo {
                     max-height: 50px;
                     margin-bottom: 8px;
+                    display: block;
+                    margin-left: auto;
+                    margin-right: auto;
                 }
                 .restaurant-name {
                     font-size: 16px;
@@ -670,7 +671,7 @@
         </head>
         <body>
             <div class="header">
-                ${perfilRestaurante.logo ? `<img src="${perfilRestaurante.logo}" class="logo" onerror="console.log('Erro ao carregar logo'); this.style.display='none'">` : ''}
+                ${perfilRestaurante.logo && perfilRestaurante.logo !== '' ? `<img src="${perfilRestaurante.logo}" class="logo" onerror="this.style.display='none'" alt="Logo">` : ''}
                 <div class="restaurant-name">${perfilRestaurante.name || 'POPFOOD DELIVERY'}</div>
                 <div class="restaurant-phone">📞 ${perfilRestaurante.phone || ''}</div>
                 <div class="restaurant-phone">📅 ${new Date().toLocaleString()}</div>
