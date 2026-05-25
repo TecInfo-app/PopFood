@@ -67,6 +67,7 @@
 
 <script type="module">
     import { db, auth, collection, doc, getDocs, getDoc, updateDoc, query, orderBy, onSnapshot, Timestamp, COLLECTIONS } from './firebase-config.js';
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";  // ← ADICIONE ESTA LINHA
     // ==================== ESTADO GLOBAL ====================
     let allOrders = [];
     let currentFilter = 'todos';
