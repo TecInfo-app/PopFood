@@ -519,12 +519,13 @@
             console.log("✅ Perfil carregado:", perfilRestaurante.name);
             console.log("✅ Logo URL:", perfilRestaurante.logo);
         } else {
-            console.warn("⚠️ Perfil não encontrado");
-            perfilRestaurante = { name: 'POPFOOD DELIVERY', phone: '', address: '', logo: null };
+            console.error("⚠️ Perfil não encontrado no Firebase!");
+            // Mostrar erro na impressão
+            perfilRestaurante = { name: 'ERRO: Perfil não configurado', phone: '', address: '', logo: null };
         }
     } catch (error) {
         console.error("Erro ao carregar perfil:", error);
-        perfilRestaurante = { name: 'POPFOOD DELIVERY', phone: '', address: '', logo: null };
+        perfilRestaurante = { name: 'ERRO: Falha ao carregar perfil', phone: '', address: '', logo: null };
     }
     
     const deliveryFee = order.deliveryFee || 5.00;
@@ -671,11 +672,11 @@
         </head>
         <body>
             <div class="header">
-                ${perfilRestaurante.logo && perfilRestaurante.logo !== '' ? `<img src="${perfilRestaurante.logo}" class="logo" onerror="this.style.display='none'" alt="Logo">` : ''}
-                <div class="restaurant-name">${perfilRestaurante.name || 'POPFOOD DELIVERY'}</div>
-                <div class="restaurant-phone">📞 ${perfilRestaurante.phone || ''}</div>
-                <div class="restaurant-phone">📅 ${new Date().toLocaleString()}</div>
-            </div>
+        ${perfilRestaurante.logo && perfilRestaurante.logo !== '' ? `<img src="${perfilRestaurante.logo}" class="logo" onerror="this.style.display='none'" alt="Logo">` : ''}
+        <div class="restaurant-name">${perfilRestaurante.name || 'SEM NOME CADASTRADO'}</div>
+        <div class="restaurant-phone">📞 ${perfilRestaurante.phone || 'Não cadastrado'}</div>
+        <div class="restaurant-phone">📅 ${new Date().toLocaleString()}</div>
+    </div>
             
             <div class="order-title">Pedido #${(orderId || '').slice(-6)}</div>
             <div class="order-date">${formatDate(order.createdAt || order.date)}</div>
