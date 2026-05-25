@@ -506,12 +506,68 @@
         }
     }
 
-   function printOrder(order) {
-    // Usar o restaurantProfile já carregado (da variável global)
-    const perfil = restaurantProfile;
+   async function printOrder(order) {
+    // Carregar perfil do restaurante diretamente do Firebase
+    let perfilRestaurante = {};
+    let carregouPerfil = false;
     
+    try {
+        console.log("🔍 Buscando perfil do restaurante...");
+        const profileDoc = await getDoc(doc(db, COLLECTIONS.RESTAURANT_PROFILE, 'main'));
+        
+        if (profileDoc.exists()) {
+            perfilRestaurante = profileDoc.data();
+            carregouPerfil = true;
+            console.log("✅ Perfil carregado com sucesso!");
+            console.log("   Nome:", perfilRestaurante.name);
+            console.log("   Telefone:", perfilRestaurante.phone);
+            console.log("   Logo:", perfilRestaurante.logo ? "Presente" : "Ausente");
+        } else {
+            console.warn("⚠️ Documento 'main' não encontrado na coleção 'restaurantProfile'");
+            console.warn("   Por favor, salve o perfil em perfil.html primeiro!");
+        }
+    } catch (error) {
+        console.error("❌ Erro ao carregar perfil:", error);
+    }
+    
+    // Se não conseguiu carregar o perfil, mostrar mensagem de erro na impressão
+    if (!carregouPerfil || !perfilRestaurante.name) {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Erro - Perfil não configurado</title>
+                <style>
+                    body { font-family: Arial; padding: 20px; text-align: center; }
+                    .error { color: red; margin: 20px 0; }
+                    .info { background: #f5f5f5; padding: 15px; border-radius: 8px; text-align: left; display: inline-block; }
+                </style>
+            </head>
+            <body>
+                <h1 class="error">⚠️ ERRO AO IMPRIMIR</h1>
+                <div class="info">
+                    <p><strong>Problema:</strong> Perfil do restaurante não configurado</p>
+                    <p><strong>Solução:</strong></p>
+                    <ol>
+                        <li>Acesse o <strong>perfil.html</strong></li>
+                        <li>Preencha o <strong>Nome do Restaurante</strong></li>
+                        <li>Clique em <strong>Salvar Perfil</strong></li>
+                        <li>Volte e tente imprimir novamente</li>
+                    </ol>
+                </div>
+                <p><button onclick="window.close()">Fechar</button></p>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.focus();
+        return;
+    }
+    
+    // Continuar com a impressão normal...
     const deliveryFee = order.deliveryFee || 5.00;
-    const subtotal = order.subtotal || (order.total - deliveryFee);
+    const subtotal = order.subtotal || (order.total - deliveryFee + (order.desconto || 0));
     const desconto = order.desconto || 0;
     const total = order.total || (subtotal + deliveryFee - desconto);
     const customer = order.customer || {};
@@ -562,93 +618,27 @@
                     margin: 0 auto; 
                     line-height: 1.4;
                 }
-                @media print { 
-                    @page { margin: 5mm; } 
-                    body { margin: 0; padding: 10px; } 
-                }
-                .header { 
-                    text-align: center; 
-                    border-bottom: 2px solid #333; 
-                    padding-bottom: 10px; 
-                    margin-bottom: 15px;
-                }
-                .logo { 
-                    max-height: 50px; 
-                    margin-bottom: 8px; 
-                    display: block; 
-                    margin-left: auto; 
-                    margin-right: auto;
-                }
-                .restaurant-name { 
-                    font-size: 16px; 
-                    font-weight: bold; 
-                }
-                .restaurant-phone { 
-                    font-size: 10px; 
-                    color: #666; 
-                    margin-top: 3px;
-                }
-                .order-title { 
-                    text-align: center; 
-                    font-size: 14px; 
-                    font-weight: bold; 
-                    margin: 10px 0 5px 0;
-                }
-                .order-date { 
-                    text-align: center; 
-                    font-size: 10px; 
-                    color: #888; 
-                    margin-bottom: 15px;
-                }
-                .info-section { 
-                    background: #f5f5f5; 
-                    padding: 10px; 
-                    border-radius: 8px; 
-                    margin-bottom: 15px; 
-                    font-size: 12px;
-                }
-                .info-section p { 
-                    margin: 3px 0; 
-                }
-                .items-title { 
-                    font-size: 13px; 
-                    font-weight: bold; 
-                    margin-bottom: 8px;
-                }
-                .total-row { 
-                    display: flex; 
-                    justify-content: space-between; 
-                    margin-top: 8px; 
-                    padding-top: 8px;
-                }
-                .total-final { 
-                    font-size: 16px; 
-                    font-weight: bold; 
-                    border-top: 2px solid #333; 
-                    margin-top: 10px; 
-                    padding-top: 10px;
-                }
-                .payment { 
-                    margin-top: 15px; 
-                    padding-top: 10px; 
-                    border-top: 1px solid #ddd; 
-                    font-size: 12px;
-                }
-                .footer { 
-                    text-align: center; 
-                    margin-top: 20px; 
-                    padding-top: 10px; 
-                    border-top: 1px dashed #ccc; 
-                    font-size: 9px; 
-                    color: #999;
-                }
+                @media print { @page { margin: 5mm; } body { margin: 0; padding: 10px; } }
+                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
+                .logo { max-height: 50px; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto; }
+                .restaurant-name { font-size: 16px; font-weight: bold; letter-spacing: 1px; }
+                .restaurant-phone { font-size: 10px; color: #666; margin-top: 3px; }
+                .order-title { text-align: center; font-size: 14px; font-weight: bold; margin: 10px 0 5px 0; }
+                .order-date { text-align: center; font-size: 10px; color: #888; margin-bottom: 15px; }
+                .info-section { background: #f5f5f5; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 12px; }
+                .info-section p { margin: 3px 0; }
+                .items-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; }
+                .total-row { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; }
+                .total-final { font-size: 16px; font-weight: bold; border-top: 2px solid #333; margin-top: 10px; padding-top: 10px; }
+                .payment { margin-top: 15px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 12px; }
+                .footer { text-align: center; margin-top: 20px; padding-top: 10px; border-top: 1px dashed #ccc; font-size: 9px; color: #999; }
             </style>
         </head>
         <body>
             <div class="header">
-                ${perfil.logo ? `<img src="${perfil.logo}" class="logo" onerror="this.style.display='none'" alt="Logo">` : ''}
-                <div class="restaurant-name">${perfil.name || 'Delivery'}</div>
-                <div class="restaurant-phone">📞 ${perfil.phone || ''}</div>
+                ${perfilRestaurante.logo && perfilRestaurante.logo !== '' ? `<img src="${perfilRestaurante.logo}" class="logo" onerror="this.style.display='none'" alt="Logo">` : ''}
+                <div class="restaurant-name">${perfilRestaurante.name || ''}</div>
+                <div class="restaurant-phone">📞 ${perfilRestaurante.phone || ''}</div>
                 <div class="restaurant-phone">📅 ${new Date().toLocaleString()}</div>
             </div>
             
@@ -666,35 +656,20 @@
             <div class="items-title">Itens:</div>
             ${itemsHtml}
             
-            <div class="total-row">
-                <span>Subtotal:</span>
-                <span>R$ ${(subtotal || 0).toFixed(2).replace('.', ',')}</span>
-            </div>
-            <div class="total-row">
-                <span>Taxa de entrega:</span>
-                <span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span>
-            </div>
-            ${desconto > 0 ? `
-            <div class="total-row" style="color: #16a34a;">
-                <span>🎟️ Cupom (${order.cupomCode || '-'}):</span>
-                <span>- R$ ${desconto.toFixed(2).replace('.', ',')}</span>
-            </div>
-            ` : ''}
+            <div class="total-row"><span>Subtotal:</span><span>R$ ${(subtotal || 0).toFixed(2).replace('.', ',')}</span></div>
+            <div class="total-row"><span>Taxa de entrega:</span><span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span></div>
+            ${desconto > 0 ? `<div class="total-row" style="color: #16a34a;"><span>🎟️ Cupom (${order.cupomCode || '-'}):</span><span>- R$ ${desconto.toFixed(2).replace('.', ',')}</span></div>` : ''}
             
-            <div class="total-final">
-                <div style="display:flex; justify-content:space-between;">
-                    <span>TOTAL:</span>
-                    <span>R$ ${total.toFixed(2).replace('.', ',')}</span>
-                </div>
-            </div>
+            <div class="total-final"><div style="display:flex; justify-content:space-between;"><span>TOTAL:</span><span>R$ ${total.toFixed(2).replace('.', ',')}</span></div></div>
             
             <div class="payment">
                 <p><strong>Pagamento:</strong> ${order.paymentMethod || '-'}</p>
+                ${order.cupomCode ? `<p style="margin-top:5px; font-size:10px; color:#16a34a;">🎟️ Cupom aplicado: ${order.cupomCode}</p>` : ''}
             </div>
             
             <div class="footer">
-                ${perfil.name || 'Delivery'} - Agradecemos sua preferência!<br>
-                ${perfil.address || ''}
+                ${perfilRestaurante.name || ''} - Agradecemos sua preferência!<br>
+                ${perfilRestaurante.address || ''}
             </div>
         </body>
         </html>
