@@ -105,19 +105,10 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <input type="number" id="productPriceInput" placeholder="Preço (R$)" step="0.01" class="p-3 border border-gray-300 rounded-lg">
                 <select id="productCategorySelect" class="p-3 border border-gray-300 rounded-lg">
-                    </div>
-
                     <option value="">Selecione uma categoria</option>
                 </select>
             </div>
             <textarea id="productDescriptionInput" placeholder="Descrição" rows="3" class="w-full p-3 mb-4 border border-gray-300 rounded-lg"></textarea>
-
-        <div class="mb-4">
-    <label class="flex items-center gap-2">
-        <input type="checkbox" id="productExclusivoInput" class="h-4 w-4 text-orange-500">
-        <span class="text-sm text-gray-700">⭐ Produto Exclusivo</span>
-    </label>
-</div>
             
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Imagem do Produto</label>
@@ -292,16 +283,13 @@
         toggleModal(confirmationModal, true);
     }
 
-    // Converter arquivo para Base64 com validação de tamanho
     function fileToBase64(file, maxSizeMB = 0.95) {
         return new Promise((resolve, reject) => {
             const maxSizeBytes = maxSizeMB * 1024 * 1024;
-            
             if (file.size > maxSizeBytes) {
                 reject(`Imagem muito grande! Máximo ${maxSizeMB}MB. A sua tem ${(file.size / 1024 / 1024).toFixed(2)}MB`);
                 return;
             }
-            
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result);
             reader.onerror = (error) => reject(error);
@@ -309,86 +297,9 @@
         });
     }
 
-    // Navegação
     function showPage(page) {
         [loginPage, registerPage, masterMenuPage, adminPage].forEach(p => p.classList.add('hidden'));
         page.classList.remove('hidden');
-    }
-
-    // ==================== FUNÇÃO PARA INICIALIZAR ORDEM DAS CATEGORIAS ====================
-    async function inicializarOrdemCategorias() {
-        const precisaAtualizar = allCategories.some(cat => cat.order === undefined);
-        
-        if (precisaAtualizar && allCategories.length > 0) {
-            console.log("📦 Inicializando ordem das categorias...");
-            
-            const updatedCategories = allCategories.map((cat, idx) => ({
-                ...cat,
-                order: idx
-            }));
-            
-            const batch = writeBatch(db);
-            updatedCategories.forEach(cat => {
-                const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
-                batch.update(catRef, { order: cat.order });
-            });
-            
-            await batch.commit();
-            console.log("✅ Ordem das categorias salva!");
-            
-            // Recarregar categorias
-            const catSnapshot = await getDocs(collection(db, COLLECTIONS.CATEGORIES));
-            allCategories = [];
-            catSnapshot.forEach(doc => {
-                allCategories.push({ id: doc.id, ...doc.data() });
-            });
-            renderCategories();
-        }
-    }
-
-    // ==================== FUNÇÃO PARA MOVER CATEGORIA ====================
-    async function moveCategory(categoryId, direction) {
-        const currentIndex = allCategories.findIndex(c => c.id === categoryId);
-        if (currentIndex === -1) return;
-        
-        let newIndex;
-        if (direction === 'up') {
-            newIndex = currentIndex - 1;
-        } else if (direction === 'down') {
-            newIndex = currentIndex + 1;
-        } else {
-            return;
-        }
-        
-        if (newIndex < 0 || newIndex >= allCategories.length) return;
-        
-        // Criar nova ordem
-        const newCategories = [...allCategories];
-        const temp = newCategories[currentIndex];
-        newCategories[currentIndex] = newCategories[newIndex];
-        newCategories[newIndex] = temp;
-        
-        const updatedCategories = newCategories.map((cat, idx) => ({
-            ...cat,
-            order: idx
-        }));
-        
-        // Salvar no Firebase
-        const batch = writeBatch(db);
-        updatedCategories.forEach(cat => {
-            const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
-            batch.update(catRef, { order: cat.order });
-        });
-        
-        try {
-            await batch.commit();
-            allCategories = updatedCategories;
-            renderCategories();
-            showMessage('Ordem atualizada!', 'success');
-        } catch (error) {
-            console.error("Erro ao salvar ordem:", error);
-            showMessage('Erro ao reordenar categorias', 'error');
-        }
     }
 
     // Autenticação
@@ -408,6 +319,10 @@
     loginBtn.addEventListener('click', async () => {
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
+        if (!email || !password) {
+            showMessage('Preencha e-mail e senha', 'error');
+            return;
+        }
         try {
             await signInWithEmailAndPassword(auth, email, password);
             showMessage('Login realizado!', 'success');
@@ -423,15 +338,31 @@
         const email = document.getElementById('registerEmail').value;
         const password = document.getElementById('registerPassword').value;
         const confirm = document.getElementById('registerConfirmPassword').value;
+        
+        if (!email || !password) {
+            showMessage('Preencha e-mail e senha', 'error');
+            return;
+        }
         if (password !== confirm) {
             showMessage('Senhas não coincidem', 'error');
             return;
         }
+        if (password.length < 6) {
+            showMessage('Senha deve ter pelo menos 6 caracteres', 'error');
+            return;
+        }
         try {
             await createUserWithEmailAndPassword(auth, email, password);
-            showMessage('Cadastro realizado!', 'success');
+            showMessage('Cadastro realizado! Faça login.', 'success');
+            showPage(loginPage);
+            document.getElementById('loginEmail').value = email;
+            document.getElementById('loginPassword').value = '';
         } catch (error) {
-            showMessage('Erro: ' + error.message, 'error');
+            if (error.code === 'auth/email-already-in-use') {
+                showMessage('Este e-mail já está cadastrado', 'error');
+            } else {
+                showMessage('Erro: ' + error.message, 'error');
+            }
         }
     });
 
@@ -443,32 +374,73 @@
     adminBtn.addEventListener('click', () => showPage(adminPage));
     backToMenuBtnAdmin.addEventListener('click', () => showPage(masterMenuPage));
 
-    // Realtime Listeners
+    // ==================== FUNÇÃO PARA INICIALIZAR ORDEM DAS CATEGORIAS ====================
+    async function inicializarOrdemCategorias() {
+        const precisaAtualizar = allCategories.some(cat => cat.order === undefined);
+        if (precisaAtualizar && allCategories.length > 0) {
+            console.log("📦 Inicializando ordem das categorias...");
+            const updatedCategories = allCategories.map((cat, idx) => ({ ...cat, order: idx }));
+            const batch = writeBatch(db);
+            updatedCategories.forEach(cat => {
+                const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
+                batch.update(catRef, { order: cat.order });
+            });
+            await batch.commit();
+            console.log("✅ Ordem das categorias salva!");
+            const catSnapshot = await getDocs(collection(db, COLLECTIONS.CATEGORIES));
+            allCategories = [];
+            catSnapshot.forEach(doc => { allCategories.push({ id: doc.id, ...doc.data() }); });
+            renderCategories();
+        }
+    }
+
+    async function moveCategory(categoryId, direction) {
+        const currentIndex = allCategories.findIndex(c => c.id === categoryId);
+        if (currentIndex === -1) return;
+        let newIndex;
+        if (direction === 'up') newIndex = currentIndex - 1;
+        else if (direction === 'down') newIndex = currentIndex + 1;
+        else return;
+        if (newIndex < 0 || newIndex >= allCategories.length) return;
+        
+        const newCategories = [...allCategories];
+        const temp = newCategories[currentIndex];
+        newCategories[currentIndex] = newCategories[newIndex];
+        newCategories[newIndex] = temp;
+        const updatedCategories = newCategories.map((cat, idx) => ({ ...cat, order: idx }));
+        
+        const batch = writeBatch(db);
+        updatedCategories.forEach(cat => {
+            const catRef = doc(db, COLLECTIONS.CATEGORIES, cat.id);
+            batch.update(catRef, { order: cat.order });
+        });
+        try {
+            await batch.commit();
+            allCategories = updatedCategories;
+            renderCategories();
+            showMessage('Ordem atualizada!', 'success');
+        } catch (error) {
+            showMessage('Erro ao reordenar categorias', 'error');
+        }
+    }
+
     function startRealtimeListeners() {
         unsubscribeProducts = onSnapshot(collection(db, COLLECTIONS.PRODUCTS), (snapshot) => {
             allProducts = [];
-            snapshot.forEach(doc => {
-                allProducts.push({ id: doc.id, ...doc.data() });
-            });
+            snapshot.forEach(doc => { allProducts.push({ id: doc.id, ...doc.data() }); });
             renderProductList(allProducts);
         });
 
         unsubscribeCategories = onSnapshot(collection(db, COLLECTIONS.CATEGORIES), (snapshot) => {
             allCategories = [];
-            snapshot.forEach(doc => {
-                allCategories.push({ id: doc.id, ...doc.data() });
-            });
+            snapshot.forEach(doc => { allCategories.push({ id: doc.id, ...doc.data() }); });
             renderCategories();
-            
-            // Inicializar ordem das categorias (se necessário)
             inicializarOrdemCategorias();
         });
 
         onSnapshot(collection(db, COLLECTIONS.COMPLEMENTS), (snapshot) => {
             productComplementsCache = {};
-            snapshot.forEach(doc => {
-                productComplementsCache[doc.id] = doc.data().groups || [];
-            });
+            snapshot.forEach(doc => { productComplementsCache[doc.id] = doc.data().groups || []; });
         });
     }
 
@@ -484,21 +456,18 @@
         const hasInfo = restaurantProfile.name || restaurantProfile.description;
         if (hasInfo) restaurantInfoMaster.classList.remove('hidden');
         else restaurantInfoMaster.classList.add('hidden');
-
         if (restaurantProfile.logo) {
             restaurantLogoMaster.src = restaurantProfile.logo;
             restaurantLogoMaster.classList.remove('hidden');
         } else {
             restaurantLogoMaster.classList.add('hidden');
         }
-
         if (restaurantProfile.show?.name && restaurantProfile.name) {
             restaurantNameMaster.textContent = restaurantProfile.name;
             restaurantNameMaster.classList.remove('hidden');
         } else {
             restaurantNameMaster.classList.add('hidden');
         }
-
         if (restaurantProfile.show?.description && restaurantProfile.description) {
             restaurantDescriptionMaster.textContent = restaurantProfile.description;
             restaurantDescriptionMaster.classList.remove('hidden');
@@ -511,14 +480,11 @@
     function renderCategories() {
         categoryList.innerHTML = '';
         productCategorySelect.innerHTML = '<option value="">Selecione uma categoria</option>';
-        
-        // Ordenar categorias pelo campo 'order'
         const sortedCategories = [...allCategories].sort((a, b) => {
             const orderA = a.order !== undefined ? a.order : 999;
             const orderB = b.order !== undefined ? b.order : 999;
             return orderA - orderB;
         });
-        
         sortedCategories.forEach((category, index) => {
             const div = document.createElement('div');
             div.className = 'flex items-center bg-yellow-200 text-yellow-900 rounded-full py-1 px-3 text-sm font-semibold gap-1';
@@ -537,7 +503,6 @@
                 </div>
             `;
             categoryList.appendChild(div);
-            
             const option = document.createElement('option');
             option.value = category.id;
             option.textContent = category.name;
@@ -551,14 +516,8 @@
         if (allCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
             return showMessage('Categoria já existe', 'error');
         }
-        
         const nextOrder = allCategories.length;
-        
-        await addDoc(collection(db, COLLECTIONS.CATEGORIES), { 
-            name, 
-            order: nextOrder,
-            createdAt: Timestamp.now() 
-        });
+        await addDoc(collection(db, COLLECTIONS.CATEGORIES), { name, order: nextOrder, createdAt: Timestamp.now() });
         categoryNameInput.value = '';
         showMessage('Categoria adicionada!', 'success');
     });
@@ -572,7 +531,6 @@
             await moveCategory(categoryId, direction);
             return;
         }
-        
         const removeBtn = e.target.closest('.remove-category-btn');
         if (removeBtn) {
             const id = removeBtn.dataset.id;
@@ -589,7 +547,6 @@
             productList.innerHTML = '<div class="text-center text-gray-500">Nenhum produto encontrado.</div>';
             return;
         }
-
         productList.innerHTML = '';
         products.forEach(product => {
             const category = allCategories.find(c => c.id === product.categoryId);
@@ -605,9 +562,7 @@
                 </div>
                 <div class="flex flex-col gap-2">
                     <button data-id="${product.id}" class="manage-complements-btn bg-orange-100 text-orange-700 font-semibold py-2 px-4 rounded-full text-xs hover:bg-orange-200">Complementos</button>
-                    <button data-id="${product.id}" class="toggle-product-pause-btn bg-${product.paused ? 'green' : 'red'}-100 text-${product.paused ? 'green' : 'red'}-700 font-semibold py-2 px-4 rounded-full text-xs">
-                        ${product.paused ? 'Retomar' : 'Pausar'}
-                    </button>
+                    <button data-id="${product.id}" class="toggle-product-pause-btn bg-${product.paused ? 'green' : 'red'}-100 text-${product.paused ? 'green' : 'red'}-700 font-semibold py-2 px-4 rounded-full text-xs">${product.paused ? 'Retomar' : 'Pausar'}</button>
                     <button data-id="${product.id}" class="edit-product-btn bg-blue-100 text-blue-700 font-semibold py-2 px-4 rounded-full text-xs">Editar</button>
                     <button data-id="${product.id}" class="remove-product-btn bg-red-100 text-red-700 font-semibold py-2 px-4 rounded-full text-xs">Remover</button>
                 </div>
@@ -628,10 +583,7 @@
                 if (imageSizeWarning) imageSizeWarning.classList.add('hidden');
                 showMessage('Imagem carregada com sucesso!', 'success');
             } catch (error) {
-                if (imageSizeWarning) {
-                    imageSizeWarning.textContent = error;
-                    imageSizeWarning.classList.remove('hidden');
-                }
+                if (imageSizeWarning) { imageSizeWarning.textContent = error; imageSizeWarning.classList.remove('hidden'); }
                 showMessage(error, 'error');
                 productImageFileInput.value = '';
             }
@@ -642,25 +594,9 @@
         const name = productNameInput.value.trim();
         const price = parseFloat(productPriceInput.value);
         const categoryId = productCategorySelect.value;
-        
-        if (!name || isNaN(price) || !categoryId) {
-            return showMessage('Preencha nome, preço e categoria', 'error');
-        }
-
-        const productData = {
-    name,
-    pdvCode: productPdvCodeInput.value.trim(),
-    price,
-    originalPrice: parseFloat(document.getElementById('productOriginalPriceInput')?.value) || null,
-    exclusivo: document.getElementById('productExclusivoInput')?.checked || false,
-    description: productDescriptionInput.value.trim(),
-    categoryId,
-    paused: false,
-    updatedAt: Timestamp.now()
-};
-        
+        if (!name || isNaN(price) || !categoryId) return showMessage('Preencha nome, preço e categoria', 'error');
+        const productData = { name, pdvCode: productPdvCodeInput.value.trim(), price, description: productDescriptionInput.value.trim(), categoryId, paused: false, updatedAt: Timestamp.now() };
         if (currentImageBase64) productData.image = currentImageBase64;
-
         if (editingProductId) {
             await updateDoc(doc(db, COLLECTIONS.PRODUCTS, editingProductId), productData);
             showMessage('Produto atualizado!', 'success');
@@ -669,27 +605,19 @@
             await addDoc(collection(db, COLLECTIONS.PRODUCTS), productData);
             showMessage('Produto adicionado!', 'success');
         }
-        
         resetProductForm();
     }
 
     async function editProduct(id) {
         const product = allProducts.find(p => p.id === id);
         if (!product) return;
-        
         editingProductId = id;
         productNameInput.value = product.name;
         productPdvCodeInput.value = product.pdvCode || '';
         productPriceInput.value = product.price;
         productDescriptionInput.value = product.description || '';
         productCategorySelect.value = product.categoryId;
-        
-        if (product.image) {
-            currentImageBase64 = product.image;
-            imagePreview.src = product.image;
-            imagePreviewContainer.classList.remove('hidden');
-        }
-        
+        if (product.image) { currentImageBase64 = product.image; imagePreview.src = product.image; imagePreviewContainer.classList.remove('hidden'); }
         addProductBtn.textContent = 'Salvar Alterações';
         cancelEditBtn.classList.remove('hidden');
     }
@@ -727,7 +655,6 @@
         const removeBtn = e.target.closest('.remove-product-btn');
         const complementsBtn = e.target.closest('.manage-complements-btn');
         const pauseBtn = e.target.closest('.toggle-product-pause-btn');
-        
         if (editBtn) editProduct(editBtn.dataset.id);
         else if (removeBtn) showConfirmationModal('Remover Produto', 'Tem certeza?', () => removeProduct(removeBtn.dataset.id));
         else if (complementsBtn) openComplementModal(complementsBtn.dataset.id);
@@ -739,10 +666,7 @@
 
     searchProductInput.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
-        const filtered = allProducts.filter(p => 
-            p.name.toLowerCase().includes(term) ||
-            (p.pdvCode && p.pdvCode.toLowerCase().includes(term))
-        );
+        const filtered = allProducts.filter(p => p.name.toLowerCase().includes(term) || (p.pdvCode && p.pdvCode.toLowerCase().includes(term)));
         renderProductList(filtered);
     });
 
@@ -751,7 +675,6 @@
         currentProductId = productId;
         const product = allProducts.find(p => p.id === productId);
         complementProductName.textContent = product?.name || '';
-        
         const compDoc = await getDoc(doc(db, COLLECTIONS.COMPLEMENTS, productId));
         localComplements = compDoc.exists() ? (compDoc.data().groups || []) : [];
         renderComplementGroups();
@@ -760,11 +683,7 @@
 
     function renderComplementGroups() {
         complementList.innerHTML = '';
-        if (!localComplements.length) {
-            complementList.innerHTML = '<p class="text-gray-500 text-center">Nenhum grupo de complemento</p>';
-            return;
-        }
-
+        if (!localComplements.length) { complementList.innerHTML = '<p class="text-gray-500 text-center">Nenhum grupo de complemento</p>'; return; }
         localComplements.forEach((group, groupIndex) => {
             const groupDiv = document.createElement('div');
             groupDiv.className = `bg-gray-100 rounded-lg p-4 mb-4 ${group.paused ? 'opacity-50' : ''}`;
@@ -787,7 +706,6 @@
                 </div>
             `;
             complementList.appendChild(groupDiv);
-
             const optionsContainer = document.getElementById(`options-list-${groupIndex}`);
             group.options?.forEach((option, optIndex) => {
                 const optDiv = document.createElement('div');
@@ -807,25 +725,11 @@
     function addComplementGroup() {
         const name = complementNameInput.value.trim();
         if (!name) return showMessage('Nome do grupo obrigatório', 'error');
-        
         const isMandatory = isMandatoryCheckbox.checked;
         const minSelection = parseInt(minSelectionInput.value) || 0;
         const maxSelection = parseInt(maxSelectionInput.value) || 0;
-        
-        if (isMandatory && minSelection > maxSelection) {
-            return showMessage('Mínimo não pode ser maior que máximo', 'error');
-        }
-        
-        localComplements.push({
-            name,
-            description: complementDescriptionInput.value.trim(),
-            isMandatory,
-            minSelection,
-            maxSelection,
-            options: [],
-            paused: false
-        });
-        
+        if (isMandatory && minSelection > maxSelection) return showMessage('Mínimo não pode ser maior que máximo', 'error');
+        localComplements.push({ name, description: complementDescriptionInput.value.trim(), isMandatory, minSelection, maxSelection, options: [], paused: false });
         complementNameInput.value = '';
         complementDescriptionInput.value = '';
         isMandatoryCheckbox.checked = false;
@@ -845,10 +749,7 @@
         toggleModal(complementModal, false);
     }
 
-    isMandatoryCheckbox.addEventListener('change', (e) => {
-        e.target.checked ? mandatoryOptions.classList.remove('hidden') : mandatoryOptions.classList.add('hidden');
-    });
-
+    isMandatoryCheckbox.addEventListener('change', (e) => { e.target.checked ? mandatoryOptions.classList.remove('hidden') : mandatoryOptions.classList.add('hidden'); });
     addComplementBtn.addEventListener('click', addComplementGroup);
     saveComplementsBtn.addEventListener('click', saveComplements);
     cancelComplementsBtn.addEventListener('click', () => toggleModal(complementModal, false));
@@ -860,7 +761,6 @@
         const removeOptBtn = e.target.closest('.remove-option-btn');
         const toggleGroupBtn = e.target.closest('.toggle-group-pause-btn');
         const toggleOptBtn = e.target.closest('.toggle-option-pause-btn');
-        
         if (addBtn) {
             const groupIndex = parseInt(addBtn.dataset.groupIndex);
             const container = addBtn.closest('.bg-gray-100');
@@ -869,38 +769,14 @@
             addOptionToGroup(groupIndex, nameInput.value, parseFloat(priceInput.value));
             nameInput.value = '';
             priceInput.value = '';
-        }
-        else if (removeGroupBtn) {
-            const idx = parseInt(removeGroupBtn.dataset.groupIndex);
-            localComplements.splice(idx, 1);
-            renderComplementGroups();
-        }
-        else if (removeOptBtn) {
-            const gIdx = parseInt(removeOptBtn.dataset.groupIndex);
-            const oIdx = parseInt(removeOptBtn.dataset.optIndex);
-            localComplements[gIdx].options.splice(oIdx, 1);
-            renderComplementGroups();
-        }
-        else if (toggleGroupBtn) {
-            const idx = parseInt(toggleGroupBtn.dataset.groupIndex);
-            localComplements[idx].paused = !localComplements[idx].paused;
-            renderComplementGroups();
-        }
-        else if (toggleOptBtn) {
-            const gIdx = parseInt(toggleOptBtn.dataset.groupIndex);
-            const oIdx = parseInt(toggleOptBtn.dataset.optIndex);
-            localComplements[gIdx].options[oIdx].paused = !localComplements[gIdx].options[oIdx].paused;
-            renderComplementGroups();
-        }
+        } else if (removeGroupBtn) { const idx = parseInt(removeGroupBtn.dataset.groupIndex); localComplements.splice(idx, 1); renderComplementGroups(); }
+        else if (removeOptBtn) { const gIdx = parseInt(removeOptBtn.dataset.groupIndex); const oIdx = parseInt(removeOptBtn.dataset.optIndex); localComplements[gIdx].options.splice(oIdx, 1); renderComplementGroups(); }
+        else if (toggleGroupBtn) { const idx = parseInt(toggleGroupBtn.dataset.groupIndex); localComplements[idx].paused = !localComplements[idx].paused; renderComplementGroups(); }
+        else if (toggleOptBtn) { const gIdx = parseInt(toggleOptBtn.dataset.groupIndex); const oIdx = parseInt(toggleOptBtn.dataset.optIndex); localComplements[gIdx].options[oIdx].paused = !localComplements[gIdx].options[oIdx].paused; renderComplementGroups(); }
     });
 
-    // Confirmação
     cancelConfirmationBtn.addEventListener('click', () => toggleModal(confirmationModal, false));
-    confirmActionBtn.addEventListener('click', () => {
-        if (confirmationCallback) confirmationCallback();
-        confirmationCallback = null;
-        toggleModal(confirmationModal, false);
-    });
+    confirmActionBtn.addEventListener('click', () => { if (confirmationCallback) confirmationCallback(); confirmationCallback = null; toggleModal(confirmationModal, false); });
 </script>
 </body>
 </html>
