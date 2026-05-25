@@ -509,86 +509,100 @@
     }
 
     function printOrder(order) {
-        const deliveryFee = order.deliveryFee || 5.00;
-        const subtotal = order.subtotal || (order.total - deliveryFee);
-        const total = order.total || (subtotal + deliveryFee);
-        const customer = order.customer || {};
-        const orderId = order.id || '';
+    const deliveryFee = order.deliveryFee || 5.00;
+    const subtotal = order.subtotal || (order.total - deliveryFee + (order.desconto || 0));
+    const desconto = order.desconto || 0;
+    const total = order.total || (subtotal + deliveryFee - desconto);
+    const customer = order.customer || {};
+    const orderId = order.id || '';
+    
+    let itemsHtml = '';
+    const items = order.items || [];
+    
+    items.forEach(item => {
+        let complementsHtml = '';
+        const complements = item.complements || {};
         
-        let itemsHtml = '';
-        const items = order.items || [];
-        
-        items.forEach(item => {
-            let complementsHtml = '';
-            const complements = item.complements || {};
-            
-            for (const group in complements) {
-                const groupOptions = complements[group] || [];
-                if (groupOptions.length > 0) {
-                    complementsHtml += `<div style="font-weight:bold; font-size:11px; margin-top:5px;">${group}:</div>`;
-                    complementsHtml += `<ul style="padding-left:15px; margin:2px 0;">`;
-                    groupOptions.forEach(opt => {
-                        complementsHtml += `<li style="font-size:10px;">- ${opt.name} (+R$ ${(opt.price || 0).toFixed(2).replace('.', ',')})</li>`;
-                    });
-                    complementsHtml += `</ul>`;
-                }
+        for (const group in complements) {
+            const groupOptions = complements[group] || [];
+            if (groupOptions.length > 0) {
+                complementsHtml += `<div style="font-weight:bold; font-size:11px; margin-top:5px;">${group}:</div>`;
+                complementsHtml += `<ul style="padding-left:15px; margin:2px 0;">`;
+                groupOptions.forEach(opt => {
+                    complementsHtml += `<li style="font-size:10px;">- ${opt.name} (+R$ ${(opt.price || 0).toFixed(2).replace('.', ',')})</li>`;
+                });
+                complementsHtml += `</ul>`;
             }
-            
-            itemsHtml += `
-                <div style="border-bottom:1px solid #eee; padding:8px 0;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span><strong>${item.quantity || 1}x</strong> ${item.product?.name || 'Produto'}</span>
-                        <span>R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
-                    </div>
-                    ${complementsHtml}
+        }
+        
+        itemsHtml += `
+            <div style="border-bottom:1px solid #eee; padding:8px 0;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span><strong>${item.quantity || 1}x</strong> ${item.product?.name || 'Produto'}</span>
+                    <span>R$ ${(item.totalPrice || 0).toFixed(2).replace('.', ',')}</span>
                 </div>
-            `;
-        });
+                ${complementsHtml}
+            </div>
+        `;
+    });
 
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Pedido #${(orderId || '').slice(-6)}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; max-width: 350px; margin: 0 auto; line-height: 1.4; }
-                    @media print { @page { margin: 5mm; } body { margin: 0; } }
-                    .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
-                    .total { font-size: 18px; font-weight: bold; text-align: right; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
-                    .info { margin: 10px 0; padding: 8px; background: #f5f5f5; border-radius: 8px; }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto;">` : ''}
-                    <h2>${restaurantProfile.name || 'Delivery'}</h2>
-                    <p>${restaurantProfile.phone || ''}</p>
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Pedido #${(orderId || '').slice(-6)}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; max-width: 350px; margin: 0 auto; line-height: 1.4; }
+                @media print { @page { margin: 5mm; } body { margin: 0; } }
+                .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
+                .total { font-size: 18px; font-weight: bold; text-align: right; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
+                .info { margin: 10px 0; padding: 8px; background: #f5f5f5; border-radius: 8px; }
+                .desconto { color: #16a34a; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                ${restaurantProfile.logo ? `<img src="${restaurantProfile.logo}" style="max-height: 50px; margin: 0 auto;">` : ''}
+                <h2>${restaurantProfile.name || 'Delivery'}</h2>
+                <p>${restaurantProfile.phone || ''}</p>
+            </div>
+            <h3 style="text-align:center;">Pedido #${(orderId || '').slice(-6)}</h3>
+            <p style="text-align:center; font-size:12px;">${formatDate(order.createdAt || order.date)}</p>
+            <div class="info">
+                <p><strong>Cliente:</strong> ${customer.name || '-'}</p>
+                <p><strong>Telefone:</strong> ${customer.phone || '-'}</p>
+                <p><strong>Endereço:</strong> ${customer.address || '-'} ${customer.number ? ', ' + customer.number : ''}</p>
+                ${customer.complement ? `<p><strong>Complemento:</strong> ${customer.complement}</p>` : ''}
+            </div>
+            <h4>Itens:</h4>
+            ${itemsHtml}
+            <div style="margin-top: 15px;">
+                <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>R$ ${(subtotal || 0).toFixed(2).replace('.', ',')}</span></div>
+                <div style="display:flex; justify-content:space-between;"><span>Taxa entrega:</span><span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span></div>
+                ${desconto > 0 ? `
+                <div style="display:flex; justify-content:space-between; color: #16a34a;">
+                    <span>🎟️ Cupom (${order.cupomCode || '-'}):</span>
+                    <span>- R$ ${desconto.toFixed(2).replace('.', ',')}</span>
                 </div>
-                <h3 style="text-align:center;">Pedido #${(orderId || '').slice(-6)}</h3>
-                <p style="text-align:center; font-size:12px;">${formatDate(order.createdAt || order.date)}</p>
-                <div class="info">
-                    <p><strong>Cliente:</strong> ${customer.name || '-'}</p>
-                    <p><strong>Telefone:</strong> ${customer.phone || '-'}</p>
-                    <p><strong>Endereço:</strong> ${customer.address || '-'} ${customer.number ? ', ' + customer.number : ''}</p>
-                    ${customer.complement ? `<p><strong>Complemento:</strong> ${customer.complement}</p>` : ''}
+                ` : ''}
+            </div>
+            <div class="total">
+                <div style="display:flex; justify-content:space-between;">
+                    <span>TOTAL:</span>
+                    <span>R$ ${total.toFixed(2).replace('.', ',')}</span>
                 </div>
-                <h4>Itens:</h4>
-                ${itemsHtml}
-                <div style="margin-top: 15px;">
-                    <div style="display:flex; justify-content:space-between;"><span>Subtotal:</span><span>R$ ${(subtotal || 0).toFixed(2).replace('.', ',')}</span></div>
-                    <div style="display:flex; justify-content:space-between;"><span>Taxa entrega:</span><span>R$ ${deliveryFee.toFixed(2).replace('.', ',')}</span></div>
-                </div>
-                <div class="total"><div style="display:flex; justify-content:space-between;"><span>TOTAL:</span><span>R$ ${total.toFixed(2).replace('.', ',')}</span></div></div>
-                <p style="margin-top:15px;"><strong>Pagamento:</strong> ${order.paymentMethod || '-'}</p>
-                <p style="text-align:center; font-size:10px; margin-top:20px; color:#999;">Impresso em: ${new Date().toLocaleString()}</p>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => printWindow.print(), 500);
-    }
+            </div>
+            <p style="margin-top:15px;"><strong>Pagamento:</strong> ${order.paymentMethod || '-'}</p>
+            ${order.cupomCode ? `<p style="margin-top:5px; font-size:11px; color:#16a34a;">🎟️ Cupom aplicado: ${order.cupomCode} (${order.cupomDesconto || '-'} de desconto)</p>` : ''}
+            <p style="text-align:center; font-size:10px; margin-top:20px; color:#999;">Impresso em: ${new Date().toLocaleString()}</p>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 500);
+}
 
     // ==================== LISTENER EM TEMPO REAL COM IMPRESSÃO AUTOMÁTICA ====================
     function startOrdersListener() {
