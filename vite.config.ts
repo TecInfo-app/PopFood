@@ -5,6 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
@@ -22,6 +23,7 @@ export default defineConfig(() => {
           pedidos: path.resolve(__dirname, 'pedidos.html'),
           perfil: path.resolve(__dirname, 'perfil.html'),
           relatorios: path.resolve(__dirname, 'relatorios.html'),
+          superadmin: path.resolve(__dirname, 'superadmin.html'),
         }
       }
     },
