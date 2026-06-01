@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Super-Admin Consola - PopFood Delivery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          },
+          colors: {
+            brand: {
+              primary: '#f97316',
+              secondary: '#22c55e',
+              danger: '#ef4444',
+              light: '#f3f4f6',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-gray-55 bg-slate-50 font-sans text-gray-800 min-h-screen flex flex-col">
+
+  <!-- Super admin Password Sign In Gate -->
+  <div id="admin-auth-gate" class="fixed inset-0 bg-slate-900 z-[1000] flex items-center justify-center p-4 transition-all">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-8 shadow-2xl flex flex-col space-y-6 text-center">
+      <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-orange-100 text-2xl animate-bounce">
+        🔑
+      </div>
+      <div>
+        <h2 class="font-display font-black text-xl text-gray-900 tracking-tight">Acesso Dono do App</h2>
+        <p class="text-xs text-gray-500 mt-1 leading-relaxed">Painel restrito de monitoramento e controle global de lojas do ecossistema PopFood.</p>
+      </div>
+
+      <div class="space-y-4 text-left">
+        <label class="block text-[10px] uppercase font-bold text-gray-400 tracking-wider">Por favor, insira o Código do Admin:</label>
+        <input type="password" id="admin-passcode" placeholder="••••••••" class="w-full text-center p-3 text-lg font-bold border border-gray-250 rounded-xl focus:border-orange-500 focus:outline-none transition-all tracking-widest bg-gray-50" />
+      </div>
+
+      <button onclick="attemptAdminAccess()" class="w-full bg-slate-920 bg-slate-900 hover:bg-orange-500 text-white font-bold py-3.5 rounded-xl text-xs shadow-md transition-all uppercase tracking-wider cursor-pointer font-sans">
+        Entrar no Console Geral
+      </button>
+
+      <div class="pt-2 text-[10px] text-gray-400 font-medium">
+        Desenvolvido com carinho para o Admin Geral do Aplicativo
+      </div>
+    </div>
+  </div>
+
+  <!-- Real Super Admin Layout (Will display upon correct code inputted) -->
+  <header class="bg-slate-900 text-white shadow-md border-b border-white/10 hidden" id="real-dashboard-header">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-gradient-to-tr from-orange-400 to-red-500 rounded-xl flex items-center justify-center font-display font-black text-white text-base shadow-md">
+          🍔
+        </div>
+        <div>
+          <h1 class="font-display font-extrabold text-lg tracking-tight flex items-center gap-2">
+            Multi-Loja Super-Admin <span class="bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Global</span>
+          </h1>
+          <p class="text-[10px] text-gray-400 font-medium mt-0.5">Visão unificada das lojas e faturamento do aplicativo</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 flex-wrap">
+        <button onclick="toggleRegisterStoreModal(true)" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all">
+          ➕ Cadastrar Nova Loja
+        </button>
+        <button onclick="signOutSuperAdmin()" class="bg-white/10 hover:bg-white/20 text-white font-medium text-xs py-2.5 px-3 rounded-xl transition-colors">
+          Sair do Console
+        </button>
+        <a href="index.html" class="bg-white/15 hover:bg-white/25 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl transition-all border border-white/10">
+          Voltar ao App de Pedidos
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 flex flex-col gap-6 hidden whitespace-normal" id="real-dashboard-main">
+    
+    <!-- Active Override Notice Ribbon -->
+    <div id="active-override-banner" class="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl p-4 shadow-lg items-center justify-between hidden transition-all">
+      <div class="flex items-center gap-3">
+        <span class="text-xl">⚠️</span>
+        <div>
+          <h4 class="font-bold text-sm">MODO SUPER-USUÁRIO ATIVO!</h4>
+          <p class="text-xs opacity-95">Você está simulando o painel de pedidos da loja: <strong id="override-store-name-lbl" class="font-black">...</strong>. Qualquer alteração ou visualização em pedidos, cardápio e relatórios será feita nesta loja.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="clearOverrideStoreId()" class="bg-white text-orange-700 font-bold px-3.5 py-1.5 rounded-xl text-xs hover:bg-orange-50 cursor-pointer shadow-sm active:scale-95 transition-all">Desativar Modo Simulação</button>
+      </div>
+    </div>
+
+    <!-- Quick Cards Widgets Statistics -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center text-xl">
+          🏪
+        </div>
+        <div>
+          <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Lojas Parceiras</span>
+          <h3 id="stat-total-stores" class="font-display font-black text-2xl text-slate-800 leading-tight">0</h3>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center text-xl">
+          🟢
+        </div>
+        <div>
+          <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Lojas Abertas</span>
+          <h3 id="stat-open-stores" class="font-display font-black text-2xl text-slate-800 leading-tight">0</h3>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center text-xl">
+          📊
+        </div>
+        <div>
+          <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Total de Pedidos Geral</span>
+          <h3 id="stat-total-orders" class="font-display font-black text-2xl text-slate-800 leading-tight">0</h3>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-xl">
+          👥
+        </div>
+        <div>
+          <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Clientes Cadastrados</span>
+          <h3 id="stat-total-clients" class="font-display font-black text-2xl text-slate-800 leading-tight">0</h3>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Search Tool and Filter Layout -->
+    <section class="bg-white rounded-2xl p-4.5 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <h3 class="font-display font-extrabold text-gray-800 text-base">Lojas Registradas no Sistema</h3>
+        <p class="text-[11px] text-gray-500 mt-0.5">Monitore os parâmetros, status do estabelecimento e controle as configurações globais.</p>
+      </div>
+
+      <div class="relative w-full md:w-80">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-xs">🔍</span>
+        <input type="text" id="store-search-input" oninput="filterStoresList(this.value)" placeholder="Pesquisar por nome, WhatsApp ou ID..." class="w-full pl-9 pr-8 py-2 border border-gray-200 focus:border-orange-500 rounded-xl text-xs focus:outline-none transition-all shadow-xs" />
+      </div>
+    </section>
+
+    <!-- Tenant Grid List -->
+    <section id="stores-visual-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Loaded dynamically -->
+      <div id="shimmer-loading" class="col-span-full py-12 text-center text-gray-400">
+        <p class="text-sm">Buscando informações gerais das lojas no Firebase...</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: REGISTER NEW STORE -->
+  <div id="register-store-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
+    <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl scale-95 transition-transform duration-200 border border-gray-100 flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🏪</span>
+          <h3 class="font-display font-extrabold text-gray-800 text-sm">Cadastrar Nova Loja Parceira</h3>
+        </div>
+        <button onclick="toggleRegisterStoreModal(false)" class="text-gray-400 hover:text-gray-600 font-sans font-bold text-sm">✕</button>
+      </div>
+
+      <!-- Scrollable Form wrapper -->
+      <form id="new-store-form" onsubmit="handleNewStoreSubmit(event)" class="space-y-4 overflow-y-auto pr-1 flex-grow">
+        
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Identificador Único (UID/Slug)*</label>
+            <input type="text" id="new-store-id" placeholder="Ex: ciachopp" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none bg-gray-50 focus:bg-white" />
+            <p class="text-[9px] text-gray-400">Será usado no link do cliente (id-unico-da-loja).</p>
+          </div>
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Nome da Loja*</label>
+            <input type="text" id="new-store-name" placeholder="Ex: Cia do Chopp" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Telefone / WhatsApp*</label>
+            <input type="text" id="new-store-phone" placeholder="Ex: (16) 99999-9999" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Descrição Comercial Cortesia</label>
+            <input type="text" id="new-store-desc" placeholder="Ex: Cerveja gelada e os melhores petiscos" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Horário Abertura (Ex: 18:00)</label>
+            <input type="text" id="new-store-open" placeholder="18:00" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Horário Fechamento (Ex: 23:30)</label>
+            <input type="text" id="new-store-close" placeholder="23:30" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">CEP Local*</label>
+            <input type="text" id="new-store-cep" placeholder="14000-000" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Taxa de Entrega de Partida (Base)</label>
+            <input type="number" step="0.1" id="new-store-delivery-fee" placeholder="5.00" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-[10px] uppercase font-bold text-gray-400">Endereço Completo</label>
+          <input type="text" id="new-store-address" placeholder="Av. Principal, 1200, Centro" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+        </div>
+
+        <div class="pt-4 flex gap-3 shrink-0">
+          <button type="button" onclick="toggleRegisterStoreModal(false)" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl text-xs font-semibold cursor-pointer transition-all">Cancelar</button>
+          <button type="submit" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer">Inicializar e Ativar Loja</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
+
+    let loadedStores = [];
+    let activeFilterKeyword = '';
+
+    // Verify passcode sign-in
+    window.attemptAdminAccess = function() {
+      const code = document.getElementById('admin-passcode').value;
+      if (code === 'admin321' || code === '120934' || code === 'popfood' || code === 'admin') {
+        sessionStorage.setItem('popfood_super_admin_verified', 'true');
+        document.getElementById('admin-auth-gate').classList.add('hidden');
+        document.getElementById('real-dashboard-header').classList.remove('hidden');
+        document.getElementById('real-dashboard-main').classList.remove('hidden');
+        initDashboardData();
+      } else {
+        alert("Código de Administrador incorreto! Tente 'admin', 'popfood' ou consulte com TI administrador.");
+      }
+    }
+
+    // Auto load verification if logged in previously
+    window.onload = () => {
+      if (sessionStorage.getItem('popfood_super_admin_verified') === 'true') {
+        document.getElementById('admin-auth-gate').classList.add('hidden');
+        document.getElementById('real-dashboard-header').classList.remove('hidden');
+        document.getElementById('real-dashboard-main').classList.remove('hidden');
+        initDashboardData();
+      }
+      
+      const currentOverride = localStorage.getItem('popfood_admin_store_override');
+      if (currentOverride) {
+        document.getElementById('active-override-banner').classList.remove('hidden');
+        document.getElementById('active-override-banner').classList.add('flex');
+        document.getElementById('override-store-name-lbl').textContent = currentOverride;
+      }
+    }
+
+    window.signOutSuperAdmin = () => {
+      sessionStorage.removeItem('popfood_super_admin_verified');
+      window.location.reload();
+    }
+
+    // Load metrics and multi-tenant profiles list natively from Firestore
+    async function initDashboardData() {
+      try {
+        // 1. Load Stores List
+        const storesRef = collection(db, COLLECTIONS.restaurantProfile);
+        const storesSnapshot = await getDocs(storesRef);
+        
+        let allStores = [];
+        storesSnapshot.forEach(docSnap => {
+          const sData = docSnap.data();
+          const docId = docSnap.id;
+          
+          // Filter out auxiliary document nodes that are system metadata, not actual stores
+          if (docId !== "logo" && !docId.startsWith("banner") && (sData.name || sData.storeId)) {
+            allStores.push({
+              id: docId,
+              ...sData
+            });
+          }
+        });
+
+        loadedStores = allStores;
+        
+        // 2. Fetch overall metrics from orders (Global collection)
+        const ordersSnap = await getDocs(collection(db, COLLECTIONS.orders));
+        let totalOrdersCount = ordersSnap.size;
+
+        // 3. Fetch overall clients
+        const clientsSnap = await getDocs(collection(db, COLLECTIONS.clients));
+        let totalClientsCount = clientsSnap.size;
+
+        // Calculate and paint stats
+        document.getElementById('stat-total-stores').textContent = loadedStores.length;
+        document.getElementById('stat-open-stores').textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
+        document.getElementById('stat-total-orders').textContent = totalOrdersCount;
+        document.getElementById('stat-total-clients').textContent = totalClientsCount;
+
+        renderStoresListUI();
+      } catch (err) {
+        console.error("Failure fetching general dashboard telemetry: ", err);
+      }
+    }
+
+    // Draw grid list UI elements
+    function renderStoresListUI() {
+      const grid = document.getElementById('stores-visual-grid');
+      grid.innerHTML = '';
+
+      let filtered = loadedStores;
+      if (activeFilterKeyword) {
+        filtered = loadedStores.filter(s => {
+          const n = (s.name || '').toLowerCase();
+          const p = (s.phone || '').toLowerCase();
+          const i = (s.id || '').toLowerCase();
+          return n.includes(activeFilterKeyword) || p.includes(activeFilterKeyword) || i.includes(activeFilterKeyword);
+        });
+      }
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div class="col-span-full py-12 text-center text-gray-400 bg-white border border-gray-100 rounded-2xl">Não há lojas compatíveis com a busca.</div>`;
+        return;
+      }
+
+      filtered.forEach(store => {
+        const storeCard = document.createElement('div');
+        storeCard.className = "bg-white rounded-2xl p-5 border border-gray-105 border-gray-200/60 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4 relative overflow-hidden";
+        
+        const openBadgeColor = (store.isOpen === true || store.isOpen === 'true') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-650';
+        const openBadgeText = (store.isOpen === true || store.isOpen === 'true') ? 'Aberto' : 'Fechado';
+
+        const clientUrl = `${window.location.origin}/cliente.html?store=${store.id}`;
+        const motoboyUrl = `${window.location.origin}/motoboy.html?store=${store.id}`;
+
+        storeCard.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[9px] font-mono uppercase bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-md truncate max-w-[130px]" title="ID do Estabelecimento / Slug">ID: ${store.id}</span>
+              <span id="badge-open-${store.id}" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${openBadgeColor}">${openBadgeText}</span>
+            </div>
+
+            <h4 class="font-display font-bold text-gray-800 text-sm tracking-tight leading-tight">${store.name || 'Loja sem nome'}</h4>
+            <p class="text-[11px] text-gray-400 mt-1 line-clamp-1 font-semibold">📞 ${store.phone || 'Sem WhatsApp'}</p>
+            <p class="text-[10px] text-gray-400 mt-1 line-clamp-1">📍 ${store.address || 'Sem endereço'}</p>
+            
+            <div class="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[10px]">
+              <span class="text-gray-400">Horário: <strong class="text-gray-600">${store.openTime || '18:00'} às ${store.closeTime || '23:00'}</strong></span>
+              <span class="text-gray-400">Min: <strong class="text-gray-600">R$ ${(store.minimumOrderPrice || 0).toFixed(2)}</strong></span>
+            </div>
+          </div>
+
+          <div class="space-y-2 pt-1 border-t border-gray-50 flex flex-col justify-end">
+            <!-- Fast Operating Hour Aberto/Fechado Switcher -->
+            <div class="flex items-center justify-between bg-gray-50/80 p-2 rounded-xl border border-gray-100">
+              <span class="text-[10px] font-bold text-gray-550">Funcionamento Instantâneo</span>
+              <button onclick="toggleStoreStatusDirectly('${store.id}')" class="bg-gray-200 hover:bg-gray-300 transition-all py-1 px-3.5 rounded-lg text-[9px] font-black uppercase text-gray-700 cursor-pointer">
+                Alternar
+              </button>
+            </div>
+
+            <!-- Custom launcher widgets buttons -->
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="copyToClipboard('${clientUrl}', 'Link do Cliente copiado!')" class="bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 p-2 text-[10px] rounded-xl font-bold text-center cursor-pointer flex items-center justify-center gap-1">
+                🏪 Link Loja
+              </button>
+              <button onclick="copyToClipboard('${motoboyUrl}', 'Link do Motoboy copiado!')" class="bg-purple-50 border border-purple-100 text-purple-700 hover:bg-purple-100 p-2 text-[10px] rounded-xl font-bold text-center cursor-pointer flex items-center justify-center gap-1">
+                🏍️ Link Motoboy
+              </button>
+            </div>
+
+            <!-- Inspect Override action -->
+            <button onclick="overrideSessionIntoStore('${store.id}', '${store.name}')" class="w-full bg-slate-900 text-white hover:bg-orange-600 font-bold text-xs py-2.5 rounded-xl transition-all shadow-xs hover:scale-[1.02] active:scale-95 cursor-pointer">
+              👁️ Acessar Painel de Pedidos
+            </button>
+          </div>
+        `;
+
+        grid.appendChild(storeCard);
+      });
+    }
+
+    // Set search dynamic filter variables
+    window.filterStoresList = function(keyword) {
+      activeFilterKeyword = keyword.toLowerCase().trim();
+      renderStoresListUI();
+    }
+
+    // Direct Aberto/Fechado switcher natively updating on Firestore
+    window.toggleStoreStatusDirectly = async function(storeId) {
+      const match = loadedStores.find(s => s.id === storeId);
+      if (!match) return;
+
+      const currentStatus = (match.isOpen === true || match.isOpen === 'true');
+      const nextStatus = !currentStatus;
+
+      try {
+        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
+          isOpen: nextStatus
+        });
+        
+        match.isOpen = nextStatus;
+        
+        // Update UI locally immediately
+        const b = document.getElementById(`badge-open-${storeId}`);
+        if (b) {
+          b.className = `px-2.5 py-0.5 rounded-full text-[10px] font-bold ${nextStatus ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-650'}`;
+          b.textContent = nextStatus ? 'Aberto' : 'Fechado';
+        }
+        
+        // Recalculate operational stores
+        document.getElementById('stat-open-stores').textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
+        console.log(`Instant status changed for store ${storeId} to ${nextStatus}`);
+      } catch (err) {
+        alert("Erro ao alterar funcionamento instantâneo: " + err.message);
+      }
+    }
+
+    // Override active session user UID override variables
+    window.overrideSessionIntoStore = function(storeId, storeName) {
+      localStorage.setItem('popfood_admin_store_override', storeId);
+      localStorage.setItem('popfood_admin_store_name_override', storeName);
+      
+      // Paint visual notice
+      document.getElementById('active-override-banner').classList.remove('hidden');
+      document.getElementById('active-override-banner').classList.add('flex');
+      document.getElementById('override-store-name-lbl').textContent = storeName;
+      
+      alert(`Fabuloso! Modo simulação ativo.\nRedirecionando para o Painel de Pedidos da loja "${storeName}".`);
+      window.location.href = "pedidos.html";
+    }
+
+    // Restore standard session variables
+    window.clearOverrideStoreId = function() {
+      localStorage.removeItem('popfood_admin_store_override');
+      localStorage.removeItem('popfood_admin_store_name_override');
+      document.getElementById('active-override-banner').classList.add('hidden');
+      alert("Modo Simulação desativado! Retornando ao comportamento padrão.");
+      window.location.reload();
+    }
+
+    // New store initialization model
+    window.toggleRegisterStoreModal = function(show) {
+      const modal = document.getElementById('register-store-modal');
+      if (!modal) return;
+      if (show) {
+        modal.classList.remove('hidden');
+        document.getElementById('new-store-form').reset();
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    // Copying URLs helper to facilitate testing
+    window.copyToClipboard = function(text, successMsg) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert(successMsg);
+      }).catch(err => {
+        // Fallback prompt
+        window.prompt("Copie o link abaixo:", text);
+      });
+    }
+
+    // Form submit pipeline
+    window.handleNewStoreSubmit = async function(event) {
+      event.preventDefault();
+      
+      let storeId = document.getElementById('new-store-id').value.toLowerCase().replace(/[^a-z0-9_-]/g, '').trim();
+      const name = document.getElementById('new-store-name').value.trim();
+      const phone = document.getElementById('new-store-phone').value.trim();
+      const description = document.getElementById('new-store-desc').value.trim() || 'Melhor restaurante da região';
+      const openTime = document.getElementById('new-store-open').value.trim() || '18:00';
+      const closeTime = document.getElementById('new-store-close').value.trim() || '23:00';
+      const cep = document.getElementById('new-store-cep').value.trim();
+      const address = document.getElementById('new-store-address').value.trim() || 'Rua Central, S/N, Centro';
+      const baseFee = parseFloat(document.getElementById('new-store-delivery-fee').value || 5.0);
+
+      if (!storeId) {
+        alert("Favor definir o ID Slug de identificação único!");
+        return;
+      }
+
+      // Check if store ID already is used
+      const existing = loadedStores.some(s => s.id === storeId);
+      if (existing) {
+        alert("Este Identificador Único / Slug já está em uso! Escolha outro (ex: choppcia2).");
+        return;
+      }
+
+      // Feed base JSON profile details matches perfil.html schema values
+      const initialProfile = {
+        storeId: storeId,
+        name: name,
+        phone: phone,
+        description: description,
+        openTime: openTime,
+        closeTime: closeTime,
+        cep: cep,
+        address: address,
+        isOpen: true,
+        logo: '',
+        minimumOrderPrice: 0.0,
+        mpAccessToken: '',
+        mpPublicKey: '',
+        stripePublicKey: '',
+        stripeSecretKey: '',
+        latitude: -23.55052,
+        longitude: -46.633308,
+        createdAt: new Date().toISOString(),
+        deliveryRates: {
+          "1": baseFee,
+          "2": baseFee + 1.5,
+          "3": baseFee + 3.0,
+          "4": baseFee + 4.5,
+          "5": baseFee + 6.0,
+          "6": baseFee + 7.5,
+          "7": baseFee + 9.0,
+          "8": baseFee + 10.5,
+          "9": baseFee + 12.0,
+          "10": baseFee + 14.0
+        },
+        deliveryTimes: {
+          "1": 25, "2": 30, "3": 35, "4": 40, "5": 45, "6": 50, "7": 55, "8": 60, "9": 65, "10": 70
+        }
+      };
+
+      try {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), initialProfile);
+        alert(`Sucesso magnífico!\nLoja "${name}" cadastrada com sucesso.\nID slug: ${storeId}\nLink do cliente: /cliente.html?store=${storeId}`);
+        toggleRegisterStoreModal(false);
+        initDashboardData();
+      } catch (err) {
+        alert("Erro no setup de cadastro da loja: " + err.message);
+      }
+    }
+  </script>
+</body>
+</html>

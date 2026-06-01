@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel de Pedidos - PopFood Delivery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          },
+          colors: {
+            brand: {
+              primary: '#f97316',
+              secondary: '#22c55e',
+              danger: '#ef4444',
+              light: '#f3f4f6',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-brand-light font-sans text-gray-800 min-h-screen flex flex-col">
+
+  <!-- Admin Header -->
+  <header class="bg-white border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">📋</span>
+        <div>
+          <h1 class="font-display font-bold text-lg text-gray-800 leading-tight">Painel de Pedidos</h1>
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span class="inline-block w-2.5 h-2.5 bg-green-500 rounded-full animate-ping"></span>
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tempo Real 🔴</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action station -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <!-- Thermal Receipt Print toggle -->
+        <button onclick="toggleAutoPrint()" id="btn-autoprint" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer">
+          <span id="lbl-auto-indicator">🖨️ Impressão Auto: OFF</span>
+        </button>
+        <!-- Desktop Notifications Toggle -->
+        <button onclick="requestDesktopNotificationPermission()" id="btn-desktop-notifications" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer" title="Ativar Alertas no Computador">
+          <span id="lbl-notification-indicator">🔔 Notificações: Inativo</span>
+        </button>
+        <!-- Continuous Buzzer Toggle -->
+        <button onclick="toggleContinuousBuzzer()" id="btn-continuous-buzzer" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer" title="Repetir som a cada 10 segundos para novos pedidos pendentes">
+          <span id="lbl-continuous-buzzer">🚨 Campainha: ON</span>
+        </button>
+        <!-- Auto Accept Toggle -->
+        <button onclick="toggleAutoAccept()" id="btn-auto-accept" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-2.5 px-4 rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer" title="Aceitar novos pedidos de forma automática">
+          <span id="lbl-auto-accept">⚡ Auto-Aceitar: OFF</span>
+        </button>
+        <button onclick="togglePrinterSettingsModal(true)" class="bg-gray-100 hover:bg-gray-250 text-gray-700 text-xs font-semibold py-2.5 px-3 rounded-xl shadow-xs transition-colors cursor-pointer" title="Configurar Impressora Local">
+          ⚙️
+        </button>
+        <!-- Nav Shortcut Links -->
+        <a href="index.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Cardápio</a>
+        <a href="perfil.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Perfil</a>
+        <a href="clientes.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Clientes</a>
+        <a href="relatorios.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Relatórios</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
+    <!-- Visual Sound Indicator Banner -->
+    <div id="new-order-banner" class="bg-orange-500 text-white rounded-2xl p-4 shadow-lg flex items-center justify-between hidden transition-all animate-bounce">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl animate-pulse">🔔</span>
+        <div>
+          <h4 class="font-bold text-sm">NOVO PEDIDO RECEBIDO!</h4>
+          <p class="text-xs opacity-90">Um novo pedido acaba de ser enviado à cozinha. Verifique a aba Pendentes.</p>
+        </div>
+      </div>
+      <button onclick="dismissNewOrderBanner()" class="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full outline-none font-bold text-xs">OK</button>
+    </div>
+
+    <!-- Filter selectors row -->
+    <section class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 pb-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="selectStateFilter('Todos')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border transition-all cursor-pointer bg-orange-500 border-orange-500 text-white" data-status="Todos">Todos</button>
+        <button onclick="selectStateFilter('Pendente')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Pendente">Pendentes</button>
+        <button onclick="selectStateFilter('Preparando')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Preparando">Preparando</button>
+        <button onclick="selectStateFilter('Saiu para entrega')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Saiu para entrega">Rota de Entrega</button>
+        <button onclick="selectStateFilter('Entregue')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Entregue">Entregues</button>
+        <button onclick="selectStateFilter('Cancelado')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Cancelado">Cancelados</button>
+      </div>
+
+      <!-- Search Box input element -->
+      <div class="relative w-full md:w-72">
+        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400 text-xs">🔍</span>
+        <input type="text" id="order-search-input" oninput="handleOrderSearch(this.value)" placeholder="Pesquisar por cliente, ID, itens, fone..." class="w-full pl-9 pr-8 py-2.5 border border-gray-200 focus:border-orange-550 focus:border-orange-500 rounded-xl text-xs focus:outline-none transition-all shadow-xs" />
+        <button onclick="clearOrderSearch()" id="btn-clear-search" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 hidden text-xs transition-colors">✕</button>
+      </div>
+    </section>
+
+    <!-- Content Columns splits: Em Andamento vs Finalizados -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- SUBSECTION: ACTIVE PIPELINE orders (Pendente, Preparando, Em Rota) -->
+      <div class="space-y-4">
+        <h3 class="font-display font-semibold text-sm text-gray-500 flex items-center gap-2">
+          <span>🛠️ Em Andamento</span>
+          <span id="active-pipes-count" class="bg-orange-100 text-brand-primary px-2 py-0.5 rounded-md text-[10px] font-bold">0</span>
+        </h3>
+        
+        <div id="active-orders-grid" class="space-y-4">
+          <!-- Populated dynamically -->
+          <div class="text-center py-12 bg-white rounded-xl border border-gray-100 text-gray-400">
+            <p class="text-sm">Buscando transações do banco de dados...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUBSECTION: FINALIZED orders (Entregue, Cancelado) -->
+      <div class="space-y-4">
+        <h3 class="font-display font-semibold text-sm text-gray-500 flex items-center gap-2">
+          <span>✅ Histórico Finalizados</span>
+          <span id="finish-pipes-count" class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md text-[10px] font-bold">0</span>
+        </h3>
+
+        <div id="archived-orders-grid" class="space-y-4">
+          <!-- Populated dynamically -->
+          <div class="text-center py-12 bg-white rounded-xl border border-gray-100 text-gray-400">
+            <p class="text-sm border-gray-50">Sem registros finalizados</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL: DETALHES COMPLETOS DO PEDIDO (Drawer popup) -->
+  <div id="details-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden backdrop-blur-xs">
+    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col relative transform scale-95 duration-200 transition-transform">
+      <button onclick="toggleDetailsModal(false)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 p-2 text-sm font-bold z-10 cursor-pointer">✕</button>
+      
+      <div class="p-6 border-b border-gray-100">
+        <span id="modal-lbl-date" class="text-[10px] text-gray-400 font-mono">--/--/-- --:--</span>
+        <h2 id="modal-lbl-orderid" class="font-display font-bold text-lg text-gray-800 tracking-tight">Pedido #------</h2>
+        <div id="modal-lbl-status" class="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Status</div>
+      </div>
+
+      <!-- Scrollable segment details -->
+      <div class="p-6 overflow-y-auto max-h-[50vh] space-y-5">
+        
+        <!-- Customer details -->
+        <div class="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
+          <h4 class="font-bold text-gray-700">Cliente & Entrega</h4>
+          <p><strong class="text-gray-500 font-medium">Nome:</strong> <span id="modal-lbl-name">--</span></p>
+          <p><strong class="text-gray-500 font-medium">WhatsApp:</strong> <span id="modal-lbl-phone">--</span></p>
+          <p><strong class="text-gray-500 font-medium" id="modal-title-address">Endereço:</strong> <span id="modal-lbl-address">--</span></p>
+          <p id="modal-lbl-comp-row"><strong class="text-gray-500 font-medium">Complemento:</strong> <span id="modal-lbl-comp">--</span></p>
+          <p id="modal-lbl-ref-row"><strong class="text-gray-500 font-medium">Referência:</strong> <span id="modal-lbl-ref">--</span></p>
+          <p><strong class="text-gray-500 font-medium">Pagamento:</strong> <span id="modal-lbl-payment">--</span></p>
+          <p id="modal-lbl-troco-row"><strong class="text-gray-500 font-medium">Troco:</strong> <span id="modal-lbl-troco">--</span></p>
+        </div>
+
+        <!-- Rating Feedback details (Visible when order is rated) -->
+        <div id="modal-lbl-rating-row" class="hidden space-y-2 bg-amber-50/50 p-4 rounded-xl border border-amber-100 text-xs text-left">
+          <h4 class="font-bold text-amber-800 flex items-center gap-1">⭐ Avaliação do Cliente</h4>
+          <div class="space-y-1">
+            <p><strong class="text-gray-655 font-medium">🍔 Qualidade da Comida:</strong> <span id="modal-lbl-rating-food" class="font-bold text-amber-600">--</span></p>
+            <p><strong class="text-gray-655 font-medium">🛵 Serviço de Entrega:</strong> <span id="modal-lbl-rating-delivery" class="font-bold text-amber-600">--</span></p>
+            <p id="modal-lbl-rating-comment-sec" class="hidden"><strong class="text-gray-655 font-bold block mt-1.5">💬 Comentário:</strong> <span id="modal-lbl-rating-comment" class="italic text-gray-705 pl-1 inline-block">--</span></p>
+          </div>
+        </div>
+
+        <!-- Order Items lists -->
+        <div class="space-y-3">
+          <h4 class="font-bold text-xs text-gray-600 uppercase tracking-widest">Itens requisitados</h4>
+          <div id="modal-items-container" class="space-y-2"></div>
+        </div>
+
+        <hr class="border-gray-100">
+
+        <!-- Totals index table -->
+        <div class="space-y-1.5 text-xs text-gray-500 font-medium">
+          <div class="flex justify-between">
+            <span>Subtotal:</span>
+            <span id="modal-subtotal" class="font-bold text-gray-700">R$ 0,00</span>
+          </div>
+          <div class="flex justify-between text-brand-secondary">
+            <span>Desconto:</span>
+            <span id="modal-desconto" class="font-bold">- R$ 0,00</span>
+          </div>
+          <div class="flex justify-between">
+            <span>Taxa do Delivery:</span>
+            <span id="modal-taxa" class="font-bold text-gray-700">R$ 0,00</span>
+          </div>
+          <div class="flex justify-between text-sm font-bold text-gray-800 pt-2 border-t border-gray-100">
+            <span>Total da Fatura:</span>
+            <span id="modal-total" class="text-brand-primary text-base">R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Footer control keys -->
+      <div class="p-4 border-t border-gray-100 bg-gray-50 flex items-center gap-2.5">
+        <button id="btn-action-preparar" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer">Preparar</button>
+        <button id="btn-action-despachar" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer">Despachar</button>
+        <button id="btn-action-cancelar" class="flex-1 border border-brand-danger hover:bg-red-50 text-brand-danger font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer">Cancelar</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- OFFSOUND BUZZER / AUDIO PLAYER FOR SOUND INTEGRATION -->
+  <audio id="bell-beep-player" src="som.mp3" preload="auto"></audio>
+
+  <!-- OFFSITE mono style receipt container targeted by specialized print window frames -->
+  <div id="receipt-print-layout" class="hidden"></div>
+
+  <!-- STYLE SHEETS INJECTED TO ENFORCE RECEIPT THERMAL DISPLAY MONOCHROME WIDTH -->
+  <style>
+    @media print {
+      @page {
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        background: white;
+      }
+      body * {
+        visibility: hidden;
+      }
+      #receipt-print-layout, #receipt-print-layout * {
+        visibility: visible;
+      }
+      #receipt-print-layout {
+        display: block !important;
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100% !important;
+        max-width: 350px !important;
+        background: white !important;
+        color: black !important;
+        font-family: system-ui, -apple-system, sans-serif !important;
+        font-size: 12px !important;
+        padding: 5px !important;
+      }
+    }
+  </style>
+
+  <!-- MODAL: CONFIGURAÇÃO DE IMPRESSORA -->
+  <div id="printer-settings-modal" class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 hidden backdrop-blur-xs">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col space-y-4">
+      <h3 class="font-bold text-gray-800">⚙️ Servidor Local de Impressão</h3>
+      <p class="text-xs text-gray-500">Configure o endereço IP ou URL do seu servidor local para impressão direta (bypassing nativo).</p>
+      
+      <div class="space-y-1">
+        <label class="text-[10px] font-bold text-gray-400 uppercase">URL do Servidor</label>
+        <div class="flex gap-2">
+            <input type="text" id="printer-server-url" class="flex-grow text-xs p-3 border border-gray-200 rounded-xl focus:outline-none" placeholder="http://localhost:8080">
+            <button onclick="fetchPrinters()" class="bg-gray-100 hover:bg-gray-200 px-3 rounded-xl text-xs font-bold text-gray-700">Testar/Listar</button>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+          <label class="text-[10px] font-bold text-gray-400 uppercase">Impressora Selecionada</label>
+          <select id="printer-select" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:outline-none">
+              <option value="">Selecione a impressora...</option>
+          </select>
+      </div>
+      
+      <button onclick="savePrinterSettings()" class="w-full bg-brand-primary text-white py-3 rounded-xl font-bold text-xs">Salvar Configuração</button>
+      <button onclick="togglePrinterSettingsModal(false)" class="w-full text-gray-400 py-1 text-xs">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- MODAL: ESTIMAÇÃO DE TEMPO DO PREPARO -->
+  <div id="prep-time-modal" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-gray-100 scale-95 transition-transform duration-200">
+      <div class="text-center space-y-4">
+        <div class="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-xl">⏳</div>
+        <div>
+          <h3 class="font-display font-extrabold text-gray-800 text-sm">Tempo Estimado de Preparo</h3>
+          <p class="text-[11px] text-gray-500 mt-1 leading-relaxed">Selecione em quantos minutos o pedido estará pronto para entrega ou retirada.</p>
+        </div>
+        
+        <!-- Pre-selected option labels -->
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="confirmPrepTimeSelection(20)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer">⏱️ 20 min</button>
+          <button onclick="confirmPrepTimeSelection(30)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans">⏱️ 30 min</button>
+          <button onclick="confirmPrepTimeSelection(40)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans">⏱️ 40 min</button>
+          <button onclick="confirmPrepTimeSelection(50)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer">⏱️ 50 min</button>
+          <button onclick="confirmPrepTimeSelection(60)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans">⏱️ 60 min</button>
+          <button onclick="confirmPrepTimeSelection(80)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans">⏱️ 80 min</button>
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-[10px] uppercase font-bold text-gray-400 text-left">Ou digite o tempo personalizado (min):</label>
+          <input type="number" id="custom-prep-minutes" placeholder="Ex: 45" class="w-full text-center p-2.5 text-sm font-semibold border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button onclick="togglePrepTimeModal(false)" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl text-xs font-semibold cursor-pointer transition-all">Cancelar</button>
+          <button onclick="confirmCustomPrepTime()" class="flex-1 py-2.5 bg-brand-primary hover:bg-orange-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-all">Confirmar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db, auth, Timestamp, COLLECTIONS, collection, doc, query, orderBy, onSnapshot, getDoc, updateDoc, onAuthStateChanged, where } from './firebase-config.js';
+
+    let activeFilter = 'Todos';
+    let orderSearchKeyword = '';
+    let globalOrdersList = [];
+    let autoPrintSetting = localStorage.getItem('popfood_autoprint') === 'true';
+    let continuousBuzzerSetting = localStorage.getItem('popfood_continuous_buzzer') !== 'false';
+    let autoAcceptSetting = localStorage.getItem('popfood_auto_accept') === 'true';
+    let localPrinterServerUrl = localStorage.getItem('popfood_printer_url') || '';
+    let selectedPrinterName = localStorage.getItem('popfood_printer_name') || '';
+    let loadedRestaurantProfile = null;
+    let firstLoadDone = false;
+
+    // Load printer settings
+    window.onload = async () => {
+      // Validate administrator active session
+      window.currentStoreId = null;
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          alert("Acesso restrito! Por favor faça login primeiro.");
+          window.location.href = "index.html";
+          return;
+        }
+        
+        // Superuser override
+        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
+        if (overrideStoreId) {
+          window.currentStoreId = overrideStoreId;
+          injectOverrideBannerUI();
+        } else {
+          window.currentStoreId = user.uid;
+        }
+
+        // Append storeId universally to specific module links
+        document.querySelectorAll('a[href="motoboy.html"], a[href="cliente.html"], a[href="index.html"]').forEach(el => {
+          if (el.getAttribute('href') === 'cliente.html') {
+             el.href = "cliente.html?store=" + window.currentStoreId;
+          }
+          if (el.getAttribute('href') === 'motoboy.html') {
+             el.href = "motoboy.html?store=" + window.currentStoreId;
+          }
+          
+        });
+  
+
+        // Synchronize auto indicator tags
+        document.getElementById('lbl-auto-indicator').textContent = autoPrintSetting ? "🖨️ Impressão Auto: ON" : "🖨️ Impressão Auto: OFF";
+        document.getElementById('lbl-continuous-buzzer').textContent = continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
+        document.getElementById('lbl-auto-accept').textContent = autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
+        if (typeof updateNotificationIndicator === 'function') {
+          updateNotificationIndicator();
+        }
+        document.getElementById('printer-server-url').value = localPrinterServerUrl;
+        
+        // Load saved printer if url exists
+        if (localPrinterServerUrl) fetchPrinters(false);
+
+        // Load restaurant settings
+        try {
+          const docSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId));
+          if (docSnap.exists()) {
+            loadedRestaurantProfile = docSnap.data();
+          }
+        } catch (err) {
+          console.warn("Could not retrieve profile metadata: ", err);
+        }
+
+        // Boot firestore snapshots listeners
+        startRealtimeOrdersPipeline();
+      });
+    };
+
+    // Printer settings toggler
+    window.togglePrinterSettingsModal = function(show) {
+      document.getElementById('printer-settings-modal').classList.toggle('hidden', !show);
+    }
+    
+    window.fetchPrinters = async function(showAlert = true) {
+        const url = document.getElementById('printer-server-url').value.trim();
+        if (!url) { alert("Informe a URL do servidor primeiro."); return; }
+        
+        try {
+            const resp = await fetch(`${url.replace(/\/$/, '')}/impressoras`);
+            const data = await resp.json();
+            const printers = data.impressoras || [];
+            
+            const select = document.getElementById('printer-select');
+            select.innerHTML = '<option value="">Selecione a impressora...</option>';
+            printers.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                if (p === selectedPrinterName) opt.selected = true;
+                select.appendChild(opt);
+            });
+            if (showAlert) alert("Impressoras listadas com sucesso!");
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao buscar impressoras: " + (err.message || err));
+        }
+    }
+    
+    window.savePrinterSettings = function() {
+      localPrinterServerUrl = document.getElementById('printer-server-url').value.trim();
+      selectedPrinterName = document.getElementById('printer-select').value;
+      localStorage.setItem('popfood_printer_url', localPrinterServerUrl);
+      localStorage.setItem('popfood_printer_name', selectedPrinterName);
+      window.togglePrinterSettingsModal(false);
+      alert("Configuração de impressora salva com sucesso!");
+    }
+
+    // Auto print toggler
+    window.toggleAutoPrint = function() {
+      autoPrintSetting = !autoPrintSetting;
+      localStorage.setItem('popfood_autoprint', autoPrintSetting.toString());
+      document.getElementById('lbl-auto-indicator').textContent = autoPrintSetting ? "🖨️ Impressão Auto: ON" : "🖨️ Impressão Auto: OFF";
+    }
+
+    // Connect real-time snap on Firestore database orders
+    function startRealtimeOrdersPipeline() {
+      const q = query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId));
+      
+      onSnapshot(q, (snapshot) => {
+        let hasNewPendente = false;
+        const incomingOrders = [];
+
+        snapshot.forEach(docSnap => {
+          incomingOrders.push({ id: docSnap.id, ...docSnap.data() });
+        });
+
+        // Sort orders in memory to prevent requiring Firestore composite indexes
+        incomingOrders.sort((a, b) => {
+          const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return tB - tA;
+        });
+
+        // Detect if there is a new "Pendente" order to play notification sound
+        if (firstLoadDone) {
+          // Look if there are document creations where state was introduced as "Pendente"
+          const anyNewPendente = incomingOrders.some(order => {
+            const isPendente = order.status === "Pendente";
+            // Check if this Pendente order was not already in our global list
+            const isFresh = !globalOrdersList.some(g => g.id === order.id);
+            return isPendente && isFresh;
+          });
+
+          if (anyNewPendente) {
+            hasNewPendente = true;
+          }
+        }
+
+        globalOrdersList = incomingOrders;
+        firstLoadDone = true;
+
+        if (typeof checkAndTriggerAutoAcceptance === 'function') {
+          checkAndTriggerAutoAcceptance();
+        }
+
+        if (hasNewPendente) {
+          triggerNewOrderAlert();
+          
+          const latestPendente = incomingOrders.find(o => o.status === "Pendente");
+          if (autoPrintSetting && latestPendente) {
+            // Avoid duplicate automatic prints
+            const printedOrders = JSON.parse(localStorage.getItem('popfood_printed_orders') || '[]');
+            if (!printedOrders.includes(latestPendente.id)) {
+                triggerThermalComandaPrint(latestPendente);
+                printedOrders.push(latestPendente.id);
+                // Keep only last 100 printed orders to prevent localstorage bloat
+                if(printedOrders.length > 100) printedOrders.shift();
+                localStorage.setItem('popfood_printed_orders', JSON.stringify(printedOrders));
+            }
+          }
+        }
+
+        renderVisualOrdersGrid();
+      }, (err) => {
+        console.error("Listening synchronization orders error: ", err);
+      });
+    }
+
+    // State filter switches
+    window.selectStateFilter = function(statusStr) {
+      activeFilter = statusStr;
+      
+      const btns = document.querySelectorAll('.filter-btn');
+      btns.forEach(btn => {
+        const btnStat = btn.getAttribute('data-status');
+        if (btnStat === statusStr) {
+          btn.className = "filter-btn text-xs font-bold py-2 px-4 rounded-full border transition-all cursor-pointer bg-orange-500 border-orange-500 text-white";
+        } else {
+          btn.className = "filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer";
+        }
+      });
+
+      renderVisualOrdersGrid();
+    }
+
+    window.handleOrderSearch = function(val) {
+      orderSearchKeyword = val.toLowerCase().trim();
+      const btnClear = document.getElementById('btn-clear-search');
+      if (btnClear) {
+        if (orderSearchKeyword) {
+          btnClear.classList.remove('hidden');
+        } else {
+          btnClear.classList.add('hidden');
+        }
+      }
+      renderVisualOrdersGrid();
+    }
+
+    window.clearOrderSearch = function() {
+      const input = document.getElementById('order-search-input');
+      if (input) {
+        input.value = '';
+      }
+      window.handleOrderSearch('');
+    }
+
+    // Sort, aggregate and render orders separation (active-andamento vs finished-concluido)
+    function renderVisualOrdersGrid() {
+      const activeParent = document.getElementById('active-orders-grid');
+      const archivedParent = document.getElementById('archived-orders-grid');
+
+      activeParent.innerHTML = '';
+      archivedParent.innerHTML = '';
+
+      // Filters & Search
+      let drawingList = globalOrdersList;
+      if (activeFilter !== 'Todos') {
+        drawingList = globalOrdersList.filter(o => o.status === activeFilter);
+      }
+
+      if (orderSearchKeyword) {
+        drawingList = drawingList.filter(o => {
+          const idMatch = o.id && o.id.toLowerCase().includes(orderSearchKeyword);
+          const nameMatch = o.customer && o.customer.name && o.customer.name.toLowerCase().includes(orderSearchKeyword);
+          const phoneMatch = o.customer && o.customer.phone && o.customer.phone.toLowerCase().includes(orderSearchKeyword);
+          const addressMatch = o.customer && o.customer.address && o.customer.address.toLowerCase().includes(orderSearchKeyword);
+          const cepMatch = o.customer && o.customer.cep && o.customer.cep.toLowerCase().includes(orderSearchKeyword);
+          const payMatch = o.paymentMethod && o.paymentMethod.toLowerCase().includes(orderSearchKeyword);
+          
+          let itemsMatch = false;
+          if (o.items && o.items.length > 0) {
+            itemsMatch = o.items.some(item => item.name && item.name.toLowerCase().includes(orderSearchKeyword));
+          }
+
+          return idMatch || nameMatch || phoneMatch || addressMatch || cepMatch || payMatch || itemsMatch;
+        });
+      }
+
+      // Separate arrays
+      const andamentoList = drawingList.filter(o => o.status === "Pendente" || o.status === "Preparando" || o.status === "Saiu para entrega");
+      const finalizadosList = drawingList.filter(o => o.status === "Entregue" || o.status === "Cancelado");
+
+      document.getElementById('active-pipes-count').textContent = andamentoList.length;
+      document.getElementById('finish-pipes-count').textContent = finalizadosList.length;
+
+      if (andamentoList.length === 0) {
+        activeParent.innerHTML = `
+          <div class="text-center py-10 bg-white border border-gray-100 rounded-xl text-gray-400">
+            <p class="text-sm">Não há pedidos ativos nesta categoria de filtro.</p>
+          </div>`;
+      } else {
+        andamentoList.forEach(order => {
+          activeParent.appendChild(createOrderVisualCard(order, true));
+        });
+      }
+
+      if (finalizadosList.length === 0) {
+        archivedParent.innerHTML = `
+          <div class="text-center py-10 bg-white border border-gray-100 rounded-xl text-gray-400">
+            <p class="text-sm">Não há pedidos finalizados nesta categoria de filtro.</p>
+          </div>`;
+      } else {
+        finalizadosList.forEach(order => {
+          archivedParent.appendChild(createOrderVisualCard(order, false));
+        });
+      }
+    }
+
+    // Build responsive order element structure
+    function createOrderVisualCard(order, isActivePipeline) {
+      const card = document.createElement('div');
+      
+      // If Pendente, highlight with a glowing soft light orange background
+      const pendenteBg = order.status === 'Pendente' ? 'bg-orange-50 border-orange-200 shadow-orange-500/5' : 'bg-white border-gray-100 shadow-sm';
+      card.className = `${pendenteBg} rounded-2xl p-4.5 border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-all relative overflow-hidden group`;
+
+      // Draw status color maps
+      let statusColor = "bg-gray-100 text-gray-500";
+      if (order.status === "Pendente") statusColor = "bg-orange-200 text-orange-700 font-bold animate-pulse";
+      if (order.status === "Preparando") statusColor = "bg-blue-100 text-blue-600";
+      if (order.status === "Saiu para entrega") statusColor = "bg-purple-100 text-purple-600";
+      if (order.status === "Entregue") statusColor = "bg-green-100 text-green-700";
+      if (order.status === "Cancelado") statusColor = "bg-red-100 text-red-650";
+
+      // Consolidar simple visual descriptor of items
+      const itemsOverview = order.items.map(i => `${i.quantity}x ${i.name}`).join(', ');
+      const isPickup = order.customer && order.customer.type === 'pickup';
+      let displayStatus = order.status;
+      if (isPickup && order.status === "Saiu para entrega") {
+        displayStatus = "Pronto p/ Retirada";
+      }
+
+      const addressLine = isPickup 
+        ? `<span class="bg-indigo-55 rounded bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 text-[10px] inline-flex items-center gap-1 border border-indigo-100">🏪 Retirada no Local</span>`
+        : `<p class="text-[11px] text-gray-400 line-clamp-1">📍 ${order.customer.address}</p>`;
+
+      card.innerHTML = `
+        <div class="flex-grow space-y-1.5 cursor-pointer w-full" onclick="showOrderDetailsDrawer('${order.id}')">
+          <div class="flex items-center justify-between sm:justify-start gap-3">
+            <h4 class="font-display font-bold text-sm text-gray-800">Pedido #${order.id}</h4>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusColor}">${displayStatus}</span>
+          </div>
+          <p class="text-[11px] text-gray-400 font-medium">🕒 ${order.date} | 👤 ${order.customer.name}</p>
+          <p class="text-xs text-gray-600 font-semibold line-clamp-1 capitalize">${itemsOverview}</p>
+          ${addressLine}
+        </div>
+        
+
+        <div class="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 flex-wrap justify-end">
+          <!-- Print -->
+          <button onclick="triggerThermalComandaPrintById('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs" title="Imprimir Comanda">
+            🖨️ Imprimir
+          </button>
+          
+          ${order.status === 'Pendente' ? `
+            <button onclick="changeOrderStatus('${order.id}', 'Preparando')" class="bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all">
+              🚀 Preparar
+            </button>
+          ` : ''}
+
+          ${order.status === 'Preparando' ? `
+            <button onclick="changeOrderStatus('${order.id}', 'Saiu para entrega')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all">
+              ${isPickup ? '🛍️ Pronto' : '🏍️ Despachar'}
+            </button>
+          ` : ''}
+        </div>
+      `;
+
+      return card;
+    }
+
+    // Status transitions
+    window.changeOrderStatus = async function(orderId, nextState, prepTimeOverride = null) {
+      if (nextState === 'Preparando' && prepTimeOverride === null) {
+        window.pendingPrepOrderId = orderId;
+        window.togglePrepTimeModal(true);
+        return;
+      }
+
+      try {
+        const orderRef = doc(db, COLLECTIONS.orders, orderId);
+        const updatePayload = {
+          status: nextState
+        };
+
+        if (nextState === 'Preparando') {
+          const minutes = parseInt(prepTimeOverride) || 40;
+          updatePayload.estimatedMinutes = minutes;
+          updatePayload.prepStartedAt = new Date().toISOString();
+        }
+
+        await updateDoc(orderRef, updatePayload);
+        
+        // Dynamic drawer updater
+        const modal = document.getElementById('details-modal');
+        if (modal && !modal.classList.contains("hidden")) {
+          showOrderDetailsDrawer(orderId);
+        }
+      } catch (err) {
+        console.error("Failing status transition error: ", err);
+        alert("Erro ao transicionar status: " + err.message);
+      }
+    }
+
+    // Toggles for new settings
+    window.toggleContinuousBuzzer = function() {
+      continuousBuzzerSetting = !continuousBuzzerSetting;
+      localStorage.setItem('popfood_continuous_buzzer', continuousBuzzerSetting.toString());
+      document.getElementById('lbl-continuous-buzzer').textContent = continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
+    }
+
+    window.toggleAutoAccept = function() {
+      autoAcceptSetting = !autoAcceptSetting;
+      localStorage.setItem('popfood_auto_accept', autoAcceptSetting.toString());
+      document.getElementById('lbl-auto-accept').textContent = autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
+      
+      if (autoAcceptSetting) {
+        checkAndTriggerAutoAcceptance();
+      }
+    }
+
+    // Auto-Accept trigger checker
+    async function checkAndTriggerAutoAcceptance() {
+      if (!autoAcceptSetting) return;
+      
+      for (const order of globalOrdersList) {
+        if (order.status === 'Pendente') {
+          console.log(`Auto-accepting order ${order.id}`);
+          await changeOrderStatus(order.id, 'Preparando', 40); // default to 40min for auto-acceptance
+        }
+      }
+    }
+
+    // Continuous Buzzer 10-second loop checker
+    let buzzerIntervalId = null;
+    function checkAndPlayBuzzerLoop() {
+      if (!continuousBuzzerSetting) return;
+      
+      const hasPending = globalOrdersList.some(o => o.status === 'Pendente');
+      if (hasPending) {
+        console.log("Continuous bell ringer triggered for pending orders...");
+        const audio = document.getElementById('bell-beep-player');
+        if (audio) {
+          audio.currentTime = 0;
+          audio.play().catch(err => {
+            console.warn("Continuous play som.mp3 blocked. Synthesizing buzzer...", err);
+            synthesizeBellRingerBeep();
+          });
+        } else {
+          synthesizeBellRingerBeep();
+        }
+      }
+    }
+
+    if (!buzzerIntervalId) {
+      buzzerIntervalId = setInterval(checkAndPlayBuzzerLoop, 10000);
+    }
+
+    // Prep time selection modal helpers
+    window.togglePrepTimeModal = function(show) {
+      const modal = document.getElementById('prep-time-modal');
+      if (!modal) return;
+      const box = modal.querySelector('div');
+      if (show) {
+        modal.classList.remove('hidden');
+        setTimeout(() => box.classList.remove('scale-100', 'scale-95'), 10);
+        document.getElementById('custom-prep-minutes').value = '';
+      } else {
+        box.classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 200);
+      }
+    }
+
+    window.confirmPrepTimeSelection = function(minutes) {
+      if (window.pendingPrepOrderId) {
+        window.changeOrderStatus(window.pendingPrepOrderId, 'Preparando', minutes);
+        window.pendingPrepOrderId = null;
+      }
+      window.togglePrepTimeModal(false);
+    }
+
+    window.confirmCustomPrepTime = function() {
+      const input = document.getElementById('custom-prep-minutes').value;
+      const val = parseInt(input);
+      if (!val || val <= 0) {
+        alert("Por favor insira um tempo válido em minutos (ex: 45)");
+        return;
+      }
+      window.confirmPrepTimeSelection(val);
+    }
+
+    function injectOverrideBannerUI() {
+      const overrideStoreName = localStorage.getItem('popfood_admin_store_name_override') || 'Parceiro';
+      let ribbon = document.getElementById('superuser-override-ribbon');
+      if (!ribbon) {
+        ribbon = document.createElement('div');
+        ribbon.id = 'superuser-override-ribbon';
+        ribbon.className = "bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold py-2.5 px-4 text-center flex items-center justify-between gap-3 shadow-md sticky top-0 z-[9999]";
+        ribbon.innerHTML = `
+          <div class="mx-auto flex items-center gap-1.5 flex-wrap justify-center">
+            <span>🛡️</span>
+            <span><strong>MODO SIMULAÇÃO SUPER-USUÁRIO ATIVO:</strong> Gerenciando a loja <strong class="underline">${overrideStoreName}</strong></span>
+          </div>
+          <button onclick="localStorage.removeItem('popfood_admin_store_override'); localStorage.removeItem('popfood_admin_store_name_override'); window.location.reload();" class="bg-white/20 hover:bg-white/35 text-white active:scale-95 transition-all px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer shrink-0">
+            Sair e Voltar ao Admin Geral
+          </button>
+        `;
+        document.body.insertBefore(ribbon, document.body.firstChild);
+      }
+    }
+
+    // Modal drawer view state configurations
+    window.toggleDetailsModal = function(show) {
+      const modal = document.getElementById('details-modal');
+      const box = modal.querySelector('div');
+      
+      if (show) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          box.classList.remove('scale-95');
+        }, 50);
+        document.body.classList.add('overflow-hidden');
+      } else {
+        box.classList.add('scale-95');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 200);
+        document.body.classList.remove('overflow-hidden');
+      }
+    }
+
+    window.showOrderDetailsDrawer = function(orderId) {
+      const order = globalOrdersList.find(o => o.id === orderId);
+      if (!order) return;
+
+      document.getElementById('modal-lbl-orderid').textContent = `Pedido #${order.id}`;
+      document.getElementById('modal-lbl-date').textContent = order.date;
+      
+      const isPickup = order.customer && order.customer.type === 'pickup';
+      const badge = document.getElementById('modal-lbl-status');
+      
+      let displayStatus = order.status;
+      if (isPickup && order.status === 'Saiu para entrega') {
+        displayStatus = "Pronto p/ Retirada";
+      }
+      
+      badge.textContent = displayStatus;
+      badge.className = "inline-block mt-2 px-3.5 py-1 rounded-full text-[11px] font-bold";
+      if (order.status === 'Pendente') badge.classList.add('bg-orange-100', 'text-brand-primary');
+      else if (order.status === 'Preparando') badge.classList.add('bg-blue-100', 'text-blue-600');
+      else if (order.status === 'Saiu para entrega') badge.classList.add('bg-purple-100', 'text-purple-600');
+      else if (order.status === 'Entregue') badge.classList.add('bg-green-100', 'text-green-700');
+      else badge.classList.add('bg-red-100', 'text-brand-danger');
+
+      // Client details
+      document.getElementById('modal-lbl-name').textContent = order.customer.name;
+      document.getElementById('modal-lbl-phone').textContent = order.customer.phone;
+      
+      const addressLabelEl = document.getElementById('modal-title-address');
+      if (addressLabelEl) {
+        addressLabelEl.textContent = isPickup ? "Tipo/Retirada:" : "Endereço:";
+      }
+
+      if (isPickup) {
+        document.getElementById('modal-lbl-address').textContent = "Retirada no Restaurante (Vou buscar)";
+      } else {
+        if (order.customer && order.customer.cep) {
+          document.getElementById('modal-lbl-address').textContent = `${order.customer.address} (CEP: ${order.customer.cep})`;
+        } else {
+          document.getElementById('modal-lbl-address').textContent = order.customer ? order.customer.address : "Não informado";
+        }
+      }
+      
+      const compVal = document.getElementById('modal-lbl-comp');
+      if (order.customer.complement) {
+        document.getElementById('modal-lbl-comp-row').classList.remove('hidden');
+        compVal.textContent = order.customer.complement;
+      } else {
+        document.getElementById('modal-lbl-comp-row').classList.add('hidden');
+      }
+
+      const refVal = document.getElementById('modal-lbl-ref');
+      if (order.customer.reference) {
+        document.getElementById('modal-lbl-ref-row').classList.remove('hidden');
+        refVal.textContent = order.customer.reference;
+      } else {
+        document.getElementById('modal-lbl-ref-row').classList.add('hidden');
+      }
+
+      // Populate Payment and Troco
+      document.getElementById('modal-lbl-payment').textContent = order.paymentMethod || "Não informado";
+      
+      const trocoRow = document.getElementById('modal-lbl-troco-row');
+      const trocoVal = document.getElementById('modal-lbl-troco');
+      if (order.paymentMethod === 'Dinheiro' && order.troco) {
+        trocoRow.classList.remove('hidden');
+        trocoVal.textContent = order.troco;
+      } else {
+        trocoRow.classList.add('hidden');
+      }
+
+      // Populate Client Rating if available
+      const rRow = document.getElementById('modal-lbl-rating-row');
+      if (order.rating) {
+        rRow.classList.remove('hidden');
+        const starsFood = parseInt(order.rating.starsFood) || 0;
+        const starsDeliv = parseInt(order.rating.starsDelivery) || 0;
+        document.getElementById('modal-lbl-rating-food').textContent = "★".repeat(starsFood) + "☆".repeat(5 - starsFood) + ` (${starsFood}/5)`;
+        document.getElementById('modal-lbl-rating-delivery').textContent = "★".repeat(starsDeliv) + "☆".repeat(5 - starsDeliv) + ` (${starsDeliv}/5)`;
+        
+        const rCommentSec = document.getElementById('modal-lbl-rating-comment-sec');
+        if (order.rating.comment && order.rating.comment.trim() !== '') {
+          rCommentSec.classList.remove('hidden');
+          document.getElementById('modal-lbl-rating-comment').textContent = `"${order.rating.comment}"`;
+        } else {
+          rCommentSec.classList.add('hidden');
+        }
+      } else {
+        rRow.classList.add('hidden');
+      }
+
+      // Populate Items details list
+      const container = document.getElementById('modal-items-container');
+      container.innerHTML = '';
+
+      order.items.forEach(item => {
+        const row = document.createElement('div');
+        row.className = "flex justify-between text-xs border-b border-gray-50 pb-2";
+
+        let compText = '';
+        if (item.complements && item.complements.length > 0) {
+          compText = `<div class="text-[9px] text-gray-400 mt-0.5">Com: ` + item.complements.map(c => c.optionName).join(', ') + `</div>`;
+        }
+
+        const notesText = item.notes ? `<div class="text-[9px] text-orange-500 italic mt-0.5">Obs: "${item.notes}"</div>` : '';
+
+        row.innerHTML = `
+          <div>
+            <div class="font-bold text-gray-700 capitalize">${item.quantity}x ${item.name}</div>
+            ${compText}
+            ${notesText}
+          </div>
+          <span class="font-semibold text-gray-700">R$ ${(item.totalItemPrice * item.quantity).toFixed(2).replace('.', ',')}</span>
+        `;
+        container.appendChild(row);
+      });
+
+      // Populate values receipt summaries
+      document.getElementById('modal-subtotal').textContent = `R$ ${order.subtotal.toFixed(2).replace('.', ',')}`;
+      document.getElementById('modal-desconto').textContent = `- R$ ${(order.desconto || 0).toFixed(2).replace('.', ',')}`;
+      document.getElementById('modal-taxa').textContent = `R$ ${order.deliveryFee.toFixed(2).replace('.', ',')}`;
+      document.getElementById('modal-total').textContent = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
+
+      // Configured event listeners with actions trigger buttons on details popup
+      const btnPre = document.getElementById('btn-action-preparar');
+      const btnDes = document.getElementById('btn-action-despachar');
+      const btnCan = document.getElementById('btn-action-cancelar');
+
+      btnPre.onclick = () => { changeOrderStatus(order.id, 'Preparando'); toggleDetailsModal(false); };
+      btnDes.onclick = () => { changeOrderStatus(order.id, 'Saiu para entrega'); toggleDetailsModal(false); };
+      btnCan.onclick = async () => {
+        const can = await window.customConfirm("Deseja realmente cancelar este pedido de forma irreversível?");
+        if (can) {
+          changeOrderStatus(order.id, 'Cancelado'); 
+          toggleDetailsModal(false); 
+        }
+      };
+
+      // Hide/Show action buttons based on status
+      btnPre.classList.add('hidden');
+      btnDes.classList.add('hidden');
+      btnCan.classList.add('hidden');
+
+      if (order.status === "Pendente") {
+        btnPre.classList.remove('hidden');
+        btnCan.classList.remove('hidden');
+      } else if (order.status === "Preparando") {
+        btnDes.classList.remove('hidden');
+        btnCan.classList.remove('hidden');
+      } else if (order.status === "Saiu para entrega") {
+        btnCan.classList.remove('hidden');
+      }
+
+      toggleDetailsModal(true);
+    }
+
+    // Audio Alert Sound Notification Station
+    function triggerNewOrderAlert() {
+      // Toggle banner display
+      const banner = document.getElementById('new-order-banner');
+      if (banner) banner.classList.remove('hidden');
+
+      // play Audio beep synthesized or standard player in cascade fallback
+      const audio = document.getElementById('bell-beep-player');
+      if (audio) {
+        audio.play().catch(err => {
+          console.warn("Could not play som.mp3 automatically. Synthesizing buzzer frequencies natively via Web Audio...", err);
+          synthesizeBellRingerBeep();
+        });
+      }
+
+      // Trigger Web Desktop Notification if allowed
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification("🚨 Novo Pedido Recebido!", {
+            body: "Um novo pedido pendente acaba de ser recebido pelo sistema PopFood!",
+            tag: "new-order",
+            renotify: true,
+            requireInteraction: true,
+            icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
+          });
+        } catch (e) {
+          console.warn("Failed to summon Notification constructor:", e);
+        }
+      }
+    }
+
+    window.requestDesktopNotificationPermission = async function() {
+      if (!('Notification' in window)) {
+        alert("Este navegador ou dispositivo não suporta notificações de desktop.");
+        return;
+      }
+
+      try {
+        const permission = await Notification.requestPermission();
+        updateNotificationIndicator(permission);
+
+        if (permission === 'granted') {
+          new Notification("Notificações Ativas! 🔔", {
+            body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
+            icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
+          });
+        }
+      } catch (e) {
+        console.error("Error requesting notification permission:", e);
+      }
+    };
+
+    function updateNotificationIndicator(state = null) {
+      const el = document.getElementById('lbl-notification-indicator');
+      if (!el) return;
+      const current = state || (('Notification' in window) ? Notification.permission : 'unsupported');
+      if (current === 'granted') {
+        el.textContent = "🔔 Notificações: Ativas ✅";
+      } else if (current === 'denied') {
+        el.textContent = "🔕 Notificações: Bloqueadas ❌";
+      } else {
+        el.textContent = "🔔 Notificações: Desativadas ⚠️";
+      }
+    }
+    window.updateNotificationIndicator = updateNotificationIndicator;
+
+    window.dismissNewOrderBanner = function() {
+      document.getElementById('new-order-banner').classList.add('hidden');
+    }
+
+    // Build rich beep bells using AudioContext
+    function synthesizeBellRingerBeep() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+        
+        // Multi frequency chime
+        const playTone = (freq, delay, dur) => {
+          setTimeout(() => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
+            
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
+            
+            osc.start();
+            osc.stop(ctx.currentTime + dur);
+          }, delay);
+        };
+
+        // Standard sequence chime
+        playTone(587.33, 0, 0.4); // D5
+        playTone(659.25, 200, 0.4); // E5
+        playTone(880.00, 400, 0.6); // A5
+      } catch (err) {
+        console.warn("Native oscillator compilation fail: ", err);
+      }
+    }
+
+    window.triggerThermalComandaPrintById = function(orderId) {
+      const order = globalOrdersList.find(o => o.id === orderId);
+      if (order) triggerThermalComandaPrint(order);
+    }
+
+    // Monochrome layout customized for ~350px receipt thermal printer outputs with store logo
+    function triggerThermalComandaPrint(order) {
+      const parent = document.getElementById('receipt-print-layout');
+      parent.innerHTML = '';
+
+      const storeName = loadedRestaurantProfile ? loadedRestaurantProfile.name : "PopFood Delivery";
+      const storePhone = loadedRestaurantProfile ? loadedRestaurantProfile.phone : "WhatsApp";
+      const storeAddress = loadedRestaurantProfile ? loadedRestaurantProfile.address : "";
+
+      let itemsHtml = '';
+      order.items.forEach(item => {
+        let complementsHtml = '';
+        if (item.complements && item.complements.length > 0) {
+          complementsHtml = item.complements.map(c => `
+            <table style="width: 100%; font-size: 11px; color: #000; border-collapse: collapse;">
+              <tr>
+                <td style="padding-left: 10px;">+ ${c.optionName}</td>
+                <td style="text-align: right;">R$ ${c.price ? c.price.toFixed(2).replace('.', ',') : '0,00'}</td>
+              </tr>
+            </table>
+          `).join('');
+        }
+        
+        const lineTotal = (item.totalItemPrice || 0) * item.quantity;
+        const lineTotalStr = lineTotal.toFixed(2).replace('.', ',');
+        
+        const notesHtml = item.notes ? `
+          <div style="font-size: 11px; color: #000; padding-left: 10px; font-style: italic; margin-top: 1px; border-bottom: 1px solid #eee; padding-bottom: 2px;">
+            Obs: "${item.notes}"
+          </div>
+        ` : '';
+
+        itemsHtml += `
+          <div style="margin-bottom: 5px; font-size: 12px; color: #000;">
+            <table style="width: 100%; border-collapse: collapse; font-weight: bold;">
+              <tr>
+                <td>${item.quantity}x ${item.name.toUpperCase()}</td>
+                <td style="text-align: right;">R$ ${lineTotalStr}</td>
+              </tr>
+            </table>
+            ${complementsHtml}
+            ${notesHtml}
+          </div>
+        `;
+      });
+
+      let orderDate = order.date || '';
+      if (order.createdAt) {
+        if (typeof order.createdAt === 'object' && typeof order.createdAt.seconds === 'number') {
+          orderDate = new Date(order.createdAt.seconds * 1000).toLocaleString('pt-BR');
+        } else if (typeof order.createdAt === 'object' && typeof order.createdAt.toDate === 'function') {
+          orderDate = order.createdAt.toDate().toLocaleString('pt-BR');
+        } else {
+          const checkD = new Date(order.createdAt);
+          if (!isNaN(checkD.getTime())) {
+            orderDate = checkD.toLocaleString('pt-BR');
+          }
+        }
+      }
+
+      parent.innerHTML = `
+        <div style="font-family: system-ui, -apple-system, sans-serif; color: #000; line-height: 1.4; font-size: 12px; padding: 10px; max-width: 320px; margin: 0 auto; background: white;">
+          
+          <!-- BRAND LOGO AND HEADER -->
+          <div style="text-align: center; margin-bottom: 10px;">
+            <div style="font-size: 15px; font-weight: bold;">${storePhone} ID: ${order.id.slice(-6).toUpperCase()}</div>
+            <div style="font-size: 12px; margin-top: 2px;">
+              ${order.customer ? `
+                ${order.customer.address ? `Endereço: ${order.customer.address.toUpperCase()}<br>` : ''}
+                ${order.customer.complement ? `Comp: ${order.customer.complement.toUpperCase()}<br>` : ''}
+                ${order.customer.reference ? `Ref: ${order.customer.reference.toUpperCase()}<br>` : ''}
+                ${order.customer.cep ? `CEP: ${order.customer.cep}` : ''}
+              ` : ''}
+            </div>
+          </div>
+
+          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+
+          <!-- ITEMS LIST -->
+          <div>
+            <div style="font-weight: bold; font-size: 12px; margin-bottom: 5px;">
+              ITENS DO PEDIDO (${order.items.reduce((acc, i) => acc + i.quantity, 0)})
+            </div>
+            ${itemsHtml}
+          </div>
+
+          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+
+          <!-- SUMMARY VALUES -->
+          <div style="font-size: 12px;">
+            <div style="text-align: center; font-weight: bold; margin-bottom: 5px;">* Pagamento realizado *</div>
+            <div style="margin-bottom: 5px;">${order.paymentMethod.toUpperCase()}</div>
+            <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+              <span>Valor total do pedido:</span>
+              <span>R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+              <span>Taxa de entrega:</span>
+              <span>R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}</span>
+            </div>
+            ${order.desconto ? `
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>Total descontos:</span>
+                <span>- R$ ${order.desconto.toFixed(2).replace('.', ',')}</span>
+              </div>
+            ` : ''}
+            
+            <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+              <span>Cobrar do cliente:</span>
+              <span>R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
+            </div>
+          </div>
+
+        </div>
+      `;
+
+      // Trigger native browser printer with logo loading protection with safety flag to avoid duplicate calls
+      let printTriggered = false;
+      const executePrint = () => {
+        if (printTriggered) return;
+        printTriggered = true;
+
+        // Prepare a beautifully formatted plain text receipt fallback for drivers/bridges that don't render HTML
+        let textReceipt = "";
+        textReceipt += `================================\n`;
+        textReceipt += `          ${storeName.toUpperCase()}\n`;
+        if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
+        if (storeAddress) textReceipt += `${storeAddress}\n`;
+        textReceipt += `================================\n`;
+        textReceipt += `PEDIDO: #${order.id.slice(-6).toUpperCase()}\n`;
+        textReceipt += `DATA: ${orderDate}\n`;
+        textReceipt += `================================\n`;
+        textReceipt += `CLIENTE: ${order.customer.name.toUpperCase()}\n`;
+        textReceipt += `FONE: ${order.customer.phone}\n`;
+        textReceipt += `ENTREGA: ${order.customer && order.customer.type === 'pickup' ? 'RETIRADA NO LOCAL' : 'DELIVERY'}\n`;
+        console.log("Printing customer object:", JSON.stringify(order.customer));
+        if (order.customer) {
+          if (order.customer.address) textReceipt += `ENDERECO: ${order.customer.address.toUpperCase()}\n`;
+          else console.warn("Order missing address for print", order.id);
+          
+          if (order.customer.complement) textReceipt += `COMP: ${order.customer.complement.toUpperCase()}\n`;
+          if (order.customer.reference) textReceipt += `REF: ${order.customer.reference.toUpperCase()}\n`;
+          if (order.customer.cep) textReceipt += `CEP: ${order.customer.cep}\n`;
+        }
+        textReceipt += `--------------------------------\n`;
+        textReceipt += `ITENS DO PEDIDO:\n`;
+        order.items.forEach(item => {
+          const itemVal = item.price || 0;
+          const lineTotal = (item.totalItemPrice || 0) * item.quantity;
+          
+          textReceipt += `${item.quantity}x ${item.name.toUpperCase()} (R$ ${itemVal.toFixed(2).replace('.', ',')})\n`;                
+          if (item.complements && item.complements.length > 0) {
+            item.complements.forEach(c => {
+              const compPrice = c.price || 0;
+              textReceipt += `   + ${c.optionName} (R$ ${compPrice.toFixed(2).replace('.', ',')})\n`;
+            });
+          }
+          textReceipt += `   Subtotal item: R$ ${lineTotal.toFixed(2).replace('.', ',')}\n`;
+          if (item.notes) {
+            textReceipt += `   Obs: ${item.notes}\n`;
+          }
+        });
+        textReceipt += `--------------------------------\n`;
+        textReceipt += `Subtotal: R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}\n`;
+        if (order.desconto) {
+          textReceipt += `Desconto: - R$ ${order.desconto.toFixed(2).replace('.', ',')}\n`;
+        }
+        textReceipt += `Taxa de Entrega: R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}\n`;
+        textReceipt += `TOTAL: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}\n`;
+        textReceipt += `================================\n`;
+        textReceipt += `PAGAMENTO: ${order.paymentMethod.toUpperCase()}\n`;
+        if (order.paymentMethod === 'Dinheiro' && order.troco) {
+          textReceipt += `${order.troco.toUpperCase()}\n`;
+        }
+        textReceipt += `================================\n`;
+        textReceipt += `Obrigado pela preferência!\n`;
+        textReceipt += `Powered by PopFood Delivery\n`;
+        
+        if (localPrinterServerUrl) {
+          // Direct POST to local print service, sending multiple common layout keys
+          fetch(`${localPrinterServerUrl.replace(/\/$/, '')}/imprimir`, {
+            method: 'POST',
+            body: JSON.stringify({ 
+                impressora: selectedPrinterName,
+                html: parent.innerHTML,
+                texto: textReceipt,
+                conteudo: textReceipt,
+                conteudo_html: parent.innerHTML,
+                content: textReceipt,
+                text: textReceipt,
+                // Passing order data as expected by server structure
+                ...order
+            }),
+            headers: { 'Content-Type': 'application/json' }
+          }).catch(err => {
+            console.error("Local printer call failed: ", err);
+            window.print(); // Fallback to browser print if local server call fails
+          });
+        } else {
+          window.print();
+        }
+      };
+
+      const logoImg = parent.querySelector('img');
+      if (logoImg && logoImg.src) {
+        if (logoImg.complete) {
+          executePrint();
+        } else {
+          logoImg.onload = executePrint;
+          logoImg.onerror = executePrint;
+          setTimeout(executePrint, 1500); // Fail-safe fallback timeout
+        }
+      } else {
+        executePrint();
+      }
+    }
+  </script>
+</body>
+</html>

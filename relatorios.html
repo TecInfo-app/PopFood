@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Financeiro - PopFood Delivery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              primary: '#f97316',
+              secondary: '#22c55e',
+              danger: '#ef4444',
+              light: '#f3f4f6',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-brand-light font-sans text-gray-800 min-h-screen flex flex-col">
+
+  <header class="bg-white border-b border-gray-250">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">💰</span>
+        <div>
+          <h1 class="font-display font-bold text-lg text-gray-800 leading-tight block">Relatórios Financeiros</h1>
+          <p class="text-xs text-gray-400 mt-0.5">Visão geral do faturamento, comissões de entrega e cupons</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap justify-center font-semibold">
+        <a href="pedidos.html" class="text-xs font-bold text-white bg-brand-primary hover:bg-orange-600 px-3.5 py-2.5 rounded-xl transition-all shadow-md">Meus Pedidos 🛵</a>
+        <a href="index.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Cardápio</a>
+        <a href="perfil.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Perfil</a>
+        <a href="clientes.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Clientes</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 space-y-6">
+    
+    <!-- TIME FILTER SELECTORS BAR -->
+    <section class="bg-white rounded-2xl p-4.5 border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+      <!-- Quick Ranges -->
+      <div class="flex items-center gap-1.5 flex-wrap w-full sm:w-auto">
+        <button onclick="selectTimeRangeFilter('hoje')" class="range-btn text-xs font-bold py-2 px-4 rounded-xl border border-orange-500 bg-orange-500 text-white cursor-pointer transition-colors" data-range="hoje">Hoje</button>
+        <button onclick="selectTimeRangeFilter('7d')" class="range-btn text-xs font-bold py-2 px-4 rounded-xl border border-gray-200 bg-white text-gray-650 hover:bg-gray-50 cursor-pointer transition-colors" data-range="7d">Últimos 7 dias</button>
+        <button onclick="selectTimeRangeFilter('30d')" class="range-btn text-xs font-bold py-2 px-4 rounded-xl border border-gray-200 bg-white text-gray-650 hover:bg-gray-50 cursor-pointer transition-colors" data-range="30d">Últimos 30 dias</button>
+        <button onclick="selectTimeRangeFilter('custom')" class="range-btn text-xs font-bold py-2 px-4 rounded-xl border border-gray-200 bg-white text-gray-650 hover:bg-gray-50 cursor-pointer transition-colors" data-range="custom">Customizado</button>
+      </div>
+
+      <!-- Custom Date Pick Range Inputs (Only visible when 'custom' is picked) -->
+      <div id="custom-date-selectors" class="flex items-center gap-2 w-full sm:w-auto hidden transition-all">
+        <input type="date" id="date-start" class="text-xs p-2 border border-gray-200 rounded-lg focus:outline-none">
+        <span class="text-xs text-gray-400">até</span>
+        <input type="date" id="date-end" class="text-xs p-2 border border-gray-200 rounded-lg focus:outline-none">
+        <button onclick="executeCustomDateFilterQuery()" class="bg-gray-800 text-white py-2 px-3 hover:bg-gray-900 rounded-lg text-xs font-semibold cursor-pointer">Filtrar</button>
+      </div>
+
+      <button onclick="exportTransactionsReportToCsv()" class="bg-gray-800 hover:bg-gray-950 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer self-end sm:self-auto w-full sm:w-auto">
+        <span>📥 Exportar Vendas CSV</span>
+      </button>
+    </section>
+
+    <!-- CORE ANALYTICS METRIC STATUSES STRIP -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Faturamento -->
+      <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2">
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widestblock">Faturamento Bruto</span>
+        <h3 id="lbl-rep-gross" class="text-xl font-display font-bold text-gray-800">R$ 0,00</h3>
+        <p class="text-[9px] text-gray-400 font-medium">Pedidos com status <span class="text-brand-secondary font-bold">Entregue</span></p>
+      </div>
+      <!-- Ticket -->
+      <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2">
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widestblock">Ticket Médio</span>
+        <h3 id="lbl-rep-avg" class="text-xl font-display font-bold text-gray-800">R$ 0,00</h3>
+        <p id="lbl-rep-orders-count" class="text-[9px] text-gray-400 font-medium">Dividido por 0 pedidos</p>
+      </div>
+      <!-- Comission -->
+      <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2">
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widestblock">Comissões de Entrega</span>
+        <h3 id="lbl-rep-delivery" class="text-xl font-display font-bold text-gray-800">R$ 0,00</h3>
+        <p class="text-[9px] text-gray-400 font-medium">Fundos repassados a moto-boys</p>
+      </div>
+      <!-- Coupons metrics -->
+      <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2">
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widestblock">Cupons Utilizados</span>
+        <h3 id="lbl-rep-coupons" class="text-xl font-display font-bold text-gray-800">R$ 0,00</h3>
+        <p id="lbl-rep-coupons-count" class="text-[9px] text-gray-400 font-medium">Total de 0 cupons aplicados</p>
+      </div>
+    </section>
+
+    <!-- CHARTS GRID MATRIX -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Chart 1: Daily Revenue evolution -->
+      <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 flex flex-col h-fit">
+        <div>
+          <h3 class="font-display font-bold text-sm text-gray-800">📅 Evolução Diária de Vendas</h3>
+          <p class="text-[10px] text-gray-400">Picos de faturamento no período selecionado (Faturamento em R$)</p>
+        </div>
+
+        <!-- Render interactive custom SVG chart -->
+        <div id="revenue-chart-parent" class="w-full flex justify-center items-center py-4 bg-gray-50/50 rounded-xl relative overflow-hidden min-h-[220px]">
+          <!-- Interactive canvas drawing overlay SVG -->
+        </div>
+      </div>
+
+      <!-- Chart 2: Category volume distribution -->
+      <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 flex flex-col h-fit">
+        <div>
+          <h3 class="font-display font-bold text-sm text-gray-800">📁 Distribuição por Categorias</h3>
+          <p class="text-[10px] text-gray-400">Total de pratos/bebidas solicitados por grupo de categoria</p>
+        </div>
+
+        <div id="category-chart-parent" class="w-full flex flex-col justify-center gap-3.5 py-4 px-2 bg-gray-50/50 rounded-xl min-h-[220px]">
+          <!-- Rendered programmatically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- HIGHLIGHTED SOLDS: TOP BEST SELLING DISHES -->
+    <section class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+      <div>
+        <h3 class="font-display font-bold text-sm text-gray-800">⭐ TOP 5 - Mais Vendidos da Casa</h3>
+        <p class="text-[10px] text-gray-400">Os pratos mais pedidos com maior faturamento bruto totalizado</p>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-xs text-left divide-y divide-gray-150">
+          <thead class="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+            <tr>
+              <th scope="col" class="px-5 py-3">Produto</th>
+              <th scope="col" class="px-5 py-3">Unidades Despachadas</th>
+              <th scope="col" class="px-5 py-3">Faturamento Relativo</th>
+            </tr>
+          </thead>
+          <tbody id="top-products-tbody" class="divide-y divide-gray-100 font-medium text-gray-650">
+            <!-- Dynamic poplars -->
+            <tr>
+              <td colspan="3" class="text-center py-8 text-gray-400 text-xs">Aguardando dados de vendas...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module">
+    import { db, auth, Timestamp, COLLECTIONS, collection, getDocs, onAuthStateChanged, where, query } from './firebase-config.js';
+
+    // App financial memory registers
+    let globalOrdersListForReports = [];
+    let globalCategoriesListForReports = [];
+    let globalProductsListForReports = [];
+    let activeRangeFilter = '7d';
+
+    window.onload = async () => {
+      window.currentStoreId = null;
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          alert("Acesso restrito! Por favor faça login primeiro.");
+          window.location.href = "index.html";
+          return;
+        }
+        
+        // Superuser override
+        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
+        if (overrideStoreId) {
+          window.currentStoreId = overrideStoreId;
+          injectOverrideBannerUI();
+        } else {
+          window.currentStoreId = user.uid;
+        }
+
+        // Append storeId universally to specific module links
+        document.querySelectorAll('a[href="motoboy.html"], a[href="cliente.html"], a[href="index.html"]').forEach(el => {
+          if (el.getAttribute('href') === 'cliente.html') {
+             el.href = "cliente.html?store=" + window.currentStoreId;
+          }
+          if (el.getAttribute('href') === 'motoboy.html') {
+             el.href = "motoboy.html?store=" + window.currentStoreId;
+          }
+          
+        });
+  
+
+        // Fetch references
+        await loadMasterReportingRegisters();
+      });
+    };
+
+    function injectOverrideBannerUI() {
+      const overrideStoreName = localStorage.getItem('popfood_admin_store_name_override') || 'Parceiro';
+      let ribbon = document.getElementById('superuser-override-ribbon');
+      if (!ribbon) {
+        ribbon = document.createElement('div');
+        ribbon.id = 'superuser-override-ribbon';
+        ribbon.className = "bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold py-2.5 px-4 text-center flex items-center justify-between gap-3 shadow-md sticky top-0 z-[9999]";
+        ribbon.innerHTML = `
+          <div class="mx-auto flex items-center gap-1.5 flex-wrap justify-center">
+            <span>🛡️</span>
+            <span><strong>MODO SIMULAÇÃO SUPER-USUÁRIO ATIVO:</strong> Gerenciando a loja <strong class="underline">${overrideStoreName}</strong></span>
+          </div>
+          <button onclick="localStorage.removeItem('popfood_admin_store_override'); localStorage.removeItem('popfood_admin_store_name_override'); window.location.reload();" class="bg-white/20 hover:bg-white/35 text-white active:scale-95 transition-all px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer shrink-0">
+            Sair e Voltar ao Admin Geral
+          </button>
+        `;
+        document.body.insertBefore(ribbon, document.body.firstChild);
+      }
+    }
+
+    async function loadMasterReportingRegisters() {
+      try {
+        // Fetch Categories
+        const catSnap = await getDocs(query(collection(db, COLLECTIONS.categories), where("storeId", "==", window.currentStoreId)));
+        globalCategoriesListForReports = [];
+        catSnap.forEach(s => globalCategoriesListForReports.push({ id: s.id, ...s.data() }));
+
+        // Fetch Products
+        const prodSnap = await getDocs(query(collection(db, COLLECTIONS.products), where("storeId", "==", window.currentStoreId)));
+        globalProductsListForReports = [];
+        prodSnap.forEach(s => globalProductsListForReports.push({ id: s.id, ...s.data() }));
+
+        // Fetch Orders
+        const ordSnap = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
+        globalOrdersListForReports = [];
+        ordSnap.forEach(s => globalOrdersListForReports.push({ id: s.id, ...s.data() }));
+
+        // Execute render range
+        triggerReportingProcessing(activeRangeFilter);
+
+      } catch (err) {
+        console.error("Retrieving reporting dependencies error: ", err);
+      }
+    }
+
+    // Filter selectors range switcher
+    window.selectTimeRangeFilter = function(rangeType) {
+      activeRangeFilter = rangeType;
+      
+      const btns = document.querySelectorAll('.range-btn');
+      btns.forEach(btn => {
+        const itemRange = btn.getAttribute('data-range');
+        if (itemRange === rangeType) {
+          btn.className = "range-btn text-xs font-bold py-2 px-4 rounded-xl border border-orange-500 bg-orange-500 text-white cursor-pointer transition-colors";
+        } else {
+          btn.className = "range-btn text-xs font-bold py-2 px-4 rounded-xl border border-gray-200 bg-white text-gray-650 hover:bg-gray-50 cursor-pointer transition-colors";
+        }
+      });
+
+      const pickerRow = document.getElementById('custom-date-selectors');
+      if (rangeType === 'custom') {
+        pickerRow.classList.remove('hidden');
+      } else {
+        pickerRow.classList.add('hidden');
+        triggerReportingProcessing(rangeType);
+      }
+    }
+
+    window.executeCustomDateFilterQuery = function() {
+      const start = document.getElementById('date-start').value;
+      const end = document.getElementById('date-end').value;
+
+      if (!start || !end) {
+        alert("🔒 Por favor, preencha ambas datas inicial e final!");
+        return;
+      }
+
+      triggerReportingProcessing('custom', new Date(start), new Date(end));
+    }
+
+    // Deep processing metrics filter allocations with full integrity
+    function triggerReportingProcessing(rangeType, optCustomStart = null, optCustomEnd = null) {
+      const now = new Date();
+      let borderLimitDate = new Date();
+
+      if (rangeType === 'hoje') {
+        borderLimitDate.setHours(0,0,0,0);
+      } else if (rangeType === '7d') {
+        borderLimitDate.setDate(now.getDate() - 7);
+      } else if (rangeType === '30d') {
+        borderLimitDate.setDate(now.getDate() - 30);
+      }
+
+      // Filter matching completed/active orders (where status is "Entregue")
+      let filteredOrders = globalOrdersListForReports.filter(order => {
+        // Exclude cancelled/pendente/preparing from cash inflows (only finished deliveries sum)
+        if (order.status !== 'Entregue') return false;
+
+        const orderDateObj = new Date(order.createdAt);
+        if (rangeType === 'custom') {
+          // Adjust bounds
+          const customE = new Date(optCustomEnd);
+          customE.setHours(23,59,59,999);
+          return orderDateObj >= optCustomStart && orderDateObj <= customE;
+        }
+
+        return orderDateObj >= borderLimitDate;
+      });
+
+      // Draw aggregates
+      processAndRenderReportsKPIs(filteredOrders);
+
+      // Draw Top products
+      processAndRenderTopProducts(filteredOrders);
+
+      // Draw Charts!
+      renderInteractiveRevenueChart(filteredOrders, rangeType, optCustomStart, optCustomEnd);
+      renderCategoryDistributionMetrics(filteredOrders);
+    }
+
+    function processAndRenderReportsKPIs(orders) {
+      const grossRevenue = orders.reduce((acc, o) => acc + (o.total || 0), 0);
+      const deliverySpent = orders.reduce((acc, o) => acc + (o.deliveryFee || 0), 0);
+      const couponSpent = orders.reduce((acc, o) => acc + (o.desconto || 0), 0);
+      const couponCount = orders.filter(o => o.desconto && o.desconto > 0).length;
+
+      const totalOrdersCount = orders.length;
+      const avgValue = totalOrdersCount > 0 ? (grossRevenue / totalOrdersCount) : 0;
+
+      document.getElementById('lbl-rep-gross').textContent = `R$ ${grossRevenue.toFixed(2).replace('.', ',')}`;
+      document.getElementById('lbl-rep-avg').textContent = `R$ ${avgValue.toFixed(2).replace('.', ',')}`;
+      document.getElementById('lbl-rep-delivery').textContent = `R$ ${deliverySpent.toFixed(2).replace('.', ',')}`;
+      document.getElementById('lbl-rep-coupons').textContent = `R$ ${couponSpent.toFixed(2).replace('.', ',')}`;
+
+      document.getElementById('lbl-rep-orders-count').textContent = `Dividido por ${totalOrdersCount} pedidos`;
+      document.getElementById('lbl-rep-coupons-count').textContent = `Total de ${couponCount} cupons aplicados`;
+    }
+
+    function processAndRenderTopProducts(orders) {
+      const productsMap = {};
+
+      orders.forEach(order => {
+        order.items.forEach(item => {
+          if (!productsMap[item.id]) {
+            productsMap[item.id] = {
+              name: item.name,
+              qty: 0,
+              subRevenue: 0
+            };
+          }
+          productsMap[item.id].qty += item.quantity;
+          productsMap[item.id].subRevenue += (item.totalItemPrice * item.quantity);
+        });
+      });
+
+      // convert map to sorted Array
+      const sorted = Object.values(productsMap).sort((a,b) => b.qty - a.qty).slice(0, 5);
+      const tbody = document.getElementById('top-products-tbody');
+      tbody.innerHTML = '';
+
+      if (sorted.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="3" class="text-center py-10 text-gray-400 font-medium">Nenhum produto faturado no período.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      sorted.forEach((item, idx) => {
+        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "⭐";
+        const tr = document.createElement('tr');
+        tr.className = "hover:bg-gray-50 border-b border-gray-100 transition-colors";
+        
+        tr.innerHTML = `
+          <td class="px-5 py-4 flex items-center gap-2">
+            <span class="text-xs font-bold">${medal} ${item.name}</span>
+          </td>
+          <td class="px-5 py-4 text-xs font-bold text-gray-500">${item.qty} unidades</td>
+          <td class="px-5 py-4 text-xs font-extrabold text-brand-secondary">R$ ${item.subRevenue.toFixed(2).replace('.', ',')}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Dynamic clean SVG chart rendering Weekly/Monthly values
+    function renderInteractiveRevenueChart(orders, rangeType, customStart, customEnd) {
+      const parent = document.getElementById('revenue-chart-parent');
+      parent.innerHTML = '';
+
+      // Map daily values
+      const dailySalesMap = {};
+      const datesToAnalyze = [];
+
+      // Determine days to display based on range picker selection
+      const now = new Date();
+      let iterationsCount = 7;
+      
+      if (rangeType === 'hoje') iterationsCount = 1;
+      else if (rangeType === '30d') iterationsCount = 15; // summarize bi-daily for spacing elegance
+      else if (rangeType === 'custom' && customStart && customEnd) {
+        const diffTime = Math.abs(customEnd - customStart);
+        iterationsCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        if (iterationsCount > 30) iterationsCount = 30; // safety ceiling
+      }
+
+      for (let i = iterationsCount - 1; i >= 0; i--) {
+        const day = new Date();
+        if (rangeType === 'custom') {
+          day.setDate(customEnd.getDate() - i);
+        } else {
+          day.setDate(now.getDate() - i);
+        }
+        const key = day.toISOString().slice(0,10);
+        dailySalesMap[key] = { label: day.toLocaleDateString('pt-BR', {day: 'numeric', month: 'short'}), profit: 0 };
+        datesToAnalyze.push(key);
+      }
+
+      // Aggregate values
+      orders.forEach(o => {
+        const orderDayKey = o.createdAt.slice(0,10);
+        if (dailySalesMap[orderDayKey]) {
+          dailySalesMap[orderDayKey].profit += (o.total || 0);
+        }
+      });
+
+      // Build elements array
+      const arrDataPoints = datesToAnalyze.map(key => dailySalesMap[key]);
+      const maxProfit = Math.max(...arrDataPoints.map(p => p.profit), 100);
+
+      // Draw SVG element dynamically
+      const svgWidth = 480;
+      const svgHeight = 160;
+      const chartPaddingBottom = 25;
+      const chartPaddingLeft = 45;
+      const graphWidth = svgWidth - chartPaddingLeft - 10;
+      const graphHeight = svgHeight - chartPaddingBottom - 10;
+
+      let columnsHtml = '';
+      const columnSpacing = graphWidth / arrDataPoints.length;
+      const colWidth = Math.max(columnSpacing * 0.60, 8);
+
+      arrDataPoints.forEach((pt, idx) => {
+        const xCoord = chartPaddingLeft + (idx * columnSpacing) + (columnSpacing - colWidth) / 2;
+        const normalizedYPercent = pt.profit / maxProfit;
+        const barHeight = graphHeight * normalizedYPercent;
+        const yCoord = graphHeight - barHeight + 5;
+
+        columnsHtml += `
+          <!-- Bar -->
+          <rect x="${xCoord}" y="${yCoord}" width="${colWidth}" height="${barHeight}" rx="4" fill="#f97316" class="hover:fill-orange-600 transition-colors" opacity="0.85">
+            <title>${pt.label}: R$ ${pt.profit.toFixed(2)}</title>
+          </rect>
+          <!-- Text label -->
+          <text x="${xCoord + colWidth/2}" y="${svgHeight - 8}" font-size="8" font-family="sans-serif" font-weight="bold" fill="#9ca3af" text-anchor="middle">${pt.label}</text>
+        `;
+      });
+
+      parent.innerHTML = `
+        <svg viewBox="0 0 ${svgWidth} ${svgHeight}" class="w-full h-full max-h-52">
+          <!-- Horizontal guides axes -->
+          <line x1="${chartPaddingLeft}" y1="5" x2="${svgWidth - 10}" y2="5" stroke="#f1f5f9" stroke-width="1"></line>
+          <line x1="${chartPaddingLeft}" y1="${graphHeight/2 + 5}" x2="${svgWidth - 10}" y2="${graphHeight/2 + 5}" stroke="#f1f5f9" stroke-dasharray="3,3"></line>
+          <line x1="${chartPaddingLeft}" y1="${graphHeight + 5}" x2="${svgWidth - 10}" y2="${graphHeight + 5}" stroke="#e2e8f0" stroke-width="1.5"></line>
+
+          <!-- Lateral coordinates indicators text values -->
+          <text x="${chartPaddingLeft - 8}" y="10" font-size="8" font-family="sans-serif" fill="#9b9fb3" font-weight="bold" text-anchor="end">R$ ${Math.round(maxProfit)}</text>
+          <text x="${chartPaddingLeft - 8}" y="${graphHeight/2 + 8}" font-size="8" font-family="sans-serif" fill="#9b9fb3" font-weight="bold" text-anchor="end">R$ ${Math.round(maxProfit/2)}</text>
+          <text x="${chartPaddingLeft - 8}" y="${graphHeight + 8}" font-size="8" font-family="sans-serif" fill="#9b9fb3" font-weight="bold" text-anchor="end">R$ 0</text>
+
+          <!-- Inject bars columns -->
+          ${columnsHtml}
+        </svg>
+      `;
+    }
+
+    // Dynamic horizontal bar distribution for Category ranges
+    function renderCategoryDistributionMetrics(orders) {
+      const parentList = document.getElementById('category-chart-parent');
+      parentList.innerHTML = '';
+
+      const catCounterMap = {};
+      orders.forEach(o => {
+        o.items.forEach(it => {
+          if (!catCounterMap[it.categoryId]) {
+            catCounterMap[it.categoryId] = 0;
+          }
+          catCounterMap[it.categoryId] += it.quantity;
+        });
+      });
+
+      // Build listing
+      const resultArr = [];
+      globalCategoriesListForReports.forEach(cat => {
+        const volumetricQty = catCounterMap[cat.id] || 0;
+        resultArr.push({ name: cat.name, count: volumetricQty });
+      });
+
+      const maxCount = Math.max(...resultArr.map(r => r.count), 1);
+      
+      if (resultArr.filter(r => r.count > 0).length === 0) {
+        parentList.innerHTML = `<div class="text-center py-10 text-gray-400 text-xs">Sem categorias demandadas no período.</div>`;
+        return;
+      }
+
+      resultArr.forEach(item => {
+        if (item.count === 0) return; // Hide empty ones to save space elegantly
+
+        const widthPercentage = (item.count / maxCount) * 100;
+        const containerRow = document.createElement('div');
+        containerRow.className = "space-y-1 text-xs px-2";
+
+        containerRow.innerHTML = `
+          <div class="flex items-center justify-between text-[11px] font-bold text-gray-700">
+            <span class="capitalize">${item.name}</span>
+            <span class="text-brand-primary font-extrabold">${item.count} un</span>
+          </div>
+          <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full" style="width: ${widthPercentage}%;"></div>
+          </div>
+        `;
+        parentList.appendChild(containerRow);
+      });
+    }
+
+    // Export report transaction log CSV file
+    window.exportTransactionsReportToCsv = function() {
+      // Find filtered invoices that match range criteria
+      let borderLimitDate = new Date();
+      if (activeRangeFilter === 'hoje') borderLimitDate.setHours(0,0,0,0);
+      else if (activeRangeFilter === '7d') borderLimitDate.setDate(borderLimitDate.getDate() - 7);
+      else if (activeRangeFilter === '30d') borderLimitDate.setDate(borderLimitDate.getDate() - 30);
+
+      const activeList = globalOrdersListForReports.filter(order => {
+        if (order.status !== 'Entregue') return false;
+        
+        const dObj = new Date(order.createdAt);
+        if (activeRangeFilter === 'custom') {
+          const s = new Date(document.getElementById('date-start').value);
+          const e = new Date(document.getElementById('date-end').value);
+          e.setHours(23,59,59,999);
+          return dObj >= s && dObj <= e;
+        }
+
+        return dObj >= borderLimitDate;
+      });
+
+      if (activeList.length === 0) {
+        alert("Sem pedidos no filtro faturado para exportação.");
+        return;
+      }
+
+      let csv = "data:text/csv;charset=utf-8,\uFEFF";
+      csv += "ID Pedido,Data,Cliente,Forma Pagamento,Subtotal (R$),Taxa Entrega (R$),Desconto (R$),Total Faturado (R$)\n";
+
+      activeList.forEach(order => {
+        const clientName = `"${order.customer.name.replace(/"/g, '""')}"`;
+        const line = `${order.id},${order.date},${clientName},${order.paymentMethod},${order.subtotal.toFixed(2)},${order.deliveryFee.toFixed(2)},${(order.desconto || 0).toFixed(2)},${order.total.toFixed(2)}\n`;
+        csv += line;
+      });
+
+      const encodedUri = encodeURI(csv);
+      const tempLink = document.createElement("a");
+      tempLink.setAttribute("href", encodedUri);
+      tempLink.setAttribute("download", `PopFood_RelatorioVendas_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(tempLink);
+      tempLink.click();
+      document.body.removeChild(tempLink);
+    }
+  </script>
+</body>
+</html>

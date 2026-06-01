@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Perfil e Cupons - PopFood Delivery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              primary: '#f97316',
+              secondary: '#22c55e',
+              danger: '#ef4444',
+              light: '#f3f4f6',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-brand-light font-sans text-gray-800 min-h-screen flex flex-col">
+
+  <header class="bg-white border-b border-gray-250">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">⚙️</span>
+        <div>
+          <h1 class="font-display font-bold text-lg text-gray-800 leading-tight block">Configurações Gerais</h1>
+          <p class="text-xs text-gray-400 mt-0.5">Perfil da loja, taxas de entrega e cupons de desconto</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap justify-center">
+        <a href="pedidos.html" class="text-xs font-bold text-white bg-brand-primary hover:bg-orange-600 px-3.5 py-2.5 rounded-xl transition-all shadow-md">Meus Pedidos 🛵</a>
+        <a href="index.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Cardápio</a>
+        <a href="clientes.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Clientes</a>
+        <a href="relatorios.html" class="text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 px-3.5 py-2.5 rounded-xl transition-all">Relatórios</a>
+      </div>
+    </div>
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-8 flex flex-col md:flex-row gap-8">
+    
+    <!-- SIDEBAR MENU SELECTOR -->
+    <aside class="w-full md:w-80 flex-shrink-0">
+      <div class="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 sticky top-6 space-y-2">
+        <div class="px-3 py-2 mb-4">
+          <h2 class="font-display font-black text-xs text-brand-primary uppercase tracking-wider">Painel Administrativo</h2>
+          <p class="text-[9px] text-gray-400 mt-0.5">Gerencie seu estabelecimento</p>
+        </div>
+        
+        <button type="button" onclick="switchTab('cadastro')" id="menu-btn-cadastro" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">🏪</span>
+            <div>
+              <p class="font-bold text-gray-850">Dados Cadastrais</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Perfil, logo e contato</p>
+            </div>
+          </div>
+          <span class="font-bold">➔</span>
+        </button>
+
+        <button type="button" onclick="switchTab('banners')" id="menu-btn-banners" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">📢</span>
+            <div>
+              <p class="font-bold text-gray-850">Banners Promocionais</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Carrossel do cardápio</p>
+            </div>
+          </div>
+          <span class="font-bold">➔</span>
+        </button>
+
+        <button type="button" onclick="switchTab('taxa-entrega')" id="menu-btn-taxa-entrega" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">🛵</span>
+            <div>
+              <p class="font-bold text-gray-850">Taxas e Coordenadas</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Distância e valores por KM</p>
+            </div>
+          </div>
+          <span class="font-bold">➔</span>
+        </button>
+
+        <button type="button" onclick="switchTab('cupons')" id="menu-btn-cupons" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">🏷️</span>
+            <div>
+              <p class="font-bold text-gray-850">Cupons e Fidelidade</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Fidelização e descontos</p>
+            </div>
+          </div>
+          <span class="font-bold">➔</span>
+        </button>
+
+        <button type="button" onclick="switchTab('motoboy')" id="menu-btn-motoboy" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-amber-50/40">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">🛵</span>
+            <div>
+              <p class="font-bold text-slate-800">Portal do Motoboy</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Link e instruções de entregas</p>
+            </div>
+          </div>
+          <span class="font-bold text-amber-500">➔</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ACTIVE TAB CONTENT PANEL -->
+    <div class="flex-grow min-h-[500px]">
+      
+      <!-- TAB: DADOS CADASTRAIS (Cadastro + Logo) -->
+      <div id="tab-cadastro" class="space-y-6 hidden">
+        <!-- LOGO UPLOADER BOX -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div>
+            <h3 class="font-display font-bold text-sm text-gray-800">🖼️ Logomarca da Loja</h3>
+            <p class="text-[10px] text-gray-400">Exibido no cabeçalho do cardápio e comandos</p>
+          </div>
+
+          <div class="flex flex-col items-center gap-4.5 bg-gray-50 py-5 rounded-xl border border-dotted border-gray-300">
+            <div class="w-24 h-24 rounded-full bg-orange-100 border border-orange-200 overflow-hidden flex items-center justify-center relative shadow-sm group">
+              <img id="logo-preview-img" src="" alt="Logo" class="w-full h-full object-cover hidden">
+              <span id="logo-placeholder" class="text-3xl text-orange-400">🍔</span>
+            </div>
+
+            <div class="text-center space-y-1.5 w-full px-4">
+              <input type="file" id="logo-file-input" accept="image/*" onchange="convertLogoToBase64()" class="hidden">
+              <button onclick="document.getElementById('logo-file-input').click()" class="bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold py-1.5 px-3 rounded-lg border border-gray-250 cursor-pointer">Escolher logo</button>
+              <button onclick="removeRestaurantLogo()" class="text-[10px] text-brand-danger font-medium block mx-auto hover:underline cursor-pointer">Deletar logomarca</button>
+              <p class="text-[9px] text-gray-400">Limite de tamanho: 950KB</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- STORE IDENTIFIERS CARD -->
+        <form id="profile-meta-form" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div>
+            <h3 class="font-display font-bold text-sm text-gray-800">📝 Dados Cadastrais</h3>
+            <p class="text-[10px] text-gray-400 font-medium">Configure as informações gerais do estabelecimento</p>
+          </div>
+
+          <div class="space-y-3">
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Nome Fantasia *</label>
+              <input type="text" id="store-name" required placeholder="Como sua loja é conhecida" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+            </div>
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Descrição da Loja</label>
+              <input type="text" id="store-desc" placeholder="Ex: Hambúrgueres artesanais na brasa" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-gray-500 uppercase">WhatsApp de Contato *</label>
+                <input type="tel" id="store-phone" required placeholder="DDD + Número" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+              </div>
+              <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-gray-400 uppercase">CEP da Loja</label>
+                <input type="text" id="store-cep" placeholder="00000000" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+              </div>
+            </div>
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Endereço Completo *</label>
+              <input type="text" id="store-address" required placeholder="Rua, Número, Bairro, Cidade" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+            </div>
+            
+            <!-- Payment Integration Config (Hidden and Cleared) -->
+            <input type="hidden" id="mp-access-token" value="">
+            <input type="hidden" id="mp-public-key" value="">
+            <input type="hidden" id="stripe-public-key" value="">
+            <input type="hidden" id="stripe-secret-key" value="">
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-gray-500 uppercase">Horário Abertura</label>
+                <input type="time" id="store-open" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+              </div>
+              <div class="space-y-1">
+                <label class="block text-[10px] font-bold text-gray-500 uppercase">Horário Fechamento</label>
+                <input type="time" id="store-close" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" id="save-profile-btn" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 text-xs rounded-xl shadow-md transition-transform hover:scale-101 cursor-pointer">Salvar Perfil</button>
+        </form>
+      </div>
+
+      <!-- TAB: BANNERS PROMOCIONAIS -->
+      <div id="tab-banners" class="space-y-6 hidden">
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div>
+            <h3 class="font-display font-bold text-sm text-gray-800">📢 Banners Promocionais (Máx 3)</h3>
+            <p class="text-[10px] text-gray-400">Banners com proporção 16:9 rotacionados no storefront</p>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Banners list -->
+            <div id="banners-scannable-list" class="space-y-3">
+              <!-- Populated dynamically -->
+            </div>
+
+            <!-- Add trigger input -->
+            <div id="banner-uploader-row">
+              <input type="file" id="banner-file-input" accept="image/*" onchange="convertBannerToBase64AndAdd()" class="hidden">
+              <button onclick="document.getElementById('banner-file-input').click()" class="w-full bg-orange-100 hover:bg-orange-200 text-brand-primary font-bold py-2.5 rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5">+ Adicionar Banner</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: TAXAS E COORDENADAS -->
+      <div id="tab-taxa-entrega" class="space-y-6 hidden">
+        <!-- GEOLOCATION LOOKUP BOX -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div>
+            <h3 class="font-display font-bold text-sm text-gray-800">📍 Coordenadas de entrega (Geolocalização)</h3>
+            <p class="text-[10px] text-gray-400">Calcule as taxas e tempos com alta precisão via geocodificação</p>
+          </div>
+
+          <div class="bg-gray-50 rounded-xl p-4 border border-gray-150 space-y-3">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <span class="text-[10px] font-bold text-gray-550 uppercase tracking-wider">Localização Física</span>
+              <button type="button" onclick="lookupGeoCoordinates()" class="text-[10px] font-bold text-brand-primary bg-white px-3 py-1.5 border border-gray-200 hover:border-orange-200 rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer">
+                <span>🔍 Buscar pelas Coordenadas</span>
+              </button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 font-mono text-[10px] text-gray-500">
+              <div class="bg-white p-2 border border-gray-100 rounded-md">LATITUDE: <span id="lbl-lat" class="font-bold text-gray-750">--</span></div>
+              <div class="bg-white p-2 border border-gray-100 rounded-md">LONGITUDE: <span id="lbl-lon" class="font-bold text-gray-750">--</span></div>
+            </div>
+            <p class="text-[8px] text-gray-400 font-medium leading-relaxed">Usa as coordenadas e algoritmo Haversine para encontrar a quilometragem real percorrida e aplicar a taxa correspondente.</p>
+          </div>
+        </div>
+
+        <!-- TAX RATE MATRIX PER KM LIMITS -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div>
+            <h3 class="font-display font-bold text-sm text-gray-800">🛵 Taxas e Tempos por KM</h3>
+            <p class="text-[10px] text-gray-400 font-medium">Configure taxas de entrega e tempos estimados por quilometragem de raio de entrega</p>
+          </div>
+
+          <div id="km-pricing-grid" class="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto pr-1">
+            <!-- Filled dynamically from 1km to 10km -->
+          </div>
+
+          <button id="save-rates-btn" onclick="saveDeliveryRatesGrid()" class="w-full bg-gray-800 hover:bg-gray-950 text-white font-bold py-3 px-4 text-xs rounded-xl shadow-xs transition-all cursor-pointer">Atualizar Taxas e Tempos</button>
+        </div>
+      </div>
+
+      <!-- TAB: CUPONS E FIDELIDADE -->
+      <div id="tab-cupons" class="space-y-6 hidden">
+        <!-- CUPOM FIDELIDADE CARD -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div class="flex items-center gap-2 pb-2">
+            <span class="text-xl">🎁</span>
+            <div>
+              <h3 class="font-display font-bold text-sm text-gray-800">Fidelização de Clientes</h3>
+              <p class="text-[10px] text-gray-400 font-medium">Ofereça recompensas automáticas para clientes recorrentes</p>
+            </div>
+          </div>
+
+          <div class="p-4 bg-orange-50/50 rounded-2xl border border-orange-100 space-y-4">
+            <div class="space-y-3">
+              <div class="flex items-center gap-1.5">
+                <input type="checkbox" id="loyalty-active" class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 cursor-pointer">
+                <label for="loyalty-active" class="text-[11px] font-bold text-gray-750 cursor-pointer select-none">Ativar Benefício Fidelidade</label>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[8px] font-bold text-gray-500 uppercase mb-1">Tipo de Desconto</label>
+                  <select id="loyalty-type" class="w-full text-xs p-2.5 border border-gray-255 rounded-lg focus:outline-none bg-white font-semibold">
+                    <option value="percentual">Percentual (%)</option>
+                    <option value="fixo">Fixo (R$)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[8px] font-bold text-gray-500 uppercase mb-1">Valor do Desconto</label>
+                  <input type="number" id="loyalty-value" step="0.01" placeholder="Ex: 10" class="w-full text-xs p-2.5 border border-gray-255 rounded-lg focus:outline-none font-bold bg-white">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-[8px] font-bold text-gray-500 uppercase mb-1">Mínimo de Pedidos Concluídos</label>
+                <input type="number" id="loyalty-min-orders" min="1" step="1" placeholder="Ex: 3" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none font-bold bg-white">
+                <p class="text-[8px] text-gray-400 mt-1">Número de pedidos do WhatsApp necessários para ativar o desconto.</p>
+              </div>
+
+              <div class="text-[9px] text-gray-500 bg-white p-2.5 rounded-xl border border-orange-100/30 leading-normal">
+                ⚙️ <b>Como funciona:</b> Ao ativar, quando um cliente atingir o número configurado de pedidos concluídos na loja usando o mesmo número de celular (via histórico do Firebase), ele receberá um desconto de fidelidade automático na etapa final do carrinho!
+              </div>
+
+              <button onclick="saveLoyaltyCouponConfig()" id="btn-save-loyalty" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 px-3 text-[10px] rounded-xl shadow-xs transition-colors cursor-pointer">Salvar Fidelidade</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- CUPONS ATIVOS LIST -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-150 pb-4">
+            <div>
+              <h3 class="font-display font-bold text-md text-gray-800">🏷️ Cupons Ativos</h3>
+              <p class="text-[10px] text-gray-400 font-medium">Gestão de códigos de descontos promocionais</p>
+            </div>
+            <button onclick="toggleCouponModal(true)" class="bg-brand-primary hover:bg-orange-600 text-white font-bold py-2 px-3 text-[10px] rounded-lg shadow-sm transition-transform hover:scale-105 cursor-pointer">+ Criar Cupom</button>
+          </div>
+
+          <!-- Coupons list grid -->
+          <div id="coupons-card-parent" class="space-y-3 max-h-[50vh] overflow-y-auto">
+            <!-- Filled dynamically -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: PORTAL DO MOTOBOY -->
+      <div id="tab-motoboy" class="space-y-6 hidden">
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 text-left">
+          <div class="flex items-center gap-2.5">
+            <span class="text-2xl animate-pulse">🛵</span>
+            <div>
+              <h3 class="font-display font-bold text-sm text-gray-800">Portal do Motoboy (Entregador)</h3>
+              <p class="text-[10px] text-gray-400 font-medium">Compartilhe o link de acesso exclusivo com seus entregadores</p>
+            </div>
+          </div>
+
+          <div class="p-4 bg-amber-50/50 rounded-2xl border border-amber-100/60 space-y-4 shadow-inner">
+            <p class="text-xs text-gray-650 leading-relaxed font-semibold">
+              Dê este link para que os seus entregadores gerenciem rotas em tempo real:
+            </p>
+            
+            <div class="flex items-center gap-2.5 bg-white p-3 border border-gray-150 rounded-xl shadow-xs">
+              <span class="text-xs font-mono font-bold text-amber-600 shrink-0 select-none">Link:</span>
+              <input type="text" id="motoboy-link-input" readonly class="flex-grow text-xs font-mono bg-transparent outline-none text-gray-750 font-extrabold overflow-hidden text-ellipsis select-all" value="">
+              <button onclick="copyMotoboyLink()" class="bg-slate-800 hover:bg-slate-950 text-white font-bold py-2 px-3 text-[10px] rounded-lg transition-all shrink-0 cursor-pointer active:scale-95 shadow-sm">Copiar Link</button>
+            </div>
+
+            <div class="flex items-center gap-2 flex-wrap pt-1">
+              <button onclick="shareMotoboyLinkWhatsApp()" class="text-xs font-bold text-white bg-green-600 hover:bg-green-700 px-4 py-3 rounded-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5 active:scale-95">
+                <span>💬 Enviar via WhatsApp</span>
+              </button>
+              <a id="btn-open-motoboy" href="motoboy.html" target="_blank" class="text-xs font-bold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-200/50 px-4 py-3 rounded-xl transition-all cursor-pointer">
+                Abrir Portal do Motoboy ↗
+              </a>
+            </div>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 text-slate-300 rounded-2xl p-4.5 space-y-3 text-xs leading-relaxed">
+            <h4 class="font-bold text-white flex items-center gap-1.5 font-display">
+              <span>💡 Como funciona o fluxo de entrega (Passo a Passo):</span>
+            </h4>
+            <ol class="space-y-2.5 list-decimal list-inside text-slate-300 font-medium pl-1">
+              <li>Clique em <strong class="text-green-400">"Enviar via WhatsApp"</strong> ou copie o link e repasse para os seus entregadores do dia.</li>
+              <li>O entregador acessa o portal pelo celular, digita apenas os <strong class="text-amber-400">últimos 4 dígitos</strong> do pedido que ele pegou e clica em Despachar.</li>
+              <li>Ao sair, ele clica nos status do trajeto (<em class="not-italic text-amber-300">"No caminho", "Quase Chegando"</em>) e o cliente acompanha em tempo real na tela dele com a motinha (🛵) deslizando!</li>
+              <li>No local, o cliente informa o <strong class="text-red-400 font-semibold">PIN de segurança de 4 dígitos</strong> exclusivo e invisível para o motoboy (aparece apenas no painel do cliente).</li>
+              <li>O motoboy digita o PIN correto e o sistema finaliza e arquiva o pedido de forma segura!</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MODAL: ADD/EDIT PROMOTIONAL COUPONS -->
+  <div id="coupon-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden backdrop-blur-xs">
+    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col relative transform scale-95 duration-200 transition-transform">
+      <button onclick="toggleCouponModal(false)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 p-2 text-sm font-bold z-10 cursor-pointer">✕</button>
+
+      <div class="p-6 border-b border-gray-100">
+        <h2 id="coupon-modal-title" class="font-display font-bold text-md text-gray-800 leading-tight">Criar Cupom de Desconto</h2>
+        <p class="text-[10px] text-gray-400 mt-0.5">Defina as validações e percentuais de desconto</p>
+      </div>
+
+      <form id="coupon-modal-form" class="p-6 space-y-4 flex-grow">
+        <input type="hidden" id="coupon-form-id">
+
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Código do Cupom *</label>
+          <input type="text" id="coupon-form-code" required placeholder="Ex: POP10" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none uppercase">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="block text-[10px] font-bold text-gray-500 uppercase">Tipo</label>
+            <select id="coupon-form-type" required class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+              <option value="percentual">Percentual (%)</option>
+              <option value="fixo">Crédito Fixo (R$)</option>
+            </select>
+          </div>
+          <div class="space-y-1">
+            <label class="block text-[10px] font-bold text-gray-500 uppercase">Valor de Abatimento *</label>
+            <input type="number" step="0.01" id="coupon-form-value" required placeholder="Ex: 10" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none">
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Data de Validade/Expiração *</label>
+          <input type="date" id="coupon-form-expiry" required class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none">
+        </div>
+
+        <div class="flex items-center gap-1.5 py-1">
+          <input type="checkbox" id="coupon-form-active" checked class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500">
+          <label for="coupon-form-active" class="text-xs font-semibold text-gray-700 select-none cursor-pointer">Cupom ativo para uso?</label>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="toggleCouponModal(false)" class="flex-1 border border-gray-200 py-3 rounded-xl text-xs text-gray-500 hover:bg-gray-50 font-semibold cursor-pointer">Cancelar</button>
+          <button type="submit" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query } from './firebase-config.js';
+
+    // App state
+    let profileData = null;
+    let bannersList = [];
+    let couponsList = [];
+
+    // Fallback coords
+    let currentStoreLatitude = -23.55052;
+    let currentStoreLongitude = -46.633308;
+
+    // Switch tab handler
+    window.switchTab = function(tabId) {
+      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'motoboy'];
+      tabs.forEach(id => {
+        const tabEl = document.getElementById(`tab-${id}`);
+        if (tabEl) tabEl.classList.add('hidden');
+        
+        const btn = document.getElementById(`menu-btn-${id}`);
+        if (btn) {
+          btn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 text-gray-700 hover:bg-gray-50 border-l-4 border-transparent";
+          const arrow = btn.querySelector('span:last-child');
+          if (arrow) arrow.className = "text-gray-400 font-bold transition-transform";
+        }
+      });
+      
+      const activeTab = document.getElementById(`tab-${tabId}`);
+      if (activeTab) activeTab.classList.remove('hidden');
+      
+      const activeBtn = document.getElementById(`menu-btn-${tabId}`);
+      if (activeBtn) {
+        if (tabId === 'motoboy') {
+          activeBtn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-amber-50 text-amber-700 border-l-4 border-amber-500 pl-2.5";
+          const arrow = activeBtn.querySelector('span:last-child');
+          if (arrow) arrow.className = "text-amber-600 font-bold translate-x-1 transition-transform";
+        } else {
+          activeBtn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-orange-50 text-brand-primary border-l-4 border-brand-primary pl-2.5";
+          const arrow = activeBtn.querySelector('span:last-child');
+          if (arrow) arrow.className = "text-brand-primary font-bold translate-x-1 transition-transform";
+        }
+      }
+      
+      localStorage.setItem('popfood_admin_last_tab', tabId);
+    };
+
+    window.onload = async () => {
+      window.currentStoreId = null;
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          alert("Acesso restrito! Por favor faça login primeiro.");
+          window.location.href = "index.html";
+          return;
+        }
+        
+        // Superuser override
+        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
+        if (overrideStoreId) {
+          window.currentStoreId = overrideStoreId;
+          injectOverrideBannerUI();
+        } else {
+          window.currentStoreId = user.uid;
+        }
+
+        // Append storeId universally to specific module links
+        document.querySelectorAll('a[href="motoboy.html"], a[href="cliente.html"], a[href="index.html"]').forEach(el => {
+          if (el.getAttribute('href') === 'cliente.html') {
+             el.href = "cliente.html?store=" + window.currentStoreId;
+          }
+          if (el.getAttribute('href') === 'motoboy.html') {
+             el.href = "motoboy.html?store=" + window.currentStoreId;
+          }
+          
+        });
+  
+
+        // Populate Motoboy link in UI
+        const motoboyUrl = window.location.origin + "/motoboy.html?store=" + window.currentStoreId;
+        const linkInput = document.getElementById('motoboy-link-input');
+        if (linkInput) {
+          linkInput.value = motoboyUrl;
+        }
+        const btnOpenMotoboy = document.getElementById('btn-open-motoboy');
+        if (btnOpenMotoboy) {
+          btnOpenMotoboy.href = motoboyUrl;
+        }
+
+        // Fetch Profile
+        loadRestaurantProfileData();
+        // Fetch Coupons
+        loadPromotionalCouponsList();
+      });
+
+      document.getElementById('profile-meta-form').onsubmit = saveRestaurantProfileDetails;
+      document.getElementById('coupon-modal-form').onsubmit = saveOrUpdateCouponDetails;
+
+      const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
+      window.switchTab(lastTab);
+    };
+
+    window.copyMotoboyLink = function() {
+      const linkVal = window.location.origin + "/motoboy.html" + (window.currentStoreId ? "?store=" + window.currentStoreId : "");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(linkVal).then(() => {
+          alert("📋 Link copiado com sucesso! Compartilhe com seus entregadores.");
+        }).catch(err => {
+          fallbackCopyToClipboard(linkVal);
+        });
+      } else {
+        fallbackCopyToClipboard(linkVal);
+      }
+    };
+
+    function fallbackCopyToClipboard(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        alert("📋 Link copiado com sucesso!");
+      } catch (err) {
+        alert("Copie o link manualmente: " + text);
+      }
+      document.body.removeChild(textArea);
+    }
+
+    window.shareMotoboyLinkWhatsApp = function() {
+      const linkVal = window.location.origin + "/motoboy.html" + (window.currentStoreId ? "?store=" + window.currentStoreId : "");
+      const text = `Olá! Segue o link de acesso ao Portal do Entregador (Motoboy) da PopFood hoje para gerenciar suas entregas e atualizar o rastreamento em tempo real:\n\n${linkVal}`;
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
+    };
+
+    // Load Profile
+    async function loadRestaurantProfileData() {
+      try {
+        const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+        const snap = await getDoc(ref);
+        
+        if (snap.exists()) {
+          profileData = snap.data();
+          
+          document.getElementById('store-name').value = profileData.name || '';
+          document.getElementById('store-desc').value = profileData.description || '';
+          document.getElementById('store-phone').value = profileData.phone || '';
+          document.getElementById('store-cep').value = profileData.cep || '';
+          document.getElementById('store-address').value = profileData.address || '';
+          document.getElementById('store-open').value = profileData.openTime || '';
+          document.getElementById('store-close').value = profileData.closeTime || '';
+          document.getElementById('mp-access-token').value = '';
+          document.getElementById('mp-public-key').value = '';
+          document.getElementById('stripe-public-key').value = '';
+          document.getElementById('stripe-secret-key').value = '';
+
+          if (profileData.latitude && profileData.longitude) {
+            currentStoreLatitude = profileData.latitude;
+            currentStoreLongitude = profileData.longitude;
+            document.getElementById('lbl-lat').textContent = parseFloat(profileData.latitude).toFixed(6);
+            document.getElementById('lbl-lon').textContent = parseFloat(profileData.longitude).toFixed(6);
+          }
+          
+          // Populate Loyalty Coupon Config
+          document.getElementById('loyalty-active').checked = !!profileData.loyaltyActive;
+          document.getElementById('loyalty-type').value = profileData.loyaltyType || 'percentual';
+          document.getElementById('loyalty-value').value = profileData.loyaltyValue !== undefined ? profileData.loyaltyValue : '';
+          document.getElementById('loyalty-min-orders').value = profileData.loyaltyMinOrders !== undefined ? profileData.loyaltyMinOrders : 3;
+
+          // Build dynamic deliveryRates indices
+          buildKmRatesInputsGrid(profileData.deliveryRates || {}, profileData.deliveryTimes || {});
+        } else {
+          // Initialize empty defaults
+          buildKmRatesInputsGrid({}, {});
+        }
+
+        // Fetch logo separately
+        try {
+          const logoSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, "logo"));
+          if (logoSnap.exists()) {
+            const logoVal = logoSnap.data().logo;
+            if (logoVal) {
+              document.getElementById('logo-preview-img').src = logoVal;
+              document.getElementById('logo-preview-img').classList.remove('hidden');
+              document.getElementById('logo-placeholder').classList.add('hidden');
+            }
+          }
+        } catch (logoErr) {
+          console.error("Error loading logo:", logoErr);
+        }
+
+        // Fetch banners separately in parallel
+        try {
+          const bannerSnaps = await Promise.all([
+            getDoc(doc(db, COLLECTIONS.restaurantProfile, "banner0")),
+            getDoc(doc(db, COLLECTIONS.restaurantProfile, "banner1")),
+            getDoc(doc(db, COLLECTIONS.restaurantProfile, "banner2"))
+          ]);
+          bannersList = [];
+          bannerSnaps.forEach((bSnap) => {
+            if (bSnap.exists()) {
+              const bData = bSnap.data();
+              if (bData && bData.banner) {
+                bannersList.push(bData.banner);
+              }
+            }
+          });
+          renderStoreBannersList();
+        } catch (bannersErr) {
+          console.error("Error loading banners:", bannersErr);
+        }
+
+      } catch (err) {
+        console.error("Retreiving profile document fail: ", err);
+      }
+    }
+
+    // Logo upload converter with strict 1MB limit check
+    window.convertLogoToBase64 = function() {
+      const fileInput = document.getElementById('logo-file-input');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      if (file.size > 1 * 1024 * 1024) {
+        alert("🔒 Atenção: O arquivo da imagem excede o tamanho limite absoluto de 1MB permitido!");
+        fileInput.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result;
+        
+        const oldSrc = document.getElementById('logo-preview-img').src;
+        const oldHidden = document.getElementById('logo-preview-img').classList.contains('hidden');
+
+        try {
+          document.getElementById('logo-preview-img').src = base64;
+          document.getElementById('logo-preview-img').classList.remove('hidden');
+          document.getElementById('logo-placeholder').classList.add('hidden');
+
+          await setDoc(doc(db, COLLECTIONS.restaurantProfile, "logo"), {
+            logo: base64
+          }, { merge: true });
+          alert("Logomarca updated!");
+        } catch (err) {
+          // Restore visual UI elements if save failed
+          document.getElementById('logo-preview-img').src = oldSrc;
+          if (oldHidden) {
+            document.getElementById('logo-preview-img').classList.add('hidden');
+            document.getElementById('logo-placeholder').classList.remove('hidden');
+          }
+          console.error("Updating Logo error: ", err);
+          alert("Erro ao salvar a logomarca no banco de dados.");
+        } finally {
+          fileInput.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    window.removeRestaurantLogo = async function() {
+      const state = await window.customConfirm("Remover a logomarca?");
+      if (!state) return;
+
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, "logo"));
+        document.getElementById('logo-preview-img').classList.add('hidden');
+        document.getElementById('logo-placeholder').classList.remove('hidden');
+        document.getElementById('logo-preview-img').src = '';
+        alert("Logo removida!");
+      } catch (err) {
+        console.error("Removing logo failure: ", err);
+        alert("Erro ao remover a logomarca.");
+      }
+    }
+
+    // Banners lists modifiers
+    function renderStoreBannersList() {
+      const parent = document.getElementById('banners-scannable-list');
+      parent.innerHTML = '';
+
+      if (bannersList.length === 0) {
+        parent.innerHTML = `<div class="text-center py-4 text-xs text-gray-400 bg-gray-50 border border-dashed rounded-xl border-gray-250">Nenhum banner ativo</div>`;
+        return;
+      }
+
+      bannersList.forEach((b64, idx) => {
+        const row = document.createElement('div');
+        row.className = "relative rounded-xl overflow-hidden border shadow-sm aspect-video group";
+        row.innerHTML = `
+          <img src="${b64}" class="w-full h-full object-cover">
+          <button onclick="removeBannerByIndex(${idx})" class="absolute bottom-2 right-2 bg-black/60 hover:bg-brand-danger text-white p-1 rounded-md text-[10px] font-bold cursor-pointer transition-colors">Remover banner</button>
+        `;
+        parent.appendChild(row);
+      });
+
+      // Exceeded limiter toggle Add button
+      const uplRow = document.getElementById('banner-uploader-row');
+      if (bannersList.length >= 3) {
+        uplRow.classList.add('hidden');
+      } else {
+        uplRow.classList.remove('hidden');
+      }
+    }
+
+    // Helper to rewrite and save all banners consecutively (banner0, banner1, banner2)
+    async function saveAllBannersToDb() {
+      for (let i = 0; i < 3; i++) {
+        const docRef = doc(db, COLLECTIONS.restaurantProfile, `banner${i}`);
+        if (i < bannersList.length) {
+          await setDoc(docRef, { banner: bannersList[i] });
+        } else {
+          await deleteDoc(docRef);
+        }
+      }
+    }
+
+    window.convertBannerToBase64AndAdd = function() {
+      const fileInput = document.getElementById('banner-file-input');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      // Single file check
+      if (file.size > 1 * 1024 * 1024) {
+        alert("🔒 Atenção: O arquivo do banner individualmente excede o tamanho limite de 1MB permitido!");
+        fileInput.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result;
+
+        try {
+          bannersList.push(base64);
+          await saveAllBannersToDb();
+          renderStoreBannersList();
+          alert("Banner adicionado com sucesso!");
+        } catch (err) {
+          // Rollback on failure so memory stays in clean state
+          bannersList.pop();
+          console.error("Banner upload error: ", err);
+          alert("Erro ao adicionar o banner no banco de dados.");
+        } finally {
+          fileInput.value = '';
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    window.removeBannerByIndex = async function(index) {
+      const state = await window.customConfirm("Remover este banner?");
+      if (!state) return;
+
+      const removedItem = bannersList[index];
+      bannersList.splice(index, 1);
+      
+      try {
+        await saveAllBannersToDb();
+        renderStoreBannersList();
+        alert("Banner removido com sucesso!");
+      } catch (err) {
+        // Rollback on failure
+        bannersList.splice(index, 0, removedItem);
+        console.error("Error deleting banner: ", err);
+        alert("Erro ao excluir o banner do banco de dados.");
+      }
+    }
+
+    // Search coordinates using open Nominatim API from OpenStreetMap
+    window.lookupGeoCoordinates = async function() {
+      const address = document.getElementById('store-address').value.trim();
+      if (!address) {
+        alert("🔒 Digite o endereço completo da loja primeiro!");
+        return;
+      }
+
+      try {
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+        const response = await fetch(nominatimUrl);
+        const data = await response.json();
+
+        if (data && data.length > 0) {
+          currentStoreLatitude = parseFloat(data[0].lat);
+          currentStoreLongitude = parseFloat(data[0].lon);
+
+          document.getElementById('lbl-lat').textContent = currentStoreLatitude.toFixed(6);
+          document.getElementById('lbl-lon').textContent = currentStoreLongitude.toFixed(6);
+          
+          alert("📍 Coordenadas obtidas com sucesso!");
+        } else {
+          alert("❌ Coordenadas não localizadas! Certifique-se que o endereço está digitado em formato padrão (Rua, Número, Bairro, Cidade).");
+        }
+      } catch (err) {
+        console.error("Nominatim search error: ", err);
+        alert("Falha ao geolocalizar endereço: " + err.message);
+      }
+    }
+
+    // Save profile meta properties
+    async function saveRestaurantProfileDetails(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('store-name').value.trim();
+      const desc = document.getElementById('store-desc').value.trim();
+      const phone = document.getElementById('store-phone').value.trim();
+      const cep = document.getElementById('store-cep').value.trim().replace(/\D/g, '');
+      const address = document.getElementById('store-address').value.trim();
+      const open = document.getElementById('store-open').value;
+      const close = document.getElementById('store-close').value;
+
+      const profileObj = {
+        id: "main",
+        name: name,
+        description: desc,
+        phone: phone,
+        cep: cep,
+        address: address,
+        openTime: open,
+        closeTime: close,
+        mpAccessToken: "",
+        mpPublicKey: "",
+        stripePublicKey: "",
+        stripeSecretKey: "",
+        latitude: currentStoreLatitude,
+        longitude: currentStoreLongitude,
+        show: true,
+        // Include loyalty fields to ensure they are synchronized
+        loyaltyActive: document.getElementById('loyalty-active').checked,
+        loyaltyType: document.getElementById('loyalty-type').value,
+        loyaltyValue: parseFloat(document.getElementById('loyalty-value').value || 0),
+        loyaltyMinOrders: parseInt(document.getElementById('loyalty-min-orders').value || 3),
+        storeId: window.currentStoreId
+      };
+
+      try {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), profileObj, { merge: true });
+        
+        // Update button text to show success state
+        const saveBtn = document.getElementById('save-profile-btn');
+        if (saveBtn) {
+          const originalText = saveBtn.textContent;
+          saveBtn.textContent = "✅ Informações salvas com sucesso!";
+          saveBtn.classList.remove('bg-brand-primary', 'hover:bg-orange-600');
+          saveBtn.classList.add('bg-green-500', 'hover:bg-green-600');
+          
+          setTimeout(() => {
+            saveBtn.textContent = originalText;
+            saveBtn.classList.remove('bg-green-500', 'hover:bg-green-600');
+            saveBtn.classList.add('bg-brand-primary', 'hover:bg-orange-600');
+          }, 3000);
+        }
+        
+        loadRestaurantProfileData();
+      } catch (err) {
+        console.error("Saving store profile error: ", err);
+        alert("Erro ao salvar perfil: " + err.message);
+      }
+    }
+
+    // Populate rates input grids
+    function buildKmRatesInputsGrid(existingRates, existingTimes) {
+      const container = document.getElementById('km-pricing-grid');
+      container.innerHTML = '';
+
+      // Standard ranges 1km to 10km
+      for (let km = 1; km <= 10; km++) {
+        const val = existingRates[km] !== undefined ? existingRates[km] : 5.00; // default to 5.00 BRL
+        const timeVal = existingTimes && existingTimes[km] !== undefined ? existingTimes[km] : (15 + km * 5); // default estimate: 15 + km * 5 mins
+        const inputDiv = document.createElement('div');
+        inputDiv.className = "p-3 bg-gray-50 border border-gray-150 rounded-xl shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3";
+
+        inputDiv.innerHTML = `
+          <div class="min-w-[80px]">
+            <span class="text-xs font-bold text-gray-700">Raio até ${km} km</span>
+          </div>
+          <div class="flex items-center gap-3 flex-grow">
+            <!-- Rate row -->
+            <div class="flex-1 space-y-0.5">
+              <label class="block text-[8px] font-bold text-gray-400 uppercase">Taxa de Entrega</label>
+              <div class="flex items-center gap-1 font-semibold text-xs text-gray-600 bg-white border border-gray-200 px-2 py-1 rounded-lg">
+                <span class="text-[10px] text-gray-400">R$</span>
+                <input type="number" step="0.10" id="rate-km-${km}" value="${val.toFixed(2)}" class="w-full bg-transparent focus:outline-none font-bold text-gray-700 text-right">
+              </div>
+            </div>
+            <!-- Time row -->
+            <div class="flex-1 space-y-0.5">
+              <label class="block text-[8px] font-bold text-gray-400 uppercase">Tempo Estimado</label>
+              <div class="flex items-center gap-1 font-semibold text-xs text-gray-600 bg-white border border-gray-200 px-2 py-1 rounded-lg">
+                <input type="number" step="1" id="time-km-${km}" value="${timeVal}" class="w-full bg-transparent focus:outline-none font-bold text-gray-700 text-right">
+                <span class="text-[9px] text-gray-400">min</span>
+              </div>
+            </div>
+          </div>
+        `;
+        container.appendChild(inputDiv);
+      }
+    }
+
+    function injectOverrideBannerUI() {
+      const overrideStoreName = localStorage.getItem('popfood_admin_store_name_override') || 'Parceiro';
+      let ribbon = document.getElementById('superuser-override-ribbon');
+      if (!ribbon) {
+        ribbon = document.createElement('div');
+        ribbon.id = 'superuser-override-ribbon';
+        ribbon.className = "bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold py-2.5 px-4 text-center flex items-center justify-between gap-3 shadow-md sticky top-0 z-[9999]";
+        ribbon.innerHTML = `
+          <div class="mx-auto flex items-center gap-1.5 flex-wrap justify-center">
+            <span>🛡️</span>
+            <span><strong>MODO SIMULAÇÃO SUPER-USUÁRIO ATIVO:</strong> Gerenciando a loja <strong class="underline">${overrideStoreName}</strong></span>
+          </div>
+          <button onclick="localStorage.removeItem('popfood_admin_store_override'); localStorage.removeItem('popfood_admin_store_name_override'); window.location.reload();" class="bg-white/20 hover:bg-white/35 text-white active:scale-95 transition-all px-2.5 py-1 rounded-lg text-[10px] font-bold cursor-pointer shrink-0">
+            Sair e Voltar ao Admin Geral
+          </button>
+        `;
+        document.body.insertBefore(ribbon, document.body.firstChild);
+      }
+    }
+
+    window.saveDeliveryRatesGrid = async function() {
+      const rates = {};
+      const times = {};
+      for (let km = 1; km <= 10; km++) {
+        rates[km] = parseFloat(document.getElementById(`rate-km-${km}`).value || 0);
+        times[km] = parseInt(document.getElementById(`time-km-${km}`).value || 0);
+      }
+      try {
+        // Pushes index updates to document restaurant meta
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
+          deliveryRates: rates,
+          deliveryTimes: times,
+          storeId: window.currentStoreId
+        }, { merge: true });
+        
+        const btn = document.getElementById('save-rates-btn');
+        if (btn) {
+          const orig = btn.textContent;
+          btn.textContent = "✅ Salvo com Sucesso!";
+          btn.classList.remove('bg-gray-800', 'hover:bg-gray-950');
+          btn.classList.add('bg-green-500', 'hover:bg-green-600');
+          setTimeout(() => {
+            btn.textContent = orig;
+            btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+            btn.classList.add('bg-gray-800', 'hover:bg-gray-950');
+          }, 3000);
+        }
+      } catch (err) {
+        console.error("Saving rate grids properties error: ", err);
+      }
+    }
+
+    window.saveLoyaltyCouponConfig = async function() {
+      const active = document.getElementById('loyalty-active').checked;
+      const type = document.getElementById('loyalty-type').value;
+      const value = parseFloat(document.getElementById('loyalty-value').value || 0);
+      let minOrders = parseInt(document.getElementById('loyalty-min-orders').value || 3);
+      if (isNaN(minOrders) || minOrders < 1) minOrders = 3;
+
+      try {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
+          loyaltyActive: active,
+          loyaltyType: type,
+          loyaltyValue: value,
+          loyaltyMinOrders: minOrders,
+          storeId: window.currentStoreId
+        }, { merge: true });
+
+        const btn = document.getElementById('btn-save-loyalty');
+        if (btn) {
+          const orig = btn.textContent;
+          btn.textContent = "✅ Configuração Salva!";
+          btn.classList.remove('bg-brand-primary', 'hover:bg-orange-600');
+          btn.classList.add('bg-green-500', 'hover:bg-green-600');
+          setTimeout(() => {
+            btn.textContent = orig;
+            btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+            btn.classList.add('bg-brand-primary', 'hover:bg-orange-600');
+          }, 3000);
+        }
+      } catch (err) {
+        console.error("Erro ao salvar configuração fidelidade: ", err);
+        alert("Erro ao salvar configuração: " + err.message);
+      }
+    }
+
+    // Load active Coupons array
+    async function loadPromotionalCouponsList() {
+      const parent = document.getElementById('coupons-card-parent');
+      parent.innerHTML = '';
+
+      try {
+        const qSnap = await getDocs(query(collection(db, COLLECTIONS.coupons), where("storeId", "==", window.currentStoreId)));
+        couponsList = [];
+        qSnap.forEach(snap => {
+          couponsList.push({ id: snap.id, ...snap.data() });
+        });
+
+        if (couponsList.length === 0) {
+          parent.innerHTML =`<div class="text-center py-6 text-xs text-gray-400">Nenhum cupom promocional cadastrado.</div>`;
+          return;
+        }
+
+        couponsList.forEach(coupon => {
+          const card = document.createElement('div');
+          card.className = "bg-gray-50 p-3.5 border border-gray-150 rounded-2xl flex flex-col justify-between items-start gap-3 shadow-xs";
+          
+          const discountStr = coupon.type === "percentual" ? `${coupon.value}% de desconto` : `R$ ${coupon.value.toFixed(2)} de desconto`;
+          const validityDate = new Date(coupon.expiry).toLocaleDateString('pt-BR');
+          const isAtvPill = coupon.active ? 'bg-green-150 text-brand-secondary font-bold' : 'bg-red-150 text-brand-danger font-bold';
+
+          card.innerHTML = `
+            <div class="space-y-1.5 w-full">
+              <div class="flex items-center justify-between">
+                <span class="font-mono text-xs font-bold text-gray-800 tracking-wider">🏷️ ${coupon.code}</span>
+                <span class="text-[9px] px-2 py-0.5 rounded-full ${isAtvPill}">${coupon.active ? 'Ativo' : 'Inativo'}</span>
+              </div>
+              <p class="text-xs font-semibold text-brand-primary">${discountStr}</p>
+              <p class="text-[10px] text-gray-400">Expira em: ${validityDate}</p>
+            </div>
+            
+            <div class="flex items-center gap-1.5 self-end">
+              <button onclick="triggerCouponEditionTrigger('${coupon.id}')" class="text-[10px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 py-1 px-2.5 rounded transition-transform hover:scale-105">Editar</button>
+              <button onclick="deletePromotionalCouponAction('${coupon.id}')" class="text-[10px] font-bold text-brand-danger bg-red-50 hover:bg-red-100 py-1 px-2.5 rounded transition-transform hover:scale-105">✕ Excluir</button>
+            </div>
+          `;
+          parent.appendChild(card);
+        });
+
+      } catch (err) {
+        console.error("Listing coupons collections error: ", err);
+      }
+    }
+
+    // Toggle promotional coupon dialog modals
+    window.toggleCouponModal = function(show, itemObj = null) {
+      const modal = document.getElementById('coupon-modal');
+      const box = modal.querySelector('div');
+
+      if (show) {
+        if (itemObj) {
+          document.getElementById('coupon-modal-title').textContent = "Editar Cupom";
+          document.getElementById('coupon-form-id').value = itemObj.id;
+          document.getElementById('coupon-form-code').value = itemObj.code;
+          document.getElementById('coupon-form-type').value = itemObj.type;
+          document.getElementById('coupon-form-value').value = itemObj.value;
+          document.getElementById('coupon-form-expiry').value = itemObj.expiry;
+          document.getElementById('coupon-form-active').checked = !!itemObj.active;
+        } else {
+          document.getElementById('coupon-modal-title').textContent = "Criar Cupom";
+          document.getElementById('coupon-modal-form').reset();
+          document.getElementById('coupon-form-id').value = '';
+          document.getElementById('coupon-form-active').checked = true;
+        }
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          box.classList.remove('scale-95');
+        }, 50);
+      } else {
+        box.classList.add('scale-95');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 200);
+      }
+    }
+
+    window.triggerCouponEditionTrigger = function(id) {
+      const coupon = couponsList.find(c => c.id === id);
+      if (coupon) toggleCouponModal(true, coupon);
+    }
+
+    async function saveOrUpdateCouponDetails(e) {
+      e.preventDefault();
+
+      const cId = document.getElementById('coupon-form-id').value || "CUP-" + Date.now().toString(36);
+      const code = document.getElementById('coupon-form-code').value.toUpperCase().trim();
+      const type = document.getElementById('coupon-form-type').value;
+      const value = parseFloat(document.getElementById('coupon-form-value').value || 0);
+      const expiry = document.getElementById('coupon-form-expiry').value;
+      const active = document.getElementById('coupon-form-active').checked;
+
+      const couponDocument = {
+        id: cId,
+        code: code,
+        type: type,
+        value: value,
+        expiry: expiry,
+        active: active,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      try {
+        await setDoc(doc(db, COLLECTIONS.coupons, cId), couponDocument, { merge: true });
+        toggleCouponModal(false);
+        loadPromotionalCouponsList();
+      } catch (err) {
+        console.error("Failing setting promotional coupon document in database: ", err);
+      }
+    }
+
+    window.deletePromotionalCouponAction = async function(id) {
+      const state = await window.customConfirm("Deletar Cupom permanentemente?");
+      if (!state) return;
+
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.coupons, id));
+        loadPromotionalCouponsList();
+      } catch (err) {
+        console.error("Deleting coupon exception error: ", err);
+      }
+    }
+  </script>
+</body>
+</html>

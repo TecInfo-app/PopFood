@@ -1,0 +1,209 @@
+{
+  "entities": {
+    "product": {
+      "title": "Product",
+      "description": "A menu item available for delivery",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "pdvCode": { "type": "string" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "description": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "image": { "type": "string", "description": "Base64 string representing the product image" },
+        "paused": { "type": "boolean" },
+        "exclusivo": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "price", "categoryId", "paused", "storeId"]
+    },
+    "category": {
+      "title": "Category",
+      "description": "A classification category for products",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "order": { "type": "integer" },
+        "storeId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "order", "storeId"]
+    },
+    "complement": {
+      "title": "Complement",
+      "description": "Complements and options for a menu item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Equal to the productId" },
+        "groups": {
+          "type": "array",
+          "description": "Groups of complement choices",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" },
+              "isMandatory": { "type": "boolean" },
+              "minSelection": { "type": "integer" },
+              "maxSelection": { "type": "integer" },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "price": { "type": "number" },
+                    "paused": { "type": "boolean" }
+                  },
+                  "required": ["name", "price"]
+                }
+              }
+            },
+            "required": ["name", "isMandatory", "minSelection", "maxSelection", "options"]
+          }
+        },
+        "storeId": { "type": "string" }
+      },
+      "required": ["id", "groups", "storeId"]
+    },
+    "order": {
+      "title": "Order",
+      "description": "A delivery order placed by a customer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "customer": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "email": { "type": "string" },
+            "address": { "type": "string" },
+            "complement": { "type": "string" },
+            "reference": { "type": "string" },
+            "cep": { "type": "string" },
+            "latitude": { "type": "number" },
+            "longitude": { "type": "number" }
+          },
+          "required": ["name", "phone", "address", "cep"]
+        },
+        "paymentMethod": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "distance": { "type": "number" },
+        "desconto": { "type": "number" },
+        "cupomId": { "type": "string" },
+        "cupomCode": { "type": "string" },
+        "total": { "type": "number" },
+        "deliveryPin": { "type": "string" },
+        "deliveryProgress": { "type": "integer" },
+        "deliveryMilestone": { "type": "string" },
+        "motoboyLatitude": { "type": "number" },
+        "motoboyLongitude": { "type": "number" },
+        "storeId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pendente", "Preparando", "Saiu para entrega", "Entregue", "Cancelado"] }
+      },
+      "required": ["id", "customer", "paymentMethod", "items", "subtotal", "deliveryFee", "total", "status", "storeId"]
+    },
+    "client": {
+      "title": "Client",
+      "description": "A customer who has ordered",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The customer's phone number acts as the ID" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "cep": { "type": "string" },
+        "storeId": { "type": "string" },
+        "lastOrder": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "phone", "storeId"]
+    },
+    "restaurantProfile": {
+      "title": "RestaurantProfile",
+      "description": "General settings and details about the restaurant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "logo": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "phone": { "type": "string" },
+        "cep": { "type": "string" },
+        "address": { "type": "string" },
+        "email": { "type": "string" },
+        "openTime": { "type": "string" },
+        "closeTime": { "type": "string" },
+        "banners": { "type": "array", "items": { "type": "string" } },
+        "deliveryRates": { "type": "object" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "stripeSecretKey": { "type": "string" },
+        "stripePublicKey": { "type": "string" },
+        "loyaltyActive": { "type": "boolean" },
+        "loyaltyType": { "type": "string", "enum": ["percentual", "fixo"] },
+        "loyaltyValue": { "type": "number" },
+        "loyaltyMinOrders": { "type": "integer" },
+        "storeId": { "type": "string" },
+        "show": { "type": "boolean" }
+      },
+      "required": ["id", "name", "phone", "address", "storeId"]
+    },
+    "coupon": {
+      "title": "Coupon",
+      "description": "A discount coupon validation entity",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "type": { "type": "string", "enum": ["percentual", "fixo"] },
+        "value": { "type": "number" },
+        "expiry": { "type": "string" },
+        "active": { "type": "boolean" },
+        "storeId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "code", "type", "value", "expiry", "active", "storeId"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "product",
+      "description": "List of catalog items"
+    },
+    "/categories/{categoryId}": {
+      "schema": "category",
+      "description": "Menu categories with sorting order"
+    },
+    "/complements/{productId}": {
+      "schema": "complement",
+      "description": "Groups of custom options mapped by product ID"
+    },
+    "/orders/{orderId}": {
+      "schema": "order",
+      "description": "Orders made by customers, tracked in real-time"
+    },
+    "/clients/{phone}": {
+      "schema": "client",
+      "description": "Customers index with their address and phone"
+    },
+    "/restaurantProfile/main": {
+      "schema": "restaurantProfile",
+      "description": "The main settings block for the restaurant"
+    },
+    "/coupons/{couponId}": {
+      "schema": "coupon",
+      "description": "Coupons for discounts"
+    }
+  }
+}
