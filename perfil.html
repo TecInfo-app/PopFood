@@ -508,7 +508,8 @@
   
 
         // Populate Motoboy link in UI
-        const motoboyUrl = window.location.origin + "/motoboy.html?store=" + window.currentStoreId;
+        const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        const motoboyUrl = window.location.origin + basePath + "/motoboy.html?store=" + window.currentStoreId;
         const linkInput = document.getElementById('motoboy-link-input');
         if (linkInput) {
           linkInput.value = motoboyUrl;
@@ -532,7 +533,8 @@
     };
 
     window.copyMotoboyLink = function() {
-      const linkVal = window.location.origin + "/motoboy.html" + (window.currentStoreId ? "?store=" + window.currentStoreId : "");
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      const linkVal = window.location.origin + basePath + "/motoboy.html" + (window.currentStoreId ? "?store=" + window.currentStoreId : "");
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(linkVal).then(() => {
           alert("📋 Link copiado com sucesso! Compartilhe com seus entregadores.");
@@ -559,7 +561,8 @@
     }
 
     window.shareMotoboyLinkWhatsApp = function() {
-      const linkVal = window.location.origin + "/motoboy.html" + (window.currentStoreId ? "?store=" + window.currentStoreId : "");
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      const linkVal = window.location.origin + basePath + "/motoboy.html" + (window.currentStoreId ? "?store=" + window.currentStoreId : "");
       const text = `Olá! Segue o link de acesso ao Portal do Entregador (Motoboy) da PopFood hoje para gerenciar suas entregas e atualizar o rastreamento em tempo real:\n\n${linkVal}`;
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(url, '_blank');

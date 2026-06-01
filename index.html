@@ -656,7 +656,8 @@ storeId: window.currentStoreId
 
     window.copyStoreLink = function() {
       if (!window.currentStoreId) return;
-      const link = `${window.location.origin}/cliente.html?store=${window.currentStoreId}`;
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      const link = `${window.location.origin}${basePath}/cliente.html?store=${window.currentStoreId}`;
       navigator.clipboard.writeText(link).then(() => {
         alert("Link do seu cardápio copiado!");
       }).catch(err => {
@@ -667,7 +668,8 @@ storeId: window.currentStoreId
 
     window.copyMotoboyLink = function() {
       if (!window.currentStoreId) return;
-      const link = `${window.location.origin}/motoboy.html?store=${window.currentStoreId}`;
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      const link = `${window.location.origin}${basePath}/motoboy.html?store=${window.currentStoreId}`;
       navigator.clipboard.writeText(link).then(() => {
         alert("Link do painel de rastreio para entregadores copiado!");
       }).catch(err => {

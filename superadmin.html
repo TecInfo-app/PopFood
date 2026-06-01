@@ -364,8 +364,9 @@
         const openBadgeColor = (store.isOpen === true || store.isOpen === 'true') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-650';
         const openBadgeText = (store.isOpen === true || store.isOpen === 'true') ? 'Aberto' : 'Fechado';
 
-        const clientUrl = `${window.location.origin}/cliente.html?store=${store.id}`;
-        const motoboyUrl = `${window.location.origin}/motoboy.html?store=${store.id}`;
+        const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        const clientUrl = `${window.location.origin}${basePath}/cliente.html?store=${store.id}`;
+        const motoboyUrl = `${window.location.origin}${basePath}/motoboy.html?store=${store.id}`;
 
         storeCard.innerHTML = `
           <div>
