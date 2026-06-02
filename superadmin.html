@@ -309,8 +309,8 @@
           // Filter out auxiliary document nodes that are system metadata, not actual stores
           if (docId !== "logo" && !docId.startsWith("banner") && (sData.name || sData.storeId)) {
             allStores.push({
-              id: docId,
-              ...sData
+              ...sData,
+              id: docId
             });
           }
         });
