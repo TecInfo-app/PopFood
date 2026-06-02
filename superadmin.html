@@ -253,7 +253,7 @@
   </div>
 
   <script type="module">
-    import { db, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
+    import { db, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
 
     let loadedStores = [];
     let activeFilterKeyword = '';
@@ -405,9 +405,14 @@
             </div>
 
             <!-- Inspect Override action -->
-            <button onclick="overrideSessionIntoStore('${store.id}', '${store.name}')" class="w-full bg-slate-900 text-white hover:bg-orange-600 font-bold text-xs py-2.5 rounded-xl transition-all shadow-xs hover:scale-[1.02] active:scale-95 cursor-pointer">
-              👁️ Acessar Painel de Pedidos
-            </button>
+            <div class="grid grid-cols-[1fr_auto] gap-2">
+              <button onclick="overrideSessionIntoStore('${store.id}', '${store.name}')" class="w-full bg-slate-900 text-white hover:bg-orange-600 font-bold text-xs py-2.5 rounded-xl transition-all shadow-xs hover:scale-[1.02] active:scale-95 cursor-pointer">
+                👁️ Acessar Painel
+              </button>
+              <button onclick="deleteStoreData('${store.id}', '${store.name}')" class="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center font-bold" title="Excluir Loja">
+                🗑️
+              </button>
+            </div>
           </div>
         `;
 
@@ -448,6 +453,30 @@
         console.log(`Instant status changed for store ${storeId} to ${nextStatus}`);
       } catch (err) {
         alert("Erro ao alterar o status da loja: " + err.message);
+      }
+    }
+
+    window.deleteStoreData = async function(storeId, storeName) {
+      if(storeId === 'main') {
+        alert("A loja 'main' não pode ser excluída por questões de compatibilidade do sistema.");
+        return;
+      }
+      
+      const confirmText = prompt(`ATENÇÃO DESTRUTIVA!\nTem certeza que quer excluir a loja "${storeName}" (${storeId}) e TODOS os dados dela?\nDigite o ID para confirmar:`);
+      if(confirmText !== storeId) {
+        if(confirmText !== null) alert("Cancelado: O ID não confere.");
+        return;
+      }
+      
+      try {
+        // Exclui apenas o doc de restaurante, sem deletar sub-documentos para segurança.
+        // Se quiser deletar em cascade precisaria de uma cloud function ou batch loops,
+        // mas apagar o perfil já a retira do painel.
+        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId));
+        alert(`Loja "${storeName}" foi excluída com sucesso! (Note que produtos e pedidos ficarão orfãos no banco apenas)`);
+        initDashboardData();
+      } catch (err) {
+        alert("Erro ao excluir loja: " + err.message);
       }
     }
 
