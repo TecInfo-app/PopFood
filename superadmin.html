@@ -430,9 +430,9 @@
       const nextStatus = !currentStatus;
 
       try {
-        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
           isOpen: nextStatus
-        });
+        }, { merge: true });
         
         match.isOpen = nextStatus;
         
@@ -447,7 +447,7 @@
         document.getElementById('stat-open-stores').textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
         console.log(`Instant status changed for store ${storeId} to ${nextStatus}`);
       } catch (err) {
-        alert("Erro ao alterar funcionamento instantâneo: " + err.message);
+        alert("Erro ao alterar o status da loja: " + err.message);
       }
     }
 
