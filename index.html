@@ -682,6 +682,30 @@ storeId: window.currentStoreId
     function setupAdminRealtimeDatabases() {
       if (!window.currentStoreId) return;
 
+      // Monitor profile for suspension lock
+      onSnapshot(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), (docSnap) => {
+        if (docSnap.exists() && docSnap.data().suspended === true) {
+          const isSuperUserOverride = localStorage.getItem('popfood_admin_store_override') === window.currentStoreId;
+          
+          if(!isSuperUserOverride) {
+            document.body.innerHTML = `
+              <div class="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 fixed inset-0 z-[9999999]">
+                 <div class="bg-red-500/20 text-red-500 p-5 rounded-full mb-6 relative">
+                    <div class="absolute inset-0 border-4 border-red-500/30 rounded-full animate-ping"></div>
+                    <svg class="w-12 h-12 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z"></path></svg>
+                 </div>
+                 <h1 class="text-2xl lg:text-3xl font-black font-display text-center mb-3">Acesso Suspenso</h1>
+                 <p class="text-slate-400 text-center max-w-sm mb-8 text-sm leading-relaxed">
+                   O sistema da sua loja está temporariamente <strong>indisponível</strong>. Provavelmente ocorreu alguma pendência na renovação de sua assinatura ou ocorreu solicitação de revisão. 
+                   <br><br>Entre em contato com o administrador da plataforma para regularizar e restabelecer o funcionamento imediato.
+                 </p>
+                 <button onclick="window.logoutAdmin()" class="bg-white hover:bg-gray-100 text-slate-900 font-bold py-3 px-8 rounded-xl transition-all shadow-lg hover:scale-[1.02] active:scale-95">Sair e Deslogar</button>
+              </div>
+            `;
+          }
+        }
+      });
+
       // Listen to Categories
       onSnapshot(query(collection(db, COLLECTIONS.categories), where("storeId", "==", window.currentStoreId)), (catSnap) => {
         activeCategories = [];
