@@ -160,10 +160,7 @@
     <!-- Search Tool and Filter Layout -->
     <section class="bg-white rounded-2xl p-4.5 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h3 class="font-display font-extrabold text-gray-800 text-base flex items-center gap-2">
-          Lojas Registradas no Sistema
-          <button onclick="runLegacyMigration()" class="bg-blue-100 hover:bg-blue-200 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer transition-colors" title="Aplica storeId: main em dados que foram criados antes do Multi-Loja">🔧 Fix/Migrar Dados Antigos</button>
-        </h3>
+        <h3 class="font-display font-extrabold text-gray-800 text-base">Lojas Registradas no Sistema</h3>
         <p class="text-[11px] text-gray-500 mt-0.5">Monitore os parâmetros, status do estabelecimento e controle as configurações globais.</p>
       </div>
 
@@ -451,38 +448,6 @@
         console.log(`Instant status changed for store ${storeId} to ${nextStatus}`);
       } catch (err) {
         alert("Erro ao alterar o status da loja: " + err.message);
-      }
-    }
-
-    window.runLegacyMigration = async function() {
-      if (!confirm("Isso aplicará 'storeId' como 'main' em categorias, produtos, complementos, cupons e pedidos que não tenham essa tag. Continuar?")) return;
-      
-      try {
-        const cols = [COLLECTIONS.categories, COLLECTIONS.products, COLLECTIONS.complements, COLLECTIONS.coupons, COLLECTIONS.orders];
-        let totalUpdated = 0;
-        
-        for (const colName of cols) {
-          const snap = await getDocs(collection(db, colName));
-          let updatedForCol = 0;
-          const updates = [];
-          snap.forEach(documentSnap => {
-            const data = documentSnap.data();
-            if (!data.storeId) {
-              updates.push(updateDoc(doc(db, colName, documentSnap.id), { storeId: 'main' }));
-              updatedForCol++;
-              totalUpdated++;
-            }
-          });
-          if (updates.length > 0) {
-            await Promise.all(updates);
-          }
-          console.log(`Migrated ${updatedForCol} in ${colName}`);
-        }
-        
-        alert(`Migração concluída! ${totalUpdated} documentos foram atualizados para storeId: 'main'.`);
-      } catch (err) {
-        console.error(err);
-        alert("Erro na migração: " + err.message);
       }
     }
 
