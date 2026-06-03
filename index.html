@@ -68,6 +68,10 @@
       <!-- VIEW: REGISTER FORM -->
       <form id="register-form" class="space-y-4 hidden">
         <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Código Administrativo</label>
+          <input type="password" id="register-secret" required placeholder="Código fornecido pelo administrador" class="w-full text-sm p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
+        </div>
+        <div class="space-y-1.5">
           <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail</label>
           <input type="email" id="register-email" required placeholder="admin@popfood.com" class="w-full text-sm p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
         </div>
@@ -608,9 +612,16 @@ storeId: window.currentStoreId
     // Call Register SDK API
     async function triggerRegisterAction(e) {
       e.preventDefault();
+      const secret = document.getElementById('register-secret').value.trim();
       const mail = document.getElementById('register-email').value.trim();
       const pass = document.getElementById('register-password').value.trim();
       const conf = document.getElementById('register-confirm-password').value.trim();
+
+      // Simple security hardcoded block for invite code
+      if (secret !== "CIA2026") {
+        alert("Código administrativo inválido! O cadastro automático está restrito apenas para parceiros convidados.");
+        return;
+      }
 
       if (pass !== conf) {
         alert("As senhas não coincidem!");
