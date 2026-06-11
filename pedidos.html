@@ -344,33 +344,47 @@
       // Validate administrator active session
       window.currentStoreId = null;
       onAuthStateChanged(auth, async (user) => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlStoreId = urlParams.get('store');
         const customStoreId = localStorage.getItem('popfood_custom_store_id');
-        if (!user && !customStoreId) {
+        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
+        
+        if (urlStoreId) {
+          window.currentStoreId = urlStoreId;
+        } else if (overrideStoreId) {
+          window.currentStoreId = overrideStoreId;
+        } else if (customStoreId) {
+          window.currentStoreId = customStoreId;
+        } else if (user) {
+          window.currentStoreId = user.uid;
+        }
+
+        if (!user && !customStoreId && !urlStoreId) {
           alert("Acesso restrito! Por favor faça login primeiro.");
           window.location.href = "index.html";
           return;
         }
-        
-        // Superuser override
-        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
-        if (overrideStoreId) {
-          window.currentStoreId = overrideStoreId;
-          injectOverrideBannerUI();
-        } else if (customStoreId) {
-          window.currentStoreId = customStoreId;
-        } else {
-          window.currentStoreId = user.uid;
+
+        if (!window.currentStoreId) {
+          window.location.href = "index.html";
+          return;
         }
 
-        // Append storeId universally to specific module links
-        document.querySelectorAll('a[href="motoboy.html"], a[href="cliente.html"], a[href="index.html"]').forEach(el => {
-          if (el.getAttribute('href') === 'cliente.html') {
-             el.href = "cliente.html?store=" + window.currentStoreId;
+        // Apply override visual styling if override exists
+        if (overrideStoreId && window.currentStoreId === overrideStoreId) {
+          injectOverrideBannerUI();
+        }
+
+        // Dynamically append currentStoreId universally to ALL internal admin links
+        document.querySelectorAll('a').forEach(el => {
+          const href = el.getAttribute('href');
+          if (href) {
+            const adminPages = ['index.html', 'perfil.html', 'pedidos.html', 'clientes.html', 'relatorios.html', 'cliente.html', 'motoboy.html'];
+            const basePath = href.split('?')[0];
+            if (adminPages.includes(basePath)) {
+              el.href = `${basePath}?store=${window.currentStoreId}`;
+            }
           }
-          if (el.getAttribute('href') === 'motoboy.html') {
-             el.href = "motoboy.html?store=" + window.currentStoreId;
-          }
-          
         });
   
 

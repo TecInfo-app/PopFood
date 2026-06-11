@@ -480,33 +480,47 @@
     window.onload = async () => {
       window.currentStoreId = null;
       onAuthStateChanged(auth, async (user) => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlStoreId = urlParams.get('store');
         const customStoreId = localStorage.getItem('popfood_custom_store_id');
-        if (!user && !customStoreId) {
+        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
+        
+        if (urlStoreId) {
+          window.currentStoreId = urlStoreId;
+        } else if (overrideStoreId) {
+          window.currentStoreId = overrideStoreId;
+        } else if (customStoreId) {
+          window.currentStoreId = customStoreId;
+        } else if (user) {
+          window.currentStoreId = user.uid;
+        }
+
+        if (!user && !customStoreId && !urlStoreId) {
           alert("Acesso restrito! Por favor faça login primeiro.");
           window.location.href = "index.html";
           return;
         }
-        
-        // Superuser override
-        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
-        if (overrideStoreId) {
-          window.currentStoreId = overrideStoreId;
-          injectOverrideBannerUI();
-        } else if (customStoreId) {
-          window.currentStoreId = customStoreId;
-        } else {
-          window.currentStoreId = user.uid;
+
+        if (!window.currentStoreId) {
+          window.location.href = "index.html";
+          return;
         }
 
-        // Append storeId universally to specific module links
-        document.querySelectorAll('a[href="motoboy.html"], a[href="cliente.html"], a[href="index.html"]').forEach(el => {
-          if (el.getAttribute('href') === 'cliente.html') {
-             el.href = "cliente.html?store=" + window.currentStoreId;
+        // Apply override visual styling if override exists
+        if (overrideStoreId && window.currentStoreId === overrideStoreId) {
+          injectOverrideBannerUI();
+        }
+
+        // Dynamically append currentStoreId universally to ALL internal admin links
+        document.querySelectorAll('a').forEach(el => {
+          const href = el.getAttribute('href');
+          if (href) {
+            const adminPages = ['index.html', 'perfil.html', 'pedidos.html', 'clientes.html', 'relatorios.html', 'cliente.html', 'motoboy.html'];
+            const basePath = href.split('?')[0];
+            if (adminPages.includes(basePath)) {
+              el.href = `${basePath}?store=${window.currentStoreId}`;
+            }
           }
-          if (el.getAttribute('href') === 'motoboy.html') {
-             el.href = "motoboy.html?store=" + window.currentStoreId;
-          }
-          
         });
   
 
@@ -657,7 +671,7 @@
 
         // Fetch logo separately
         try {
-          const logoSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, "logo"));
+          const logoSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_logo"));
           if (logoSnap.exists()) {
             const logoVal = logoSnap.data().logo;
             if (logoVal) {
@@ -673,9 +687,9 @@
         // Fetch banners separately in parallel
         try {
           const bannerSnaps = await Promise.all([
-            getDoc(doc(db, COLLECTIONS.restaurantProfile, "banner0")),
-            getDoc(doc(db, COLLECTIONS.restaurantProfile, "banner1")),
-            getDoc(doc(db, COLLECTIONS.restaurantProfile, "banner2"))
+            getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_banner0")),
+            getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_banner1")),
+            getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_banner2"))
           ]);
           bannersList = [];
           bannerSnaps.forEach((bSnap) => {
@@ -720,7 +734,7 @@
           document.getElementById('logo-preview-img').classList.remove('hidden');
           document.getElementById('logo-placeholder').classList.add('hidden');
 
-          await setDoc(doc(db, COLLECTIONS.restaurantProfile, "logo"), {
+          await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_logo"), {
             logo: base64
           }, { merge: true });
           alert("Logomarca updated!");
@@ -745,7 +759,7 @@
       if (!state) return;
 
       try {
-        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, "logo"));
+        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_logo"));
         document.getElementById('logo-preview-img').classList.add('hidden');
         document.getElementById('logo-placeholder').classList.remove('hidden');
         document.getElementById('logo-preview-img').src = '';
@@ -788,7 +802,7 @@
     // Helper to rewrite and save all banners consecutively (banner0, banner1, banner2)
     async function saveAllBannersToDb() {
       for (let i = 0; i < 3; i++) {
-        const docRef = doc(db, COLLECTIONS.restaurantProfile, `banner${i}`);
+        const docRef = doc(db, COLLECTIONS.restaurantProfile, `${window.currentStoreId}_banner${i}`);
         if (i < bannersList.length) {
           await setDoc(docRef, { banner: bannersList[i] });
         } else {

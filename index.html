@@ -542,31 +542,39 @@ storeId: window.currentStoreId
       // Check auth states
       window.currentStoreId = null;
       onAuthStateChanged(auth, async (user) => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlStoreId = urlParams.get('store');
         const customStoreId = localStorage.getItem('popfood_custom_store_id');
         const customStoreEmail = localStorage.getItem('popfood_custom_store_email');
+        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
 
         const authView = document.getElementById('auth-panel');
         const dashView = document.getElementById('admin-dashboard');
 
-        if (user || customStoreId) {
-          // Superuser store simulation override check
-          const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
-          if (overrideStoreId) {
+        if (user || customStoreId || urlStoreId) {
+          if (urlStoreId) {
+            window.currentStoreId = urlStoreId;
+          } else if (overrideStoreId) {
             window.currentStoreId = overrideStoreId;
-            injectOverrideBannerUI();
           } else if (customStoreId) {
             window.currentStoreId = customStoreId;
           } else {
             window.currentStoreId = user.uid;
           }
 
-          // Append storeId universally to specific module links
-          document.querySelectorAll('a[href="motoboy.html"], a[href="cliente.html"], a[href="index.html"]').forEach(el => {
-            if (el.getAttribute('href') === 'cliente.html') {
-               el.href = "cliente.html?store=" + window.currentStoreId;
-            }
-            if (el.getAttribute('href') === 'motoboy.html') {
-               el.href = "motoboy.html?store=" + window.currentStoreId;
+          if (overrideStoreId && window.currentStoreId === overrideStoreId) {
+            injectOverrideBannerUI();
+          }
+
+          // Dynamically append currentStoreId universally to ALL internal admin links
+          document.querySelectorAll('a').forEach(el => {
+            const href = el.getAttribute('href');
+            if (href) {
+              const adminPages = ['index.html', 'perfil.html', 'pedidos.html', 'clientes.html', 'relatorios.html', 'cliente.html', 'motoboy.html'];
+              const basePath = href.split('?')[0];
+              if (adminPages.includes(basePath)) {
+                el.href = `${basePath}?store=${window.currentStoreId}`;
+              }
             }
           });
 
@@ -652,8 +660,43 @@ storeId: window.currentStoreId
       }
 
       try {
-        await createUserWithEmailAndPassword(auth, mail, pass);
-        alert("Cadastro realizado! Acesso liberado.");
+        const userCredential = await createUserWithEmailAndPassword(auth, mail, pass);
+        const newUser = userCredential.user;
+
+        const initialProfile = {
+          id: newUser.uid,
+          storeId: newUser.uid,
+          name: "Minha Nova Loja",
+          description: "Bem-vindo ao nosso delivery!",
+          phone: "",
+          cep: "",
+          address: "Endereço da Loja, Número",
+          openTime: "18:00",
+          closeTime: "23:59",
+          show: true,
+          suspended: false,
+          adminEmail: mail.toLowerCase(),
+          adminPassword: pass,
+          createdAt: new Date().toISOString(),
+          deliveryRates: {
+            "1": 5.0,
+            "2": 6.5,
+            "3": 8.0,
+            "4": 9.5,
+            "5": 11.0,
+            "6": 12.5,
+            "7": 14.0,
+            "8": 15.5,
+            "9": 17.0,
+            "10": 18.5
+          },
+          deliveryTimes: {
+            "1": 25, "2": 30, "3": 35, "4": 40, "5": 45, "6": 50, "7": 55, "8": 60, "9": 65, "10": 70
+          }
+        };
+
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, newUser.uid), initialProfile);
+        alert("Cadastro realizado com sucesso! Seu estabelecimento foi configurado e o acesso está liberado.");
       } catch (err) {
         console.error("Register Admin error: ", err);
         alert("Falha ao cadastrar: " + err.message);

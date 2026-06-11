@@ -564,10 +564,14 @@
           }
         }
 
-        // Agora exclui o documento do perfil do restaurante
+        // Agora exclui o documento do perfil do restaurante e suas fotos/banners associados
         await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId));
+        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId + "_logo"));
+        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId + "_banner0"));
+        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId + "_banner1"));
+        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId + "_banner2"));
         
-        alert(`Sucesso total!\n\nA loja "${storeName}" e todas as suas configurações de login, senha, e dados relacionados (${totalDeleted} sub-documentos deletados) foram completamente excluídos do banco de dados.`);
+        alert(`Sucesso total!\n\nA loja "${storeName}" e todas as suas configurações de login, senha, fotos de logomarca/banners e dados relacionados (${totalDeleted} sub-documentos deletados) foram completamente excluídos do banco de dados.`);
         initDashboardData();
       } catch (err) {
         console.error("Erro durante a exclusão em cascata: ", err);

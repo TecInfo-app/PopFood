@@ -983,7 +983,7 @@
 
         // Listen to logo separately
         const hLogo = document.getElementById('header-restaurant-logo');
-        onSnapshot(doc(db, COLLECTIONS.restaurantProfile, "logo"), (logoSnap) => {
+        onSnapshot(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_logo"), (logoSnap) => {
           if (logoSnap.exists()) {
             const logoVal = logoSnap.data().logo;
             if (hLogo) {
@@ -1002,7 +1002,7 @@
         });
 
         // Listen to individual banners in parallel
-        const bannerDocs = ["banner0", "banner1", "banner2"];
+        const bannerDocs = [window.currentStoreId + "_banner0", window.currentStoreId + "_banner1", window.currentStoreId + "_banner2"];
         const bannerVals = [null, null, null];
 
         function renderBannersCarousel() {
