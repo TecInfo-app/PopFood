@@ -528,21 +528,50 @@
         return;
       }
       
-      const confirmText = prompt(`ATENÇÃO DESTRUTIVA!\nTem certeza que quer excluir a loja "${storeName}" (${storeId}) e TODOS os dados dela?\nDigite o ID para confirmar:`);
+      const confirmText = prompt(`ATENÇÃO DESTRUTIVA EM CASCATA!\n\nTem certeza que quer EXCLUIR DEFINITIVAMENTE a loja "${storeName}" (${storeId})?\n\nISSO APAGARÁ: login/senha, produtos, categorias, adicionais/complementos, pedidos, clientes da loja e cupons de uma vez por todas.\n\nPara confirmar a exclusão de tudo, digite o ID da loja correspondente:`);
       if(confirmText !== storeId) {
-        if(confirmText !== null) alert("Cancelado: O ID não confere.");
+        if(confirmText !== null) alert("Cancelado: O ID digitado não confere.");
         return;
       }
       
       try {
-        // Exclui apenas o doc de restaurante, sem deletar sub-documentos para segurança.
-        // Se quiser deletar em cascade precisaria de uma cloud function ou batch loops,
-        // mas apagar o perfil já a retira do painel.
+        console.log(`[CASCADE DELETE] Iniciando remoção completa da loja: ${storeId}`);
+        
+        // Define as coleções dependentes que possuem storeId
+        const dependentCollections = [
+          COLLECTIONS.products,
+          COLLECTIONS.categories,
+          COLLECTIONS.complements,
+          COLLECTIONS.orders,
+          COLLECTIONS.clients,
+          COLLECTIONS.coupons
+        ];
+
+        let totalDeleted = 0;
+
+        for (const colName of dependentCollections) {
+          console.log(`[CASCADE DELETE] Buscando documentos na coleção: ${colName}`);
+          const q = query(collection(db, colName), where("storeId", "==", storeId));
+          const snap = await getDocs(q);
+          
+          if (!snap.empty) {
+            console.log(`[CASCADE DELETE] Encontrados ${snap.size} documentos em ${colName}`);
+            // Deletar cada documento
+            const deletePromises = snap.docs.map(docSnap => deleteDoc(doc(db, colName, docSnap.id)));
+            await Promise.all(deletePromises);
+            totalDeleted += snap.size;
+            console.log(`[CASCADE DELETE] Sucesso ao remover documentos de: ${colName}`);
+          }
+        }
+
+        // Agora exclui o documento do perfil do restaurante
         await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId));
-        alert(`Loja "${storeName}" foi excluída com sucesso! (Note que produtos e pedidos ficarão orfãos no banco apenas)`);
+        
+        alert(`Sucesso total!\n\nA loja "${storeName}" e todas as suas configurações de login, senha, e dados relacionados (${totalDeleted} sub-documentos deletados) foram completamente excluídos do banco de dados.`);
         initDashboardData();
       } catch (err) {
-        alert("Erro ao excluir loja: " + err.message);
+        console.error("Erro durante a exclusão em cascata: ", err);
+        alert("Erro ao excluir dados em cascata: " + err.message);
       }
     }
 
