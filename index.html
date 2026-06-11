@@ -542,33 +542,37 @@ storeId: window.currentStoreId
       // Check auth states
       window.currentStoreId = null;
       onAuthStateChanged(auth, async (user) => {
-        if (user) window.currentStoreId = user.uid;
-        // Append storeId universally to specific module links
-        document.querySelectorAll('a[href="motoboy.html"], a[href="cliente.html"], a[href="index.html"]').forEach(el => {
-          if (el.getAttribute('href') === 'cliente.html') {
-             el.href = "cliente.html?store=" + window.currentStoreId;
-          }
-          if (el.getAttribute('href') === 'motoboy.html') {
-             el.href = "motoboy.html?store=" + window.currentStoreId;
-          }
-          
-        });
-  
+        const customStoreId = localStorage.getItem('popfood_custom_store_id');
+        const customStoreEmail = localStorage.getItem('popfood_custom_store_email');
+
         const authView = document.getElementById('auth-panel');
         const dashView = document.getElementById('admin-dashboard');
 
-        if (user) {
+        if (user || customStoreId) {
           // Superuser store simulation override check
           const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
           if (overrideStoreId) {
             window.currentStoreId = overrideStoreId;
             injectOverrideBannerUI();
+          } else if (customStoreId) {
+            window.currentStoreId = customStoreId;
           } else {
             window.currentStoreId = user.uid;
           }
+
+          // Append storeId universally to specific module links
+          document.querySelectorAll('a[href="motoboy.html"], a[href="cliente.html"], a[href="index.html"]').forEach(el => {
+            if (el.getAttribute('href') === 'cliente.html') {
+               el.href = "cliente.html?store=" + window.currentStoreId;
+            }
+            if (el.getAttribute('href') === 'motoboy.html') {
+               el.href = "motoboy.html?store=" + window.currentStoreId;
+            }
+          });
+
           authView.classList.add('hidden');
           dashView.classList.remove('hidden');
-          document.getElementById('lbl-admin-email').textContent = user.email;
+          document.getElementById('lbl-admin-email').textContent = customStoreEmail || (user ? user.email : 'admin');
           document.getElementById('btn-view-cardapio').href = `cliente.html?store=${window.currentStoreId}`;
           
           // Boot admin tracking pipelines
@@ -602,6 +606,21 @@ storeId: window.currentStoreId
       const mail = document.getElementById('login-email').value.trim();
       const pass = document.getElementById('login-password').value.trim();
       try {
+        // First try to check custom credentials from registered restaurant profiles
+        const profilesRef = collection(db, COLLECTIONS.restaurantProfile);
+        const q = query(profilesRef, where("adminEmail", "==", mail.toLowerCase()), where("adminPassword", "==", pass));
+        const qSnap = await getDocs(q);
+        if (!qSnap.empty) {
+          const matchedStoreDoc = qSnap.docs[0];
+          const matchedStoreId = matchedStoreDoc.id;
+          localStorage.setItem('popfood_custom_store_id', matchedStoreId);
+          localStorage.setItem('popfood_custom_store_email', mail);
+          // Reload page to apply login
+          window.location.reload();
+          return;
+        }
+
+        // Fallback to standard Firebase Auth
         await signInWithEmailAndPassword(auth, mail, pass);
       } catch (err) {
         console.error("Login Admin fail: ", err);
@@ -642,6 +661,9 @@ storeId: window.currentStoreId
     }
 
     window.logoutAdmin = async function() {
+      localStorage.removeItem('popfood_custom_store_id');
+      localStorage.removeItem('popfood_custom_store_email');
+      localStorage.removeItem('popfood_admin_store_override');
       await signOut(auth);
     }
 

@@ -192,7 +192,7 @@
       </div>
 
       <!-- Scrollable Form wrapper -->
-      <form id="new-store-form" onsubmit="handleNewStoreSubmit(event)" class="space-y-4 overflow-y-auto pr-1 flex-grow">
+      <form id="new-store-form" onsubmit="handleNewStoreSubmit(event)" class="space-y-4 overflow-y-auto pr-1 flex-grow font-sans">
         
         <div class="grid grid-cols-2 gap-3">
           <div class="space-y-1">
@@ -217,36 +217,70 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
           <div class="space-y-1">
-            <label class="block text-[10px] uppercase font-bold text-gray-400">Horário Abertura (Ex: 18:00)</label>
-            <input type="text" id="new-store-open" placeholder="18:00" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+            <label class="block text-[10px] uppercase font-bold text-orange-500">E-mail de Login do Cliente*</label>
+            <input type="email" id="new-store-email" placeholder="cliente@email.com" required class="w-full p-2.5 text-xs font-semibold border border-orange-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 rounded-xl focus:outline-none" />
           </div>
           <div class="space-y-1">
-            <label class="block text-[10px] uppercase font-bold text-gray-400">Horário Fechamento (Ex: 23:30)</label>
-            <input type="text" id="new-store-close" placeholder="23:30" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+            <label class="block text-[10px] uppercase font-bold text-orange-500">Senha de Acesso (Login)*</label>
+            <input type="text" id="new-store-password" placeholder="Mínimo 6 dígitos" required class="w-full p-2.5 text-xs font-semibold border border-orange-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 rounded-xl focus:outline-none" />
           </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div class="space-y-1">
-            <label class="block text-[10px] uppercase font-bold text-gray-400">CEP Local*</label>
-            <input type="text" id="new-store-cep" placeholder="14000-000" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
-          </div>
-          <div class="space-y-1">
-            <label class="block text-[10px] uppercase font-bold text-gray-400">Taxa de Entrega de Partida (Base)</label>
-            <input type="number" step="0.1" id="new-store-delivery-fee" placeholder="5.00" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <label class="block text-[10px] uppercase font-bold text-gray-400">Endereço Completo</label>
-          <input type="text" id="new-store-address" placeholder="Av. Principal, 1200, Centro" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
         </div>
 
         <div class="pt-4 flex gap-3 shrink-0">
-          <button type="button" onclick="toggleRegisterStoreModal(false)" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl text-xs font-semibold cursor-pointer transition-all">Cancelar</button>
-          <button type="submit" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer">Inicializar e Ativar Loja</button>
+          <button type="button" onclick="toggleRegisterStoreModal(false)" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl text-xs font-semibold cursor-pointer transition-all font-display">Cancelar</button>
+          <button type="submit" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer font-display">Inicializar e Ativar Loja</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT STORE CANDIDATE -->
+  <div id="edit-store-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
+    <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl scale-95 transition-transform duration-200 border border-gray-100 flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 shrink-0">
+        <div class="flex items-center gap-2">
+          <span>✏️</span>
+          <h3 class="font-display font-extrabold text-gray-800 text-sm">Editar Cadastro de Loja Parceira</h3>
+        </div>
+        <button onclick="toggleEditStoreModal(false)" class="text-gray-400 hover:text-gray-600 font-sans font-bold text-sm">✕</button>
+      </div>
+
+      <!-- Scrollable Form wrapper -->
+      <form id="edit-store-form" onsubmit="handleEditStoreSubmit(event)" class="space-y-4 overflow-y-auto pr-1 flex-grow font-sans">
+        <input type="hidden" id="edit-store-id" />
+
+        <div class="space-y-1">
+          <label class="block text-[10px] uppercase font-bold text-gray-400">Nome da Loja*</label>
+          <input type="text" id="edit-store-name" placeholder="Ex: Cia do Chopp" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Telefone / WhatsApp*</label>
+            <input type="text" id="edit-store-phone" placeholder="Ex: (16) 99999-9999" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-gray-400">Descrição Comercial Cortesia</label>
+            <input type="text" id="edit-store-desc" placeholder="Ex: Cerveja gelada e os melhores petiscos" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-orange-550">E-mail de Login*</label>
+            <input type="email" id="edit-store-email" placeholder="cliente@email.com" required class="w-full p-2.5 text-xs font-semibold border border-orange-200 focus:border-orange-550 rounded-xl focus:outline-none" />
+          </div>
+          <div class="space-y-1">
+            <label class="block text-[10px] uppercase font-bold text-orange-550">Senha de Acesso (Login)*</label>
+            <input type="text" id="edit-store-password" placeholder="Mínimo 6 dígitos" required class="w-full p-2.5 text-xs font-semibold border border-orange-200 focus:border-orange-550 rounded-xl focus:outline-none" />
+          </div>
+        </div>
+
+        <div class="pt-4 flex gap-3 shrink-0">
+          <button type="button" onclick="toggleEditStoreModal(false)" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl text-xs font-semibold cursor-pointer transition-all font-display">Cancelar</button>
+          <button type="submit" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer font-display">Salvar Alterações</button>
         </div>
       </form>
     </div>
@@ -381,6 +415,7 @@
 
             <h4 class="font-display font-bold text-gray-800 text-sm tracking-tight leading-tight">${store.name || 'Loja sem nome'}</h4>
             <p class="text-[11px] text-gray-400 mt-1 line-clamp-1 font-semibold">📞 ${store.phone || 'Sem WhatsApp'}</p>
+            ${store.adminEmail ? `<p class="text-[10px] text-gray-600 mt-1.5"><span class="font-extrabold text-orange-500 text-[9px] uppercase tracking-wider">🔐 Acesso:</span> <span class="font-mono font-bold text-slate-800">${store.adminEmail}</span> / <span class="font-mono text-slate-700">${store.adminPassword}</span></p>` : ''}
             <p class="text-[10px] text-gray-400 mt-1 line-clamp-1">📍 ${store.address || 'Sem endereço'}</p>
             
             <div class="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[10px]">
@@ -409,9 +444,12 @@
             </div>
 
             <!-- Inspect Override action -->
-            <div class="grid grid-cols-[1fr_auto] gap-2">
+            <div class="grid grid-cols-[1fr_auto_auto] gap-2">
               <button onclick="overrideSessionIntoStore('${store.id}', '${store.name}')" class="w-full bg-slate-900 text-white hover:bg-orange-600 font-bold text-xs py-2.5 rounded-xl transition-all shadow-xs hover:scale-[1.02] active:scale-95 cursor-pointer">
                 👁️ Acessar Painel
+              </button>
+              <button onclick="openEditStoreModal('${store.id}')" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center font-bold" title="Editar Cadastro">
+                ✏️
               </button>
               <button onclick="deleteStoreData('${store.id}', '${store.name}')" class="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-3 rounded-xl transition-colors cursor-pointer flex items-center justify-center font-bold" title="Excluir Loja">
                 🗑️
@@ -561,11 +599,8 @@
       const name = document.getElementById('new-store-name').value.trim();
       const phone = document.getElementById('new-store-phone').value.trim();
       const description = document.getElementById('new-store-desc').value.trim() || 'Melhor restaurante da região';
-      const openTime = document.getElementById('new-store-open').value.trim() || '18:00';
-      const closeTime = document.getElementById('new-store-close').value.trim() || '23:00';
-      const cep = document.getElementById('new-store-cep').value.trim();
-      const address = document.getElementById('new-store-address').value.trim() || 'Rua Central, S/N, Centro';
-      const baseFee = parseFloat(document.getElementById('new-store-delivery-fee').value || 5.0);
+      const adminEmail = document.getElementById('new-store-email').value.trim().toLowerCase();
+      const adminPassword = document.getElementById('new-store-password').value.trim();
 
       if (!storeId) {
         alert("Favor definir o ID Slug de identificação único!");
@@ -585,10 +620,12 @@
         name: name,
         phone: phone,
         description: description,
-        openTime: openTime,
-        closeTime: closeTime,
-        cep: cep,
-        address: address,
+        adminEmail: adminEmail,
+        adminPassword: adminPassword,
+        openTime: '18:00',
+        closeTime: '23:30',
+        cep: '14000-000',
+        address: 'A preencher pelo perfil do estabelecimento',
         isOpen: true,
         logo: '',
         minimumOrderPrice: 0.0,
@@ -600,16 +637,16 @@
         longitude: -46.633308,
         createdAt: new Date().toISOString(),
         deliveryRates: {
-          "1": baseFee,
-          "2": baseFee + 1.5,
-          "3": baseFee + 3.0,
-          "4": baseFee + 4.5,
-          "5": baseFee + 6.0,
-          "6": baseFee + 7.5,
-          "7": baseFee + 9.0,
-          "8": baseFee + 10.5,
-          "9": baseFee + 12.0,
-          "10": baseFee + 14.0
+          "1": 5.0,
+          "2": 6.5,
+          "3": 8.0,
+          "4": 9.5,
+          "5": 11.0,
+          "6": 12.5,
+          "7": 14.0,
+          "8": 15.5,
+          "9": 17.0,
+          "10": 18.5
         },
         deliveryTimes: {
           "1": 25, "2": 30, "3": 35, "4": 40, "5": 45, "6": 50, "7": 55, "8": 60, "9": 65, "10": 70
@@ -618,11 +655,64 @@
 
       try {
         await setDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), initialProfile);
-        alert(`Sucesso magnífico!\nLoja "${name}" cadastrada com sucesso.\nID slug: ${storeId}\nLink do cliente: /cliente.html?store=${storeId}`);
+        alert(`Sucesso magnífico!\nLoja "${name}" cadastrada com sucesso.\nID slug: ${storeId}\nLink do cliente: /cliente.html?store=${storeId}\n\nO cliente agora pode acessar o painel de pedidos usando:\nE-mail: ${adminEmail}\nSenha: ${adminPassword}`);
         toggleRegisterStoreModal(false);
         initDashboardData();
       } catch (err) {
         alert("Erro no setup de cadastro da loja: " + err.message);
+      }
+    }
+
+    window.toggleEditStoreModal = function(show) {
+      const modal = document.getElementById('edit-store-modal');
+      if (!modal) return;
+      if (show) {
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    window.openEditStoreModal = function(storeId) {
+      const store = loadedStores.find(s => s.id === storeId);
+      if (!store) {
+        alert("Loja não encontrada!");
+        return;
+      }
+      document.getElementById('edit-store-id').value = store.id;
+      document.getElementById('edit-store-name').value = store.name || '';
+      document.getElementById('edit-store-phone').value = store.phone || '';
+      document.getElementById('edit-store-desc').value = store.description || '';
+      document.getElementById('edit-store-email').value = store.adminEmail || '';
+      document.getElementById('edit-store-password').value = store.adminPassword || '';
+
+      toggleEditStoreModal(true);
+    }
+
+    window.handleEditStoreSubmit = async function(event) {
+      event.preventDefault();
+      const storeId = document.getElementById('edit-store-id').value;
+      const name = document.getElementById('edit-store-name').value.trim();
+      const phone = document.getElementById('edit-store-phone').value.trim();
+      const description = document.getElementById('edit-store-desc').value.trim();
+      const adminEmail = document.getElementById('edit-store-email').value.trim().toLowerCase();
+      const adminPassword = document.getElementById('edit-store-password').value.trim();
+
+      try {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
+          name: name,
+          phone: phone,
+          description: description,
+          adminEmail: adminEmail,
+          adminPassword: adminPassword,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        alert(`Cadastro da loja "${name}" atualizado com sucesso!`);
+        toggleEditStoreModal(false);
+        initDashboardData();
+      } catch (err) {
+        alert("Erro ao editar dados da loja: " + err.message);
       }
     }
   </script>
