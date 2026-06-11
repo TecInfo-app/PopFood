@@ -664,7 +664,12 @@ storeId: window.currentStoreId
       localStorage.removeItem('popfood_custom_store_id');
       localStorage.removeItem('popfood_custom_store_email');
       localStorage.removeItem('popfood_admin_store_override');
-      await signOut(auth);
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error("Signout error: ", err);
+      }
+      window.location.reload();
     }
 
     function injectOverrideBannerUI() {
