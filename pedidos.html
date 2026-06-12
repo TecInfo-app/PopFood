@@ -700,16 +700,17 @@
       if (mockOrder.desconto) {
         textReceipt += formatLine(`desconto`, `- R$ ${mockOrder.desconto.toFixed(2).replace('.', ',')}`);
       }
-      textReceipt += formatLine(`tx de entrega`, `R$ ${mockOrder.deliveryFee.toFixed(2).replace('.', ',')}`);
+      textReceipt += formatLine(`taxa de entrega`, `R$ ${mockOrder.deliveryFee.toFixed(2).replace('.', ',')}`);
       textReceipt += formatLine(`total`, `R$ ${mockOrder.total.toFixed(2).replace('.', ',')}`);
       textReceipt += `================================\n`;
       textReceipt += `PAGAMENTO: ${mockOrder.paymentMethod.toUpperCase()}\n`;
 
       const fontSize = printerWidth === '58' ? '12px' : '14px';
-      const divWidth = printerWidth === '58' ? '230px' : '300px';
 
       container.innerHTML = `
-        <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0 auto; background: white; white-space: pre-wrap; word-wrap: break-word; width: ${divWidth}; box-sizing: border-box;">${textReceipt}</pre>
+        <div style="width: 100%; overflow-x: auto;">
+          <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0; background: white; white-space: pre;">${textReceipt}</pre>
+        </div>
       `;
     };
 
@@ -1605,7 +1606,7 @@
           textReceipt += formatLine(`desconto`, `- R$ ${order.desconto.toFixed(2).replace('.', ',')}`);
         }
         
-        textReceipt += formatLine(`tx de entrega`, `R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}`);
+        textReceipt += formatLine(`taxa de entrega`, `R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}`);
         textReceipt += formatLine(`total`, `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`);
         
         textReceipt += `================================\n`;
