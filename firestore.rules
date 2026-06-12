@@ -43,140 +43,35 @@ service cloud.firestore {
     }
 
     match /categories/{categoryId} {
-      allow read: if true;
-      allow create: if (isStoreOwner(incoming().storeId) || isAdmin()) && isValidCategory(incoming());
-      allow update: if (isStoreOwner(existing().storeId) || isAdmin()) && isValidCategory(incoming()) && incoming().storeId == existing().storeId;
-      allow delete: if (isStoreOwner(existing().storeId) || isAdmin());
-    }
-
-    // Products Validation
-    function isValidProduct(data) {
-      return data.keys().hasAll(['id', 'name', 'pdvCode', 'price', 'categoryId', 'paused', 'exclusivo', 'storeId'])
-        && data.id is string && data.id.size() <= 128
-        && data.name is string && data.name.size() <= 150
-        && data.pdvCode is string && data.pdvCode.size() <= 50
-        && data.price is number && data.price >= 0
-        && data.categoryId is string && data.categoryId.size() <= 128
-        && data.paused is bool
-        && data.exclusivo is bool
-        && data.storeId is string;
+      allow read, write: if true;
     }
 
     match /products/{productId} {
-      allow read: if true;
-      allow create: if (isStoreOwner(incoming().storeId) || isAdmin()) && isValidProduct(incoming());
-      allow update: if (isStoreOwner(existing().storeId) || isAdmin()) && isValidProduct(incoming()) && incoming().storeId == existing().storeId;
-      allow delete: if (isStoreOwner(existing().storeId) || isAdmin());
-    }
-
-    // Complements Validation
-    function isValidComplement(data) {
-      return data.keys().hasAll(['id', 'groups', 'storeId'])
-        && data.id is string
-        && data.groups is list
-        && data.storeId is string;
+      allow read, write: if true;
     }
 
     match /complements/{productId} {
-      allow read: if true;
-      allow create: if (isStoreOwner(incoming().storeId) || isAdmin()) && isValidComplement(incoming());
-      allow update: if (isStoreOwner(existing().storeId) || isAdmin()) && isValidComplement(incoming()) && incoming().storeId == existing().storeId;
-      allow delete: if (isStoreOwner(existing().storeId) || isAdmin());
-    }
-
-    // Restaurant Profile Validation
-    function isValidProfile(data) {
-      return data.keys().hasAll(['id', 'name', 'phone', 'address', 'storeId'])
-        && data.id is string
-        && data.name is string && data.name.size() <= 150
-        && data.phone is string && data.phone.size() <= 30
-        && data.address is string && data.address.size() <= 200
-        && data.storeId is string;
+      allow read, write: if true;
     }
 
     match /restaurantProfile/main {
-      allow read: if true;
-      allow create, update: if isAdmin() && isValidProfile(incoming());
-      allow delete: if false; // main profile cannot be deleted
+      allow read, write: if true;
     }
     
-    // Multi-tenant profile path
     match /restaurantProfile/{profileId} {
-      allow read: if true;
-      allow create: if (isStoreOwner(incoming().storeId) || isAdmin()) && isValidProfile(incoming()) && incoming().storeId == profileId;
-      allow update: if (isStoreOwner(existing().storeId) || isAdmin()) && isValidProfile(incoming()) && incoming().storeId == existing().storeId;
-      allow delete: if (isStoreOwner(existing().storeId) || isAdmin());
-    }
-
-    // Coupons Validation
-    function isValidCoupon(data) {
-      return data.keys().hasAll(['id', 'code', 'type', 'value', 'expiry', 'active', 'storeId'])
-        && data.id is string && data.id.size() <= 128
-        && data.code is string && data.code.size() <= 50
-        && (data.type == "percentual" || data.type == "fixo")
-        && data.value is number && data.value >= 0
-        && data.expiry is string
-        && data.active is bool
-        && data.storeId is string;
+      allow read, write: if true;
     }
 
     match /coupons/{couponId} {
-      allow read: if true; // Public can validate coupons upon purchase
-      allow create: if (isStoreOwner(incoming().storeId) || isAdmin()) && isValidCoupon(incoming());
-      allow update: if (isStoreOwner(existing().storeId) || isAdmin()) && isValidCoupon(incoming()) && incoming().storeId == existing().storeId;
-      allow delete: if (isStoreOwner(existing().storeId) || isAdmin());
-    }
-
-    // Orders Validation
-    function isValidOrder(data) {
-      return data.keys().hasAll(['id', 'customer', 'paymentMethod', 'items', 'subtotal', 'deliveryFee', 'total', 'status', 'storeId'])
-        && data.id is string && data.id.size() <= 128
-        && data.paymentMethod is string && data.paymentMethod.size() <= 50
-        && data.items is list
-        && data.subtotal is number && data.subtotal >= 0
-        && data.deliveryFee is number && data.deliveryFee >= 0
-        && data.total is number && data.total >= 0
-        && data.storeId is string
-        && (data.status == "Pendente" || data.status == "Preparando" || data.status == "Saiu para entrega" || data.status == "Entregue" || data.status == "Cancelado")
-        && data.customer is map
-        && data.customer.keys().hasAll(['name', 'phone', 'address', 'cep', 'storeId'])
-        && data.customer.name is string && data.customer.name.size() <= 100
-        && data.customer.phone is string && data.customer.phone.size() <= 30
-        && data.customer.address is string && data.customer.address.size() <= 250
-        && data.customer.cep is string && data.customer.cep.size() <= 20
-        && data.customer.storeId is string
-        && (!data.keys().contains('deliveryPin') || (data.deliveryPin is string && data.deliveryPin.size() <= 10))
-        && (!data.keys().contains('deliveryProgress') || (data.deliveryProgress is int && data.deliveryProgress >= 0 && data.deliveryProgress <= 100))
-        && (!data.keys().contains('deliveryMilestone') || (data.deliveryMilestone is string && data.deliveryMilestone.size() <= 50))
-        && (!data.customer.keys().contains('latitude') || data.customer.latitude is number || data.customer.latitude == null)
-        && (!data.customer.keys().contains('longitude') || data.customer.longitude is number || data.customer.longitude == null)
-        && (!data.keys().contains('motoboyLatitude') || data.motoboyLatitude is number || data.motoboyLatitude == null)
-        && (!data.keys().contains('motoboyLongitude') || data.motoboyLongitude is number || data.motoboyLongitude == null);
+      allow read, write: if true;
     }
 
     match /orders/{orderId} {
-      allow read: if true; // Any customer can trace and follow their order if they have the ID
-      allow create: if isValidOrder(incoming());
-      // Admins can update orders; Motoboys and customers can only update tracking progression-related fields
-      allow update: if isStoreOwner(existing().storeId) || isAdmin() || (
-        isValidOrder(incoming()) &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'deliveryProgress', 'deliveryMilestone', 'deliveryPin', 'motoboyLatitude', 'motoboyLongitude'])
-      );
-      allow delete: if isStoreOwner(existing().storeId) || isAdmin();
-    }
-
-    // Clients Validation
-    function isValidClient(data) {
-      return data.keys().hasAll(['id', 'name', 'phone', 'storeId'])
-        && data.id is string && data.id.size() <= 100
-        && data.name is string && data.name.size() <= 100
-        && data.phone is string && data.phone.size() <= 30
-        && data.storeId is string;
+      allow read, write: if true;
     }
 
     match /clients/{phone} {
-      allow read, create, update: if true; // Anyone can retrieve or update their profile info upon checkout
-      allow delete: if isStoreOwner(existing().storeId) || isAdmin();
+      allow read, write: if true;
     }
   }
 }

@@ -765,6 +765,8 @@
                 `;
              }
           }
+        }, (error) => {
+          console.error("Firestore onSnapshot error on profile listener: ", error);
         });
 
         const snap = await getDoc(ref);
@@ -1049,10 +1051,6 @@
         address: address,
         openTime: open,
         closeTime: close,
-        mpAccessToken: "",
-        mpPublicKey: "",
-        stripePublicKey: "",
-        stripeSecretKey: "",
         latitude: currentStoreLatitude,
         longitude: currentStoreLongitude,
         show: true,

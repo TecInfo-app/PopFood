@@ -753,6 +753,19 @@ storeId: window.currentStoreId
           const matchedStoreId = matchedStoreDoc.id;
           localStorage.setItem('popfood_custom_store_id', matchedStoreId);
           localStorage.setItem('popfood_custom_store_email', mail);
+          
+          // Sync standard Firebase Auth session
+          try {
+            await signInWithEmailAndPassword(auth, mail, pass);
+          } catch (authErr) {
+            console.log("Standard API session mismatch, bootstrapping Firebase Auth credentials...");
+            try {
+              await createUserWithEmailAndPassword(auth, mail, pass);
+            } catch (createErr) {
+              console.error("Bootstrap Firebase Auth record failed:", createErr);
+            }
+          }
+
           // Reload page to apply login
           window.location.reload();
           return;

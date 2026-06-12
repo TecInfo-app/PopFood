@@ -287,7 +287,7 @@
   </div>
 
   <script type="module">
-    import { db, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
+    import { db, auth, createUserWithEmailAndPassword, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
 
     let loadedStores = [];
     let activeFilterKeyword = '';
@@ -687,6 +687,16 @@
       };
 
       try {
+        // Create matching standard Firebase Auth user dynamically
+        try {
+          await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
+        } catch (authErr) {
+          if (authErr.code !== 'auth/email-already-in-use') {
+            throw authErr;
+          }
+          console.log("Firebase Auth account already exists, matching document directly.");
+        }
+
         await setDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), initialProfile);
         alert(`Sucesso magnífico!\nLoja "${name}" cadastrada com sucesso.\nID slug: ${storeId}\nLink do cliente: /cliente.html?store=${storeId}\n\nO cliente agora pode acessar o painel de pedidos usando:\nE-mail: ${adminEmail}\nSenha: ${adminPassword}`);
         toggleRegisterStoreModal(false);
