@@ -719,40 +719,25 @@
     };
 
     window.printTestPage = function() {
-       const w = document.getElementById('printer-width').value || '58';
        const url = document.getElementById('printer-server-url').value.trim();
-       const printerName = document.getElementById('printer-select').value;
-       
        if (!url) { alert("Informe a URL do servidor primeiro."); return; }
        
-       // Ensure preview is updated first
-       window.updatePrintPreview();
+       const w = document.getElementById('printer-width').value || '58';
+       const temp = localPrinterWidth;
+       localPrinterWidth = w;
        
-       fetch(`${url.replace(/\/$/, '')}/imprimir`, {
-          method: 'POST',
-          body: JSON.stringify({ 
-              impressora: printerName,
-              largura: w,
-              html: window.__lastTestHtml || '',
-              texto: window.__lastTestReceipt || '',
-              conteudo: window.__lastTestReceipt || '',
-              conteudo_html: window.__lastTestHtml || '',
-              content: window.__lastTestReceipt || '',
-              text: window.__lastTestReceipt || '',
-              // Send mock order format
-              id: "TST123",
-              customer: { name: "Cliente Teste", phone: "0000", type: "delivery", address: "Rua Exemplo" },
-              items: [{ quantity: 1, name: "filetino leonardo testes", price: 90, totalItemPrice: 90 }],
-              paymentMethod: "Teste", subtotal: 90, total: 95, deliveryFee: 5, desconto: 0
-          }),
-          headers: { 'Content-Type': 'application/json' }
-       }).then(res => {
-          if(res.ok) alert("Impressão de teste enviada com sucesso!");
-          else alert("Erro ao enviar impressão: " + res.status);
-       }).catch(err => {
-          console.error("Local printer call failed: ", err);
-          alert("Erro ao enviar impressão: O servidor de impressora não está ativo ou a URL está incorreta.");
-       });
+       try {
+           const mockOrder = {
+             id: "TST123",
+             customer: { name: "Cliente Teste", phone: "0000", type: "delivery", address: "Rua Exemplo" },
+             items: [{ quantity: 1, name: "filetino leonardo testes", price: 90, totalItemPrice: 90 }],
+             paymentMethod: "Pix", subtotal: 90, total: 95, deliveryFee: 5, desconto: 0, createdAt: new Date()
+           };
+           window.triggerThermalComandaPrint(mockOrder);
+           alert("Impressão de teste enviada! O recibo foi enviado na mesma formatação de um pedido real.");
+       } finally {
+           localPrinterWidth = temp;
+       }
     };
     
     window.savePrinterSettings = function() {
@@ -1426,7 +1411,6 @@
       if (order) triggerThermalComandaPrint(order);
     }
 
-    // Monochrome layout customized for ~350px receipt thermal printer outputs with store logo
     function triggerThermalComandaPrint(order) {
       const parent = document.getElementById('receipt-print-layout');
       parent.innerHTML = '';
@@ -1434,58 +1418,7 @@
       const storeName = loadedRestaurantProfile ? loadedRestaurantProfile.name : "PopFood Delivery";
       const storePhone = loadedRestaurantProfile ? loadedRestaurantProfile.phone : "WhatsApp";
       const storeAddress = loadedRestaurantProfile ? loadedRestaurantProfile.address : "";
-
-      let itemsHtml = '';
-      order.items.forEach(item => {
-        let complementsHtml = '';
-        if (item.complements && item.complements.length > 0) {
-          complementsHtml = item.complements.map(c => `
-            <table style="width: 100%; font-size: 11px; color: #000; border-collapse: collapse;">
-              <tr>
-                <td style="padding-left: 10px;">+ ${c.optionName}</td>
-                <td style="text-align: right;">R$ ${c.price ? c.price.toFixed(2).replace('.', ',') : '0,00'}</td>
-              </tr>
-            </table>
-          `).join('');
-        }
-        
-        const lineTotal = (item.totalItemPrice || 0) * item.quantity;
-        const lineTotalStr = lineTotal.toFixed(2).replace('.', ',');
-        
-        const notesHtml = item.notes ? `
-          <div style="font-size: 11px; color: #000; padding-left: 10px; font-style: italic; margin-top: 1px; border-bottom: 1px solid #eee; padding-bottom: 2px;">
-            Obs: "${item.notes}"
-          </div>
-        ` : '';
-
-        let itemTitleHtml = '';
-        if (localPrinterWidth === '58') {
-          itemTitleHtml = `
-            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; white-space: nowrap; width: 100%;">
-              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">${item.quantity}x ${item.name.toLowerCase()}</span>
-              <span>R$ ${lineTotalStr}</span>
-            </div>
-          `;
-        } else {
-          itemTitleHtml = `
-            <table style="width: 100%; border-collapse: collapse; font-weight: bold; font-size: 12px;">
-              <tr>
-                <td>${item.quantity}x ${item.name.toUpperCase()}</td>
-                <td style="text-align: right; white-space: nowrap; padding-left: 5px;">R$ ${lineTotalStr}</td>
-              </tr>
-            </table>
-          `;
-        }
-
-        itemsHtml += `
-          <div style="margin-bottom: 5px; color: #000;">
-            ${itemTitleHtml}
-            ${complementsHtml}
-            ${notesHtml}
-          </div>
-        `;
-      });
-
+      
       let orderDate = order.date || '';
       if (order.createdAt) {
         if (typeof order.createdAt === 'object' && typeof order.createdAt.seconds === 'number') {
@@ -1500,65 +1433,82 @@
         }
       }
 
-      let printMaxWidth = localPrinterWidth === '58' ? '230px' : '300px';
+      // Configure text print width
+      const cols = localPrinterWidth === '58' ? 30 : 44;
+      
+      function formatLine(leftText, rightText) {
+        let spaceCount = Math.max(1, cols - leftText.length - rightText.length);
+        if (leftText.length + rightText.length > cols) {
+           const maxLeftLen = cols - 1 - rightText.length;
+           leftText = leftText.substring(0, maxLeftLen);
+           spaceCount = 1;
+        }
+        return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
+      }
 
+      let textReceipt = "";
+      textReceipt += `================================\n`;
+      textReceipt += `          ${storeName.toUpperCase()}\n`;
+      if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
+      if (storeAddress) textReceipt += `${storeAddress}\n`;
+      textReceipt += `================================\n`;
+      textReceipt += `PEDIDO: #${order.id.slice(-6).toUpperCase()}\n`;
+      textReceipt += `DATA: ${orderDate}\n`;
+      textReceipt += `================================\n`;
+      if (order.customer) {
+        textReceipt += `CLIENTE: ${order.customer.name.toUpperCase()}\n`;
+        textReceipt += `FONE: ${order.customer.phone}\n`;
+        textReceipt += `ENTREGA: ${order.customer.type === 'pickup' ? 'RETIRADA NO LOCAL' : 'DELIVERY'}\n`;
+        if (order.customer.address) textReceipt += `ENDERECO: ${order.customer.address.toUpperCase()}\n`;
+        if (order.customer.complement) textReceipt += `COMP: ${order.customer.complement.toUpperCase()}\n`;
+        if (order.customer.reference) textReceipt += `REF: ${order.customer.reference.toUpperCase()}\n`;
+        if (order.customer.cep) textReceipt += `CEP: ${order.customer.cep}\n`;
+      }
+      textReceipt += `--------------------------------\n`;
+      textReceipt += `ITENS DO PEDIDO:\n`;
+      
+      order.items.forEach(item => {
+        const itemVal = item.price || 0;
+        const lineTotal = (item.totalItemPrice || 0) * item.quantity;
+        const lineTotalStr = lineTotal.toFixed(2).replace('.', ',');
+        
+        textReceipt += formatLine(`${item.quantity}x ${item.name.toLowerCase()}`, `R$ ${lineTotalStr}`);
+
+        if (item.complements && item.complements.length > 0) {
+          item.complements.forEach(c => {
+            const compPrice = c.price || 0;
+            textReceipt += formatLine(`+ ${c.optionName.toLowerCase()}`, `R$ ${compPrice.toFixed(2).replace('.', ',')}`);
+          });
+        }
+        if (item.notes) {
+          textReceipt += `Obs: ${item.notes}\n`;
+        }
+      });
+      
+      textReceipt += `--------------------------------\n`;
+      textReceipt += formatLine(`subtotal`, `R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}`);
+      
+      if (order.desconto) {
+        textReceipt += formatLine(`desconto`, `- R$ ${order.desconto.toFixed(2).replace('.', ',')}`);
+      }
+      
+      textReceipt += formatLine(`taxa de entrega`, `R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}`);
+      textReceipt += formatLine(`total`, `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`);
+      
+      textReceipt += `================================\n`;
+      textReceipt += `PAGAMENTO: ${order.paymentMethod ? order.paymentMethod.toUpperCase() : 'N/A'}\n`;
+      if (order.paymentMethod === 'Dinheiro' && order.troco) {
+        textReceipt += `${order.troco.toUpperCase()}\n`;
+      }
+      textReceipt += `================================\n`;
+      textReceipt += `Obrigado pela preferência!\n`;
+      textReceipt += `Powered by PopFood Delivery\n`;
+      
+      // Inject identical <pre> formatted HTML
+      const fontSize = localPrinterWidth === '58' ? '12px' : '14px';
       parent.innerHTML = `
-        <div style="font-family: system-ui, -apple-system, sans-serif; color: #000; line-height: 1.4; font-size: ${localPrinterWidth === '58' ? '11px' : '12px'}; padding: 10px; max-width: ${printMaxWidth}; margin: 0 auto; background: white;">
-          
-          <!-- BRAND LOGO AND HEADER -->
-          <div style="text-align: center; margin-bottom: 10px;">
-            <div style="font-size: 15px; font-weight: bold;">${storePhone} ID: ${order.id.slice(-6).toUpperCase()}</div>
-            <div style="font-size: 12px; margin-top: 2px;">
-              ${order.customer ? `
-                ${order.customer.address ? `Endereço: ${order.customer.address.toUpperCase()}<br>` : ''}
-                ${order.customer.complement ? `Comp: ${order.customer.complement.toUpperCase()}<br>` : ''}
-                ${order.customer.reference ? `Ref: ${order.customer.reference.toUpperCase()}<br>` : ''}
-                ${order.customer.cep ? `CEP: ${order.customer.cep}` : ''}
-              ` : ''}
-            </div>
-          </div>
-
-          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
-
-          <!-- ITEMS LIST -->
-          <div>
-            <div style="font-weight: bold; font-size: 12px; margin-bottom: 5px;">
-              ITENS DO PEDIDO (${order.items.reduce((acc, i) => acc + i.quantity, 0)})
-            </div>
-            ${itemsHtml}
-          </div>
-
-          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
-
-          <!-- SUMMARY VALUES -->
-          <div style="font-size: 12px;">
-            <div style="text-align: center; font-weight: bold; margin-bottom: 5px;">* Pagamento realizado *</div>
-            <div style="margin-bottom: 5px;">${order.paymentMethod.toUpperCase()}</div>
-            <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
-            
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <span>subtotal:</span>
-              <span>R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <span>tx de entrega:</span>
-              <span>R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}</span>
-            </div>
-            ${order.desconto ? `
-              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-                <span>desconto:</span>
-                <span>- R$ ${order.desconto.toFixed(2).replace('.', ',')}</span>
-              </div>
-            ` : ''}
-            
-            <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
-
-            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
-              <span>total:</span>
-              <span>R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
-            </div>
-          </div>
-
+        <div style="width: 100%; overflow-x: auto; background: white; color: black; font-family: monospace;">
+          <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0; background: white; white-space: pre-wrap;">${textReceipt}</pre>
         </div>
       `;
 
@@ -1568,81 +1518,6 @@
         if (printTriggered) return;
         printTriggered = true;
 
-        // Prepare a beautifully formatted plain text receipt fallback for drivers/bridges that don't render HTML
-        let textReceipt = "";
-        textReceipt += `================================\n`;
-        textReceipt += `          ${storeName.toUpperCase()}\n`;
-        if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
-        if (storeAddress) textReceipt += `${storeAddress}\n`;
-        textReceipt += `================================\n`;
-        textReceipt += `PEDIDO: #${order.id.slice(-6).toUpperCase()}\n`;
-        textReceipt += `DATA: ${orderDate}\n`;
-        textReceipt += `================================\n`;
-        textReceipt += `CLIENTE: ${order.customer.name.toUpperCase()}\n`;
-        textReceipt += `FONE: ${order.customer.phone}\n`;
-        textReceipt += `ENTREGA: ${order.customer && order.customer.type === 'pickup' ? 'RETIRADA NO LOCAL' : 'DELIVERY'}\n`;
-        console.log("Printing customer object:", JSON.stringify(order.customer));
-        if (order.customer) {
-          if (order.customer.address) textReceipt += `ENDERECO: ${order.customer.address.toUpperCase()}\n`;
-          else console.warn("Order missing address for print", order.id);
-          
-          if (order.customer.complement) textReceipt += `COMP: ${order.customer.complement.toUpperCase()}\n`;
-          if (order.customer.reference) textReceipt += `REF: ${order.customer.reference.toUpperCase()}\n`;
-          if (order.customer.cep) textReceipt += `CEP: ${order.customer.cep}\n`;
-        }
-        textReceipt += `--------------------------------\n`;
-        textReceipt += `ITENS DO PEDIDO:\n`;
-        
-        const cols = localPrinterWidth === '58' ? 30 : 44;
-        
-        function formatLine(leftText, rightText) {
-          // ensure minimum 1 space
-          let spaceCount = Math.max(1, cols - leftText.length - rightText.length);
-          if (leftText.length + rightText.length > cols) {
-             const maxLeftLen = cols - 1 - rightText.length;
-             leftText = leftText.substring(0, maxLeftLen);
-             spaceCount = 1;
-          }
-          return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
-        }
-
-        order.items.forEach(item => {
-          const itemVal = item.price || 0;
-          const lineTotal = (item.totalItemPrice || 0) * item.quantity;
-          const lineTotalStr = lineTotal.toFixed(2).replace('.', ',');
-          
-          textReceipt += formatLine(`${item.quantity}x ${item.name.toLowerCase()}`, `R$ ${lineTotalStr}`);
-
-          if (item.complements && item.complements.length > 0) {
-            item.complements.forEach(c => {
-              const compPrice = c.price || 0;
-              textReceipt += formatLine(`+ ${c.optionName.toLowerCase()}`, `R$ ${compPrice.toFixed(2).replace('.', ',')}`);
-            });
-          }
-          if (item.notes) {
-            textReceipt += `Obs: ${item.notes}\n`;
-          }
-        });
-        textReceipt += `--------------------------------\n`;
-        
-        textReceipt += formatLine(`subtotal`, `R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}`);
-        
-        if (order.desconto) {
-          textReceipt += formatLine(`desconto`, `- R$ ${order.desconto.toFixed(2).replace('.', ',')}`);
-        }
-        
-        textReceipt += formatLine(`taxa de entrega`, `R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}`);
-        textReceipt += formatLine(`total`, `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`);
-        
-        textReceipt += `================================\n`;
-        textReceipt += `PAGAMENTO: ${order.paymentMethod.toUpperCase()}\n`;
-        if (order.paymentMethod === 'Dinheiro' && order.troco) {
-          textReceipt += `${order.troco.toUpperCase()}\n`;
-        }
-        textReceipt += `================================\n`;
-        textReceipt += `Obrigado pela preferência!\n`;
-        textReceipt += `Powered by PopFood Delivery\n`;
-        
         if (localPrinterServerUrl) {
           // Direct POST to local print service, sending multiple common layout keys
           fetch(`${localPrinterServerUrl.replace(/\/$/, '')}/imprimir`, {
