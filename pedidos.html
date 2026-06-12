@@ -1336,14 +1336,28 @@
           </div>
         ` : '';
 
-        itemsHtml += `
-          <div style="margin-bottom: 5px; font-size: 12px; color: #000;">
-            <table style="width: 100%; border-collapse: collapse; font-weight: bold;">
+        let itemTitleHtml = '';
+        if (localPrinterWidth === '58') {
+          itemTitleHtml = `
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; white-space: nowrap; width: 100%;">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">${item.quantity}x ${item.name.toLowerCase()}</span>
+              <span>R$ ${lineTotalStr}</span>
+            </div>
+          `;
+        } else {
+          itemTitleHtml = `
+            <table style="width: 100%; border-collapse: collapse; font-weight: bold; font-size: 12px;">
               <tr>
                 <td>${item.quantity}x ${item.name.toUpperCase()}</td>
-                <td style="text-align: right;">R$ ${lineTotalStr}</td>
+                <td style="text-align: right; white-space: nowrap; padding-left: 5px;">R$ ${lineTotalStr}</td>
               </tr>
             </table>
+          `;
+        }
+
+        itemsHtml += `
+          <div style="margin-bottom: 5px; color: #000;">
+            ${itemTitleHtml}
             ${complementsHtml}
             ${notesHtml}
           </div>
@@ -1459,15 +1473,30 @@
         order.items.forEach(item => {
           const itemVal = item.price || 0;
           const lineTotal = (item.totalItemPrice || 0) * item.quantity;
+          const lineTotalStr = lineTotal.toFixed(2).replace('.', ',');
           
-          textReceipt += `${item.quantity}x ${item.name.toUpperCase()} (R$ ${itemVal.toFixed(2).replace('.', ',')})\n`;                
+          if (localPrinterWidth === '58') {
+             let nameStr = `${item.quantity}x ${item.name.toLowerCase()}`;
+             let priceStr = `R$ ${lineTotalStr}`;
+             let spaceCount = Math.max(1, 32 - nameStr.length - priceStr.length);
+             if (nameStr.length + priceStr.length >= 32) {
+                const maxNameLen = 32 - 1 - priceStr.length;
+                nameStr = nameStr.substring(0, maxNameLen);
+                spaceCount = 1;
+             }
+             textReceipt += `${nameStr}${" ".repeat(spaceCount)}${priceStr}\n`;
+          } else {
+             textReceipt += `${item.quantity}x ${item.name.toUpperCase()} (R$ ${itemVal.toFixed(2).replace('.', ',')})\n`;                
+          }
           if (item.complements && item.complements.length > 0) {
             item.complements.forEach(c => {
               const compPrice = c.price || 0;
               textReceipt += `   + ${c.optionName} (R$ ${compPrice.toFixed(2).replace('.', ',')})\n`;
             });
           }
-          textReceipt += `   Subtotal item: R$ ${lineTotal.toFixed(2).replace('.', ',')}\n`;
+          if (localPrinterWidth !== '58' || (item.complements && item.complements.length > 0)) {
+            textReceipt += `   Subtotal: R$ ${lineTotal.toFixed(2).replace('.', ',')}\n`;
+          }
           if (item.notes) {
             textReceipt += `   Obs: ${item.notes}\n`;
           }
