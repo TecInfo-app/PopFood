@@ -82,8 +82,11 @@
           <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail</label>
           <input type="email" id="login-email" required placeholder="admin@popfood.com" class="w-full text-sm p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
         </div>
-        <div class="space-y-1.5">
-          <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Senha</label>
+        <div class="space-y-1.5 relative">
+          <div class="flex justify-between items-center">
+            <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">Senha</label>
+            <button type="button" onclick="switchAuthView('forgot')" class="text-xs text-brand-primary hover:underline font-semibold bg-transparent border-none cursor-pointer">Esqueceu a senha?</button>
+          </div>
           <input type="password" id="login-password" required placeholder="******" class="w-full text-sm p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
         </div>
         <button type="submit" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-sm">Entrar</button>
@@ -113,6 +116,19 @@
         <button type="submit" class="w-full bg-brand-secondary hover:bg-green-600 text-white font-bold py-3 rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-sm">Cadastrar</button>
         <p class="text-center text-xs text-gray-400 mt-2">
           Já tem uma conta? <button type="button" onclick="switchAuthView('login')" class="text-brand-primary hover:underline font-semibold bg-transparent border-none cursor-pointer">Faça Login</button>
+        </p>
+      </form>
+
+      <!-- VIEW: FORGOT PASSWORD FORM -->
+      <form id="forgot-password-form" class="space-y-4 hidden">
+        <p class="text-xs text-gray-500 text-center mb-4">Informe seu e-mail e enviaremos um link para você redefinir sua senha.</p>
+        <div class="space-y-1.5">
+          <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider">E-mail de Recuperação</label>
+          <input type="email" id="forgot-email" required placeholder="admin@popfood.com" class="w-full text-sm p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
+        </div>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md cursor-pointer transition-all active:scale-95 text-sm">Enviar Link de Recuperação</button>
+        <p class="text-center text-xs text-gray-400 mt-2">
+          Lembrou a senha? <button type="button" onclick="switchAuthView('login')" class="text-brand-primary hover:underline font-semibold bg-transparent border-none cursor-pointer">Faça Login</button>
         </p>
       </form>
 
@@ -472,7 +488,7 @@
   </div>
 
   <script type="module">
-    import { db, auth, Timestamp, COLLECTIONS, collection, query, where, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from './firebase-config.js';
+    import { db, auth, Timestamp, COLLECTIONS, collection, query, where, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from './firebase-config.js';
 
     window.currentStoreId = null;
 
@@ -725,16 +741,35 @@ storeId: window.currentStoreId
       // Bind login register forms
       document.getElementById('login-form').onsubmit = triggerLoginAction;
       document.getElementById('register-form').onsubmit = triggerRegisterAction;
+      document.getElementById('forgot-password-form').onsubmit = triggerForgotAction;
       document.getElementById('product-catalog-form').onsubmit = saveOrUpdateCatalogProduct;
     };
 
+    async function triggerForgotAction(e) {
+      e.preventDefault();
+      const mail = document.getElementById('forgot-email').value.trim();
+      if (!mail) return;
+      try {
+        await sendPasswordResetEmail(auth, mail);
+        alert('Um e-mail de recuperação foi enviado para ' + mail);
+        window.switchAuthView('login');
+      } catch (err) {
+        console.error("Forgot error: ", err);
+        alert('Erro ao enviar e-mail: ' + (err.message || err));
+      }
+    }
+
     window.switchAuthView = function(view) {
+      document.getElementById('login-form').classList.add('hidden');
+      document.getElementById('register-form').classList.add('hidden');
+      document.getElementById('forgot-password-form').classList.add('hidden');
+      
       if (view === 'register') {
-        document.getElementById('login-form').classList.add('hidden');
         document.getElementById('register-form').classList.remove('hidden');
+      } else if (view === 'forgot') {
+        document.getElementById('forgot-password-form').classList.remove('hidden');
       } else {
         document.getElementById('login-form').classList.remove('hidden');
-        document.getElementById('register-form').classList.add('hidden');
       }
     }
 

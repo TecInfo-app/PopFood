@@ -383,13 +383,12 @@
         position: absolute;
         left: 0;
         top: 0;
-        width: 100% !important;
-        max-width: 350px !important;
+        width: min-content !important;
         background: white !important;
         color: black !important;
         font-family: system-ui, -apple-system, sans-serif !important;
-        font-size: 12px !important;
-        padding: 5px !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
     }
   </style>
@@ -412,6 +411,14 @@
           <label class="text-[10px] font-bold text-gray-400 uppercase">Impressora Selecionada</label>
           <select id="printer-select" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:outline-none">
               <option value="">Selecione a impressora...</option>
+          </select>
+      </div>
+
+      <div class="space-y-1">
+          <label class="text-[10px] font-bold text-gray-400 uppercase">Tamanho do Papel</label>
+          <select id="printer-width" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:outline-none">
+              <option value="58">Largura de 58mm (Padrão Pequeno)</option>
+              <option value="80">Largura de 80mm (Padrão Grande)</option>
           </select>
       </div>
       
@@ -476,6 +483,7 @@
     let autoAcceptSetting = localStorage.getItem('popfood_auto_accept') === 'true';
     let localPrinterServerUrl = localStorage.getItem('popfood_printer_url') || '';
     let selectedPrinterName = localStorage.getItem('popfood_printer_name') || '';
+    let localPrinterWidth = localStorage.getItem('popfood_printer_width') || '58';
     let loadedRestaurantProfile = null;
     let firstLoadDone = false;
 
@@ -536,6 +544,7 @@
           updateNotificationIndicator();
         }
         document.getElementById('printer-server-url').value = localPrinterServerUrl;
+        document.getElementById('printer-width').value = localPrinterWidth;
         
         // Load saved printer if url exists
         if (localPrinterServerUrl) fetchPrinters(false);
@@ -627,8 +636,10 @@
     window.savePrinterSettings = function() {
       localPrinterServerUrl = document.getElementById('printer-server-url').value.trim();
       selectedPrinterName = document.getElementById('printer-select').value;
+      localPrinterWidth = document.getElementById('printer-width').value;
       localStorage.setItem('popfood_printer_url', localPrinterServerUrl);
       localStorage.setItem('popfood_printer_name', selectedPrinterName);
+      localStorage.setItem('popfood_printer_width', localPrinterWidth);
       window.togglePrinterSettingsModal(false);
       alert("Configuração de impressora salva com sucesso!");
     }
@@ -1353,8 +1364,10 @@
         }
       }
 
+      let printMaxWidth = localPrinterWidth === '58' ? '230px' : '300px';
+
       parent.innerHTML = `
-        <div style="font-family: system-ui, -apple-system, sans-serif; color: #000; line-height: 1.4; font-size: 12px; padding: 10px; max-width: 320px; margin: 0 auto; background: white;">
+        <div style="font-family: system-ui, -apple-system, sans-serif; color: #000; line-height: 1.4; font-size: ${localPrinterWidth === '58' ? '11px' : '12px'}; padding: 10px; max-width: ${printMaxWidth}; margin: 0 auto; background: white;">
           
           <!-- BRAND LOGO AND HEADER -->
           <div style="text-align: center; margin-bottom: 10px;">
@@ -1481,6 +1494,7 @@
             method: 'POST',
             body: JSON.stringify({ 
                 impressora: selectedPrinterName,
+                largura: localPrinterWidth,
                 html: parent.innerHTML,
                 texto: textReceipt,
                 conteudo: textReceipt,
