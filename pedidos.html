@@ -667,7 +667,7 @@
       const storePhone = loadedRestaurantProfile ? loadedRestaurantProfile.phone : "WhatsApp";
       const storeAddress = loadedRestaurantProfile ? loadedRestaurantProfile.address : "";
       
-      const cols = printerWidth === '58' ? 32 : 48;
+      const cols = printerWidth === '58' ? 30 : 44;
       function formatLine(leftText, rightText) {
         let spaceCount = Math.max(1, cols - leftText.length - rightText.length);
         if (leftText.length + rightText.length > cols) {
@@ -712,22 +712,47 @@
           <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0; background: white; white-space: pre;">${textReceipt}</pre>
         </div>
       `;
+      
+      // Store current text receipt so test page can use it
+      window.__lastTestReceipt = textReceipt;
+      window.__lastTestHtml = container.innerHTML;
     };
 
     window.printTestPage = function() {
        const w = document.getElementById('printer-width').value || '58';
-       const temp = localPrinterWidth;
-       localPrinterWidth = w;
-       try {
-           window.triggerThermalComandaPrint({
-            id: "TST" + Math.floor(Math.random() * 9999), 
-            customer: { name: "Cliente Teste", phone: "00000" },
-            items: [{ quantity: 1, name: "filetino leonardo testes", price: 90, totalItemPrice: 90 }],
-            paymentMethod: "Teste", subtotal: 90, total: 95, deliveryFee: 5, desconto: 0, createdAt: new Date()
-           });
-       } finally { 
-           localPrinterWidth = temp;
-       }
+       const url = document.getElementById('printer-server-url').value.trim();
+       const printerName = document.getElementById('printer-select').value;
+       
+       if (!url) { alert("Informe a URL do servidor primeiro."); return; }
+       
+       // Ensure preview is updated first
+       window.updatePrintPreview();
+       
+       fetch(`${url.replace(/\/$/, '')}/imprimir`, {
+          method: 'POST',
+          body: JSON.stringify({ 
+              impressora: printerName,
+              largura: w,
+              html: window.__lastTestHtml || '',
+              texto: window.__lastTestReceipt || '',
+              conteudo: window.__lastTestReceipt || '',
+              conteudo_html: window.__lastTestHtml || '',
+              content: window.__lastTestReceipt || '',
+              text: window.__lastTestReceipt || '',
+              // Send mock order format
+              id: "TST123",
+              customer: { name: "Cliente Teste", phone: "0000", type: "delivery", address: "Rua Exemplo" },
+              items: [{ quantity: 1, name: "filetino leonardo testes", price: 90, totalItemPrice: 90 }],
+              paymentMethod: "Teste", subtotal: 90, total: 95, deliveryFee: 5, desconto: 0
+          }),
+          headers: { 'Content-Type': 'application/json' }
+       }).then(res => {
+          if(res.ok) alert("Impressão de teste enviada com sucesso!");
+          else alert("Erro ao enviar impressão: " + res.status);
+       }).catch(err => {
+          console.error("Local printer call failed: ", err);
+          alert("Erro ao enviar impressão: O servidor de impressora não está ativo ou a URL está incorreta.");
+       });
     };
     
     window.savePrinterSettings = function() {
@@ -1568,7 +1593,7 @@
         textReceipt += `--------------------------------\n`;
         textReceipt += `ITENS DO PEDIDO:\n`;
         
-        const cols = localPrinterWidth === '58' ? 32 : 48;
+        const cols = localPrinterWidth === '58' ? 30 : 44;
         
         function formatLine(leftText, rightText) {
           // ensure minimum 1 space
