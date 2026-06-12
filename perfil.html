@@ -567,7 +567,19 @@
   </div>
 
   <script type="module">
-    import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query, onSnapshot } from './firebase-config.js';
+    import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query, onSnapshot, signOut } from './firebase-config.js';
+
+    window.logoutAdmin = async function() {
+      localStorage.removeItem('popfood_custom_store_id');
+      localStorage.removeItem('popfood_custom_store_email');
+      localStorage.removeItem('popfood_admin_store_override');
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error("Signout error: ", err);
+      }
+      window.location.href = "index.html";
+    };
 
     // App state
     let profileData = null;

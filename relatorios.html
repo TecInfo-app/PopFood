@@ -301,7 +301,19 @@
   </div> <!-- Closing layout container -->
 
   <script type="module">
-    import { db, auth, Timestamp, COLLECTIONS, collection, getDocs, onAuthStateChanged, where, query, doc, onSnapshot } from './firebase-config.js';
+    import { db, auth, Timestamp, COLLECTIONS, collection, getDocs, onAuthStateChanged, where, query, doc, onSnapshot, signOut } from './firebase-config.js';
+
+    window.logoutAdmin = async function() {
+      localStorage.removeItem('popfood_custom_store_id');
+      localStorage.removeItem('popfood_custom_store_email');
+      localStorage.removeItem('popfood_admin_store_override');
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error("Signout error: ", err);
+      }
+      window.location.href = "index.html";
+    };
 
     // App financial memory registers
     let globalOrdersListForReports = [];
