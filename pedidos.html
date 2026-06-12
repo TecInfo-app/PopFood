@@ -416,10 +416,22 @@
 
       <div class="space-y-1">
           <label class="text-[10px] font-bold text-gray-400 uppercase">Tamanho do Papel</label>
-          <select id="printer-width" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:outline-none">
+          <select id="printer-width" onchange="updatePrintPreview()" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:outline-none">
               <option value="58">Largura de 58mm (Padrão Pequeno)</option>
               <option value="80">Largura de 80mm (Padrão Grande)</option>
           </select>
+      </div>
+
+      <div class="space-y-1">
+          <div class="flex justify-between items-center">
+            <label class="text-[10px] font-bold text-gray-400 uppercase">Pré-visualização</label>
+            <button onclick="printTestPage()" class="text-[10px] font-bold text-brand-primary bg-orange-50 px-2 py-1 rounded hover:bg-orange-100">Imprimir Teste</button>
+          </div>
+          <div class="w-full border border-gray-200 bg-gray-50 flex justify-center py-4 rounded-xl overflow-hidden h-40 overflow-y-auto">
+            <div id="print-preview-container" class="shadow-sm">
+                <!-- Preview is injected here -->
+            </div>
+          </div>
       </div>
       
       <button onclick="savePrinterSettings()" class="w-full bg-brand-primary text-white py-3 rounded-xl font-bold text-xs">Salvar Configuração</button>
@@ -606,6 +618,7 @@
     // Printer settings toggler
     window.togglePrinterSettingsModal = function(show) {
       document.getElementById('printer-settings-modal').classList.toggle('hidden', !show);
+      if(show) updatePrintPreview();
     }
     
     window.fetchPrinters = async function(showAlert = true) {
@@ -632,6 +645,91 @@
             alert("Erro ao buscar impressoras: " + (err.message || err));
         }
     }
+    
+    window.updatePrintPreview = function() {
+      const container = document.getElementById('print-preview-container');
+      const printerWidth = document.getElementById('printer-width').value || '58';
+      const printMaxWidth = printerWidth === '58' ? '230px' : '300px';
+      
+      const mockOrder = {
+        id: "TST123",
+        items: [
+           { quantity: 1, name: "filetino leonardo", totalItemPrice: 90 },
+        ],
+        subtotal: 90,
+        deliveryFee: 5,
+        desconto: 0,
+        total: 95
+      };
+
+      let itemsHtml = '';
+      mockOrder.items.forEach(item => {
+        const lineTotalStr = ((item.totalItemPrice || 0) * item.quantity).toFixed(2).replace('.', ',');
+        let itemTitleHtml = '';
+        if (printerWidth === '58') {
+          itemTitleHtml = `
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; white-space: nowrap; width: 100%;">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">${item.quantity}x ${item.name.toLowerCase()}</span>
+              <span>R$ ${lineTotalStr}</span>
+            </div>
+          `;
+        } else {
+          itemTitleHtml = `
+            <table style="width: 100%; border-collapse: collapse; font-weight: bold; font-size: 12px;">
+              <tr>
+                <td>${item.quantity}x ${item.name.toLowerCase()}</td>
+                <td style="text-align: right; white-space: nowrap; padding-left: 5px;">R$ ${lineTotalStr}</td>
+              </tr>
+            </table>
+          `;
+        }
+
+        itemsHtml += `
+          <div style="margin-bottom: 5px; color: #000;">
+            ${itemTitleHtml}
+          </div>
+        `;
+      });
+      
+      const storeName = loadedRestaurantProfile ? loadedRestaurantProfile.name : "PopFood Delivery";
+      
+      container.innerHTML = `
+        <div style="font-family: system-ui, -apple-system, sans-serif; color: #000; line-height: 1.4; font-size: ${printerWidth === '58' ? '11px' : '12px'}; padding: 10px; width: ${printMaxWidth}; margin: 0 auto; background: white; text-align: left;">
+          <div style="text-align: center; margin-bottom: 10px; font-weight: bold; font-size: 15px;">
+            ${storeName}<br>ID: ${mockOrder.id}
+          </div>
+          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+          <div>${itemsHtml}</div>
+          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+            <span>subtotal:</span><span>R$ ${mockOrder.subtotal.toFixed(2).replace('.', ',')}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+            <span>tx de entrega:</span><span>R$ ${mockOrder.deliveryFee.toFixed(2).replace('.', ',')}</span>
+          </div>
+          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
+          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
+            <span>total:</span><span>R$ ${mockOrder.total.toFixed(2).replace('.', ',')}</span>
+          </div>
+        </div>
+      `;
+    };
+
+    window.printTestPage = function() {
+       const w = document.getElementById('printer-width').value || '58';
+       const temp = localPrinterWidth;
+       localPrinterWidth = w;
+       try {
+           window.triggerThermalComandaPrint({
+            id: "TST" + Math.floor(Math.random() * 9999), 
+            customer: { name: "Cliente Teste", phone: "00000" },
+            items: [{ quantity: 1, name: "filetino leonardo testes", price: 90, totalItemPrice: 90 }],
+            paymentMethod: "Teste", subtotal: 90, total: 95, deliveryFee: 5, desconto: 0, createdAt: new Date()
+           });
+       } finally { 
+           localPrinterWidth = temp;
+       }
+    };
     
     window.savePrinterSettings = function() {
       localPrinterServerUrl = document.getElementById('printer-server-url').value.trim();
