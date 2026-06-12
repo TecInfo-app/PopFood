@@ -1415,16 +1415,16 @@
             <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
             
             <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <span>Valor total do pedido:</span>
+              <span>subtotal:</span>
               <span>R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}</span>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-              <span>Taxa de entrega:</span>
+              <span>tx de entrega:</span>
               <span>R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}</span>
             </div>
             ${order.desconto ? `
               <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-                <span>Total descontos:</span>
+                <span>desconto:</span>
                 <span>- R$ ${order.desconto.toFixed(2).replace('.', ',')}</span>
               </div>
             ` : ''}
@@ -1432,7 +1432,7 @@
             <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
 
             <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
-              <span>Cobrar do cliente:</span>
+              <span>total:</span>
               <span>R$ ${(order.total || 0).toFixed(2).replace('.', ',')}</span>
             </div>
           </div>
@@ -1470,44 +1470,48 @@
         }
         textReceipt += `--------------------------------\n`;
         textReceipt += `ITENS DO PEDIDO:\n`;
+        
+        const cols = localPrinterWidth === '58' ? 32 : 48;
+        
+        function formatLine(leftText, rightText) {
+          // ensure minimum 1 space
+          let spaceCount = Math.max(1, cols - leftText.length - rightText.length);
+          if (leftText.length + rightText.length > cols) {
+             const maxLeftLen = cols - 1 - rightText.length;
+             leftText = leftText.substring(0, maxLeftLen);
+             spaceCount = 1;
+          }
+          return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
+        }
+
         order.items.forEach(item => {
           const itemVal = item.price || 0;
           const lineTotal = (item.totalItemPrice || 0) * item.quantity;
           const lineTotalStr = lineTotal.toFixed(2).replace('.', ',');
           
-          if (localPrinterWidth === '58') {
-             let nameStr = `${item.quantity}x ${item.name.toLowerCase()}`;
-             let priceStr = `R$ ${lineTotalStr}`;
-             let spaceCount = Math.max(1, 32 - nameStr.length - priceStr.length);
-             if (nameStr.length + priceStr.length >= 32) {
-                const maxNameLen = 32 - 1 - priceStr.length;
-                nameStr = nameStr.substring(0, maxNameLen);
-                spaceCount = 1;
-             }
-             textReceipt += `${nameStr}${" ".repeat(spaceCount)}${priceStr}\n`;
-          } else {
-             textReceipt += `${item.quantity}x ${item.name.toUpperCase()} (R$ ${itemVal.toFixed(2).replace('.', ',')})\n`;                
-          }
+          textReceipt += formatLine(`${item.quantity}x ${item.name.toLowerCase()}`, `R$ ${lineTotalStr}`);
+
           if (item.complements && item.complements.length > 0) {
             item.complements.forEach(c => {
               const compPrice = c.price || 0;
-              textReceipt += `   + ${c.optionName} (R$ ${compPrice.toFixed(2).replace('.', ',')})\n`;
+              textReceipt += formatLine(`+ ${c.optionName.toLowerCase()}`, `R$ ${compPrice.toFixed(2).replace('.', ',')}`);
             });
           }
-          if (localPrinterWidth !== '58' || (item.complements && item.complements.length > 0)) {
-            textReceipt += `   Subtotal: R$ ${lineTotal.toFixed(2).replace('.', ',')}\n`;
-          }
           if (item.notes) {
-            textReceipt += `   Obs: ${item.notes}\n`;
+            textReceipt += `Obs: ${item.notes}\n`;
           }
         });
         textReceipt += `--------------------------------\n`;
-        textReceipt += `Subtotal: R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}\n`;
+        
+        textReceipt += formatLine(`subtotal`, `R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}`);
+        
         if (order.desconto) {
-          textReceipt += `Desconto: - R$ ${order.desconto.toFixed(2).replace('.', ',')}\n`;
+          textReceipt += formatLine(`desconto`, `- R$ ${order.desconto.toFixed(2).replace('.', ',')}`);
         }
-        textReceipt += `Taxa de Entrega: R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}\n`;
-        textReceipt += `TOTAL: R$ ${(order.total || 0).toFixed(2).replace('.', ',')}\n`;
+        
+        textReceipt += formatLine(`tx de entrega`, `R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}`);
+        textReceipt += formatLine(`total`, `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`);
+        
         textReceipt += `================================\n`;
         textReceipt += `PAGAMENTO: ${order.paymentMethod.toUpperCase()}\n`;
         if (order.paymentMethod === 'Dinheiro' && order.troco) {
