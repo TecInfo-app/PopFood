@@ -649,7 +649,6 @@
     window.updatePrintPreview = function() {
       const container = document.getElementById('print-preview-container');
       const printerWidth = document.getElementById('printer-width').value || '58';
-      const printMaxWidth = printerWidth === '58' ? '230px' : '300px';
       
       const mockOrder = {
         id: "TST123",
@@ -659,59 +658,58 @@
         subtotal: 90,
         deliveryFee: 5,
         desconto: 0,
-        total: 95
+        total: 95,
+        paymentMethod: "Pix",
+        customer: { name: "Cliente Teste", phone: "0000", address: "Rua Exemplo, 123", type: "delivery" }
       };
 
-      let itemsHtml = '';
+      const storeName = loadedRestaurantProfile ? loadedRestaurantProfile.name : "PopFood Delivery";
+      const storePhone = loadedRestaurantProfile ? loadedRestaurantProfile.phone : "WhatsApp";
+      const storeAddress = loadedRestaurantProfile ? loadedRestaurantProfile.address : "";
+      
+      const cols = printerWidth === '58' ? 32 : 48;
+      function formatLine(leftText, rightText) {
+        let spaceCount = Math.max(1, cols - leftText.length - rightText.length);
+        if (leftText.length + rightText.length > cols) {
+           const maxLeftLen = cols - 1 - rightText.length;
+           leftText = leftText.substring(0, maxLeftLen);
+           spaceCount = 1;
+        }
+        return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
+      }
+
+      let textReceipt = "";
+      textReceipt += `================================\n`;
+      textReceipt += `          ${storeName.toUpperCase()}\n`;
+      if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
+      textReceipt += `================================\n`;
+      textReceipt += `PEDIDO: #${mockOrder.id}\n`;
+      textReceipt += `================================\n`;
+      textReceipt += `CLIENTE: ${mockOrder.customer.name.toUpperCase()}\n`;
+      textReceipt += `ENTREGA: ${mockOrder.customer.type === 'pickup' ? 'RETIRADA' : 'DELIVERY'}\n`;
+      textReceipt += `--------------------------------\n`;
+      textReceipt += `ITENS DO PEDIDO:\n`;
+      
       mockOrder.items.forEach(item => {
         const lineTotalStr = ((item.totalItemPrice || 0) * item.quantity).toFixed(2).replace('.', ',');
-        let itemTitleHtml = '';
-        if (printerWidth === '58') {
-          itemTitleHtml = `
-            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; white-space: nowrap; width: 100%;">
-              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 5px;">${item.quantity}x ${item.name.toLowerCase()}</span>
-              <span>R$ ${lineTotalStr}</span>
-            </div>
-          `;
-        } else {
-          itemTitleHtml = `
-            <table style="width: 100%; border-collapse: collapse; font-weight: bold; font-size: 12px;">
-              <tr>
-                <td>${item.quantity}x ${item.name.toLowerCase()}</td>
-                <td style="text-align: right; white-space: nowrap; padding-left: 5px;">R$ ${lineTotalStr}</td>
-              </tr>
-            </table>
-          `;
-        }
-
-        itemsHtml += `
-          <div style="margin-bottom: 5px; color: #000;">
-            ${itemTitleHtml}
-          </div>
-        `;
+        textReceipt += formatLine(`${item.quantity}x ${item.name.toLowerCase()}`, `R$ ${lineTotalStr}`);
       });
       
-      const storeName = loadedRestaurantProfile ? loadedRestaurantProfile.name : "PopFood Delivery";
-      
+      textReceipt += `--------------------------------\n`;
+      textReceipt += formatLine(`subtotal`, `R$ ${mockOrder.subtotal.toFixed(2).replace('.', ',')}`);
+      if (mockOrder.desconto) {
+        textReceipt += formatLine(`desconto`, `- R$ ${mockOrder.desconto.toFixed(2).replace('.', ',')}`);
+      }
+      textReceipt += formatLine(`tx de entrega`, `R$ ${mockOrder.deliveryFee.toFixed(2).replace('.', ',')}`);
+      textReceipt += formatLine(`total`, `R$ ${mockOrder.total.toFixed(2).replace('.', ',')}`);
+      textReceipt += `================================\n`;
+      textReceipt += `PAGAMENTO: ${mockOrder.paymentMethod.toUpperCase()}\n`;
+
+      const fontSize = printerWidth === '58' ? '12px' : '14px';
+      const divWidth = printerWidth === '58' ? '230px' : '300px';
+
       container.innerHTML = `
-        <div style="font-family: system-ui, -apple-system, sans-serif; color: #000; line-height: 1.4; font-size: ${printerWidth === '58' ? '11px' : '12px'}; padding: 10px; width: ${printMaxWidth}; margin: 0 auto; background: white; text-align: left;">
-          <div style="text-align: center; margin-bottom: 10px; font-weight: bold; font-size: 15px;">
-            ${storeName}<br>ID: ${mockOrder.id}
-          </div>
-          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
-          <div>${itemsHtml}</div>
-          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-            <span>subtotal:</span><span>R$ ${mockOrder.subtotal.toFixed(2).replace('.', ',')}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
-            <span>tx de entrega:</span><span>R$ ${mockOrder.deliveryFee.toFixed(2).replace('.', ',')}</span>
-          </div>
-          <div style="border-top: 1px dashed #000; margin: 5px 0;"></div>
-          <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 14px;">
-            <span>total:</span><span>R$ ${mockOrder.total.toFixed(2).replace('.', ',')}</span>
-          </div>
-        </div>
+        <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0 auto; background: white; white-space: pre-wrap; word-wrap: break-word; width: ${divWidth}; box-sizing: border-box;">${textReceipt}</pre>
       `;
     };
 
