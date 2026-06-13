@@ -243,6 +243,17 @@
           <span class="font-bold">➔</span>
         </button>
 
+        <button type="button" onclick="switchTab('pagamentos')" id="menu-btn-pagamentos" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">💳</span>
+            <div>
+              <p class="font-bold text-gray-850">Formas de Pagamento</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Online e Na Entrega</p>
+            </div>
+          </div>
+          <span class="font-bold">➔</span>
+        </button>
+
         <button type="button" onclick="switchTab('motoboy')" id="menu-btn-motoboy" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-amber-50/40">
           <div class="flex items-center gap-3">
             <span class="text-lg">🛵</span>
@@ -314,13 +325,6 @@
               <input type="text" id="store-address" required placeholder="Rua, Número, Bairro, Cidade" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
             </div>
             
-            <!-- Payment Integration Config -->
-            <div class="space-y-1 mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <label class="block text-[10px] font-bold text-green-700 uppercase">Chave de API (AbacatePay) - Opcional</label>
-              <input type="password" id="abacatepay-token" placeholder="ak_live_..." class="w-full text-xs p-2.5 border border-green-200 rounded-lg focus:outline-none bg-white">
-              <p class="text-[9px] text-green-600 mt-1 pb-1">Se preenchido, os pagamentos online usarão automaticamente a AbacatePay (Pix e Cartão/Checkout).</p>
-            </div>
-
             <!-- Legacy Payment Integration Config (Hidden and Cleared) -->
             <input type="hidden" id="mp-access-token" value="">
             <input type="hidden" id="mp-public-key" value="">
@@ -470,6 +474,63 @@
         </div>
       </div>
 
+      <!-- TAB: PAGAMENTOS -->
+      <div id="tab-pagamentos" class="space-y-6 hidden">
+        <form id="profile-payments-form" class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6">
+          <div>
+            <h3 class="font-display font-bold text-sm text-gray-800">💳 Formas de Pagamento</h3>
+            <p class="text-[10px] text-gray-400 font-medium">Configure as formas de pagamento disponíveis para os clientes (online e na entrega).</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="border border-gray-200 rounded-xl p-4 space-y-3 relative overflow-hidden">
+              <div class="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+              <h4 class="font-bold text-xs text-gray-700 flex items-center gap-2"><span class="text-sm">🛵</span> Pagamento na Entrega (Offline)</h4>
+              <p class="text-[10px] text-gray-500">O motoboy receberá o valor no momento da entrega do pedido.</p>
+              <div class="flex flex-col gap-2 mt-2">
+                <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
+                  <input type="checkbox" id="pay-offline-pix" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                  <span class="text-xs font-semibold text-gray-700">Pix</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
+                  <input type="checkbox" id="pay-offline-card" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                  <span class="text-xs font-semibold text-gray-700">Cartão de Crédito / Débito (Maquininha)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
+                  <input type="checkbox" id="pay-offline-money" checked class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                  <span class="text-xs font-semibold text-gray-700">Dinheiro (com opção de troco)</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl p-4 space-y-3 relative overflow-hidden">
+              <div class="absolute top-0 left-0 w-1 h-full bg-green-500"></div>
+              <h4 class="font-bold text-xs text-gray-700 flex items-center gap-2"><span class="text-sm">🌐</span> Pagamento Online (via AbacatePay)</h4>
+              <p class="text-[10px] text-gray-500">O cliente paga diretamente no aplicativo ao finalizar o pedido.</p>
+              
+              <div class="space-y-1 mt-2 p-3 bg-green-50/50 border border-green-100 rounded-lg">
+                <label class="block text-[10px] font-bold text-green-700 uppercase">Chave de API (AbacatePay)</label>
+                <input type="password" id="abacatepay-token" placeholder="ak_live_..." class="w-full text-xs p-2.5 border border-green-200 rounded-lg focus:outline-none focus:border-green-400 bg-white shadow-xs">
+                <p class="text-[9px] text-green-600 mt-1">É necessário preencher a chave de produção para habilitar pagamentos online.</p>
+              </div>
+
+              <div class="flex flex-col gap-2 mt-3">
+                <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
+                  <input type="checkbox" id="pay-online-pix" checked class="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                  <span class="text-xs font-semibold text-gray-700">Pix Online</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-colors">
+                  <input type="checkbox" id="pay-online-card" checked class="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500">
+                  <span class="text-xs font-semibold text-gray-700">Cartão de Crédito Online (Checkout)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" id="save-payments-btn" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 text-xs rounded-xl shadow-md transition-transform hover:scale-101 cursor-pointer">Salvar Configurações</button>
+        </form>
+      </div>
+
       <!-- TAB: PORTAL DO MOTOBOY -->
       <div id="tab-motoboy" class="space-y-6 hidden">
         <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 text-left">
@@ -599,7 +660,7 @@
 
     // Switch tab handler
     window.switchTab = function(tabId) {
-      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'motoboy'];
+      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'pagamentos', 'motoboy'];
       tabs.forEach(id => {
         const tabEl = document.getElementById(`tab-${id}`);
         if (tabEl) tabEl.classList.add('hidden');
@@ -697,6 +758,7 @@
       });
 
       document.getElementById('profile-meta-form').onsubmit = saveRestaurantProfileDetails;
+      document.getElementById('profile-payments-form').onsubmit = saveRestaurantProfileDetails;
       document.getElementById('coupon-modal-form').onsubmit = saveOrUpdateCouponDetails;
 
       const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
@@ -801,6 +863,21 @@
           document.getElementById('store-open').value = profileData.openTime || '';
           document.getElementById('store-close').value = profileData.closeTime || '';
           document.getElementById('abacatepay-token').value = profileData.abacatePayToken || '';
+          
+          if (profileData.paymentMethods) {
+            document.getElementById('pay-offline-pix').checked = profileData.paymentMethods.offlinePix ?? true;
+            document.getElementById('pay-offline-card').checked = profileData.paymentMethods.offlineCard ?? true;
+            document.getElementById('pay-offline-money').checked = profileData.paymentMethods.offlineMoney ?? true;
+            document.getElementById('pay-online-pix').checked = profileData.paymentMethods.onlinePix ?? true;
+            document.getElementById('pay-online-card').checked = profileData.paymentMethods.onlineCard ?? true;
+          } else {
+             document.getElementById('pay-offline-pix').checked = true;
+             document.getElementById('pay-offline-card').checked = true;
+             document.getElementById('pay-offline-money').checked = true;
+             document.getElementById('pay-online-pix').checked = true;
+             document.getElementById('pay-online-card').checked = true;
+          }
+
           document.getElementById('mp-access-token').value = '';
           document.getElementById('mp-public-key').value = '';
           document.getElementById('stripe-public-key').value = '';
@@ -1063,6 +1140,14 @@
       const close = document.getElementById('store-close').value;
       const abacatePayToken = document.getElementById('abacatepay-token').value.trim();
 
+      const paymentMethods = {
+        offlinePix: document.getElementById('pay-offline-pix').checked,
+        offlineCard: document.getElementById('pay-offline-card').checked,
+        offlineMoney: document.getElementById('pay-offline-money').checked,
+        onlinePix: document.getElementById('pay-online-pix').checked,
+        onlineCard: document.getElementById('pay-online-card').checked
+      };
+
       const profileObj = {
         id: window.currentStoreId,
         name: name,
@@ -1073,6 +1158,7 @@
         openTime: open,
         closeTime: close,
         abacatePayToken: abacatePayToken,
+        paymentMethods: paymentMethods,
         latitude: currentStoreLatitude,
         longitude: currentStoreLongitude,
         show: true,

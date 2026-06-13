@@ -388,23 +388,16 @@
 
           <!-- Payments Selector -->
           <div class="space-y-3.5 border-t border-gray-100 pt-5">
-            <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">💳 Forma de Pagamento</label>
-            <div class="grid grid-cols-3 gap-2.5">
-              <label class="payment-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
-                <input type="radio" name="payment-method" value="Pix" checked class="hidden bg-brand-primary">
-                <span class="text-2xl">⚡</span>
-                <span class="text-xs font-black text-gray-850">Pix</span>
-              </label>
-              <label class="payment-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
-                <input type="radio" name="payment-method" value="Cartão de Crédito" class="hidden">
-                <span class="text-2xl">💳</span>
-                <span class="text-xs font-black text-gray-800">Cartão</span>
-              </label>
-              <label class="payment-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
-                <input type="radio" name="payment-method" value="Dinheiro" class="hidden">
-                <span class="text-2xl">💵</span>
-                <span class="text-xs font-black text-gray-800">Dinheiro</span>
-              </label>
+            <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">💳 Etapa de Pagamento</label>
+            <div id="payment-timing-selector" class="grid grid-cols-2 gap-2.5">
+              <!-- Dynamically populated based on profile -->
+            </div>
+            
+            <div id="payment-method-selector-container" class="hidden mt-3 pt-3 border-t border-gray-100">
+               <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider mb-2" id="payment-method-label">Forma de Pagamento</label>
+               <div id="payment-method-selector" class="grid grid-cols-2 lg:grid-cols-3 gap-2.5">
+                 <!-- Dynamically populated -->
+               </div>
             </div>
 
             <!-- Stripe Card Element Container -->
@@ -729,7 +722,6 @@
       await loadProfileAndBanners();
       setupCatalogListeners();
       refreshCartOverview();
-      setupPaymentSelector();
       fetchRestaurantRatings(); // Load ratings asynchronous
 
       // Retrieve cached delivery option if exists
@@ -860,12 +852,82 @@
       }
     }
 
-    // Style payment cards on checkout
-    function setupPaymentSelector() {
-      const cards = document.querySelectorAll('.payment-card');
+    // Dynamic payment selector
+    window.setupDynamicPaymentMethods = function() {
+      const pm = (restaurantProfile && restaurantProfile.paymentMethods) ? restaurantProfile.paymentMethods : {
+        offlinePix: true, offlineCard: true, offlineMoney: true, onlinePix: true, onlineCard: true
+      };
+
+      const hasOffline = pm.offlinePix || pm.offlineCard || pm.offlineMoney;
+      // AbacatePayToken determines if online works at all via our logic, but let's blindly support checking it on backend or trust the profile for now
+      const hasOnline = (restaurantProfile && restaurantProfile.abacatePayToken) ? (pm.onlinePix || pm.onlineCard) : ((restaurantProfile && restaurantProfile.stripePublicKey) ? true : false);
+
+      const timingContainer = document.getElementById('payment-timing-selector');
+      timingContainer.innerHTML = '';
+      
+      let htmlTiming = '';
+      if (hasOffline) {
+        htmlTiming += `
+          <label class="timing-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
+            <input type="radio" name="payment-timing" value="offline" class="hidden">
+            <span class="text-2xl">🛵</span>
+            <span class="text-xs font-black text-gray-850">Na Entrega</span>
+            <p class="text-[9px] text-gray-400 font-medium">Pagar ao Motoboy</p>
+          </label>
+        `;
+      }
+      if (hasOnline) {
+        htmlTiming += `
+          <label class="timing-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
+            <input type="radio" name="payment-timing" value="online" class="hidden">
+            <span class="text-2xl">📱</span>
+            <span class="text-xs font-black text-green-700">Pagar Online</span>
+            <p class="text-[9px] text-gray-400 font-medium">Rápido e Seguro</p>
+          </label>
+        `;
+      }
+      timingContainer.innerHTML = htmlTiming;
+
+      const timingCards = document.querySelectorAll('.timing-card');
+      timingCards.forEach(card => {
+        card.addEventListener('click', () => {
+           timingCards.forEach(c => {
+             c.classList.remove('border-brand-primary', 'bg-orange-50/50');
+           });
+           card.classList.add('border-brand-primary', 'bg-orange-50/50');
+           const radio = card.querySelector('input');
+           radio.checked = true;
+           renderSpecificPaymentMethods(radio.value, pm);
+        });
+      });
+
+      if (timingCards.length > 0) {
+        timingCards[0].click();
+      }
+    };
+
+    window.renderSpecificPaymentMethods = function(timing, pm) {
+      document.getElementById('payment-method-selector-container').classList.remove('hidden');
+      const methodContainer = document.getElementById('payment-method-selector');
+      let html = '';
+
+      if (timing === 'offline') {
+        document.getElementById('payment-method-label').textContent = 'Pagamento na Entrega';
+        if (pm.offlinePix !== false) html += buildPaymentMethodCard('Pix', 'Pix offline', '⚡');
+        if (pm.offlineCard !== false) html += buildPaymentMethodCard('Cartão de Crédito', 'Maquininha', '💳');
+        if (pm.offlineMoney !== false) html += buildPaymentMethodCard('Dinheiro', 'Em espécie', '💵');
+      } else {
+        document.getElementById('payment-method-label').textContent = 'Pagamento Online Seguro';
+        if (pm.onlinePix !== false) html += buildPaymentMethodCard('PixOnline', 'Pix Imediato', '⚡');
+        if (pm.onlineCard !== false) html += buildPaymentMethodCard('Online', 'Cartão Online', '💳');
+      }
+
+      methodContainer.innerHTML = html;
+
       const changeContainer = document.getElementById('change-needed-container');
       const stripeContainer = document.getElementById('stripe-card-container');
 
+      const cards = methodContainer.querySelectorAll('.payment-card');
       cards.forEach(card => {
         card.addEventListener('click', () => {
           cards.forEach(c => {
@@ -890,9 +952,9 @@
             }
           }
 
-          // If Online, show stripe box
+          // If Online card, show stripe box
           if (stripeContainer) {
-            if (radio.value === 'Online') {
+            if (radio.value === 'Online' && stripe && cardElement) {
               stripeContainer.classList.remove('hidden');
             } else {
               stripeContainer.classList.add('hidden');
@@ -900,8 +962,20 @@
           }
         });
       });
-      // Click default Pix
-      cards[0].click();
+
+      if (cards.length > 0) {
+        cards[0].click();
+      }
+    };
+
+    function buildPaymentMethodCard(val, label, icon) {
+      return `
+        <label class="payment-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
+          <input type="radio" name="payment-method" value="${val}" class="hidden">
+          <span class="text-2xl">${icon}</span>
+          <span class="text-xs font-black text-gray-850">${label}</span>
+        </label>
+      `;
     }
 
     // Load active restaurant profile banner settings
@@ -973,6 +1047,9 @@
             // Sync Loyalty displays
             if (typeof window.updateLoyaltyCatalogBannerUI === 'function') {
               window.updateLoyaltyCatalogBannerUI();
+            }
+            if (typeof window.setupDynamicPaymentMethods === 'function') {
+              window.setupDynamicPaymentMethods();
             }
             renderCatalogItems();
             calculateReceiptTotals();
@@ -3060,7 +3137,8 @@
         const phone = document.getElementById('cust-phone').value.trim().replace(/\D/g, '');
         const email = document.getElementById('cust-email').value.trim();
         const methodSelection = document.querySelector('input[name="payment-method"]:checked');
-        let method = methodSelection ? methodSelection.value : 'Pix';
+        const rawMethod = methodSelection ? methodSelection.value : 'Pix';
+        let method = rawMethod;
         if (method === 'Online') {
           method = 'Cartão de Crédito';
         } else if (method === 'PixOnline') {
@@ -3101,14 +3179,14 @@
         const orderId = "PF" + Math.floor(100000 + Math.random() * 900000).toString();
 
         // ONLINE PAYMENT LOGIC
-        if (method === 'Online' || method === 'PixOnline') {
+        if (rawMethod === 'Online' || rawMethod === 'PixOnline') {
           // 1. Create Payment on server
           const piResponse = await fetch('/api/create-payment', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ 
               amount: total,
-              paymentMethodType: method === 'PixOnline' ? 'pix' : 'card',
+              paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
               email: email,
               description: `Pedido ${orderId} na PopFood`
             })
@@ -3158,7 +3236,7 @@
             if (!stripe) throw new Error("Sistema de pagamento Stripe não inicializado no navegador.");
             const { clientSecret } = paymentResponse;
 
-            if (method === 'Online') {
+            if (rawMethod === 'Online') {
               if (!cardElement) throw new Error("Elemento de cartão não encontrado.");
               
               const result = await stripe.confirmCardPayment(clientSecret, {
@@ -3170,7 +3248,7 @@
 
               if (result.error) throw new Error(result.error.message);
               if (result.paymentIntent.status !== 'succeeded') throw new Error("Pagamento não autorizado.");
-            } else if (method === 'PixOnline') {
+            } else if (rawMethod === 'PixOnline') {
               const result = await stripe.confirmPixPayment(clientSecret, {
                 payment_method: {
                   billing_details: { name: name, email: email }
