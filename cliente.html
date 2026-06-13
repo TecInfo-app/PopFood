@@ -3182,38 +3182,77 @@
         if (rawMethod === 'Online' || rawMethod === 'PixOnline') {
           let paymentResponse = null;
 
-          // Chamada padrão usando o nosso servidor (onde CORS e Tokens são protegidos)
-          let backendHost = '';
-          if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1')) {
-            backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-          }
-
-          try {
-            const piResponse = await fetch(`${backendHost}/api/create-payment`, {
-              method: 'POST',
-              headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ 
-                amount: total,
-                paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
-                email: email,
-                description: `Pedido ${orderId} na PopFood`,
-                storeId: window.currentStoreId
-              })
-            });
-
-            const contentType = piResponse.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-               throw new Error("O servidor falhou em gerar o pagamento. O backend Node.js não retornou JSON. O pagamento online não pode continuar com a configuração atual.");
+          if (restaurantProfile && restaurantProfile.abacatePayToken) {
+            try {
+              const token = restaurantProfile.abacatePayToken;
+              
+              if (rawMethod === 'PixOnline') {
+                const targetUrl = "https://api.abacatepay.com/v1/pixQrCode/create";
+                const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
+                
+                const res = await fetch(proxyUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                  },
+                  body: JSON.stringify({
+                    amount: Math.round(total * 100),
+                    description: `Pedido ${orderId} na PopFood`
+                  })
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || data.message || "Erro AbacatePay Pix");
+                
+                paymentResponse = {
+                  provider: 'abacatepay',
+                  method: 'pix',
+                  qrCode: data.data.brCode,
+                  qrCodeBase64: data.data.brCodeBase64.replace(/^data:image\/.*;base64,/, ''),
+                  paymentId: data.data.id
+                };
+              } else {
+                const targetUrl = "https://api.abacatepay.com/v1/billing/create";
+                const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(targetUrl);
+                
+                const res = await fetch(proxyUrl, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                  },
+                  body: JSON.stringify({
+                    frequency: "ONE_TIME",
+                    methods: ["CREDIT_CARD"],
+                    products: [{
+                      externalId: orderId,
+                      name: `Pedido ${orderId}`,
+                      quantity: 1,
+                      price: Math.round(total * 100)
+                    }],
+                    returnUrl: window.location.href,
+                    completionUrl: window.location.href,
+                    cancelUrl: window.location.href,
+                    customer: {
+                      email: email || "exemplo@email.com",
+                      name: name,
+                      phone: phone || "11999999999"
+                    }
+                  })
+                });
+                
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || data.message || "Erro AbacatePay Billing");
+                
+                paymentResponse = { provider: 'abacatepay', method: 'checkout', url: data.data.url };
+              }
+            } catch (err) {
+               console.error("Direct fetch failed:", err);
+               throw new Error("Falha na comunicação com a AbacatePay diretamente do navegador. Detalhe: " + err.message);
             }
-
-            if (!piResponse.ok) {
-              const errData = await piResponse.json();
-              throw new Error(errData.error || "Erro ao processar pagamento no servidor.");
-            }
-            paymentResponse = await piResponse.json();
-          } catch (err) {
-             console.error("Backend fetch failed:", err);
-             throw new Error("Falha ao contatar o servidor de pagamentos. Verifique se o servidor backend está online na nuvem. Detalhe: " + err.message);
+          } else {
+            throw new Error("O Token da AbacatePay (abacatePayToken) não foi configurado no perfil deste restaurante. Pagamento online indisponível.");
           }
 
           if (paymentResponse.provider === 'abacatepay') {
