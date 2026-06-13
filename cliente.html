@@ -669,30 +669,28 @@
 
         const url = `${backendHost || ''}${path}`;
         const response = await fetch(url, opt);
-        if (!response.ok && response.status >= 500) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response;
-      } catch (err) {
-        console.warn(`[API] Erro ao conectar com o host principal (${backendHost}). Tentando host alternativo (${alternateBackendHost})... Erro:`, err);
-        if (alternateBackendHost && backendHost !== alternateBackendHost) {
-          backendHost = alternateBackendHost;
-          const optAlt = { ...options };
-          if (optAlt.headers) {
-            optAlt.headers = { ...optAlt.headers };
-          } else {
-            optAlt.headers = {};
-          }
-          const isCrossOriginNew = alternateBackendHost && !alternateBackendHost.includes(window.location.hostname);
-          if (isCrossOriginNew && optAlt.headers['Content-Type'] === 'application/json') {
-            optAlt.headers['Content-Type'] = 'text/plain';
-          }
-          const altUrl = `${alternateBackendHost}${path}`;
-          return await fetch(altUrl, optAlt);
-        }
-        throw err;
-      }
-    };
+         return response;
+       } catch (err) {
+         console.warn(`[API] Erro de rede ao conectar com o host principal (${backendHost}):`, err);
+         const isLocal = window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1');
+         if (isLocal && alternateBackendHost && backendHost !== alternateBackendHost) {
+           backendHost = alternateBackendHost;
+           const optAlt = { ...options };
+           if (optAlt.headers) {
+             optAlt.headers = { ...optAlt.headers };
+           } else {
+             optAlt.headers = {};
+           }
+           const isCrossOriginNew = alternateBackendHost && !alternateBackendHost.includes(window.location.hostname);
+           if (isCrossOriginNew && optAlt.headers['Content-Type'] === 'application/json') {
+             optAlt.headers['Content-Type'] = 'text/plain';
+           }
+           const altUrl = `${alternateBackendHost}${path}`;
+           return await fetch(altUrl, optAlt);
+         }
+         throw err;
+       }
+     };
 
     let restaurantProfile = null;
     let categoriesList = [];

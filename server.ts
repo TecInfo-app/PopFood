@@ -25,7 +25,11 @@ async function startServer() {
 
   // Standard robust CORS configuration that handles all preflight requests gracefully
   app.use(cors({
-    origin: "*",
+    origin: (origin, callback) => {
+      // Allow any origin dynamically to support cross-origin requests securely
+      callback(null, true);
+    },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
     optionsSuccessStatus: 200
@@ -59,22 +63,29 @@ async function startServer() {
       if (abacatePayToken) {
         let amountCents = Math.round(Number(amount) * 100);
         
-        // 1. Create a dynamic product for the order with orderId as externalId
+        // 1. Create a dynamic product for the order with orderId + timestamp as externalId to prevent duplicates
         const safeOrderId = req.body.orderId || `pedido-${Date.now()}`;
+        const uniqueExternalId = `${safeOrderId}-${Date.now()}`;
+        
         const prodPayload = {
-            externalId: safeOrderId,
+            externalId: uniqueExternalId,
             name: description || `Pedido ${safeOrderId} na PopFood`,
             price: amountCents,
             currency: 'BRL'
         };
         const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+            headers: { 
+              'Content-Type': 'application/json', 
+              'Authorization': `Bearer ${abacatePayToken}`,
+              'Accept': 'application/json'
+            },
             body: JSON.stringify(prodPayload)
         });
         const prodData = await prodRes.json();
-        if (!prodRes.ok || prodData.error) {
-            throw new Error(`Erro AbacatePay (Produto): ${prodData.error || JSON.stringify(prodData)}`);
+        if (!prodRes.ok || !prodData.data || !prodData.data.id) {
+            console.error("[AbacatePay Product Create Error]:", prodData);
+            throw new Error(`Erro AbacatePay ao criar Produto: ${prodData.error || prodData.message || JSON.stringify(prodData)}`);
         }
         
         // 2. Create the checkout with customizable returnUrl
@@ -85,12 +96,17 @@ async function startServer() {
         };
         const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+            headers: { 
+              'Content-Type': 'application/json', 
+              'Authorization': `Bearer ${abacatePayToken}`,
+              'Accept': 'application/json'
+            },
             body: JSON.stringify(checkoutPayload)
         });
         const checkoutData = await checkoutRes.json();
-        if (!checkoutRes.ok || checkoutData.error) {
-            throw new Error(`Erro AbacatePay (Checkout): ${checkoutData.error || JSON.stringify(checkoutData)}`);
+        if (!checkoutRes.ok || !checkoutData.data || !checkoutData.data.url) {
+            console.error("[AbacatePay Checkout Create Error]:", checkoutData);
+            throw new Error(`Erro AbacatePay ao criar Checkout: ${checkoutData.error || checkoutData.message || JSON.stringify(checkoutData)}`);
         }
         
         return res.json({
