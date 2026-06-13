@@ -61,78 +61,48 @@ async function startServer() {
       if (abacatePayToken) {
         let amountCents = Math.round(Number(amount) * 100);
         
-        if (paymentMethodType === 'pix') {
-          // TRANSPARENT PIX CHECKOUT (Direct QR Code generation)
-          const pixPayload = {
-              amount: amountCents,
-              description: description || 'Pedido PopFood'
-          };
-          const pixRes = await fetch('https://api.abacatepay.com/v2/transparents/create', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': `Bearer ${abacatePayToken}`,
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify(pixPayload)
-          });
-          const pixData = await pixRes.json();
-          if (!pixRes.ok || pixData.error) {
-              throw new Error(`Erro AbacatePay (Pix Transparente): ${pixData.error || JSON.stringify(pixData)}`);
-          }
-          
-          const actualPix = pixData.data || pixData;
-          return res.json({
-              provider: 'abacatepay',
-              method: 'pix',
-              qrCode: actualPix.brCode,
-              qrCodeBase64: actualPix.brCodeBase64,
-              paymentId: actualPix.id,
-              status: actualPix.status || 'PENDING'
-          });
-        } else {
-          // CREDIT CARD FLOW (FALLBACK - REDIRECT TO CHECKOUT URL)
-          // 1. Create a dynamic product for the order
-          const prodPayload = {
-              externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-              name: description || 'Pedido PopFood',
-              price: amountCents,
-              currency: 'BRL'
-          };
-          const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
-              body: JSON.stringify(prodPayload)
-          });
-          const prodData = await prodRes.json();
-          if (!prodRes.ok || prodData.error) {
-              throw new Error(`Erro AbacatePay (Produto): ${prodData.error || JSON.stringify(prodData)}`);
-          }
-          
-          // 2. Create the checkout
-          const origin = req.headers.origin || 'http://localhost:3000';
-          const cleanOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
-          const checkoutPayload = {
-              items: [{ id: prodData.data.id, quantity: 1 }],
-              returnUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`
-          };
-          const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
-              body: JSON.stringify(checkoutPayload)
-          });
-          const checkoutData = await checkoutRes.json();
-          if (!checkoutRes.ok || checkoutData.error) {
-              throw new Error(`Erro AbacatePay (Checkout): ${checkoutData.error || JSON.stringify(checkoutData)}`);
-          }
-          
-          return res.json({
-              provider: 'abacatepay',
-              method: 'checkout',
-              url: checkoutData.data.url,
-              paymentId: checkoutData.data.id
-          });
+        // Redirect to secure hosted checkout for both Pix and Card payments
+        // 1. Create a dynamic product for the order
+        const prodPayload = {
+            externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+            name: description || 'Pedido PopFood',
+            price: amountCents,
+            currency: 'BRL'
+        };
+        const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+            body: JSON.stringify(prodPayload)
+        });
+        const prodData = await prodRes.json();
+        if (!prodRes.ok || prodData.error) {
+            throw new Error(`Erro AbacatePay (Produto): ${prodData.error || JSON.stringify(prodData)}`);
         }
+        
+        // 2. Create the checkout
+        const origin = req.headers.origin || 'http://localhost:3000';
+        const cleanOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+        const checkoutPayload = {
+            items: [{ id: prodData.data.id, quantity: 1 }],
+            returnUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`,
+            completionUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`
+        };
+        const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+            body: JSON.stringify(checkoutPayload)
+        });
+        const checkoutData = await checkoutRes.json();
+        if (!checkoutRes.ok || checkoutData.error) {
+            throw new Error(`Erro AbacatePay (Checkout): ${checkoutData.error || JSON.stringify(checkoutData)}`);
+        }
+        
+        return res.json({
+            provider: 'abacatepay',
+            method: 'checkout',
+            url: checkoutData.data.url,
+            paymentId: checkoutData.data.id
+        });
       }
 
       // MERCADO PAGO FLOW (Preferred)
