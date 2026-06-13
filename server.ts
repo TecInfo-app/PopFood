@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
@@ -24,16 +25,8 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Allow requests from external domains like GitHub Pages
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
-      return res.status(200).send();
-    }
-    next();
-  });
+  // Use standard cors middleware for all routes
+  app.use(cors());
 
   app.use(express.json());
 
