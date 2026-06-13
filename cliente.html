@@ -652,8 +652,215 @@
       backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
     }
 
-    // Resilient API calling helper with automatic failover to dev-server on CORS/network errors
+    // Helper for CORS-safe requests using fallbacks and open proxies
+    async function makeProxySafeRequest(url, method, headers, bodyObj = null) {
+      const bodyStr = bodyObj ? JSON.stringify(bodyObj) : null;
+      
+      // Try 1: Direct request first (cleanest, no proxies)
+      try {
+        console.log(`[Payment Bridge] Tentando chamada direta para: ${url}`);
+        const res = await fetch(url, {
+          method: method,
+          headers: headers,
+          body: bodyStr
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+        console.warn(`[Payment Bridge] Chamada direta falhou com status ${res.status}. Tentando proxy...`);
+      } catch (err) {
+        console.warn("[Payment Bridge] Chamada direta falhou devido ao CORS ou rede. Tentando proxies...", err);
+      }
+
+      // Try 2: corsproxy.io (Very fast and supports headers/custom verbs fully)
+      try {
+        const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+        console.log(`[Payment Bridge] Tentando canal corsproxy.io: ${proxyUrl}`);
+        const res = await fetch(proxyUrl, {
+          method: method,
+          headers: headers,
+          body: bodyStr
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        console.warn("[Payment Bridge] Falha no corsproxy.io. Tentando canal secundário AllOrigins...", err);
+      }
+
+      // Try 3: allorigins.win (Failsafe)
+      try {
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        console.log(`[Payment Bridge] Tentando canal AllOrigins: ${proxyUrl}`);
+        const res = await fetch(proxyUrl, {
+          method: method,
+          headers: headers,
+          body: bodyStr
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        console.error("[Payment Bridge] Todos os proxies de pagamento falharam.", err);
+      }
+
+      throw new Error("Não foi possível alcançar o servidor de pagamentos AbacatePay devido a restrições de CORS do navegador. Por favor, tente novamente.");
+    }
+
+    // Direct Browser-to-AbacatePay payment creation bypass
+    async function executeAbacatePayClientSide(path, options) {
+      const abacatePayToken = restaurantProfile.abacatePayToken;
+      if (!abacatePayToken) {
+        throw new Error("Token do AbacatePay não configurado no perfil deste restaurante.");
+      }
+
+      // 1. CREATE PAYMENT ENDPOINT
+      if (path.includes('/api/create-payment')) {
+        const payload = JSON.parse(options.body || '{}');
+        const amount = payload.amount;
+        const paymentMethodType = payload.paymentMethodType || 'pix';
+        const description = payload.description || 'Pedido PopFood';
+        const amountCents = Math.round(Number(amount) * 100);
+
+        if (paymentMethodType === 'pix') {
+          console.log("[Payment Bridge] Gerando Pix Transparente diretamente no navegador...");
+          const pixPayload = {
+            amount: amountCents,
+            description: description
+          };
+          
+          const pixData = await makeProxySafeRequest('https://api.abacatepay.com/v2/transparents/create', 'POST', {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${abacatePayToken}`,
+            'Accept': 'application/json'
+          }, pixPayload);
+
+          const actualPix = pixData.data || pixData;
+          const resultObj = {
+            provider: 'abacatepay',
+            method: 'pix',
+            qrCode: actualPix.brCode,
+            qrCodeBase64: actualPix.brCodeBase64,
+            paymentId: actualPix.id,
+            status: actualPix.status || 'PENDING'
+          };
+
+          return {
+            ok: true,
+            status: 200,
+            headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'application/json' : null },
+            json: async () => resultObj,
+            text: async () => JSON.stringify(resultObj)
+          };
+        } else {
+          console.log("[Payment Bridge] Gerando link de Checkout Cartão diretamente no navegador...");
+          // Credit card checkout: Create product, then create checkout
+          const prodPayload = {
+            externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+            name: description,
+            price: amountCents,
+            currency: 'BRL'
+          };
+          
+          const prodData = await makeProxySafeRequest('https://api.abacatepay.com/v2/products/create', 'POST', {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${abacatePayToken}`,
+            'Accept': 'application/json'
+          }, prodPayload);
+
+          const actualProduct = prodData.data || prodData;
+          const origin = window.location.origin || 'https://tecinfo-app.github.io';
+          const checkoutPayload = {
+            items: [{ id: actualProduct.id, quantity: 1 }],
+            returnUrl: origin
+          };
+
+          const checkoutData = await makeProxySafeRequest('https://api.abacatepay.com/v2/checkouts/create', 'POST', {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${abacatePayToken}`,
+            'Accept': 'application/json'
+          }, checkoutPayload);
+
+          const actualCheckout = checkoutData.data || checkoutData;
+          const resultObj = {
+            provider: 'abacatepay',
+            method: 'checkout',
+            url: actualCheckout.url,
+            paymentId: actualCheckout.id
+          };
+
+          return {
+            ok: true,
+            status: 200,
+            headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'application/json' : null },
+            json: async () => resultObj,
+            text: async () => JSON.stringify(resultObj)
+          };
+        }
+      }
+
+      // 2. CHECK STATUS ENDPOINT
+      if (path.includes('/api/check-payment')) {
+        const urlParams = new URLSearchParams(path.split('?')[1] || '');
+        const paymentId = urlParams.get('paymentId');
+        const orderId = urlParams.get('orderId');
+
+        if (!paymentId) {
+          throw new Error("Parâmetro paymentId ausente.");
+        }
+
+        console.log(`[Payment Bridge] Checando status do Pix diretamente via AbacatePay ID: ${paymentId}...`);
+        const checkData = await makeProxySafeRequest(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, 'GET', {
+          'Authorization': `Bearer ${abacatePayToken}`,
+          'Accept': 'application/json'
+        });
+
+        const actualStatus = checkData.data?.status || checkData.status || "PENDING";
+        const isPaid = actualStatus === "PAID";
+
+        if (isPaid && orderId) {
+          try {
+            await setDoc(doc(db, "orders", orderId), {
+              paymentApproved: true,
+              isPaid: true,
+              paymentStatus: "Aprovado"
+            }, { merge: true });
+            console.log(`[Payment Bridge] Pedido ${orderId} aprovado e sincronizado no Firestore diretamente do navegador.`);
+          } catch (dbErr) {
+            console.error("[Payment Bridge] Falha ao atualizar pedido aprovado no Firestore:", dbErr);
+          }
+        }
+
+        const resultObj = {
+          status: actualStatus,
+          provider: "abacatepay",
+          isPaid: isPaid
+        };
+
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: (name) => name.toLowerCase() === 'content-type' ? 'application/json' : null },
+          json: async () => resultObj,
+          text: async () => JSON.stringify(resultObj)
+        };
+      }
+
+      throw new Error(`Endpoint não suportado pelo cliente bypass: ${path}`);
+    }
+
+    // Resilient API calling helper with automatic client-side AbacatePay bypass + server failovers
     window.resilientFetch = async function(path, options = {}) {
+      // If the restaurant profile has AbacatePay token loaded, bypass backend completely
+      // to avoid Google Ingress / Cloud Run CORS blocks for github.io domains!
+      if (restaurantProfile && restaurantProfile.abacatePayToken && (path.includes('/api/create-payment') || path.includes('/api/check-payment'))) {
+        try {
+          return await executeAbacatePayClientSide(path, options);
+        } catch (bypassErr) {
+          console.warn("[Payment Bridge] Falha no Bypass Client-Side. Tentando requisição via servidor...", bypassErr);
+        }
+      }
+
       try {
         const url = `${backendHost || ''}${path}`;
         const response = await fetch(url, options);
