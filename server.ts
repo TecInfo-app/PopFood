@@ -25,18 +25,14 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Support CORS for all origins, including preflight requests (especially for GitHub Pages integrations)
-  app.use((req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, X-Requested-With");
-    if (req.method === "OPTIONS") {
-      return res.status(200).end();
-    }
-    next();
-  });
+  // Standard robust CORS configuration that handles all preflight requests gracefully
+  app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
+    optionsSuccessStatus: 200
+  }));
 
-  app.use(cors());
   app.use(express.json());
 
   // API route for payments

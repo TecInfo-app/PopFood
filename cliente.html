@@ -647,9 +647,30 @@
 
     // Application State Variables
     let backendHost = '';
+    const alternateBackendHost = 'https://ais-dev-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
     if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
       backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
     }
+
+    // Resilient API calling helper with automatic failover to dev-server on CORS/network errors
+    window.resilientFetch = async function(path, options = {}) {
+      try {
+        const url = `${backendHost || ''}${path}`;
+        const response = await fetch(url, options);
+        if (!response.ok && response.status >= 500) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response;
+      } catch (err) {
+        console.warn(`[API] Erro ao conectar com o host principal (${backendHost}). Tentando host alternativo (${alternateBackendHost})... Erro:`, err);
+        if (alternateBackendHost && backendHost !== alternateBackendHost) {
+          backendHost = alternateBackendHost;
+          const altUrl = `${alternateBackendHost}${path}`;
+          return await fetch(altUrl, options);
+        }
+        throw err;
+      }
+    };
 
     let restaurantProfile = null;
     let categoriesList = [];
@@ -3132,7 +3153,7 @@
         }
 
         try {
-          const res = await fetch(`${backendHost}/api/check-payment?paymentId=${paymentId}&storeId=${window.currentStoreId}&orderId=${orderId}`);
+          const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${window.currentStoreId}&orderId=${orderId}`);
           if (!res.ok) return;
           const data = await res.json();
           if (data.isPaid || data.status === 'PAID') {
@@ -3225,7 +3246,7 @@
           let paymentResponse = null;
 
           try {
-            const piResponse = await fetch(`${backendHost}/api/create-payment`, {
+            const piResponse = await window.resilientFetch('/api/create-payment', {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ 
