@@ -6,7 +6,7 @@ import { createServer as createViteServer } from "vite";
 import Stripe from 'stripe';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtz-4cniRtbA_rdxAE26-uOA_ji3Xz4RU",
@@ -56,45 +56,77 @@ async function startServer() {
       if (abacatePayToken) {
         let amountCents = Math.round(Number(amount) * 100);
         
-        // 1. Create a dynamic product for the order
-        const prodPayload = {
-            externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-            name: description || 'Pedido PopFood',
-            price: amountCents,
-            currency: 'BRL'
-        };
-        const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
-            body: JSON.stringify(prodPayload)
-        });
-        const prodData = await prodRes.json();
-        if (!prodRes.ok || prodData.error) {
-            throw new Error(`Erro AbacatePay (Produto): ${prodData.error || JSON.stringify(prodData)}`);
+        if (paymentMethodType === 'pix') {
+          // TRANSPARENT PIX CHECKOUT (Direct QR Code generation)
+          const pixPayload = {
+              amount: amountCents,
+              description: description || 'Pedido PopFood'
+          };
+          const pixRes = await fetch('https://api.abacatepay.com/v2/transparents/create', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${abacatePayToken}`,
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify(pixPayload)
+          });
+          const pixData = await pixRes.json();
+          if (!pixRes.ok || pixData.error) {
+              throw new Error(`Erro AbacatePay (Pix Transparente): ${pixData.error || JSON.stringify(pixData)}`);
+          }
+          
+          const actualPix = pixData.data || pixData;
+          return res.json({
+              provider: 'abacatepay',
+              method: 'pix',
+              qrCode: actualPix.brCode,
+              qrCodeBase64: actualPix.brCodeBase64,
+              paymentId: actualPix.id,
+              status: actualPix.status || 'PENDING'
+          });
+        } else {
+          // CREDIT CARD FLOW (FALLBACK - REDIRECT TO CHECKOUT URL)
+          // 1. Create a dynamic product for the order
+          const prodPayload = {
+              externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+              name: description || 'Pedido PopFood',
+              price: amountCents,
+              currency: 'BRL'
+          };
+          const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+              body: JSON.stringify(prodPayload)
+          });
+          const prodData = await prodRes.json();
+          if (!prodRes.ok || prodData.error) {
+              throw new Error(`Erro AbacatePay (Produto): ${prodData.error || JSON.stringify(prodData)}`);
+          }
+          
+          // 2. Create the checkout
+          const origin = req.headers.origin || 'http://localhost:3000';
+          const checkoutPayload = {
+              items: [{ id: prodData.data.id, quantity: 1 }],
+              returnUrl: origin
+          };
+          const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+              body: JSON.stringify(checkoutPayload)
+          });
+          const checkoutData = await checkoutRes.json();
+          if (!checkoutRes.ok || checkoutData.error) {
+              throw new Error(`Erro AbacatePay (Checkout): ${checkoutData.error || JSON.stringify(checkoutData)}`);
+          }
+          
+          return res.json({
+              provider: 'abacatepay',
+              method: 'checkout',
+              url: checkoutData.data.url,
+              paymentId: checkoutData.data.id
+          });
         }
-        
-        // 2. Create the checkout
-        const origin = req.headers.origin || 'http://localhost:3000';
-        const checkoutPayload = {
-            items: [{ id: prodData.data.id, quantity: 1 }],
-            returnUrl: origin
-        };
-        const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
-            body: JSON.stringify(checkoutPayload)
-        });
-        const checkoutData = await checkoutRes.json();
-        if (!checkoutRes.ok || checkoutData.error) {
-            throw new Error(`Erro AbacatePay (Checkout): ${checkoutData.error || JSON.stringify(checkoutData)}`);
-        }
-        
-        return res.json({
-            provider: 'abacatepay',
-            method: 'checkout',
-            url: checkoutData.data.url,
-            paymentId: checkoutData.data.id
-        });
       }
 
       // MERCADO PAGO FLOW (Preferred)
@@ -162,6 +194,101 @@ async function startServer() {
     } catch (error: any) {
       console.error("Erro no processamento do pagamento:", error);
       res.status(500).json({ error: error.message || "Erro interno ao processar pagamento" });
+    }
+  });
+
+  // Check payment status dynamically (polls both AbacatePay and Mercado Pago)
+  app.get("/api/check-payment", async (req, res) => {
+    const { paymentId, storeId, orderId } = req.query;
+    if (!paymentId) {
+      return res.status(400).json({ error: "Parâmetro paymentId é obrigatório." });
+    }
+    const safeStoreId = (storeId as string) || "main";
+    
+    try {
+      const projectId = firebaseConfig.projectId;
+      const apiKey = firebaseConfig.apiKey;
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/restaurantProfile/${safeStoreId}?key=${apiKey}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Falha ao buscar perfil do restaurante (Status: ${response.status})`);
+      }
+      
+      const docData = await response.json();
+      const fields = docData.fields || {};
+      const abacatePayToken = fields.abacatePayToken?.stringValue;
+      const mpAccessToken = fields.mpAccessToken?.stringValue;
+
+      let isPaid = false;
+      let statusStr = "PENDING";
+      let providerStr = "";
+
+      // 1. ABACATEPAY CHECK
+      if (abacatePayToken) {
+        providerStr = "abacatepay";
+        const checkRes = await fetch(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${abacatePayToken}`,
+            'Accept': 'application/json'
+          }
+        });
+        if (!checkRes.ok) {
+          throw new Error(`Erro ao consultar status no AbacatePay (Status: ${checkRes.status})`);
+        }
+        const checkData = await checkRes.json();
+        const actualStatus = checkData.data?.status || checkData.status || "PENDING";
+        
+        statusStr = actualStatus;
+        if (actualStatus === "PAID") {
+          isPaid = true;
+        }
+      }
+      // 2. MERCADO PAGO CHECK
+      else if (mpAccessToken) {
+        providerStr = "mercadopago";
+        const client = new MercadoPagoConfig({ accessToken: mpAccessToken });
+        const payment = new Payment(client);
+        const result = await payment.get({ id: Number(paymentId) });
+        
+        statusStr = result.status || "pending";
+        if (result.status === 'approved') {
+          isPaid = true;
+          statusStr = "PAID";
+        } else if (result.status === 'pending' || result.status === 'in_process') {
+          statusStr = "PENDING";
+        } else {
+          statusStr = "CANCELLED";
+        }
+      } else {
+        return res.status(400).json({ error: "Nenhum provedor de pagamento configurado para esta loja." });
+      }
+
+      // If paid, update the order in Firestore directly
+      if (isPaid && orderId) {
+        try {
+          const orderDocRef = doc(db, "orders", orderId as string);
+          await updateDoc(orderDocRef, {
+            paymentApproved: true,
+            isPaid: true,
+            paymentStatus: "Aprovado"
+          });
+          console.log(`Pedido ${orderId} atualizado com pagamento aprovado.`);
+        } catch (dbErr: any) {
+          console.error(`Falha ao atualizar documento do pedido no Firestore:`, dbErr);
+        }
+      }
+
+      return res.json({
+        status: statusStr,
+        provider: providerStr,
+        isPaid
+      });
+      
+    } catch (error: any) {
+      console.error("Erro ao verificar pagamento:", error);
+      res.status(500).json({ error: error.message || "Erro interno ao verificar pagamento" });
     }
   });
 

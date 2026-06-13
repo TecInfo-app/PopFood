@@ -1,8 +1,17 @@
 import { AbacatePay } from '@abacatepay/sdk';
-type checkouts = Parameters<ReturnType<typeof AbacatePay>['checkouts']['create']>;
-type pix = Parameters<ReturnType<typeof AbacatePay>['pix']['create']>;
-let x: checkouts = null as any;
-x.invalidField123;
-let y: pix = null as any;
-y.invalidField123;
+const client = (AbacatePay as any)({ secret: 'ak_test_invalid_key_123' });
+client.pix.create({
+  amount: 199,
+  description: 'Teste transparent'
+}).then((res: any) => {
+  console.log('Success:', res);
+}).catch((err: any) => {
+  console.dir(err, { depth: null });
+});
+
+
+
+
+
+
 
