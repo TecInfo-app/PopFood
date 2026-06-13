@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
-import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import Stripe from 'stripe';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
@@ -19,7 +18,8 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// In CJS __dirname is available. In TS we can just use process.cwd() or define __dirname for compatibility.
+const __dirname = typeof __dirname !== 'undefined' ? __dirname : path.resolve();
 
 async function startServer() {
   const app = express();
