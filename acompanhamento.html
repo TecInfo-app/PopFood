@@ -359,8 +359,11 @@
         }
 
         const isCrossOrigin = backendHost && !backendHost.includes(window.location.hostname);
-        if (isCrossOrigin && opt.headers['Content-Type'] === 'application/json') {
-          opt.headers['Content-Type'] = 'text/plain';
+        if (isCrossOrigin) {
+          opt.credentials = 'include';
+          if (opt.headers['Content-Type'] === 'application/json') {
+            opt.headers['Content-Type'] = 'text/plain';
+          }
         }
 
         const url = `${backendHost || ''}${path}`;
@@ -377,7 +380,7 @@
            } else {
              optAlt.headers = {};
            }
-           const isCrossOriginNew = alternateBackendHost && !alternateBackendHost.includes(window.location.hostname);
+           const isCrossOriginNew = alternateBackendHost && !alternateBackendHost.includes(window.location.hostname); if (isCrossOriginNew) { optAlt.credentials = 'include'; }
            if (isCrossOriginNew && optAlt.headers['Content-Type'] === 'application/json') {
              optAlt.headers['Content-Type'] = 'text/plain';
            }
