@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
+import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import Stripe from 'stripe';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
@@ -18,6 +19,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function startServer() {
   const app = express();
@@ -25,17 +27,13 @@ async function startServer() {
 
   // Standard robust CORS configuration that handles all preflight requests gracefully
   app.use(cors({
-    origin: (origin, callback) => {
-      // Allow any origin dynamically to support cross-origin requests securely
-      callback(null, true);
-    },
-    credentials: true,
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
     optionsSuccessStatus: 200
   }));
 
-  app.use(express.json({ type: ['application/json', 'text/plain'] }));
+  app.use(express.json());
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
@@ -63,58 +61,77 @@ async function startServer() {
       if (abacatePayToken) {
         let amountCents = Math.round(Number(amount) * 100);
         
-        // 1. Create a dynamic product for the order with orderId + timestamp as externalId to prevent duplicates
-        const safeOrderId = req.body.orderId || `pedido-${Date.now()}`;
-        const uniqueExternalId = `${safeOrderId}-${Date.now()}`;
-        
-        const prodPayload = {
-            externalId: uniqueExternalId,
-            name: description || `Pedido ${safeOrderId} na PopFood`,
-            price: amountCents,
-            currency: 'BRL'
-        };
-        const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json', 
-              'Authorization': `Bearer ${abacatePayToken}`,
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(prodPayload)
-        });
-        const prodData = await prodRes.json();
-        if (!prodRes.ok || !prodData.data || !prodData.data.id) {
-            console.error("[AbacatePay Product Create Error]:", prodData);
-            throw new Error(`Erro AbacatePay ao criar Produto: ${prodData.error || prodData.message || JSON.stringify(prodData)}`);
+        if (paymentMethodType === 'pix') {
+          // TRANSPARENT PIX CHECKOUT (Direct QR Code generation)
+          const pixPayload = {
+              amount: amountCents,
+              description: description || 'Pedido PopFood'
+          };
+          const pixRes = await fetch('https://api.abacatepay.com/v2/transparents/create', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${abacatePayToken}`,
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify(pixPayload)
+          });
+          const pixData = await pixRes.json();
+          if (!pixRes.ok || pixData.error) {
+              throw new Error(`Erro AbacatePay (Pix Transparente): ${pixData.error || JSON.stringify(pixData)}`);
+          }
+          
+          const actualPix = pixData.data || pixData;
+          return res.json({
+              provider: 'abacatepay',
+              method: 'pix',
+              qrCode: actualPix.brCode,
+              qrCodeBase64: actualPix.brCodeBase64,
+              paymentId: actualPix.id,
+              status: actualPix.status || 'PENDING'
+          });
+        } else {
+          // CREDIT CARD FLOW (FALLBACK - REDIRECT TO CHECKOUT URL)
+          // 1. Create a dynamic product for the order
+          const prodPayload = {
+              externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+              name: description || 'Pedido PopFood',
+              price: amountCents,
+              currency: 'BRL'
+          };
+          const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+              body: JSON.stringify(prodPayload)
+          });
+          const prodData = await prodRes.json();
+          if (!prodRes.ok || prodData.error) {
+              throw new Error(`Erro AbacatePay (Produto): ${prodData.error || JSON.stringify(prodData)}`);
+          }
+          
+          // 2. Create the checkout
+          const origin = req.headers.origin || 'http://localhost:3000';
+          const checkoutPayload = {
+              items: [{ id: prodData.data.id, quantity: 1 }],
+              returnUrl: origin
+          };
+          const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+              body: JSON.stringify(checkoutPayload)
+          });
+          const checkoutData = await checkoutRes.json();
+          if (!checkoutRes.ok || checkoutData.error) {
+              throw new Error(`Erro AbacatePay (Checkout): ${checkoutData.error || JSON.stringify(checkoutData)}`);
+          }
+          
+          return res.json({
+              provider: 'abacatepay',
+              method: 'checkout',
+              url: checkoutData.data.url,
+              paymentId: checkoutData.data.id
+          });
         }
-        
-        // 2. Create the checkout with customizable returnUrl
-        const returnUrl = req.body.returnUrl || req.headers.origin || 'http://localhost:3000';
-        const checkoutPayload = {
-            items: [{ id: prodData.data.id, quantity: 1 }],
-            returnUrl: returnUrl
-        };
-        const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json', 
-              'Authorization': `Bearer ${abacatePayToken}`,
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(checkoutPayload)
-        });
-        const checkoutData = await checkoutRes.json();
-        if (!checkoutRes.ok || !checkoutData.data || !checkoutData.data.url) {
-            console.error("[AbacatePay Checkout Create Error]:", checkoutData);
-            throw new Error(`Erro AbacatePay ao criar Checkout: ${checkoutData.error || checkoutData.message || JSON.stringify(checkoutData)}`);
-        }
-        
-        return res.json({
-            provider: 'abacatepay',
-            method: 'checkout',
-            url: checkoutData.data.url,
-            paymentId: checkoutData.data.id
-        });
       }
 
       // MERCADO PAGO FLOW (Preferred)
@@ -215,54 +232,19 @@ async function startServer() {
       // 1. ABACATEPAY CHECK
       if (abacatePayToken) {
         providerStr = "abacatepay";
-        let actualStatus = "PENDING";
-
-        // Try direct status check first matching the transparents check format
-        try {
-          const checkRes = await fetch(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${abacatePayToken}`,
-              'Accept': 'application/json'
-            }
-          });
-          if (checkRes.ok) {
-            const checkData = await checkRes.json();
-            actualStatus = checkData.data?.status || checkData.status || "PENDING";
+        const checkRes = await fetch(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${abacatePayToken}`,
+            'Accept': 'application/json'
           }
-        } catch (e) {
-          console.warn(`[AbacatePay Check] direct transparents/check failed, falling back to billing list. Error:`, e);
+        });
+        if (!checkRes.ok) {
+          throw new Error(`Erro ao consultar status no AbacatePay (Status: ${checkRes.status})`);
         }
-
-        // Fallback to query list of bills if not paid yet
-        if (actualStatus !== "PAID") {
-          try {
-            const billingRes = await fetch(`https://api.abacatepay.com/v2/billing/list`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${abacatePayToken}`,
-                'Accept': 'application/json'
-              }
-            });
-            if (billingRes.ok) {
-              const billingData = await billingRes.json();
-              const bills = billingData.data || [];
-              const matchedBill = bills.find((b: any) => 
-                b.id === paymentId || 
-                (b.metadata && b.metadata.checkoutId === paymentId) ||
-                (b.description && orderId && b.description.toUpperCase().includes((orderId as string).toUpperCase())) ||
-                (b.externalId && orderId && String(b.externalId).toUpperCase() === String(orderId).toUpperCase())
-              );
-              if (matchedBill) {
-                console.log(`[AbacatePay Check] Matched bill found: ${matchedBill.id} with status: ${matchedBill.status}`);
-                actualStatus = matchedBill.status;
-              }
-            }
-          } catch (listErr) {
-            console.error(`[AbacatePay Check] Fallback billing/list query failed:`, listErr);
-          }
-        }
-
+        const checkData = await checkRes.json();
+        const actualStatus = checkData.data?.status || checkData.status || "PENDING";
+        
         statusStr = actualStatus;
         if (actualStatus === "PAID") {
           isPaid = true;
