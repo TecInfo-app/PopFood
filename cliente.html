@@ -646,6 +646,11 @@
     }
 
     // Application State Variables
+    let backendHost = '';
+    if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
+      backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
+    }
+
     let restaurantProfile = null;
     let categoriesList = [];
     let productsList = [];
@@ -3218,13 +3223,6 @@
         // ONLINE PAYMENT LOGIC
         if (rawMethod === 'Online' || rawMethod === 'PixOnline') {
           let paymentResponse = null;
-
-          // Usar nosso servidor backend (com suporte a CORS e chaves protegidas)
-          let backendHost = '';
-          if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
-            // URL PÚBLICA (Shared App URL) - Evita bloqueio de autenticação/CORS
-            backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-          }
 
           try {
             const piResponse = await fetch(`${backendHost}/api/create-payment`, {
