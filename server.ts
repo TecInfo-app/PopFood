@@ -31,7 +31,7 @@ async function startServer() {
     optionsSuccessStatus: 200
   }));
 
-  app.use(express.json());
+  app.use(express.json({ type: ['application/json', 'text/plain'] }));
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {

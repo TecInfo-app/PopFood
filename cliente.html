@@ -655,8 +655,20 @@
      // Resilient API calling helper with automatic dev-server failover on network/CORS errors
     window.resilientFetch = async function(path, options = {}) {
       try {
+        const opt = { ...options };
+        if (opt.headers) {
+          opt.headers = { ...opt.headers };
+        } else {
+          opt.headers = {};
+        }
+
+        const isCrossOrigin = backendHost && !backendHost.includes(window.location.hostname);
+        if (isCrossOrigin && opt.headers['Content-Type'] === 'application/json') {
+          opt.headers['Content-Type'] = 'text/plain';
+        }
+
         const url = `${backendHost || ''}${path}`;
-        const response = await fetch(url, options);
+        const response = await fetch(url, opt);
         if (!response.ok && response.status >= 500) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -665,8 +677,18 @@
         console.warn(`[API] Erro ao conectar com o host principal (${backendHost}). Tentando host alternativo (${alternateBackendHost})... Erro:`, err);
         if (alternateBackendHost && backendHost !== alternateBackendHost) {
           backendHost = alternateBackendHost;
+          const optAlt = { ...options };
+          if (optAlt.headers) {
+            optAlt.headers = { ...optAlt.headers };
+          } else {
+            optAlt.headers = {};
+          }
+          const isCrossOriginNew = alternateBackendHost && !alternateBackendHost.includes(window.location.hostname);
+          if (isCrossOriginNew && optAlt.headers['Content-Type'] === 'application/json') {
+            optAlt.headers['Content-Type'] = 'text/plain';
+          }
           const altUrl = `${alternateBackendHost}${path}`;
-          return await fetch(altUrl, options);
+          return await fetch(altUrl, optAlt);
         }
         throw err;
       }
