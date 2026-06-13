@@ -3182,73 +3182,14 @@
         if (rawMethod === 'Online' || rawMethod === 'PixOnline') {
           let paymentResponse = null;
 
-          // Se tiver o token do AbacatePay diretamente no client (ex: rodando do GitHub Pages sem backend)
-          if (restaurantProfile && restaurantProfile.abacatePayToken) {
-            try {
-              if (rawMethod === 'PixOnline') {
-                const res = await fetch("https://api.abacatepay.com/v1/pixQrCode/create", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + restaurantProfile.abacatePayToken
-                  },
-                  body: JSON.stringify({
-                    amount: Math.round(total * 100),
-                    description: `Pedido ${orderId} na PopFood`
-                  })
-                });
-                
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Erro AbacatePay Pix");
-                paymentResponse = {
-                  provider: 'abacatepay',
-                  method: 'pix',
-                  qrCode: data.data.brCode,
-                  qrCodeBase64: data.data.brCodeBase64.replace(/^data:image\/.*;base64,/, ''),
-                  paymentId: data.data.id
-                };
-              } else {
-                const res = await fetch("https://api.abacatepay.com/v1/billing/create", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + restaurantProfile.abacatePayToken
-                  },
-                  body: JSON.stringify({
-                    frequency: "ONE_TIME",
-                    methods: ["CREDIT_CARD"],
-                    products: [{
-                      externalId: orderId,
-                      name: `Pedido ${orderId} na PopFood`,
-                      quantity: 1,
-                      price: Math.round(total * 100)
-                    }],
-                    returnUrl: window.location.href,
-                    completionUrl: window.location.href,
-                    cancelUrl: window.location.href,
-                    customer: {
-                      email: email || "cliente@email.com",
-                      name: name,
-                      phone: phone || "11999999999"
-                    }
-                  })
-                });
-                
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Erro AbacatePay Billing");
-                if (data && data.data && data.data.url) {
-                  paymentResponse = { provider: 'abacatepay', method: 'checkout', url: data.data.url };
-                } else {
-                  throw new Error("Resposta estranha AbacatePay");
-                }
-              }
-            } catch (err) {
-               console.error("Direct fetch failed:", err);
-               throw new Error(err.message || "Falha na comunicação com a AbacatePay diretamente do navegador. Pode ser restrição do navegador (CORS).");
-            }
-          } else {
-            // Chamada padrão usando o nosso servidor (onde CORS e Tokens são protegidos)
-            const piResponse = await fetch('/api/create-payment', {
+          // Chamada padrão usando o nosso servidor (onde CORS e Tokens são protegidos)
+          let backendHost = '';
+          if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1')) {
+            backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
+          }
+
+          try {
+            const piResponse = await fetch(`${backendHost}/api/create-payment`, {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ 
@@ -3262,14 +3203,17 @@
 
             const contentType = piResponse.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
-               throw new Error("O servidor falhou em gerar o pagamento. O aplicativo está hospedado no GitHub Pages (apenas arquivos estáticos) e não consegue executar o backend Node. O pagamento online não pode continuar com a configuração atual.");
+               throw new Error("O servidor falhou em gerar o pagamento. O backend Node.js não retornou JSON. O pagamento online não pode continuar com a configuração atual.");
             }
 
             if (!piResponse.ok) {
               const errData = await piResponse.json();
-              throw new Error(errData.error || "Erro ao processar pagamento.");
+              throw new Error(errData.error || "Erro ao processar pagamento no servidor.");
             }
             paymentResponse = await piResponse.json();
+          } catch (err) {
+             console.error("Backend fetch failed:", err);
+             throw new Error("Falha ao contatar o servidor de pagamentos. Verifique se o servidor backend está online na nuvem. Detalhe: " + err.message);
           }
 
           if (paymentResponse.provider === 'abacatepay') {
