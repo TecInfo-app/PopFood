@@ -24,8 +24,6 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
-
   // Allow requests from external domains like GitHub Pages
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -36,6 +34,8 @@ async function startServer() {
     }
     next();
   });
+
+  app.use(express.json());
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
