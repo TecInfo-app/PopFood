@@ -3188,7 +3188,8 @@
               amount: total,
               paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
               email: email,
-              description: `Pedido ${orderId} na PopFood`
+              description: `Pedido ${orderId} na PopFood`,
+              storeId: window.currentStoreId
             })
           });
 

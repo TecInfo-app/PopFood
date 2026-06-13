@@ -28,12 +28,13 @@ async function startServer() {
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
-    const { amount, paymentMethodType, cardToken, email, description } = req.body;
+    const { amount, paymentMethodType, cardToken, email, description, storeId } = req.body;
     
     try {
       const projectId = firebaseConfig.projectId;
       const apiKey = firebaseConfig.apiKey;
-      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/restaurantProfile/main?key=${apiKey}`;
+      const safeStoreId = storeId || "main";
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/restaurantProfile/${safeStoreId}?key=${apiKey}`;
       
       const response = await fetch(url);
       if (!response.ok) {
