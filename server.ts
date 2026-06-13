@@ -45,6 +45,70 @@ async function startServer() {
       
       const mpAccessToken = fields.mpAccessToken?.stringValue;
       const stripeSecretKey = fields.stripeSecretKey?.stringValue;
+      const abacatePayToken = fields.abacatePayToken?.stringValue;
+
+      // ABACATEPAY FLOW
+      if (abacatePayToken) {
+        if (paymentMethodType === 'pix') {
+          // Transparent PIX
+          const abacatePayload = {
+            amount: Math.round(Number(amount) * 100),
+            description: description || 'Pedido PopFood'
+          };
+          const abacateResponse = await fetch('https://api.abacatepay.com/v1/pixQrCode/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${abacatePayToken}`
+            },
+            body: JSON.stringify(abacatePayload)
+          });
+          const abacateData = await abacateResponse.json();
+          if (!abacateResponse.ok || abacateData.error) {
+            throw new Error(`Erro AbacatePay: ${abacateData.error || abacateData.message || JSON.stringify(abacateData)}`);
+          }
+          return res.json({
+            provider: 'abacatepay',
+            method: 'pix',
+            qrCode: abacateData.data.brCode,
+            qrCodeBase64: abacateData.data.brCodeBase64.replace(/^data:image\/.*;base64,/, ''),
+            paymentId: abacateData.data.id
+          });
+        } else {
+          // Redirect Checkout (Card or other)
+          const origin = req.headers.origin || 'http://localhost:3000';
+          const abacatePayload = {
+            methods: ['CARD'],
+            frequency: 'ONE_TIME',
+            products: [{
+              externalId: `pedido-${Date.now()}`,
+              name: description || 'Pedido PopFood',
+              quantity: 1,
+              price: Math.round(Number(amount) * 100)
+            }],
+            returnUrl: `${origin}/acompanhamento.html`,
+            completionUrl: `${origin}/acompanhamento.html`
+          };
+          const abacateResponse = await fetch('https://api.abacatepay.com/v1/billing/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${abacatePayToken}`
+            },
+            body: JSON.stringify(abacatePayload)
+          });
+          const abacateData = await abacateResponse.json();
+          if (!abacateResponse.ok || abacateData.error) {
+            throw new Error(`Erro AbacatePay: ${abacateData.error || abacateData.message || JSON.stringify(abacateData)}`);
+          }
+          return res.json({
+            provider: 'abacatepay',
+            method: 'checkout',
+            url: abacateData.data.url,
+            paymentId: abacateData.data.id
+          });
+        }
+      }
 
       // MERCADO PAGO FLOW (Preferred)
       if (mpAccessToken) {

@@ -3121,7 +3121,23 @@
 
           const paymentResponse = await piResponse.json();
 
-          if (paymentResponse.provider === 'mercadopago') {
+          if (paymentResponse.provider === 'abacatepay') {
+            if (paymentResponse.method === 'pix') {
+              // Show QR Code modal for AbacatePay Pix
+              const qrContainer = document.getElementById('pix-qr-container');
+              if (paymentResponse.qrCodeBase64) {
+                qrContainer.innerHTML = `<img src="data:image/png;base64,${paymentResponse.qrCodeBase64}" class="w-full h-full object-contain" />`;
+              }
+              document.getElementById('btn-copy-pix').onclick = () => {
+                navigator.clipboard.writeText(paymentResponse.qrCode);
+                showToast("Código Pix copiado!");
+              };
+              document.getElementById('modal-pix-online').classList.remove('hidden');
+            } else if (paymentResponse.method === 'checkout') {
+               // Flag to redirect after order is saved to firestore
+               window.pendingCheckoutUrl = paymentResponse.url;
+            }
+          } else if (paymentResponse.provider === 'mercadopago') {
             if (paymentResponse.method === 'pix') {
               // Show QR Code modal for Mercado Pago
               const qrContainer = document.getElementById('pix-qr-container');
@@ -3272,6 +3288,11 @@
         appliedDiscountCoupon = null;
         calculatedDistance = null;
         calculatedDeliveryFee = 0;
+
+        if (window.pendingCheckoutUrl) {
+          window.location.href = window.pendingCheckoutUrl;
+          return;
+        }
 
         document.getElementById('success-modal').classList.remove('hidden');
       } catch (err) {
