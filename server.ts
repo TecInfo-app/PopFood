@@ -111,9 +111,10 @@ async function startServer() {
           
           // 2. Create the checkout
           const origin = req.headers.origin || 'http://localhost:3000';
+          const cleanOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
           const checkoutPayload = {
               items: [{ id: prodData.data.id, quantity: 1 }],
-              returnUrl: origin
+              returnUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`
           };
           const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
               method: 'POST',
@@ -232,22 +233,53 @@ async function startServer() {
       // 1. ABACATEPAY CHECK
       if (abacatePayToken) {
         providerStr = "abacatepay";
-        const checkRes = await fetch(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${abacatePayToken}`,
-            'Accept': 'application/json'
+        try {
+          const checkRes = await fetch(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${abacatePayToken}`,
+              'Accept': 'application/json'
+            }
+          });
+          if (checkRes.ok) {
+            const checkData = await checkRes.json();
+            const actualStatus = checkData.data?.status || checkData.status || "PENDING";
+            statusStr = actualStatus;
+            if (actualStatus === "PAID") {
+              isPaid = true;
+            }
           }
-        });
-        if (!checkRes.ok) {
-          throw new Error(`Erro ao consultar status no AbacatePay (Status: ${checkRes.status})`);
+        } catch (err) {
+          console.log("transparent/check failed, trying checkouts/list...");
         }
-        const checkData = await checkRes.json();
-        const actualStatus = checkData.data?.status || checkData.status || "PENDING";
-        
-        statusStr = actualStatus;
-        if (actualStatus === "PAID") {
-          isPaid = true;
+
+        // Dual check fallback with checkouts list
+        if (!isPaid) {
+          try {
+            const listRes = await fetch(`https://api.abacatepay.com/v2/checkouts/list`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${abacatePayToken}`,
+                'Accept': 'application/json'
+              }
+            });
+            if (listRes.ok) {
+              const listData = await listRes.json();
+              const checkouts = listData.data || listData || [];
+              if (Array.isArray(checkouts)) {
+                const found = checkouts.find((c: any) => c.id === paymentId);
+                if (found) {
+                  const actualStatus = found.status || "PENDING";
+                  statusStr = actualStatus;
+                  if (actualStatus === "PAID") {
+                    isPaid = true;
+                  }
+                }
+              }
+            }
+          } catch (listErr) {
+            console.error("Failed to list checkouts list for verification:", listErr);
+          }
         }
       }
       // 2. MERCADO PAGO CHECK
