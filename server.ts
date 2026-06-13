@@ -37,7 +37,7 @@ async function startServer() {
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
-    const { amount, paymentMethodType, cardToken, email, description, storeId } = req.body;
+    const { amount, paymentMethodType, cardToken, email, description, storeId, origin } = req.body;
     
     try {
       const projectId = firebaseConfig.projectId;
@@ -81,7 +81,7 @@ async function startServer() {
         
         // 2. Create the checkout
         // Robust origin derivation to ensure return URLs work in all environments (iframes, proxies, etc.)
-        let detectedOrigin = req.headers.origin;
+        let detectedOrigin = origin || req.headers.origin;
         if (!detectedOrigin && req.headers.referer) {
             try {
                 const refUrl = new URL(req.headers.referer);
@@ -94,7 +94,12 @@ async function startServer() {
             detectedOrigin = `${protocol}://${host}`;
         }
         
-        const cleanOrigin = detectedOrigin.endsWith('/') ? detectedOrigin.slice(0, -1) : detectedOrigin;
+        let cleanOrigin = detectedOrigin.endsWith('/') ? detectedOrigin.slice(0, -1) : detectedOrigin;
+        
+        // Upgrade to https:// for production outer domains to ensure AbacatePay returns and shows the redirect button correctly
+        if (cleanOrigin.startsWith('http://') && !cleanOrigin.includes('localhost') && !cleanOrigin.includes('127.0.0.1')) {
+            cleanOrigin = cleanOrigin.replace('http://', 'https://');
+        }
         
         const checkoutPayload = {
             items: [{ id: prodData.data.id, quantity: 1 }],

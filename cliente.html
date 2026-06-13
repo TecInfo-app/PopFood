@@ -3635,7 +3635,8 @@
                 paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
                 email: email || "cliente@email.com",
                 description: `Pedido ${orderId} na PopFood`,
-                storeId: window.currentStoreId
+                storeId: window.currentStoreId,
+                origin: window.location.origin
               })
             });
 
