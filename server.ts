@@ -80,8 +80,22 @@ async function startServer() {
         }
         
         // 2. Create the checkout
-        const origin = req.headers.origin || 'http://localhost:3000';
-        const cleanOrigin = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+        // Robust origin derivation to ensure return URLs work in all environments (iframes, proxies, etc.)
+        let detectedOrigin = req.headers.origin;
+        if (!detectedOrigin && req.headers.referer) {
+            try {
+                const refUrl = new URL(req.headers.referer);
+                detectedOrigin = `${refUrl.protocol}//${refUrl.host}`;
+            } catch (e) { /* ignore */ }
+        }
+        if (!detectedOrigin) {
+            const protocol = req.get('x-forwarded-proto') || req.protocol;
+            const host = req.get('host');
+            detectedOrigin = `${protocol}://${host}`;
+        }
+        
+        const cleanOrigin = detectedOrigin.endsWith('/') ? detectedOrigin.slice(0, -1) : detectedOrigin;
+        
         const checkoutPayload = {
             items: [{ id: prodData.data.id, quantity: 1 }],
             returnUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`,
