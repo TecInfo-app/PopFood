@@ -665,11 +665,12 @@
           'Accept': 'application/json',
           'Authorization': headers['Authorization'] || ''
         },
-        body: body ? JSON.stringify(body) : undefined
+        body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined
       });
 
       if (!response.ok) {
-        throw new Error(`Erro na requisição: ${response.status}`);
+        const errText = await response.text();
+        throw new Error(`Erro na requisição: ${response.status} - ${errText}`);
       }
 
       return await response.json();
