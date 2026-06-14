@@ -769,10 +769,13 @@
           }, prodPayload);
 
           const actualProduct = prodData.data || prodData;
-          const origin = window.location.origin || 'https://tecinfo-app.github.io';
+          const basePath = window.location.origin + window.location.pathname;
+          const storeId = window.currentStoreId || payload.storeId || 'main';
+          const orderId = payload.orderId || '';
+          const returnUrl = `${basePath}?store=${storeId}&orderId=${orderId}&abacateReturn=1`;
           const checkoutPayload = {
             items: [{ id: actualProduct.id, quantity: 1 }],
-            returnUrl: origin
+            returnUrl: returnUrl
           };
 
           const checkoutData = await makeProxySafeRequest('https://api.abacatepay.com/v2/checkouts/create', 'POST', {
