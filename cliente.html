@@ -647,10 +647,7 @@
 
     // Application State Variables
     let backendHost = '';
-    const alternateBackendHost = 'https://ais-dev-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-    if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
-      backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-    }
+    const alternateBackendHost = '';
 
     // Helper for CORS-safe requests using fallbacks and open proxies
     async function makeProxySafeRequest(url, method, headers, body) {
