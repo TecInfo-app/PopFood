@@ -25,8 +25,13 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Use standard cors middleware for all routes
-  app.use(cors());
+  // Standard robust CORS configuration that handles all preflight requests gracefully
+  app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
+    optionsSuccessStatus: 200
+  }));
 
   app.use(express.json());
 
