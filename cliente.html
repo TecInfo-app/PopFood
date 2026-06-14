@@ -1024,7 +1024,7 @@
           console.log(`[AbacatePay] Verificando status (tentativa ${attempts}/10)...`);
           
           try {
-            const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${storeId}`);
+            const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${storeId}&orderId=${orderId}`);
             if (res.ok) {
               data = await res.json();
               if (data.isPaid || data.status === 'PAID' || data.status === 'approved' || data.status === 'confirmed') {
