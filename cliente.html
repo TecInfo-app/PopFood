@@ -1051,40 +1051,12 @@
             window.setupBackgroundOrderStatusTracker();
           }
 
-          // 7. Show a modern beautiful custom success modal with confirmation of payment approved!
-          const successModal = document.createElement('div');
-          successModal.className = 'fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-200';
-          successModal.innerHTML = `
-            <div class="bg-white rounded-3xl w-full max-w-sm p-8 text-center space-y-6 shadow-2xl relative border border-gray-100 transform transition-all">
-              <div class="flex justify-center">
-                <div class="bg-green-100 text-green-600 p-4 rounded-full">
-                  <svg class="w-12 h-12" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
-                  </svg>
-                </div>
-              </div>
-              
-              <div class="space-y-2">
-                <h3 class="font-display font-black text-xl text-gray-800">Pagamento Confirmado!</h3>
-                <p class="text-xs text-gray-500 font-medium max-w-xs mx-auto">Parabéns! Seu pagamento via Pix/Cartão no AbacatePay foi validado e seu pedido foi enviado à loja.</p>
-              </div>
-
-              <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100 text-center space-y-1">
-                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Código do Pedido</p>
-                <p class="font-display font-black text-gray-800 text-lg">${orderId}</p>
-              </div>
-
-              <button id="btn-success-tracking" class="w-full bg-brand-secondary text-white font-bold py-3.5 rounded-xl text-xs hover:bg-green-600 shadow-md transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer">
-                🛵 Acompanhar Pedido
-              </button>
-            </div>
-          `;
-          document.body.appendChild(successModal);
-
-          document.getElementById('btn-success-tracking').onclick = () => {
-            successModal.remove();
-            window.location.href = `acompanhamento.html?store=${storeId}`;
-          };
+          // 7. Show the standard success modal with confirmation of payment approved!
+          document.getElementById('succ-order-id').textContent = orderId;
+          document.getElementById('success-modal').classList.remove('hidden');
+          
+          // Optionally, add a brief delay or toast if we want to explicitly mention payment was confirmed
+          showToast("✅ Pagamento confirmado via AbacatePay!");
 
         } else {
           // Not paid! Show status and ask to retry
@@ -3544,6 +3516,11 @@
             showToast("✅ Pagamento Pix confirmado com sucesso!");
             modal.classList.add('hidden');
             
+            const succOrderIdEl = document.getElementById('succ-order-id');
+            if (succOrderIdEl) {
+              succOrderIdEl.textContent = orderId;
+            }
+
             const succModal = document.getElementById('success-modal');
             if (succModal) {
               succModal.classList.remove('hidden');
