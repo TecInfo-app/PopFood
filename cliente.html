@@ -996,20 +996,25 @@
         let isPaid = false;
         let data = null;
 
-        while (attempts < 6 && !isPaid) {
+        while (attempts < 10 && !isPaid) {
           attempts++;
-          console.log(`[AbacatePay] Verificando status (tentativa ${attempts}/6)...`);
-          const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${storeId}`);
-          if (res.ok) {
-            data = await res.json();
-            if (data.isPaid || data.status === 'PAID' || data.status === 'approved') {
-              isPaid = true;
+          console.log(`[AbacatePay] Verificando status (tentativa ${attempts}/10)...`);
+          
+          try {
+            const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${storeId}`);
+            if (res.ok) {
+              data = await res.json();
+              if (data.isPaid || data.status === 'PAID' || data.status === 'approved' || data.status === 'confirmed') {
+                isPaid = true;
+              }
             }
+          } catch (fetchErr) {
+            console.error("Erro ao verificar pagamento:", fetchErr);
           }
           
-          if (!isPaid && attempts < 6) {
-            // Wait 2-3 seconds before next attempt
-            await new Promise(r => setTimeout(r, 2500));
+          if (!isPaid && attempts < 10) {
+            // Incremental wait: 2s, 3s, 4s...
+            await new Promise(r => setTimeout(r, 2000 + (attempts * 500)));
           }
         }
         
@@ -1077,10 +1082,29 @@
 
         } else {
           // Not paid! Show status and ask to retry
-          overlay.remove();
-          showToast(`⚠️ Pagamento pendente ou não confirmado no AbacatePay. Se já pagou, aguarde alguns instantes e recarregue a página.`, true);
+          overlay.innerHTML = `
+            <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
+              <div class="flex justify-center text-orange-500">
+                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24 text-orange-500">
+                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+              </div>
+              <div class="space-y-2">
+                <h3 class="font-display font-black text-lg text-gray-800">Aguardando Confirmação</h3>
+                <p class="text-xs text-gray-500 font-medium leading-relaxed leading-snug">Ainda não recebemos a confirmação do AbacatePay. Se você já pagou, aguarde um pouco mais e recarregue a página.</p>
+              </div>
+              <div class="flex flex-col gap-2">
+                <button onclick="window.location.reload()" class="w-full bg-brand-primary text-white font-bold py-3.5 rounded-xl text-xs hover:bg-orange-600 shadow-md transition-all active:scale-95 cursor-pointer">
+                  🔄 Verificar Novamente
+                </button>
+                <button onclick="document.getElementById('abacatepay-loading-overlay').remove()" class="w-full text-xs text-gray-400 font-bold py-2 cursor-pointer">
+                  Fazer Isso Depois
+                </button>
+              </div>
+            </div>
+          `;
           
-          // Clean up query parameters so they don't get stuck in a check loop
+          // Clean up query parameters so they don't get stuck in a check loop unless they click retry
           const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?store=" + storeId;
           window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
         }

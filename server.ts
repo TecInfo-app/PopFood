@@ -108,6 +108,10 @@ async function startServer() {
             items: [{ id: prodData.data.id, quantity: 1 }],
             returnUrl: returnUrl,
             completionUrl: returnUrl,
+            return_url: returnUrl,       // snake_case variant for AbacatePay compatibility
+            completion_url: returnUrl,    // snake_case variant for AbacatePay compatibility
+            redirectUrl: returnUrl,
+            redirect_url: returnUrl,
             customer: {
                 name: actualName,
                 email: email || 'cliente@email.com'
