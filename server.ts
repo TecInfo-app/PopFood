@@ -37,7 +37,7 @@ async function startServer() {
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
-    const { amount, paymentMethodType, cardToken, email, customerName, name, description, storeId, origin } = req.body;
+    const { amount, paymentMethodType, cardToken, email, customerName, name, description, storeId, origin, orderId } = req.body;
     
     try {
       const projectId = firebaseConfig.projectId;
@@ -65,7 +65,7 @@ async function startServer() {
         // Redirect to secure hosted checkout for both Pix and Card payments
         // 1. Create a dynamic product for the order
         const prodPayload = {
-            externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+            externalId: orderId || `pedido-${Date.now()}`,
             name: description || 'Pedido PopFood',
             price: amountCents,
             currency: 'BRL'
@@ -81,43 +81,26 @@ async function startServer() {
         }
         
         // 2. Create the checkout
-        // Robust origin derivation to ensure return URLs work in all environments (iframes, proxies, etc.)
-        let detectedOrigin = origin || req.headers.origin;
-        if (!detectedOrigin && req.headers.referer) {
-            try {
-                const refUrl = new URL(req.headers.referer);
-                detectedOrigin = `${refUrl.protocol}//${refUrl.host}`;
-            } catch (e) { /* ignore */ }
-        }
-        if (!detectedOrigin) {
-            const protocol = req.get('x-forwarded-proto') || req.protocol;
-            const host = req.get('host');
-            detectedOrigin = `${protocol}://${host}`;
-        }
-        
-        let cleanOrigin = detectedOrigin.endsWith('/') ? detectedOrigin.slice(0, -1) : detectedOrigin;
-        
-        // Upgrade to https:// for production outer domains to ensure AbacatePay returns and shows the redirect button correctly
-        if (cleanOrigin.startsWith('http://') && !cleanOrigin.includes('localhost') && !cleanOrigin.includes('127.0.0.1')) {
+        let cleanOrigin = origin || req.headers.origin || "";
+        if (cleanOrigin.includes('.run.app') || cleanOrigin.includes('ais-')) {
             cleanOrigin = cleanOrigin.replace('http://', 'https://');
         }
+        cleanOrigin = cleanOrigin.replace(/\/$/, "");
         
-        const returnUrl = `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`;
+        const returnUrl = `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1&pendingOrderId=${orderId || ''}`;
 
         const checkoutPayload = {
             items: [{ id: prodData.data.id, quantity: 1 }],
             returnUrl: returnUrl,
             completionUrl: returnUrl,
-            return_url: returnUrl,       // snake_case variant for AbacatePay compatibility
-            completion_url: returnUrl,    // snake_case variant for AbacatePay compatibility
-            redirectUrl: returnUrl,
-            redirect_url: returnUrl,
+            return_url: returnUrl,
+            completion_url: returnUrl,
             customer: {
                 name: actualName,
                 email: email || 'cliente@email.com'
             }
         };
-        const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
+        const checkoutRes = await fetch('https://api.abacatepay.com/v1/checkouts/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
             body: JSON.stringify(checkoutPayload)
@@ -234,7 +217,8 @@ async function startServer() {
       if (abacatePayToken) {
         providerStr = "abacatepay";
         try {
-          const checkRes = await fetch(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, {
+          // Check specific checkout status
+          const checkRes = await fetch(`https://api.abacatepay.com/v1/checkouts/list`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${abacatePayToken}`,
@@ -242,44 +226,21 @@ async function startServer() {
             }
           });
           if (checkRes.ok) {
-            const checkData = await checkRes.json();
-            const actualStatus = checkData.data?.status || checkData.status || "PENDING";
-            statusStr = actualStatus;
-            if (actualStatus === "PAID") {
-              isPaid = true;
-            }
-          }
-        } catch (err) {
-          console.log("transparent/check failed, trying checkouts/list...");
-        }
-
-        // Dual check fallback with checkouts list
-        if (!isPaid) {
-          try {
-            const listRes = await fetch(`https://api.abacatepay.com/v2/checkouts/list`, {
-              method: 'GET',
-              headers: {
-                'Authorization': `Bearer ${abacatePayToken}`,
-                'Accept': 'application/json'
-              }
-            });
-            if (listRes.ok) {
-              const listData = await listRes.json();
-              const checkouts = listData.data || listData || [];
-              if (Array.isArray(checkouts)) {
-                const found = checkouts.find((c: any) => c.id === paymentId);
-                if (found) {
-                  const actualStatus = found.status || "PENDING";
-                  statusStr = actualStatus;
-                  if (actualStatus === "PAID") {
-                    isPaid = true;
-                  }
+            const listData = await checkRes.json();
+            const checkouts = listData.data || listData || [];
+            if (Array.isArray(checkouts)) {
+              const found = checkouts.find((c: any) => c.id === paymentId);
+              if (found) {
+                const actualStatus = found.status || "PENDING";
+                statusStr = actualStatus;
+                if (actualStatus === "PAID" || actualStatus === "confirmed") {
+                  isPaid = true;
                 }
               }
             }
-          } catch (listErr) {
-            console.error("Failed to list checkouts list for verification:", listErr);
           }
+        } catch (err) {
+          console.error("Failed to verify abacatepay status:", err);
         }
       }
       // 2. MERCADO PAGO CHECK

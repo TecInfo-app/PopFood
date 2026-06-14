@@ -943,23 +943,46 @@
 
     // Helper to verify status and commit order after AbacatePay return
     async function handleAbacatePayReturn() {
-      const pendingOrderStr = localStorage.getItem('popfood_pending_checkout_order');
-      if (!pendingOrderStr) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isReturn = urlParams.get('abacatePayCheck');
+      const urlOrderId = urlParams.get('pendingOrderId');
+      const urlPaymentId = urlParams.get('paymentId') || urlParams.get('id') || urlParams.get('checkout_id');
+      
+      if (!isReturn) return;
+
+      console.log("[AbacatePay] Processando retorno do checkout...");
+
+      let pendingOrderStr = localStorage.getItem('popfood_pending_checkout_order');
+      let pendingOrder;
+      
+      if (pendingOrderStr) {
+        try {
+          pendingOrder = JSON.parse(pendingOrderStr);
+        } catch (e) {
+          console.error("Erro ao analisar pedido pendente:", e);
+        }
+      }
+      
+      // Attempt recovery from URL parameters if localStorage is clean or missing
+      if (!pendingOrder && urlOrderId) {
+        console.warn("[AbacatePay] localStorage limpo, tentando recuperar do URL...");
+        pendingOrder = {
+          id: urlOrderId,
+          paymentId: urlPaymentId,
+          storeId: window.currentStoreId || "main"
+        };
+      }
+
+      if (!pendingOrder) {
         console.log("Nenhum pedido pendente encontrado para checkout do AbacatePay.");
         return;
       }
 
-      let pendingOrder;
-      try {
-        pendingOrder = JSON.parse(pendingOrderStr);
-      } catch (e) {
-        console.error("Erro ao analisar pedido pendente:", e);
-        return;
-      }
-
-      const paymentId = pendingOrder.paymentId;
+      const orderId = pendingOrder.id || pendingOrder.orderId;
+      const paymentId = pendingOrder.paymentId || urlPaymentId;
+      
       if (!paymentId) {
-        console.log("ID de pagamento ausente no pedido pendente.");
+        console.error("ID de pagamento ausente.");
         return;
       }
 
@@ -3650,11 +3673,12 @@
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ 
                 amount: total,
+                orderId: orderId,
                 customerName: name,
                 paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
                 email: email || "cliente@email.com",
                 description: `Pedido ${orderId} na PopFood`,
-                storeId: window.currentStoreId,
+                storeId: window.currentStoreId || "main",
                 origin: window.location.origin
               })
             });
