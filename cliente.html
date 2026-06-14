@@ -656,22 +656,41 @@
 
     // Resilient API calling helper with automatic server failovers
     window.resilientFetch = async function(path, options = {}) {
-      try {
-        const url = `${backendHost || ''}${path}`;
-        const response = await fetch(url, options);
-        if (!response.ok && response.status >= 500) {
-          throw new Error(`HTTP ${response.status}`);
+      const hosts = [backendHost, alternateBackendHost].filter(h => !!h);
+      let lastErr = null;
+
+      for (const host of hosts) {
+        try {
+          const url = `${host}${path}`;
+          console.log(`[API] Tentando: ${url}`);
+          const response = await fetch(url, {
+            ...options,
+            credentials: 'omit' // Simplify CORS
+          });
+
+          if (response.ok) return response;
+          if (response.status >= 500) throw new Error(`Erro do Servidor ${response.status}`);
+          
+          // If not ok but not 500, return as is (could be 400 with message)
+          return response;
+        } catch (err) {
+          lastErr = err;
+          console.warn(`[API] Falha no host ${host}:`, err);
+          
+          // If it looks like a CORS/Redirect error, try with trailing slash as fallback
+          if (!path.endsWith('/') && (err.message.includes('fetch') || err.message.includes('CORS'))) {
+            try {
+              const slashUrl = `${host}${path}/`;
+              console.log(`[API] Tentando fallback com barra: ${slashUrl}`);
+              const res = await fetch(slashUrl, { ...options, credentials: 'omit' });
+              if (res.ok) return res;
+            } catch (e) {
+               console.warn(`[API] Fallback com barra também falhou para ${host}`);
+            }
+          }
         }
-        return response;
-      } catch (err) {
-        console.warn(`[API] Erro ao conectar com o host principal (${backendHost}). Tentando host alternativo (${alternateBackendHost})... Erro:`, err);
-        if (alternateBackendHost && backendHost !== alternateBackendHost) {
-          backendHost = alternateBackendHost;
-          const altUrl = `${alternateBackendHost}${path}`;
-          return await fetch(altUrl, options);
-        }
-        throw err;
       }
+      throw lastErr || new Error("Falha ao conectar com o servidor.");
     };
 
     let restaurantProfile = null;
@@ -3475,7 +3494,7 @@
                 email: email || "cliente@email.com",
                 description: `Pedido ${orderId} na PopFood`,
                 storeId: window.currentStoreId || "main",
-                origin: window.location.origin
+                origin: window.location.href.split('?')[0].split('/').slice(0, -1).join('/')
               })
             });
 

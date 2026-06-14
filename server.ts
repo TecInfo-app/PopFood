@@ -25,15 +25,29 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Standard robust CORS configuration that handles all preflight requests gracefully
+  // Extremely permissive CORS for cross-origin requests from github.io
   app.use(cors({
-    origin: "*",
+    origin: true, 
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
     optionsSuccessStatus: 200
   }));
+  
+  app.options('*', cors()); // Explicitly handle preflight for all routes
 
   app.use(express.json());
+  
+  // Request logger for debugging
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+  });
+
+  // Simple health check
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", time: new Date().toISOString() });
+  });
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
