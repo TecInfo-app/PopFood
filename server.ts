@@ -25,39 +25,19 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Extremely permissive CORS for cross-origin requests from github.io
-  app.use(cors({
-    origin: true, 
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Accept", "X-Requested-With"],
-    optionsSuccessStatus: 200
-  }));
-  
-  app.options('*', cors()); // Explicitly handle preflight for all routes
+  // Use standard cors middleware for all routes
+  app.use(cors());
 
   app.use(express.json());
-  
-  // Request logger for debugging
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    next();
-  });
-
-  // Simple health check
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", time: new Date().toISOString() });
-  });
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
-    const { amount, paymentMethodType, cardToken, email, customerName, name, description, storeId, origin, orderId } = req.body;
+    const { amount, paymentMethodType, cardToken, email, description, storeId } = req.body;
     
     try {
       const projectId = firebaseConfig.projectId;
       const apiKey = firebaseConfig.apiKey;
       const safeStoreId = storeId || "main";
-      const actualName = customerName || name || "Cliente PopFood";
       const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/restaurantProfile/${safeStoreId}?key=${apiKey}`;
       
       const response = await fetch(url);
@@ -76,84 +56,77 @@ async function startServer() {
       if (abacatePayToken) {
         let amountCents = Math.round(Number(amount) * 100);
         
-        // 1. Derive origins and return URLs
-        let cleanOrigin = origin || req.headers.origin || "";
-        if (cleanOrigin.includes('.run.app') || cleanOrigin.includes('ais-')) {
-            cleanOrigin = cleanOrigin.replace('http://', 'https://');
+        if (paymentMethodType === 'pix') {
+          // TRANSPARENT PIX CHECKOUT (Direct QR Code generation)
+          const pixPayload = {
+              amount: amountCents,
+              description: description || 'Pedido PopFood'
+          };
+          const pixRes = await fetch('https://api.abacatepay.com/v2/transparents/create', {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${abacatePayToken}`,
+                'Accept': 'application/json'
+              },
+              body: JSON.stringify(pixPayload)
+          });
+          const pixData = await pixRes.json();
+          if (!pixRes.ok || pixData.error) {
+              throw new Error(`Erro AbacatePay (Pix Transparente): ${pixData.error || JSON.stringify(pixData)}`);
+          }
+          
+          const actualPix = pixData.data || pixData;
+          return res.json({
+              provider: 'abacatepay',
+              method: 'pix',
+              qrCode: actualPix.brCode,
+              qrCodeBase64: actualPix.brCodeBase64,
+              paymentId: actualPix.id,
+              status: actualPix.status || 'PENDING'
+          });
+        } else {
+          // CREDIT CARD FLOW (FALLBACK - REDIRECT TO CHECKOUT URL)
+          // 1. Create a dynamic product for the order
+          const prodPayload = {
+              externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+              name: description || 'Pedido PopFood',
+              price: amountCents,
+              currency: 'BRL'
+          };
+          const prodRes = await fetch('https://api.abacatepay.com/v2/products/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+              body: JSON.stringify(prodPayload)
+          });
+          const prodData = await prodRes.json();
+          if (!prodRes.ok || prodData.error) {
+              throw new Error(`Erro AbacatePay (Produto): ${prodData.error || JSON.stringify(prodData)}`);
+          }
+          
+          // 2. Create the checkout
+          const origin = req.headers.origin || 'http://localhost:3000';
+          const checkoutPayload = {
+              items: [{ id: prodData.data.id, quantity: 1 }],
+              returnUrl: origin
+          };
+          const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${abacatePayToken}` },
+              body: JSON.stringify(checkoutPayload)
+          });
+          const checkoutData = await checkoutRes.json();
+          if (!checkoutRes.ok || checkoutData.error) {
+              throw new Error(`Erro AbacatePay (Checkout): ${checkoutData.error || JSON.stringify(checkoutData)}`);
+          }
+          
+          return res.json({
+              provider: 'abacatepay',
+              method: 'checkout',
+              url: checkoutData.data.url,
+              paymentId: checkoutData.data.id
+          });
         }
-        cleanOrigin = cleanOrigin.replace(/\/$/, "");
-        
-        const returnUrl = `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1&pendingOrderId=${orderId || ''}`;
-
-        // 2. Create the checkout with INLINE products (AbacatePay v1 style)
-        const checkoutPayload = {
-            frequency: "ONE_TIME",
-            methods: ["PIX", "CARD"],
-            products: [
-                {
-                    externalId: orderId || `pedido-${Date.now()}`,
-                    name: description || 'Pedido PopFood',
-                    price: amountCents,
-                    quantity: 1
-                }
-            ],
-            returnUrl: returnUrl,
-            completionUrl: returnUrl,
-            redirectUrl: returnUrl,
-            successUrl: returnUrl,
-            return_url: returnUrl,
-            completion_url: returnUrl,
-            customer: {
-                name: actualName,
-                email: email || 'cliente@email.com'
-            }
-        };
-
-        const checkoutRes = await fetch('https://api.abacatepay.com/v1/checkouts/create', {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json', 
-              'Authorization': `Bearer ${abacatePayToken}`,
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(checkoutPayload)
-        });
-        
-        const checkoutData = await checkoutRes.json();
-        
-        // Handle standard successful responses and common variations
-        if (!checkoutRes.ok || checkoutData.error || (checkoutData.status && checkoutData.status !== 'success' && !checkoutData.data)) {
-            // Try fallback to singular if plural failed with 404
-            if (checkoutRes.status === 404) {
-               const fallbackRes = await fetch('https://api.abacatepay.com/v1/checkout/create', {
-                  method: 'POST',
-                  headers: { 
-                    'Content-Type': 'application/json', 
-                    'Authorization': `Bearer ${abacatePayToken}`,
-                    'Accept': 'application/json'
-                  },
-                  body: JSON.stringify(checkoutPayload)
-               });
-               if (fallbackRes.ok) {
-                 const fallbackData = await fallbackRes.json();
-                 const checkoutId = fallbackData.data?.id || fallbackData.id;
-                 const checkoutUrl = fallbackData.data?.url || fallbackData.url;
-                 return res.json({ provider: 'abacatepay', method: 'checkout', url: checkoutUrl, paymentId: checkoutId });
-               }
-            }
-            const errorMsg = checkoutData.error?.message || checkoutData.error || checkoutData.message || JSON.stringify(checkoutData);
-            throw new Error(`Erro AbacatePay (v1 Checkout): ${errorMsg}`);
-        }
-        
-        const checkoutId = checkoutData.data?.id || checkoutData.id;
-        const checkoutUrl = checkoutData.data?.url || checkoutData.url;
-
-        return res.json({
-            provider: 'abacatepay',
-            method: 'checkout',
-            url: checkoutUrl,
-            paymentId: checkoutId
-        });
       }
 
       // MERCADO PAGO FLOW (Preferred)
@@ -254,48 +227,22 @@ async function startServer() {
       // 1. ABACATEPAY CHECK
       if (abacatePayToken) {
         providerStr = "abacatepay";
-        try {
-          // Check specific checkout status using v1 list (most reliable way to find by ID)
-          let checkRes = await fetch(`https://api.abacatepay.com/v1/checkouts/list`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${abacatePayToken}`,
-              'Accept': 'application/json'
-            }
-          });
-          
-          if (!checkRes.ok && checkRes.status === 404) {
-             checkRes = await fetch(`https://api.abacatepay.com/v1/checkout/list`, {
-               method: 'GET',
-               headers: {
-                 'Authorization': `Bearer ${abacatePayToken}`,
-                 'Accept': 'application/json'
-               }
-             });
+        const checkRes = await fetch(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${abacatePayToken}`,
+            'Accept': 'application/json'
           }
-          if (checkRes.ok) {
-            const listData = await checkRes.json();
-            const checkouts = listData.data || listData || [];
-            if (Array.isArray(checkouts)) {
-              // Find by matching ID or externalId (orderId)
-              const found = checkouts.find((c: any) => 
-                String(c.id) === String(paymentId) || 
-                String(c.externalId) === String(orderId) || 
-                (c.metadata && String(c.metadata.orderId) === String(orderId))
-              );
-              
-              if (found) {
-                const actualStatus = String(found.status).toUpperCase();
-                statusStr = actualStatus;
-                // v1 usually uses 'PAID', 'CONFIRMED', or 'APPROVED'
-                if (actualStatus === "PAID" || actualStatus === "CONFIRMED" || actualStatus === "APPROVED") {
-                  isPaid = true;
-                }
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Failed to verify abacatepay status:", err);
+        });
+        if (!checkRes.ok) {
+          throw new Error(`Erro ao consultar status no AbacatePay (Status: ${checkRes.status})`);
+        }
+        const checkData = await checkRes.json();
+        const actualStatus = checkData.data?.status || checkData.status || "PENDING";
+        
+        statusStr = actualStatus;
+        if (actualStatus === "PAID") {
+          isPaid = true;
         }
       }
       // 2. MERCADO PAGO CHECK

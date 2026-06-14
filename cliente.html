@@ -647,51 +647,9 @@
 
     // Application State Variables
     let backendHost = '';
-    const alternateBackendHost = 'https://ais-dev-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
     if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
       backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
     }
-
-
-
-    // Resilient API calling helper with automatic server failovers
-    window.resilientFetch = async function(path, options = {}) {
-      const hosts = [backendHost, alternateBackendHost].filter(h => !!h);
-      let lastErr = null;
-
-      for (const host of hosts) {
-        try {
-          const url = `${host}${path}`;
-          console.log(`[API] Tentando: ${url}`);
-          const response = await fetch(url, {
-            ...options,
-            credentials: 'omit' // Simplify CORS
-          });
-
-          if (response.ok) return response;
-          if (response.status >= 500) throw new Error(`Erro do Servidor ${response.status}`);
-          
-          // If not ok but not 500, return as is (could be 400 with message)
-          return response;
-        } catch (err) {
-          lastErr = err;
-          console.warn(`[API] Falha no host ${host}:`, err);
-          
-          // If it looks like a CORS/Redirect error, try with trailing slash as fallback
-          if (!path.endsWith('/') && (err.message.includes('fetch') || err.message.includes('CORS'))) {
-            try {
-              const slashUrl = `${host}${path}/`;
-              console.log(`[API] Tentando fallback com barra: ${slashUrl}`);
-              const res = await fetch(slashUrl, { ...options, credentials: 'omit' });
-              if (res.ok) return res;
-            } catch (e) {
-               console.warn(`[API] Fallback com barra também falhou para ${host}`);
-            }
-          }
-        }
-      }
-      throw lastErr || new Error("Falha ao conectar com o servidor.");
-    };
 
     let restaurantProfile = null;
     let categoriesList = [];
@@ -754,208 +712,6 @@
       }
       calculateReceiptTotals();
     };
-
-    // Helper to verify status and commit order after AbacatePay return
-    async function handleAbacatePayReturn() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const isReturn = urlParams.get('abacatePayCheck');
-      const urlOrderId = urlParams.get('pendingOrderId');
-      const urlPaymentId = urlParams.get('paymentId') || urlParams.get('id') || urlParams.get('checkout_id');
-      
-      if (!isReturn) return;
-
-      console.log("[AbacatePay] Processando retorno do checkout...");
-
-      let pendingOrderStr = localStorage.getItem('popfood_pending_checkout_order');
-      let pendingOrder;
-      
-      if (pendingOrderStr) {
-        try {
-          pendingOrder = JSON.parse(pendingOrderStr);
-        } catch (e) {
-          console.error("Erro ao analisar pedido pendente:", e);
-        }
-      }
-      
-      // Attempt recovery from URL parameters if localStorage is clean or missing
-      if (!pendingOrder && urlOrderId) {
-        console.warn("[AbacatePay] localStorage limpo, tentando recuperar do URL...");
-        pendingOrder = {
-          id: urlOrderId,
-          paymentId: urlPaymentId,
-          storeId: window.currentStoreId || "main"
-        };
-      }
-
-      if (!pendingOrder) {
-        console.log("Nenhum pedido pendente encontrado para checkout do AbacatePay.");
-        return;
-      }
-
-      const orderId = pendingOrder.id || pendingOrder.orderId;
-      const paymentId = pendingOrder.paymentId || urlPaymentId;
-      
-      if (!paymentId) {
-        console.error("ID de pagamento ausente.");
-        return;
-      }
-
-      // Create a nice styled full-screen loading modal or modal overlay to avoid jumping
-      const overlay = document.createElement('div');
-      overlay.id = 'abacatepay-loading-overlay';
-      overlay.className = 'fixed inset-0 bg-black/65 z-[100] flex flex-col items-center justify-center p-4 backdrop-blur-xs animate-in fade-in duration-300';
-      overlay.innerHTML = `
-        <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
-          <div class="flex justify-center">
-            <div class="relative w-16 h-16 flex items-center justify-center">
-              <span class="absolute inline-flex h-full w-full rounded-full bg-orange-200/50 animate-ping opacity-75"></span>
-              <div class="relative bg-orange-100 text-brand-primary p-4 rounded-full">
-                <svg class="animate-spin h-8 w-8 text-brand-primary" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </div>
-            </div>
-          </div>
-          <div class="space-y-2">
-            <h3 class="font-display font-black text-lg text-gray-800">Verificando seu Pagamento</h3>
-            <p class="text-xs text-gray-500 font-medium leading-relaxed leading-snug">Estamos confirmando o recebimento de seu pagamento com o AbacatePay. Por favor, não feche esta página.</p>
-          </div>
-        </div>
-      `;
-      document.body.appendChild(overlay);
-
-      try {
-        const storeId = window.currentStoreId || pendingOrder.storeId || "main";
-        
-        // Add retry mechanism as integration usually takes a few seconds to update status
-        let attempts = 0;
-        let isPaid = false;
-        let data = null;
-
-        while (attempts < 10 && !isPaid) {
-          attempts++;
-          console.log(`[AbacatePay] Verificando status (tentativa ${attempts}/10)...`);
-          
-          try {
-            const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${storeId}&orderId=${orderId}`);
-            if (res.ok) {
-              data = await res.json();
-              if (data.isPaid || data.status === 'PAID' || data.status === 'approved' || data.status === 'confirmed') {
-                isPaid = true;
-              }
-            }
-          } catch (fetchErr) {
-            console.error("Erro ao verificar pagamento:", fetchErr);
-          }
-          
-          if (!isPaid && attempts < 10) {
-            // Incremental wait: 2s, 3s, 4s...
-            await new Promise(r => setTimeout(r, 2000 + (attempts * 500)));
-          }
-        }
-        
-        if (isPaid) {
-          // Yay! The user paid successfully.
-          // 1. Mark order payment fields as approved
-          pendingOrder.paymentApproved = true;
-          pendingOrder.isPaid = true;
-          pendingOrder.paymentStatus = "Aprovado";
-
-          // 2. Write the order to Firestore now!
-          const orderId = pendingOrder.id;
-          const orderRef = doc(db, COLLECTIONS.orders, orderId);
-          await setDoc(orderRef, pendingOrder);
-
-          // 3. Also write/update Client details list
-          const phone = pendingOrder.customer.phone;
-          const clientRef = doc(db, COLLECTIONS.clients, phone);
-          await setDoc(clientRef, {
-            id: phone,
-            name: pendingOrder.customer.name,
-            phone: phone,
-            email: pendingOrder.customer.email,
-            address: pendingOrder.customer.address,
-            cep: pendingOrder.customer.cep,
-            lastOrder: new Date().toISOString(),
-            storeId: storeId
-          }, { merge: true });
-
-          // 4. Save current Order references inside LocalStorage for track redirections
-          localStorage.setItem('popfood_last_order_id', orderId);
-          localStorage.setItem('popfood_last_phone', phone);
-
-          // Remove overlay
-          overlay.remove();
-
-          // 5. Clear cart and active coupon/loyalty factors locally
-          shoppingCart = [];
-          localStorage.removeItem('popfood_cart');
-          appliedDiscountCoupon = null;
-          calculatedDistance = null;
-          calculatedDeliveryFee = 0;
-          if (typeof refreshCartOverview === 'function') {
-            refreshCartOverview();
-          }
-
-          // 6. Clean up query params from URL so reloading doesn't check again
-          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?store=" + storeId;
-          window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-
-          // Clean up pending order from localStorage
-          localStorage.removeItem('popfood_pending_checkout_order');
-
-          // Initialize background order status tracker
-          if (typeof window.setupBackgroundOrderStatusTracker === 'function') {
-            window.setupBackgroundOrderStatusTracker();
-          }
-
-          // 7. Show the standard success modal with confirmation of payment approved!
-          document.getElementById('succ-order-id').textContent = orderId;
-          document.getElementById('success-modal').classList.remove('hidden');
-          
-          // Optionally, add a brief delay or toast if we want to explicitly mention payment was confirmed
-          showToast("✅ Pagamento confirmado via AbacatePay!");
-
-        } else {
-          // Not paid! Show status and ask to retry
-          overlay.innerHTML = `
-            <div class="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
-              <div class="flex justify-center text-orange-500">
-                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24 text-orange-500">
-                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
-              </div>
-              <div class="space-y-2">
-                <h3 class="font-display font-black text-lg text-gray-800">Aguardando Confirmação</h3>
-                <p class="text-xs text-gray-500 font-medium leading-relaxed leading-snug">Ainda não recebemos a confirmação do AbacatePay. Se você já pagou, aguarde um pouco mais e recarregue a página.</p>
-              </div>
-              <div class="flex flex-col gap-2">
-                <button onclick="window.location.reload()" class="w-full bg-brand-primary text-white font-bold py-3.5 rounded-xl text-xs hover:bg-orange-600 shadow-md transition-all active:scale-95 cursor-pointer">
-                  🔄 Verificar Novamente
-                </button>
-                <button onclick="document.getElementById('abacatepay-loading-overlay').remove()" class="w-full text-xs text-gray-400 font-bold py-2 cursor-pointer">
-                  Fazer Isso Depois
-                </button>
-              </div>
-            </div>
-          `;
-          
-          // Clean up query parameters so they don't get stuck in a check loop unless they click retry
-          const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?store=" + storeId;
-          window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-        }
-      } catch (err) {
-        console.error("Erro na verificação do pagamento do AbacatePay:", err);
-        overlay.remove();
-        showToast("⚠️ Falha ao validar status com AbacatePay. Por favor, tente novamente mais tarde.", true);
-        
-        // Clean up query parameters
-        const storeId = window.currentStoreId || (pendingOrder && pendingOrder.storeId) || "main";
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + "?store=" + storeId;
-        window.history.replaceState({ path: cleanUrl }, '', cleanUrl);
-      }
-    }
 
     // Init function
     window.onload = async () => {
@@ -1070,14 +826,6 @@
           }
         }, 1500);
       }
-
-      // Check for AbacatePay return from checkout redirect
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('abacatePayCheck') === '1') {
-        setTimeout(async () => {
-          await handleAbacatePayReturn();
-        }, 400);
-      }
     };
 
     let needsChange = false;
@@ -1175,7 +923,7 @@
         if (pm.offlineMoney !== false) html += buildPaymentMethodCard('Dinheiro', 'Em espécie', '💵');
       } else {
         document.getElementById('payment-method-label').textContent = 'Pagamento Online Seguro';
-        if (pm.onlinePix !== false) html += buildPaymentMethodCard('Online', 'Pix Online', '⚡');
+        if (pm.onlinePix !== false) html += buildPaymentMethodCard('PixOnline', 'Pix Imediato', '⚡');
         if (pm.onlineCard !== false) html += buildPaymentMethodCard('Online', 'Cartão Online', '💳');
       }
 
@@ -3384,7 +3132,7 @@
         }
 
         try {
-          const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${window.currentStoreId}&orderId=${orderId}`);
+          const res = await fetch(`${backendHost}/api/check-payment?paymentId=${paymentId}&storeId=${window.currentStoreId}&orderId=${orderId}`);
           if (!res.ok) return;
           const data = await res.json();
           if (data.isPaid || data.status === 'PAID') {
@@ -3394,11 +3142,6 @@
             showToast("✅ Pagamento Pix confirmado com sucesso!");
             modal.classList.add('hidden');
             
-            const succOrderIdEl = document.getElementById('succ-order-id');
-            if (succOrderIdEl) {
-              succOrderIdEl.textContent = orderId;
-            }
-
             const succModal = document.getElementById('success-modal');
             if (succModal) {
               succModal.classList.remove('hidden');
@@ -3479,36 +3222,34 @@
 
         // ONLINE PAYMENT LOGIC
         if (rawMethod === 'Online' || rawMethod === 'PixOnline') {
-          paymentResponse = null;
+          let paymentResponse = null;
 
           try {
-            console.log("[Payment] Solicitando checkout ao servidor para pedido: " + orderId);
-            const piResponse = await window.resilientFetch('/api/create-payment', {
+            const piResponse = await fetch(`${backendHost}/api/create-payment`, {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ 
                 amount: total,
-                orderId: orderId,
-                customerName: name,
                 paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
                 email: email || "cliente@email.com",
                 description: `Pedido ${orderId} na PopFood`,
-                storeId: window.currentStoreId || "main",
-                origin: window.location.href.split('?')[0].split('/').slice(0, -1).join('/')
+                storeId: window.currentStoreId
               })
             });
 
-            if (!piResponse.ok) {
-              let errData;
-              try { errData = await piResponse.json(); } catch (e) { errData = { message: "Erro de rede no servidor." }; }
-              throw new Error(errData.error || errData.message || "Erro desconhecido ao processar pagamento.");
+            const contentType = piResponse.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+               throw new Error("O servidor falhou em gerar o pagamento. Retorno inválido. O servidor configurado pode estar fora do ar.");
             }
-            
+
+            if (!piResponse.ok) {
+              const errData = await piResponse.json();
+              throw new Error(errData.error || errData.message || "Erro desconhecido ao processar pagamento no servidor.");
+            }
             paymentResponse = await piResponse.json();
-            console.log("[Payment] Resposta recebida:", paymentResponse);
           } catch (err) {
-             console.error("[Payment] Falha crítica:", err);
-             throw new Error("Erro ao gerar pagamento: " + err.message);
+             console.error("Backend fetch failed:", err);
+             throw new Error("Falha ao contatar o servidor de pagamentos: " + err.message);
           }
 
           if (paymentResponse.provider === 'abacatepay') {
@@ -3529,70 +3270,8 @@
               document.getElementById('modal-pix-online').classList.remove('hidden');
               window.startPixPaymentChecking(paymentResponse.paymentId, orderId);
             } else if (paymentResponse.method === 'checkout') {
-               // Compile order details but DO NOT save to firestore yet.
-               // We will redirect and check payment on return.
-               const pendingOrderDocument = {
-                 id: orderId,
-                 date: new Date().toLocaleString('pt-BR'),
-                 createdAt: new Date().toISOString(),
-                 customer: {
-                   name: name,
-                   phone: phone,
-                   email: email,
-                   address: finalAddress,
-                   complement: comp,
-                   reference: ref,
-                   cep: finalCep,
-                   type: selectedDeliveryOption,
-                   latitude: clientLatitude || null,
-                   longitude: clientLongitude || null
-                 },
-                 paymentMethod: method,
-                 paymentProvider: 'abacatepay',
-                 paymentId: paymentResponse.paymentId,
-                 troco: "Não precisa de troco",
-                 items: shoppingCart.map(i => ({
-                   productId: i.productId,
-                   name: i.name,
-                   quantity: i.quantity,
-                   price: i.price,
-                   complements: i.complements,
-                   notes: i.notes,
-                   totalItemPrice: i.totalItemPrice
-                 })),
-                 subtotal: subtotal,
-                 deliveryFee: feeToUse,
-                 desconto: discount + loyaltyDisc,
-                 descontoCupom: discount,
-                 descontoFidelidade: loyaltyDisc,
-                 cupomId: appliedDiscountCoupon ? appliedDiscountCoupon.id : null,
-                 cupomCode: appliedDiscountCoupon ? appliedDiscountCoupon.code : null,
-                 fidelidadeAtivo: hasLoyaltyDiscount,
-                 distance: isPickup ? 0 : (calculatedDistance || 0),
-                 total: total,
-                 deliveryPin: String(Math.floor(1000 + Math.random() * 9000)),
-                 deliveryProgress: 0,
-                 status: "Pendente",
-                 storeId: window.currentStoreId,
-                 paymentApproved: false,
-                 isPaid: false,
-                 paymentStatus: "Pendente"
-               };
-
-               localStorage.setItem('popfood_pending_checkout_order', JSON.stringify(pendingOrderDocument));
-               
-               // Redirect to AbacatePay checkout url immediately
-               const checkoutRedirectUrl = paymentResponse.url;
-               try {
-                 if (window.top && window.top !== window) {
-                   window.top.location.href = checkoutRedirectUrl;
-                 } else {
-                   window.location.href = checkoutRedirectUrl;
-                 }
-               } catch (e) {
-                 window.location.href = checkoutRedirectUrl;
-               }
-               return; // Exit commitOrder without saving to firestore or resetting cart!
+               // Flag to redirect after order is saved to firestore
+               window.pendingCheckoutUrl = paymentResponse.url;
             }
           } else if (paymentResponse.provider === 'mercadopago') {
             if (paymentResponse.method === 'pix') {
@@ -3752,15 +3431,7 @@
         calculatedDeliveryFee = 0;
 
         if (window.pendingCheckoutUrl) {
-          try {
-            if (window.top && window.top !== window) {
-              window.top.location.href = window.pendingCheckoutUrl;
-            } else {
-              window.location.href = window.pendingCheckoutUrl;
-            }
-          } catch (e) {
-            window.location.href = window.pendingCheckoutUrl;
-          }
+          window.location.href = window.pendingCheckoutUrl;
           return;
         }
 
