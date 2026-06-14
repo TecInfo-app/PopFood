@@ -653,58 +653,26 @@
     }
 
     // Helper for CORS-safe requests using fallbacks and open proxies
-    async function makeProxySafeRequest(url, method, headers, bodyObj = null) {
-      const bodyStr = bodyObj ? JSON.stringify(bodyObj) : null;
-      
-      // Try 1: Direct request first (cleanest, no proxies)
-      try {
-        console.log(`[Payment Bridge] Tentando chamada direta para: ${url}`);
-        const res = await fetch(url, {
-          method: method,
-          headers: headers,
-          body: bodyStr
-        });
-        if (res.ok) {
-          return await res.json();
-        }
-        console.warn(`[Payment Bridge] Chamada direta falhou com status ${res.status}. Tentando proxy...`);
-      } catch (err) {
-        console.warn("[Payment Bridge] Chamada direta falhou devido ao CORS ou rede. Tentando proxies...", err);
+    async function makeProxySafeRequest(url, method, headers, body) {
+      const WORKER_URL = 'https://abacatepay-proxy.iranildo-jobs.workers.dev';
+      const abacatePath = url.replace('https://api.abacatepay.com', '');
+      const proxyUrl = WORKER_URL + abacatePath;
+
+      const response = await fetch(proxyUrl, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': headers['Authorization'] || ''
+        },
+        body: body ? JSON.stringify(body) : undefined
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro na requisição: ${response.status}`);
       }
 
-      // Try 2: corsproxy.io (Very fast and supports headers/custom verbs fully)
-      try {
-        const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
-        console.log(`[Payment Bridge] Tentando canal corsproxy.io: ${proxyUrl}`);
-        const res = await fetch(proxyUrl, {
-          method: method,
-          headers: headers,
-          body: bodyStr
-        });
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch (err) {
-        console.warn("[Payment Bridge] Falha no corsproxy.io. Tentando canal secundário AllOrigins...", err);
-      }
-
-      // Try 3: allorigins.win (Failsafe)
-      try {
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-        console.log(`[Payment Bridge] Tentando canal AllOrigins: ${proxyUrl}`);
-        const res = await fetch(proxyUrl, {
-          method: method,
-          headers: headers,
-          body: bodyStr
-        });
-        if (res.ok) {
-          return await res.json();
-        }
-      } catch (err) {
-        console.error("[Payment Bridge] Todos os proxies de pagamento falharam.", err);
-      }
-
-      throw new Error("Não foi possível alcançar o servidor de pagamentos AbacatePay devido a restrições de CORS do navegador. Por favor, tente novamente.");
+      return await response.json();
     }
 
     // Direct Browser-to-AbacatePay payment creation bypass
