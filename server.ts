@@ -18,8 +18,6 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
-// In CJS __dirname is available. In TS we can just use process.cwd() or define __dirname for compatibility.
-const __dirname = typeof __dirname !== 'undefined' ? __dirname : path.resolve();
 
 async function startServer() {
   const app = express();
