@@ -101,8 +101,8 @@ async function startServer() {
         
         const checkoutPayload = {
             items: [{ id: prodData.data.id, quantity: 1 }],
-            returnUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1&forced=true`,
-            completionUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1&forced=true`
+            returnUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`,
+            completionUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`
         };
         const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
             method: 'POST',
