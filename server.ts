@@ -95,7 +95,7 @@ async function startServer() {
             }
         };
 
-        const checkoutRes = await fetch('https://api.abacatepay.com/v1/checkout/create', {
+        const checkoutRes = await fetch('https://api.abacatepay.com/v1/checkouts/create', {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json', 
@@ -109,6 +109,24 @@ async function startServer() {
         
         // Handle standard successful responses and common variations
         if (!checkoutRes.ok || checkoutData.error || (checkoutData.status && checkoutData.status !== 'success' && !checkoutData.data)) {
+            // Try fallback to singular if plural failed with 404
+            if (checkoutRes.status === 404) {
+               const fallbackRes = await fetch('https://api.abacatepay.com/v1/checkout/create', {
+                  method: 'POST',
+                  headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${abacatePayToken}`,
+                    'Accept': 'application/json'
+                  },
+                  body: JSON.stringify(checkoutPayload)
+               });
+               if (fallbackRes.ok) {
+                 const fallbackData = await fallbackRes.json();
+                 const checkoutId = fallbackData.data?.id || fallbackData.id;
+                 const checkoutUrl = fallbackData.data?.url || fallbackData.url;
+                 return res.json({ provider: 'abacatepay', method: 'checkout', url: checkoutUrl, paymentId: checkoutId });
+               }
+            }
             const errorMsg = checkoutData.error?.message || checkoutData.error || checkoutData.message || JSON.stringify(checkoutData);
             throw new Error(`Erro AbacatePay (v1 Checkout): ${errorMsg}`);
         }
@@ -224,13 +242,23 @@ async function startServer() {
         providerStr = "abacatepay";
         try {
           // Check specific checkout status using v1 list (most reliable way to find by ID)
-          const checkRes = await fetch(`https://api.abacatepay.com/v1/checkout/list`, {
+          let checkRes = await fetch(`https://api.abacatepay.com/v1/checkouts/list`, {
             method: 'GET',
             headers: {
               'Authorization': `Bearer ${abacatePayToken}`,
               'Accept': 'application/json'
             }
           });
+          
+          if (!checkRes.ok && checkRes.status === 404) {
+             checkRes = await fetch(`https://api.abacatepay.com/v1/checkout/list`, {
+               method: 'GET',
+               headers: {
+                 'Authorization': `Bearer ${abacatePayToken}`,
+                 'Accept': 'application/json'
+               }
+             });
+          }
           if (checkRes.ok) {
             const listData = await checkRes.json();
             const checkouts = listData.data || listData || [];
