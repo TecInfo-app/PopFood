@@ -37,7 +37,7 @@ async function startServer() {
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
-    const { amount, paymentMethodType, cardToken, email, description, storeId } = req.body;
+    const { amount, paymentMethodType, cardToken, email, description, storeId, orderId } = req.body;
     
     try {
       const projectId = firebaseConfig.projectId;
@@ -113,7 +113,7 @@ async function startServer() {
           const origin = req.headers.origin || 'http://localhost:3000';
           const checkoutPayload = {
               items: [{ id: prodData.data.id, quantity: 1 }],
-              returnUrl: origin
+              returnUrl: `${origin}/cliente.html?store=${safeStoreId}&orderId=${orderId || ''}&abacateReturn=1`
           };
           const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
               method: 'POST',
@@ -204,15 +204,31 @@ async function startServer() {
 
   // Check payment status dynamically (polls both AbacatePay and Mercado Pago)
   app.get("/api/check-payment", async (req, res) => {
-    const { paymentId, storeId, orderId } = req.query;
-    if (!paymentId) {
-      return res.status(400).json({ error: "Parâmetro paymentId é obrigatório." });
-    }
+    let { paymentId, storeId, orderId } = req.query;
     const safeStoreId = (storeId as string) || "main";
     
     try {
       const projectId = firebaseConfig.projectId;
       const apiKey = firebaseConfig.apiKey;
+
+      // If paymentId is missing but orderId is present, try to find the paymentId in Firestore
+      if (!paymentId && orderId) {
+        try {
+          const orderUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/orders/${orderId}?key=${apiKey}`;
+          const orderRes = await fetch(orderUrl);
+          if (orderRes.ok) {
+            const orderDoc = await orderRes.json();
+            paymentId = orderDoc.fields?.paymentId?.stringValue;
+          }
+        } catch (err) {
+          console.error("Erro ao buscar paymentId no Firestore:", err);
+        }
+      }
+
+      if (!paymentId) {
+        return res.status(400).json({ error: "Parâmetro paymentId é obrigatório ou não pôde ser encontrado." });
+      }
+
       const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/restaurantProfile/${safeStoreId}?key=${apiKey}`;
       
       const response = await fetch(url);

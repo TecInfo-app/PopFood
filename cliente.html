@@ -943,6 +943,44 @@
 
     // Init function
     window.onload = async () => {
+      // Check for AbacatePay return flag
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('abacateReturn') === '1') {
+        const orderId = params.get('orderId');
+        const storeId = params.get('store');
+        
+        if (orderId && storeId) {
+          showToast("⏳ Verificando confirmação do pagamento...", false);
+          
+          try {
+            // Give it a tiny delay for backend processing
+            setTimeout(async () => {
+              const paymentId = params.get('paymentId') || localStorage.getItem('popfood_pending_payment_id') || '';
+              const res = await window.resilientFetch(`/api/check-payment?orderId=${orderId}&storeId=${storeId}&paymentId=${paymentId}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.isPaid) {
+                  showToast("✅ Pagamento confirmado! Seu pedido está sendo preparado.", false);
+                  const succOrderIdEl = document.getElementById('succ-order-id');
+                  if (succOrderIdEl) succOrderIdEl.textContent = orderId;
+                  localStorage.setItem('popfood_last_order_id', orderId);
+                  localStorage.removeItem('popfood_pending_payment_id'); // Cleanup
+                  const successModal = document.getElementById('success-modal');
+                  if (successModal) successModal.classList.remove('hidden');
+                  
+                  const newUrl = window.location.origin + window.location.pathname + "?store=" + storeId;
+                  window.history.replaceState({}, document.title, newUrl);
+                } else {
+                  showToast("⚠️ Pagamento ainda pendente de confirmação. Você pode acompanhar o status na aba 'Pedidos'.", true);
+                }
+              }
+            }, 1500);
+          } catch (e) {
+            console.error("Erro ao verificar retorno do AbacatePay:", e);
+          }
+        }
+      }
+
       if (window.currentStoreId) {
         const oBtn = document.getElementById('nav-tab-orders');
         if (oBtn) {
@@ -3461,7 +3499,8 @@
                 paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
                 email: email || "cliente@email.com",
                 description: `Pedido ${orderId} na PopFood`,
-                storeId: window.currentStoreId
+                storeId: window.currentStoreId,
+                orderId: orderId
               })
             });
 
@@ -3480,28 +3519,29 @@
              throw new Error("Falha ao contatar o servidor de pagamentos: " + err.message);
           }
 
-          if (paymentResponse.provider === 'abacatepay') {
-            if (paymentResponse.method === 'pix') {
-              // Show QR Code modal for AbacatePay Pix
-              const qrContainer = document.getElementById('pix-qr-container');
-              if (paymentResponse.qrCodeBase64) {
-                let src = paymentResponse.qrCodeBase64;
-                if (!src.startsWith('data:')) {
-                  src = 'data:image/png;base64,' + src;
+            if (paymentResponse.provider === 'abacatepay') {
+              if (paymentResponse.method === 'pix') {
+                // Show QR Code modal for AbacatePay Pix
+                const qrContainer = document.getElementById('pix-qr-container');
+                if (paymentResponse.qrCodeBase64) {
+                  let src = paymentResponse.qrCodeBase64;
+                  if (!src.startsWith('data:')) {
+                    src = 'data:image/png;base64,' + src;
+                  }
+                  qrContainer.innerHTML = `<img src="${src}" class="w-full h-full object-contain" />`;
                 }
-                qrContainer.innerHTML = `<img src="${src}" class="w-full h-full object-contain" />`;
+                document.getElementById('btn-copy-pix').onclick = () => {
+                  navigator.clipboard.writeText(paymentResponse.qrCode);
+                  showToast("Código Pix copiado!");
+                };
+                document.getElementById('modal-pix-online').classList.remove('hidden');
+                window.startPixPaymentChecking(paymentResponse.paymentId, orderId);
+              } else if (paymentResponse.method === 'checkout') {
+                 // Flag to redirect after order is saved to firestore
+                 window.pendingCheckoutUrl = paymentResponse.url;
+                 window.pendingPaymentId = paymentResponse.paymentId;
               }
-              document.getElementById('btn-copy-pix').onclick = () => {
-                navigator.clipboard.writeText(paymentResponse.qrCode);
-                showToast("Código Pix copiado!");
-              };
-              document.getElementById('modal-pix-online').classList.remove('hidden');
-              window.startPixPaymentChecking(paymentResponse.paymentId, orderId);
-            } else if (paymentResponse.method === 'checkout') {
-               // Flag to redirect after order is saved to firestore
-               window.pendingCheckoutUrl = paymentResponse.url;
-            }
-          } else if (paymentResponse.provider === 'mercadopago') {
+            } else if (paymentResponse.provider === 'mercadopago') {
             if (paymentResponse.method === 'pix') {
               // Show QR Code modal for Mercado Pago
               const qrContainer = document.getElementById('pix-qr-container');
@@ -3659,6 +3699,9 @@
         calculatedDeliveryFee = 0;
 
         if (window.pendingCheckoutUrl) {
+          if (window.pendingPaymentId) {
+            localStorage.setItem('popfood_pending_payment_id', window.pendingPaymentId);
+          }
           window.location.href = window.pendingCheckoutUrl;
           return;
         }
