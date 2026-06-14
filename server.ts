@@ -37,12 +37,13 @@ async function startServer() {
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
-    const { amount, paymentMethodType, cardToken, email, description, storeId, origin } = req.body;
+    const { amount, paymentMethodType, cardToken, email, customerName, name, description, storeId, origin } = req.body;
     
     try {
       const projectId = firebaseConfig.projectId;
       const apiKey = firebaseConfig.apiKey;
       const safeStoreId = storeId || "main";
+      const actualName = customerName || name || "Cliente PopFood";
       const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/restaurantProfile/${safeStoreId}?key=${apiKey}`;
       
       const response = await fetch(url);
@@ -101,10 +102,16 @@ async function startServer() {
             cleanOrigin = cleanOrigin.replace('http://', 'https://');
         }
         
+        const returnUrl = `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`;
+
         const checkoutPayload = {
             items: [{ id: prodData.data.id, quantity: 1 }],
-            returnUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`,
-            completionUrl: `${cleanOrigin}/cliente.html?store=${safeStoreId}&abacatePayCheck=1`
+            returnUrl: returnUrl,
+            completionUrl: returnUrl,
+            customer: {
+                name: actualName,
+                email: email || 'cliente@email.com'
+            }
         };
         const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
             method: 'POST',

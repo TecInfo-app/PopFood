@@ -990,13 +990,30 @@
 
       try {
         const storeId = window.currentStoreId || pendingOrder.storeId || "main";
-        const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${storeId}`);
-        if (!res.ok) {
-          throw new Error("Não foi possível validar o pagamento com o servidor.");
-        }
-        const data = await res.json();
         
-        if (data.isPaid || data.status === 'PAID' || data.status === 'approved') {
+        // Add retry mechanism as integration usually takes a few seconds to update status
+        let attempts = 0;
+        let isPaid = false;
+        let data = null;
+
+        while (attempts < 6 && !isPaid) {
+          attempts++;
+          console.log(`[AbacatePay] Verificando status (tentativa ${attempts}/6)...`);
+          const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${storeId}`);
+          if (res.ok) {
+            data = await res.json();
+            if (data.isPaid || data.status === 'PAID' || data.status === 'approved') {
+              isPaid = true;
+            }
+          }
+          
+          if (!isPaid && attempts < 6) {
+            // Wait 2-3 seconds before next attempt
+            await new Promise(r => setTimeout(r, 2500));
+          }
+        }
+        
+        if (isPaid) {
           // Yay! The user paid successfully.
           // 1. Mark order payment fields as approved
           pendingOrder.paymentApproved = true;
@@ -3609,6 +3626,7 @@
               headers: {'Content-Type': 'application/json'},
               body: JSON.stringify({ 
                 amount: total,
+                customerName: name,
                 paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
                 email: email || "cliente@email.com",
                 description: `Pedido ${orderId} na PopFood`,
