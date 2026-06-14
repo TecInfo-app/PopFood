@@ -695,10 +695,11 @@
           console.log("[Payment Bridge] Gerando Pix Transparente diretamente no navegador...");
           const pixPayload = {
             amount: amountCents,
-            description: description
+            description: description,
+            expiresIn: 3600
           };
           
-          const pixData = await makeProxySafeRequest('https://api.abacatepay.com/v2/transparents/create', 'POST', {
+          const pixData = await makeProxySafeRequest('https://api.abacatepay.com/v1/pixQrCode/create', 'POST', {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${abacatePayToken}`,
             'Accept': 'application/json'
@@ -785,7 +786,7 @@
         }
 
         console.log(`[Payment Bridge] Checando status do Pix diretamente via AbacatePay ID: ${paymentId}...`);
-        const checkData = await makeProxySafeRequest(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, 'GET', {
+        const checkData = await makeProxySafeRequest(`https://api.abacatepay.com/v1/pixQrCode/check?id=${paymentId}`, 'GET', {
           'Authorization': `Bearer ${abacatePayToken}`,
           'Accept': 'application/json'
         });
