@@ -785,11 +785,32 @@
           }, checkoutPayload);
 
           const actualCheckout = checkoutData.data || checkoutData;
+          const paymentId = actualCheckout.id;
+
+          // Update the returnUrl in checkoutPayload to include the actual paymentId
+          const updatedReturnUrl = `${basePath}?store=${storeId}&orderId=${orderId}&paymentId=${paymentId}&abacateReturn=1`;
+          checkoutPayload.returnUrl = updatedReturnUrl;
+
+          // Call the AbacatePay update endpoint so the server knows the updated returnUrl with the paymentId
+          try {
+            await makeProxySafeRequest('https://api.abacatepay.com/v2/checkouts/update', 'POST', {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${abacatePayToken}`,
+              'Accept': 'application/json'
+            }, {
+              id: paymentId,
+              returnUrl: updatedReturnUrl
+            });
+            console.log("[Payment Bridge] Checkout returnUrl updated with real paymentId successfully.");
+          } catch (err) {
+            console.warn("[Payment Bridge] AbacatePay checkout update endpoint failed or not supported, proceeding:", err);
+          }
+
           const resultObj = {
             provider: 'abacatepay',
             method: 'checkout',
             url: actualCheckout.url,
-            paymentId: actualCheckout.id
+            paymentId: paymentId
           };
 
           return {
