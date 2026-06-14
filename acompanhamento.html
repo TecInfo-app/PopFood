@@ -343,31 +343,6 @@
     }
 
 
-    let backendHost = '';
-    const alternateBackendHost = 'https://ais-dev-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-    if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
-      backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-    }
-
-    window.resilientFetch = async function(path, options = {}) {
-      try {
-        const url = `${backendHost || ''}${path}`;
-        const response = await fetch(url, options);
-        if (!response.ok && response.status >= 500) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response;
-      } catch (err) {
-        console.warn(`[API] Erro ao conectar com o host principal (${backendHost}). Tentando host alternativo (${alternateBackendHost})... Erro:`, err);
-        if (alternateBackendHost && backendHost !== alternateBackendHost) {
-          backendHost = alternateBackendHost;
-          const altUrl = `${alternateBackendHost}${path}`;
-          return await fetch(altUrl, options);
-        }
-        throw err;
-      }
-    };
-
     let currentTrackOrder = null;
     let restaurantPhone = "5511999999999"; // Fallback phone
     let activeFoodRating = 0;
@@ -547,19 +522,6 @@
       if (typeof updateCustomerNotificationUI === 'function') {
         updateCustomerNotificationUI();
       }
-
-      // Check URL parameters for store redirections (e.g. from AbacatePay returning customers)
-      const params = new URLSearchParams(window.location.search);
-      const urlPhone = params.get('phone');
-      const urlOrderId = params.get('orderId');
-
-      if (urlPhone) {
-        localStorage.setItem('popfood_last_phone', urlPhone.replace(/\D/g, ''));
-      }
-      if (urlOrderId) {
-        localStorage.setItem('popfood_last_order_id', urlOrderId);
-      }
-
       // Lookup if phone matches local index
       const localPhone = localStorage.getItem('popfood_last_phone');
       const savedOrderId = localStorage.getItem('popfood_last_order_id');
@@ -632,46 +594,9 @@
 
         currentTrackOrder = targetOrder;
         drawActiveTrackDetails(targetOrder);
-        triggerPaymentStatusPoller(targetOrder);
       }, (err) => {
         console.error("Tracker snapshot listeners error: ", err);
       });
-    }
-
-    let paymentCheckingInterval = null;
-
-    function triggerPaymentStatusPoller(order) {
-      if (paymentCheckingInterval) {
-        clearInterval(paymentCheckingInterval);
-        paymentCheckingInterval = null;
-      }
-
-      // Check if online payment is pending approval
-      const isOnline = order.paymentId;
-      const isPaid = order.isPaid || order.paymentApproved || order.paymentStatus === 'Aprovado';
-      
-      if (isOnline && !isPaid) {
-        console.log(`[Payment Poller] Starting background checker for payment ${order.paymentId}...`);
-        const fetcher = window.resilientFetch || fetch;
-
-        paymentCheckingInterval = setInterval(async () => {
-          try {
-            const url = `/api/check-payment?paymentId=${order.paymentId}&storeId=${window.currentStoreId}&orderId=${order.id}`;
-            const res = await fetcher(url);
-            if (res.ok) {
-              const data = await res.json();
-              console.log("[Payment Poller] Status check response:", data);
-              if (data.isPaid || data.status === 'PAID') {
-                console.log("[Payment Poller] Payment approved! Stopping poller.");
-                clearInterval(paymentCheckingInterval);
-                paymentCheckingInterval = null;
-              }
-            }
-          } catch (e) {
-            console.warn("[Payment Poller] Polling issue:", e);
-          }
-        }, 5000);
-      }
     }
 
     // Bind values dynamically

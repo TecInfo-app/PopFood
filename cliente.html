@@ -3243,13 +3243,9 @@
 
         // ONLINE PAYMENT LOGIC
         if (rawMethod === 'Online' || rawMethod === 'PixOnline') {
-          paymentResponse = null;
+          let paymentResponse = null;
 
           try {
-            const returnPageUrl = window.location.href.replace('cliente.html', 'acompanhamento.html') + 
-                                  (window.location.href.includes('?') ? '&' : '?') + 
-                                  `orderId=${orderId}&phone=${phone}`;
-
             const piResponse = await window.resilientFetch('/api/create-payment', {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
@@ -3258,10 +3254,7 @@
                 paymentMethodType: rawMethod === 'PixOnline' ? 'pix' : 'card',
                 email: email || "cliente@email.com",
                 description: `Pedido ${orderId} na PopFood`,
-                storeId: window.currentStoreId,
-                orderId: orderId,
-                phone: phone,
-                returnUrl: returnPageUrl
+                storeId: window.currentStoreId
               })
             });
 
