@@ -1159,10 +1159,10 @@
         document.getElementById('payment-method-label').textContent = 'Pagamento na Entrega';
         if (pm.offlinePix !== false) html += buildPaymentMethodCard('Pix', 'Pix offline', '⚡');
         if (pm.offlineCard !== false) html += buildPaymentMethodCard('Cartão de Crédito', 'Maquininha', '💳');
-        if (pm.offlineMoney !== false) html += buildPaymentMethodCard('Dinheiro', 'Em espécie', '💵');
+        if (pm.offlineMoney !== false) html += buildPaymentMethodCard('Dinheiro', 'Dinheiro', '💵');
       } else {
         document.getElementById('payment-method-label').textContent = 'Pagamento Online Seguro';
-        if (pm.onlinePix !== false) html += buildPaymentMethodCard('PixOnline', 'Pix Imediato', '⚡');
+        if (pm.onlinePix !== false) html += buildPaymentMethodCard('PixOnline', 'Pix Online', '⚡');
         if (pm.onlineCard !== false) html += buildPaymentMethodCard('Online', 'Cartão Online', '💳');
       }
 
