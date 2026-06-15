@@ -727,28 +727,22 @@
           };
         } else {
           console.log("[Payment Bridge] Gerando link de Checkout Cartão diretamente no navegador...");
-          // Credit card checkout: Create product, then create checkout
-          const prodPayload = {
-            externalId: `pedido-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-            name: description,
-            price: amountCents,
-            currency: 'BRL'
-          };
-          
-          const prodData = await makeProxySafeRequest('https://api.abacatepay.com/v2/products/create', 'POST', {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${abacatePayToken}`,
-            'Accept': 'application/json'
-          }, prodPayload);
-
-          const actualProduct = prodData.data || prodData;
           const basePath = window.location.origin + window.location.pathname;
           const storeId = window.currentStoreId || payload.storeId || 'main';
           const orderId = payload.orderId || '';
           const returnUrl = `${basePath}?store=${storeId}&orderId=${orderId}&abacateReturn=1`;
+
+          // AbacatePay v2 — cria produto e checkout em uma única chamada
           const checkoutPayload = {
-            items: [{ id: actualProduct.id, quantity: 1 }],
-            returnUrl: returnUrl
+            products: [{
+              externalId: orderId || `pedido-${Date.now()}`,
+              name: description,
+              description: description,
+              price: amountCents,
+              quantity: 1
+            }],
+            returnUrl: returnUrl,
+            methods: ['CREDIT_CARD', 'DEBIT_CARD']
           };
 
           const checkoutData = await makeProxySafeRequest('https://api.abacatepay.com/v2/checkouts/create', 'POST', {
