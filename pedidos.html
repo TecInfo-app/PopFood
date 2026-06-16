@@ -1204,7 +1204,18 @@
       }
 
       // Populate Payment and Troco
-      document.getElementById('modal-lbl-payment').textContent = order.paymentMethod || "Não informado";
+      // Label de pagamento no modal
+      let modalPayLabel = order.paymentMethod || "Não informado";
+      if (order.paymentProvider === 'abacatepay' || order.isPaid) {
+        if (order.paymentMethod === 'PixOnline' || order.paymentMethod === 'Pix Imediato') {
+          modalPayLabel = '⚡ Pix Online (Pago)';
+        } else if (order.paymentMethod === 'Online' || order.paymentMethod === 'Cartão de Crédito' || order.paymentMethod === 'CartaoOnline') {
+          modalPayLabel = '💳 Cartão Online (Pago)';
+        } else if (order.isPaid) {
+          modalPayLabel = `${modalPayLabel} ✅ Pago Online`;
+        }
+      }
+      document.getElementById('modal-lbl-payment').textContent = modalPayLabel;
       
       const trocoRow = document.getElementById('modal-lbl-troco-row');
       const trocoVal = document.getElementById('modal-lbl-troco');
@@ -1565,7 +1576,18 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
       textReceipt += formatLine(`total`, `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`);
       
       textReceipt += `================================\n`;
-      textReceipt += `PAGAMENTO: ${order.paymentMethod ? order.paymentMethod.toUpperCase() : 'N/A'}\n`;
+      // Montar label correto da forma de pagamento
+      let paymentLabel = order.paymentMethod ? order.paymentMethod.toUpperCase() : 'N/A';
+      if (order.paymentProvider === 'abacatepay' || order.isPaid) {
+        if (order.paymentMethod === 'PixOnline' || order.paymentMethod === 'Pix Imediato') {
+          paymentLabel = 'PIX ONLINE (PAGO)';
+        } else if (order.paymentMethod === 'Online' || order.paymentMethod === 'Cartão de Crédito' || order.paymentMethod === 'CartaoOnline') {
+          paymentLabel = 'CARTÃO ONLINE (PAGO)';
+        } else if (order.isPaid) {
+          paymentLabel = `${paymentLabel} - PAGO ONLINE`;
+        }
+      }
+      textReceipt += `PAGAMENTO: ${paymentLabel}\n`;
       if (order.paymentMethod === 'Dinheiro' && order.troco) {
         textReceipt += `${order.troco.toUpperCase()}\n`;
       }
