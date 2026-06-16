@@ -989,10 +989,13 @@
             setTimeout(() => {
               const qrContainer = document.getElementById('pix-qr-container');
               if (qrContainer) {
-                if (pixPending.qrCodeImage) {
-                  let src = pixPending.qrCodeImage;
+                if (pixPending.qrCodeBase64) {
+                  let src = pixPending.qrCodeBase64;
                   if (!src.startsWith('data:')) src = 'data:image/png;base64,' + src;
                   qrContainer.innerHTML = `<img src="${src}" class="w-full h-full object-contain" />`;
+                } else if (pixPending.qrCode) {
+                  // Gerar QR Code via API pública se não tiver imagem
+                  qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(pixPending.qrCode)}" class="w-full h-full object-contain" />`;
                 }
               }
               const copyBtn = document.getElementById('btn-copy-pix');
@@ -3606,7 +3609,7 @@
                   paymentId: paymentResponse.paymentId,
                   orderId: orderId,
                   qrCode: paymentResponse.qrCode,
-                  qrCodeImage: paymentResponse.qrCodeImage || '',
+                  qrCodeBase64: paymentResponse.qrCodeBase64 || '',
                   expiresAt: Date.now() + 600000 // 10 minutos
                 }));
                 document.getElementById('modal-pix-online').classList.remove('hidden');
