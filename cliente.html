@@ -1159,10 +1159,10 @@
         document.getElementById('payment-method-label').textContent = 'Pagamento na Entrega';
         if (pm.offlinePix !== false) html += buildPaymentMethodCard('Pix', 'Pix offline', '⚡');
         if (pm.offlineCard !== false) html += buildPaymentMethodCard('Cartão de Crédito', 'Maquininha', '💳');
-        if (pm.offlineMoney !== false) html += buildPaymentMethodCard('Dinheiro', 'Dinheiro', '💵');
+        if (pm.offlineMoney !== false) html += buildPaymentMethodCard('Dinheiro', 'Em espécie', '💵');
       } else {
         document.getElementById('payment-method-label').textContent = 'Pagamento Online Seguro';
-        if (pm.onlinePix !== false) html += buildPaymentMethodCard('PixOnline', 'Pix Online', '⚡');
+        if (pm.onlinePix !== false) html += buildPaymentMethodCard('PixOnline', 'Pix Imediato', '⚡');
         if (pm.onlineCard !== false) html += buildPaymentMethodCard('Online', 'Cartão Online', '💳');
       }
 
@@ -3361,35 +3361,73 @@
     let pixCheckInterval = null;
     window.startPixPaymentChecking = function(paymentId, orderId) {
       if (pixCheckInterval) clearInterval(pixCheckInterval);
-      
-      const checkStatus = async () => {
-        const modal = document.getElementById('modal-pix-online');
-        if (!modal || modal.classList.contains('hidden')) {
-          clearInterval(pixCheckInterval);
-          pixCheckInterval = null;
-          return;
-        }
+      if (window.pixCancelTimeout) clearTimeout(window.pixCancelTimeout);
 
+      // Atualiza o temporizador no modal
+      let secondsLeft = 600; // 10 minutos
+      const timerEl = document.getElementById('pix-timer');
+      if (timerEl) {
+        const updateTimer = () => {
+          const m = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
+          const s = String(secondsLeft % 60).padStart(2, '0');
+          timerEl.textContent = `${m}:${s}`;
+          if (secondsLeft > 0) secondsLeft--;
+        };
+        updateTimer();
+        window.pixTimerInterval = setInterval(updateTimer, 1000);
+      }
+
+      const checkStatus = async () => {
         try {
           const res = await window.resilientFetch(`/api/check-payment?paymentId=${paymentId}&storeId=${window.currentStoreId}&orderId=${orderId}`);
           if (!res.ok) return;
           const data = await res.json();
           if (data.isPaid || data.status === 'PAID') {
             clearInterval(pixCheckInterval);
+            clearTimeout(window.pixCancelTimeout);
+            clearInterval(window.pixTimerInterval);
             pixCheckInterval = null;
-            
+
+            // Atualiza status do pedido no Firestore para Pendente
+            try {
+              await setDoc(doc(db, COLLECTIONS.orders, orderId), {
+                status: 'Pendente',
+                paymentApproved: true,
+                isPaid: true,
+                paymentStatus: 'Aprovado'
+              }, { merge: true });
+            } catch(e) { console.warn('Erro ao atualizar status do pedido:', e); }
+
             showToast("✅ Pagamento Pix confirmado com sucesso!");
-            modal.classList.add('hidden');
-            
+            const modal = document.getElementById('modal-pix-online');
+            if (modal) modal.classList.add('hidden');
+
+            const succOrderIdEl = document.getElementById('succ-order-id');
+            if (succOrderIdEl) succOrderIdEl.textContent = orderId;
             const succModal = document.getElementById('success-modal');
-            if (succModal) {
-              succModal.classList.remove('hidden');
-            }
+            if (succModal) succModal.classList.remove('hidden');
           }
         } catch (e) {
           console.warn("Erro ao checar status de pagamento Pix:", e);
         }
       };
+
+      // Cancela pedido após 10 minutos sem pagamento
+      window.pixCancelTimeout = setTimeout(async () => {
+        clearInterval(pixCheckInterval);
+        clearInterval(window.pixTimerInterval);
+        pixCheckInterval = null;
+        const modal = document.getElementById('modal-pix-online');
+        if (modal) modal.classList.add('hidden');
+        // Marca pedido como cancelado no Firestore
+        try {
+          await setDoc(doc(db, COLLECTIONS.orders, orderId), {
+            status: 'Cancelado',
+            cancelReason: 'Pagamento Pix não realizado no prazo'
+          }, { merge: true });
+        } catch(e) { console.warn('Erro ao cancelar pedido:', e); }
+        showToast("⏱️ Tempo esgotado. O pedido foi cancelado por falta de pagamento.", true);
+      }, 600000); // 10 minutos
 
       pixCheckInterval = setInterval(checkStatus, 4000);
       checkStatus();
@@ -3643,7 +3681,7 @@
           total: total,
           deliveryPin: String(Math.floor(1000 + Math.random() * 9000)),
           deliveryProgress: 0,
-          status: "Pendente",
+          status: rawMethod === "PixOnline" ? "AguardandoPagamento" : "Pendente",
           storeId: window.currentStoreId
         };
 
@@ -3770,6 +3808,10 @@
       <div class="space-y-2">
         <h3 class="font-display font-black text-xl text-gray-800">Pagamento Pix</h3>
         <p class="text-[11px] text-gray-400 font-medium tracking-tight">Escaneie o código ou copie a chave abaixo</p>
+        <div class="flex items-center justify-center gap-2 mt-1">
+          <span class="text-[10px] text-orange-500 font-bold uppercase tracking-wider">⏱️ Expira em</span>
+          <span id="pix-timer" class="text-sm font-black text-orange-500 font-mono">10:00</span>
+        </div>
       </div>
       
       <div class="flex justify-center p-4 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner overflow-hidden">
@@ -3787,7 +3829,7 @@
       </div>
 
       <button onclick="document.getElementById('modal-pix-online').classList.add('hidden')" class="text-xs font-bold text-gray-400 hover:text-gray-600 transition-all font-sans">
-        Fechar e acompanhar depois
+        Minimizar — verificação continua em segundo plano
       </button>
     </div>
   </div>
