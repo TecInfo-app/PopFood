@@ -3401,6 +3401,8 @@
             showToast("✅ Pagamento Pix confirmado com sucesso!");
             const modal = document.getElementById('modal-pix-online');
             if (modal) modal.classList.add('hidden');
+            const floatBtn = document.getElementById('pix-floating-btn');
+            if (floatBtn) floatBtn.classList.add('hidden');
 
             const succOrderIdEl = document.getElementById('succ-order-id');
             if (succOrderIdEl) succOrderIdEl.textContent = orderId;
@@ -3689,26 +3691,27 @@
         const orderRef = doc(db, COLLECTIONS.orders, orderId);
         await setDoc(orderRef, orderDocument);
 
-        // Success redirection & setup
-        togglePaymentModal(false);
-        toggleCartModal(false);
-        
-        document.getElementById('succ-order-id').textContent = orderId;
-        // Save current Order reference variables inside LocalStorage for track redirections
+        // Salva referência do pedido no localStorage
         localStorage.setItem('popfood_last_order_id', orderId);
         localStorage.setItem('popfood_last_phone', phone);
-        
-        if (typeof window.setupBackgroundOrderStatusTracker === 'function') {
-          window.setupBackgroundOrderStatusTracker();
-        }
-        
-        // Clear local variables
-        shoppingCart = [];
-        localStorage.removeItem('popfood_cart');
-        appliedDiscountCoupon = null;
-        calculatedDistance = null;
-        calculatedDeliveryFee = 0;
 
+        // --- FLUXO PIX ONLINE ---
+        // Para Pix, NÃO mostra sucesso agora. Aguarda confirmação do pagamento.
+        if (rawMethod === 'PixOnline') {
+          togglePaymentModal(false);
+          toggleCartModal(false);
+          // Limpa carrinho mas mantém o modal do Pix aberto
+          shoppingCart = [];
+          localStorage.removeItem('popfood_cart');
+          appliedDiscountCoupon = null;
+          calculatedDistance = null;
+          calculatedDeliveryFee = 0;
+          // O modal do Pix e o polling já foram iniciados antes do setDoc
+          // O sucesso será mostrado pelo startPixPaymentChecking quando PAID
+          return;
+        }
+
+        // --- FLUXO CARTÃO ONLINE (checkout externo) ---
         if (window.pendingCheckoutUrl) {
           if (window.pendingPaymentId) {
             localStorage.setItem('popfood_pending_payment_id', window.pendingPaymentId);
@@ -3716,6 +3719,22 @@
           window.location.href = window.pendingCheckoutUrl;
           return;
         }
+
+        // --- FLUXO PAGAMENTO NA ENTREGA (dinheiro, cartão presencial) ---
+        togglePaymentModal(false);
+        toggleCartModal(false);
+
+        document.getElementById('succ-order-id').textContent = orderId;
+
+        if (typeof window.setupBackgroundOrderStatusTracker === 'function') {
+          window.setupBackgroundOrderStatusTracker();
+        }
+
+        shoppingCart = [];
+        localStorage.removeItem('popfood_cart');
+        appliedDiscountCoupon = null;
+        calculatedDistance = null;
+        calculatedDeliveryFee = 0;
 
         document.getElementById('success-modal').classList.remove('hidden');
       } catch (err) {
@@ -3725,6 +3744,13 @@
         btn.disabled = false;
         btn.textContent = "Confirmar";
       }
+    }
+
+    window.minimizarPixModal = function() {
+      document.getElementById('modal-pix-online').classList.add('hidden');
+      const floatingBtn = document.getElementById('pix-floating-btn');
+      if (floatingBtn) floatingBtn.classList.remove('hidden');
+      showToast("⏱️ Verificando pagamento em segundo plano...");
     }
 
     window.goToTracking = function() {
@@ -3828,10 +3854,18 @@
         <p class="text-[10px] text-gray-400 italic font-sans">O pedido será confirmado automaticamente após o pagamento.</p>
       </div>
 
-      <button onclick="document.getElementById('modal-pix-online').classList.add('hidden')" class="text-xs font-bold text-gray-400 hover:text-gray-600 transition-all font-sans">
+      <button onclick="minimizarPixModal()" class="text-xs font-bold text-gray-400 hover:text-gray-600 transition-all font-sans">
         Minimizar — verificação continua em segundo plano
       </button>
     </div>
   </div>
+  <!-- Botão flutuante para voltar ao Pix -->
+  <div id="pix-floating-btn" class="hidden fixed bottom-24 right-4 z-[90]">
+    <button onclick="document.getElementById('modal-pix-online').classList.remove('hidden'); document.getElementById('pix-floating-btn').classList.add('hidden');"
+      class="bg-green-500 text-white font-bold py-3 px-5 rounded-full shadow-2xl flex items-center gap-2 text-sm animate-bounce">
+      💳 Pagar Pix
+    </button>
+  </div>
+
 </body>
 </html>
