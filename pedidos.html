@@ -1277,8 +1277,77 @@
       btnCan.onclick = async () => {
         const can = await window.customConfirm("Deseja realmente cancelar este pedido de forma irreversível?");
         if (can) {
-          changeOrderStatus(order.id, 'Cancelado'); 
-          toggleDetailsModal(false); 
+          // Verificar se pedido foi pago via Pix Online para reembolso automático
+          if (order.paymentProvider === 'abacatepay' && order.isPaid && order.paymentId) {
+            const confirmRefund = await window.customConfirm(
+              "Este pedido foi pago via Pix. Deseja processar o reembolso automático para o cliente?"
+            );
+            if (confirmRefund) {
+              try {
+                const token = loadedRestaurantProfile?.abacatePayToken || '';
+                if (!token) throw new Error("Token AbacatePay não encontrado.");
+
+                const WORKER_URL = 'https://abacatepay-proxy.iranildo-jobs.workers.dev';
+                const refundRes = await fetch(`${WORKER_URL}/v2/transparents/refund`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({ id: order.paymentId })
+                });
+
+                const refundData = await refundRes.json();
+
+                if (refundData.success || refundRes.ok) {
+                  // Reembolso aprovado — cancelar pedido e registrar estorno
+                  await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
+                    status: 'Cancelado',
+                    cancelReason: 'Cancelado pelo restaurante',
+                    refunded: true,
+                    refundedAt: new Date().toISOString(),
+                    refundId: refundData.data?.id || ''
+                  });
+                  alert("✅ Pedido cancelado e reembolso enviado ao cliente com sucesso!");
+                } else {
+                  const errMsg = refundData.error || 'Erro desconhecido';
+                  const forceCancel = await window.customConfirm(
+                    `⚠️ Não foi possível processar o reembolso automático: ${errMsg}.
+
+Deseja cancelar o pedido mesmo assim e fazer o reembolso manualmente pelo painel do AbacatePay?`
+                  );
+                  if (forceCancel) {
+                    await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
+                      status: 'Cancelado',
+                      cancelReason: 'Cancelado pelo restaurante — reembolso manual pendente',
+                      refunded: false
+                    });
+                  }
+                }
+              } catch (err) {
+                console.error("Erro ao processar reembolso:", err);
+                const forceCancel = await window.customConfirm(
+                  `⚠️ Erro ao processar reembolso: ${err.message}.
+
+Deseja cancelar o pedido e fazer o reembolso manualmente?`
+                );
+                if (forceCancel) {
+                  changeOrderStatus(order.id, 'Cancelado');
+                }
+              }
+            } else {
+              // Cancelar sem reembolso
+              await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
+                status: 'Cancelado',
+                cancelReason: 'Cancelado pelo restaurante — sem reembolso',
+                refunded: false
+              });
+            }
+          } else {
+            // Pedido sem pagamento online — cancelar normalmente
+            changeOrderStatus(order.id, 'Cancelado');
+          }
+          toggleDetailsModal(false);
         }
       };
 
