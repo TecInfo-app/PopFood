@@ -302,7 +302,7 @@
         document.getElementById('real-dashboard-main').classList.remove('hidden');
         initDashboardData();
       } else {
-        alert("Código de Administrador incorreto! Tente 'admin', 'popfood' ou consulte com TI administrador.");
+        window.customAlert("Código de Administrador incorreto! Tente 'admin', 'popfood' ou consulte com TI administrador.");
       }
     }
 
@@ -500,7 +500,7 @@
         document.getElementById('stat-open-stores').textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
         console.log(`Instant status changed for store ${storeId} to ${nextStatus}`);
       } catch (err) {
-        alert("Erro ao alterar o status da loja: " + err.message);
+        window.customAlert("Erro ao alterar o status da loja: " + err.message);
       }
     }
 
@@ -509,28 +509,28 @@
       const newStatus = !currentStatus;
       
       const confirmMsg = newStatus ? 'Deseja BLOQUEAR o acesso desta loja?\n\nO cliente verá uma mensagem de suspensão e não poderá receber pedidos ou acessar o painel administrativo.' : 'Deseja DESBLOQUEAR e reativar o acesso desta loja livremente?';
-      if(!confirm(confirmMsg)) return;
+      if(!await window.customConfirm(confirmMsg)) return;
 
       try {
         await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
           suspended: newStatus
         });
-        alert(newStatus ? "Loja suspensa com sucesso." : "Loja liberada com sucesso.");
+        window.customAlert(newStatus ? "Loja suspensa com sucesso." : "Loja liberada com sucesso.");
         initDashboardData();
       } catch(err) {
-        alert("Erro ao alterar status de suspensão: " + err.message);
+        window.customAlert("Erro ao alterar status de suspensão: " + err.message);
       }
     }
 
     window.deleteStoreData = async function(storeId, storeName) {
       if(storeId === 'main') {
-        alert("A loja 'main' não pode ser excluída por questões de compatibilidade do sistema.");
+        window.customAlert("A loja 'main' não pode ser excluída por questões de compatibilidade do sistema.");
         return;
       }
       
-      const confirmText = prompt(`ATENÇÃO DESTRUTIVA EM CASCATA!\n\nTem certeza que quer EXCLUIR DEFINITIVAMENTE a loja "${storeName}" (${storeId})?\n\nISSO APAGARÁ: login/senha, produtos, categorias, adicionais/complementos, pedidos, clientes da loja e cupons de uma vez por todas.\n\nPara confirmar a exclusão de tudo, digite o ID da loja correspondente:`);
+      const confirmText = await window.customPrompt(`ATENÇÃO DESTRUTIVA EM CASCATA!\n\nTem certeza que quer EXCLUIR DEFINITIVAMENTE a loja "${storeName}" (${storeId})?\n\nISSO APAGARÁ: login/senha, produtos, categorias, adicionais/complementos, pedidos, clientes da loja e cupons de uma vez por todas.\n\nPara confirmar a exclusão de tudo, digite o ID da loja correspondente:`);
       if(confirmText !== storeId) {
-        if(confirmText !== null) alert("Cancelado: O ID digitado não confere.");
+        if(confirmText !== null && confirmText !== undefined) window.customAlert("Cancelado: O ID digitado não confere.");
         return;
       }
       
@@ -571,11 +571,11 @@
         await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId + "_banner1"));
         await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId + "_banner2"));
         
-        alert(`Sucesso total!\n\nA loja "${storeName}" e todas as suas configurações de login, senha, fotos de logomarca/banners e dados relacionados (${totalDeleted} sub-documentos deletados) foram completamente excluídos do banco de dados.`);
+        window.customAlert(`Sucesso total!\n\nA loja "${storeName}" e todas as suas configurações de login, senha, fotos de logomarca/banners e dados relacionados (${totalDeleted} sub-documentos deletados) foram completamente excluídos do banco de dados.`);
         initDashboardData();
       } catch (err) {
         console.error("Erro durante a exclusão em cascata: ", err);
-        alert("Erro ao excluir dados em cascata: " + err.message);
+        window.customAlert("Erro ao excluir dados em cascata: " + err.message);
       }
     }
 
@@ -589,7 +589,7 @@
       document.getElementById('active-override-banner').classList.add('flex');
       document.getElementById('override-store-name-lbl').textContent = storeName;
       
-      alert(`Fabuloso! Modo simulação ativo.\nRedirecionando para o Painel de Pedidos da loja "${storeName}".`);
+      window.customAlert(`Fabuloso! Modo simulação ativo.\nRedirecionando para o Painel de Pedidos da loja "${storeName}".`);
       window.location.href = "pedidos.html";
     }
 
@@ -598,7 +598,7 @@
       localStorage.removeItem('popfood_admin_store_override');
       localStorage.removeItem('popfood_admin_store_name_override');
       document.getElementById('active-override-banner').classList.add('hidden');
-      alert("Modo Simulação desativado! Retornando ao comportamento padrão.");
+      window.customAlert("Modo Simulação desativado! Retornando ao comportamento padrão.");
       window.location.reload();
     }
 
@@ -617,7 +617,7 @@
     // Copying URLs helper to facilitate testing
     window.copyToClipboard = function(text, successMsg) {
       navigator.clipboard.writeText(text).then(() => {
-        alert(successMsg);
+        window.customAlert(successMsg);
       }).catch(err => {
         // Fallback prompt
         window.prompt("Copie o link abaixo:", text);
@@ -636,14 +636,14 @@
       const adminPassword = document.getElementById('new-store-password').value.trim();
 
       if (!storeId) {
-        alert("Favor definir o ID Slug de identificação único!");
+        window.customAlert("Favor definir o ID Slug de identificação único!");
         return;
       }
 
       // Check if store ID already is used
       const existing = loadedStores.some(s => s.id === storeId);
       if (existing) {
-        alert("Este Identificador Único / Slug já está em uso! Escolha outro (ex: choppcia2).");
+        window.customAlert("Este Identificador Único / Slug já está em uso! Escolha outro (ex: choppcia2).");
         return;
       }
 
@@ -699,11 +699,11 @@
         }
 
         await setDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), initialProfile);
-        alert(`Sucesso magnífico!\nLoja "${name}" cadastrada com sucesso.\nID slug: ${storeId}\nLink do cliente: /cliente.html?store=${storeId}\n\nO cliente agora pode acessar o painel de pedidos usando:\nE-mail: ${adminEmail}\nSenha: ${adminPassword}`);
+        window.customAlert(`Sucesso magnífico!\nLoja "${name}" cadastrada com sucesso.\nID slug: ${storeId}\nLink do cliente: /cliente.html?store=${storeId}\n\nO cliente agora pode acessar o painel de pedidos usando:\nE-mail: ${adminEmail}\nSenha: ${adminPassword}`);
         toggleRegisterStoreModal(false);
         initDashboardData();
       } catch (err) {
-        alert("Erro no setup de cadastro da loja: " + err.message);
+        window.customAlert("Erro no setup de cadastro da loja: " + err.message);
       }
     }
 
@@ -720,7 +720,7 @@
     window.openEditStoreModal = function(storeId) {
       const store = loadedStores.find(s => s.id === storeId);
       if (!store) {
-        alert("Loja não encontrada!");
+        window.customAlert("Loja não encontrada!");
         return;
       }
       document.getElementById('edit-store-id').value = store.id;
@@ -752,11 +752,11 @@
           updatedAt: new Date().toISOString()
         }, { merge: true });
 
-        alert(`Cadastro da loja "${name}" atualizado com sucesso!`);
+        window.customAlert(`Cadastro da loja "${name}" atualizado com sucesso!`);
         toggleEditStoreModal(false);
         initDashboardData();
       } catch (err) {
-        alert("Erro ao editar dados da loja: " + err.message);
+        window.customAlert("Erro ao editar dados da loja: " + err.message);
       }
     }
   </script>

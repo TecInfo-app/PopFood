@@ -138,6 +138,45 @@ if (typeof window !== 'undefined') {
       };
     });
   };
+
+  window.customPrompt = function(message) {
+    return new Promise((resolve) => {
+      let modal = document.getElementById('custom-prompt-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'custom-prompt-modal';
+        modal.className = "fixed inset-0 bg-black/60 z-[1000] flex items-center justify-center p-4 backdrop-blur-xs font-sans";
+        modal.innerHTML = `
+          <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col space-y-4 text-center transform duration-200">
+            <h3 class="font-display font-semibold text-base text-gray-800">Atenção</h3>
+            <p id="custom-prompt-msg" class="text-sm text-gray-600 leading-relaxed select-text whitespace-pre-wrap text-left"></p>
+            <input type="text" id="custom-prompt-input" class="w-full mt-3 px-4 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 font-mono text-center" autocomplete="off">
+            <div class="flex gap-3 pt-2">
+              <button id="custom-prompt-cancel" class="flex-1 border border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold py-2.5 rounded-xl text-xs transition-all cursor-pointer">Cancelar</button>
+              <button id="custom-prompt-ok" class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition-all cursor-pointer">Confirmar</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+      
+      document.getElementById('custom-prompt-msg').textContent = message;
+      const input = document.getElementById('custom-prompt-input');
+      input.value = '';
+      modal.classList.remove('hidden');
+      setTimeout(() => input.focus(), 50);
+      
+      document.getElementById('custom-prompt-cancel').onclick = () => {
+        modal.classList.add('hidden');
+        resolve(null);
+      };
+      
+      document.getElementById('custom-prompt-ok').onclick = () => {
+        modal.classList.add('hidden');
+        resolve(input.value);
+      };
+    });
+  };
 }
 
 // --- EXPORTS ---
