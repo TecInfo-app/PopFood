@@ -958,11 +958,63 @@
         const oBtn = document.getElementById('nav-tab-orders');
         if (oBtn) {
           oBtn.href = "acompanhamento.html?store=" + window.currentStoreId;
+          // Se houver Pix pendente, interceptar clique e abrir modal
+          oBtn.addEventListener('click', function(e) {
+            const pixPendingStr = localStorage.getItem('popfood_pix_pending');
+            if (pixPendingStr) {
+              try {
+                const pixPending = JSON.parse(pixPendingStr);
+                if (pixPending.expiresAt && Date.now() < pixPending.expiresAt) {
+                  e.preventDefault();
+                  document.getElementById('modal-pix-online').classList.remove('hidden');
+                  const floatBtn = document.getElementById('pix-floating-btn');
+                  if (floatBtn) floatBtn.classList.add('hidden');
+                  showToast("💳 Conclua seu pagamento Pix!");
+                }
+              } catch(err) { localStorage.removeItem('popfood_pix_pending'); }
+            }
+          });
         }
       }
       if (typeof window.updateBottomNavUI === 'function') {
         window.updateBottomNavUI('home');
       }
+      // Restaurar Pix pendente ao recarregar a página
+      const pixPendingStr = localStorage.getItem('popfood_pix_pending');
+      if (pixPendingStr) {
+        try {
+          const pixPending = JSON.parse(pixPendingStr);
+          if (pixPending.expiresAt && Date.now() < pixPending.expiresAt) {
+            // Ainda dentro do prazo — restaurar modal
+            setTimeout(() => {
+              const qrContainer = document.getElementById('pix-qr-container');
+              if (qrContainer) {
+                if (pixPending.qrCodeImage) {
+                  let src = pixPending.qrCodeImage;
+                  if (!src.startsWith('data:')) src = 'data:image/png;base64,' + src;
+                  qrContainer.innerHTML = `<img src="${src}" class="w-full h-full object-contain" />`;
+                }
+              }
+              const copyBtn = document.getElementById('btn-copy-pix');
+              if (copyBtn && pixPending.qrCode) {
+                copyBtn.onclick = () => {
+                  navigator.clipboard.writeText(pixPending.qrCode);
+                  showToast("Código Pix copiado!");
+                };
+              }
+              // Ajustar timer restante
+              const secondsLeft = Math.floor((pixPending.expiresAt - Date.now()) / 1000);
+              document.getElementById('modal-pix-online').classList.remove('hidden');
+              window.startPixPaymentChecking(pixPending.paymentId, pixPending.orderId, secondsLeft);
+              showToast("⏳ Você tem um pagamento Pix pendente!");
+            }, 1500);
+          } else {
+            // Expirado — limpar
+            localStorage.removeItem('popfood_pix_pending');
+          }
+        } catch(e) { localStorage.removeItem('popfood_pix_pending'); }
+      }
+
       await loadProfileAndBanners();
       setupCatalogListeners();
       refreshCartOverview();
@@ -3359,12 +3411,12 @@
     }
 
     let pixCheckInterval = null;
-    window.startPixPaymentChecking = function(paymentId, orderId) {
+    window.startPixPaymentChecking = function(paymentId, orderId, initialSeconds) {
       if (pixCheckInterval) clearInterval(pixCheckInterval);
       if (window.pixCancelTimeout) clearTimeout(window.pixCancelTimeout);
 
       // Atualiza o temporizador no modal
-      let secondsLeft = 600; // 10 minutos
+      let secondsLeft = initialSeconds || 600; // 10 minutos ou restante
       const timerEl = document.getElementById('pix-timer');
       if (timerEl) {
         const updateTimer = () => {
@@ -3398,6 +3450,7 @@
               }, { merge: true });
             } catch(e) { console.warn('Erro ao atualizar status do pedido:', e); }
 
+            localStorage.removeItem('popfood_pix_pending');
             showToast("✅ Pagamento Pix confirmado com sucesso!");
             const modal = document.getElementById('modal-pix-online');
             if (modal) modal.classList.add('hidden');
@@ -3428,6 +3481,7 @@
             cancelReason: 'Pagamento Pix não realizado no prazo'
           }, { merge: true });
         } catch(e) { console.warn('Erro ao cancelar pedido:', e); }
+        localStorage.removeItem('popfood_pix_pending');
         showToast("⏱️ Tempo esgotado. O pedido foi cancelado por falta de pagamento.", true);
       }, 600000); // 10 minutos
 
@@ -3547,6 +3601,14 @@
                   navigator.clipboard.writeText(paymentResponse.qrCode);
                   showToast("Código Pix copiado!");
                 };
+                // Salvar estado do Pix pendente no localStorage para restaurar ao recarregar
+                localStorage.setItem('popfood_pix_pending', JSON.stringify({
+                  paymentId: paymentResponse.paymentId,
+                  orderId: orderId,
+                  qrCode: paymentResponse.qrCode,
+                  qrCodeImage: paymentResponse.qrCodeImage || '',
+                  expiresAt: Date.now() + 600000 // 10 minutos
+                }));
                 document.getElementById('modal-pix-online').classList.remove('hidden');
                 window.startPixPaymentChecking(paymentResponse.paymentId, orderId);
               } else if (paymentResponse.method === 'checkout') {
