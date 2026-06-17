@@ -199,6 +199,7 @@ export {
   where,
   orderBy,
   onSnapshot,
+  Timestamp,
 
   // Auth APIs
   signInWithEmailAndPassword,

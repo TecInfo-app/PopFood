@@ -485,21 +485,22 @@
 
         loadedStores = allStores;
         
-        // 2. Fetch overall metrics from orders (Global collection)
-        const ordersSnap = await getDocs(collection(db, COLLECTIONS.orders));
-        let totalOrdersCount = ordersSnap.size;
+        // 2. Fetch overall metrics (Be resilient to permissions errors)
+        try {
+          const ordersSnap = await getDocs(collection(db, COLLECTIONS.orders));
+          document.getElementById('stat-total-orders').textContent = ordersSnap.size;
+        } catch (e) { console.warn("Orders stats permission denied"); }
 
-        // 3. Fetch overall clients
-        const clientsSnap = await getDocs(collection(db, COLLECTIONS.clients));
-        let totalClientsCount = clientsSnap.size;
+        try {
+          const clientsSnap = await getDocs(collection(db, COLLECTIONS.clients));
+          document.getElementById('stat-total-clients').textContent = clientsSnap.size;
+        } catch (e) { console.warn("Clients stats permission denied"); }
 
-        // Calculate and paint stats
+        // Calculate and paint base stats
         document.getElementById('stat-total-stores').textContent = loadedStores.length;
         document.getElementById('stat-open-stores').textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
-        document.getElementById('stat-total-orders').textContent = totalOrdersCount;
-        document.getElementById('stat-total-clients').textContent = totalClientsCount;
 
-        // 4. Load System Billing Settings (Resilient to permissions errors)
+        // 3. Load System Billing Settings (Resilient to permissions errors)
         try {
           const billingSnap = await getDoc(doc(db, COLLECTIONS.appSettings, 'billing'));
           if (billingSnap.exists()) {
@@ -514,7 +515,8 @@
 
         renderStoresListUI();
       } catch (err) {
-        console.error("Failure fetching general dashboard telemetry: ", err);
+        console.error("Critical failure during console load:", err);
+        renderStoresListUI();
       }
     }
 
