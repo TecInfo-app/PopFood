@@ -202,6 +202,7 @@
               <option value="default">🔔 Bell Padrão</option>
               <option value="modern">🎵 Digital Sip</option>
               <option value="urgent">📢 Alerta Urgente</option>
+              <option value="old_phone">☎️ Telefone Antigo</option>
             </select>
             <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]">▼</div>
           </div>
@@ -1586,6 +1587,18 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
           playTone(400, 400, 0.4, 0.5, 'square');
           playTone(500, 800, 0.4, 0.5, 'square');
           playTone(400, 1200, 0.4, 0.5, 'square');
+        } else if (type === 'old_phone') {
+          // Old Telephone Ring (Rapid pulse of dual tones)
+          for (let i = 0; i < 20; i++) {
+            const d = i * 60;
+            if (i < 10) { // First "ring"
+              playTone(440, d, 0.1, 0.3, 'sine');
+              playTone(480, d + 10, 0.1, 0.3, 'sine');
+            } else if (i > 12) { // Second "ring" after a short pause
+              playTone(440, d + 200, 0.1, 0.3, 'sine');
+              playTone(480, d + 210, 0.1, 0.3, 'sine');
+            }
+          }
         }
       } catch (err) {
         console.warn("Native oscillator compilation fail: ", err);
