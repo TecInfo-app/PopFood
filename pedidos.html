@@ -419,46 +419,48 @@
   <!-- MODAL: CONFIGURAÇÃO DE IMPRESSORA -->
   <div id="printer-settings-modal" class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 hidden backdrop-blur-xs">
     <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col space-y-4">
-      <h3 class="font-bold text-gray-800">⚙️ Servidor Local de Impressão</h3>
-      <p class="text-xs text-gray-500">Configure o endereço IP ou URL do seu servidor local para impressão direta (bypassing nativo).</p>
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-gray-800">⚙️ Impressoras Locais</h3>
+        <button onclick="togglePrinterSettingsModal(false)" class="text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <p class="text-[10px] text-gray-500">Configure múltiplos destinos de impressão para automatizar seu fluxo de trabalho.</p>
       
-      <div class="space-y-1">
-        <label class="text-[10px] font-bold text-gray-400 uppercase">URL do Servidor</label>
+      <!-- List of Configured Printers -->
+      <div id="printers-list-container" class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+        <!-- List will be rendered here -->
+      </div>
+
+      <div class="pt-3 border-t border-gray-100 space-y-3">
+        <p class="text-[10px] font-bold text-gray-400 uppercase">Adicionar Nova</p>
+        
+        <div class="space-y-2">
+          <input type="text" id="printer-server-url" class="w-full text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none" placeholder="URL: http://localhost:8080">
+          <div class="flex gap-2">
+            <select id="printer-select" class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white">
+              <option value="">Aguardando URL...</option>
+            </select>
+            <button onclick="fetchPrinters()" class="bg-slate-100 hover:bg-slate-200 px-3 rounded-xl text-[10px] font-bold text-slate-700 transition-colors uppercase">Listar</button>
+          </div>
+        </div>
+
         <div class="flex gap-2">
-            <input type="text" id="printer-server-url" class="flex-grow text-xs p-3 border border-gray-200 rounded-xl focus:outline-none" placeholder="http://localhost:8080">
-            <button onclick="fetchPrinters()" class="bg-gray-100 hover:bg-gray-200 px-3 rounded-xl text-xs font-bold text-gray-700">Testar/Listar</button>
+          <select id="printer-width" class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white">
+            <option value="58">58mm (Padrão)</option>
+            <option value="80">80mm (Grande)</option>
+          </select>
+          <button onclick="addNewPrinterToList()" class="bg-brand-primary hover:bg-orange-600 text-white px-4 rounded-xl text-xs font-bold transition-all shadow-sm">
+            + ADICIONAR
+          </button>
         </div>
       </div>
 
-      <div class="space-y-1">
-          <label class="text-[10px] font-bold text-gray-400 uppercase">Impressora Selecionada</label>
-          <select id="printer-select" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:outline-none">
-              <option value="">Selecione a impressora...</option>
-          </select>
+      <div class="pt-2">
+        <button onclick="printTestPage()" class="w-full bg-slate-50 border border-slate-100 text-slate-500 py-2.5 rounded-xl font-bold text-[10px] hover:bg-slate-100 transition-colors uppercase tracking-wider">
+          🧪 Imprimir Página de Teste (Piloto)
+        </button>
       </div>
-
-      <div class="space-y-1">
-          <label class="text-[10px] font-bold text-gray-400 uppercase">Tamanho do Papel</label>
-          <select id="printer-width" onchange="updatePrintPreview()" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:outline-none">
-              <option value="58">Largura de 58mm (Padrão Pequeno)</option>
-              <option value="80">Largura de 80mm (Padrão Grande)</option>
-          </select>
-      </div>
-
-      <div class="space-y-1">
-          <div class="flex justify-between items-center">
-            <label class="text-[10px] font-bold text-gray-400 uppercase">Pré-visualização</label>
-            <button onclick="printTestPage()" class="text-[10px] font-bold text-brand-primary bg-orange-50 px-2 py-1 rounded hover:bg-orange-100">Imprimir Teste</button>
-          </div>
-          <div class="w-full border border-gray-200 bg-gray-50 flex justify-center py-4 rounded-xl overflow-hidden h-40 overflow-y-auto">
-            <div id="print-preview-container" class="shadow-sm">
-                <!-- Preview is injected here -->
-            </div>
-          </div>
-      </div>
-      
-      <button onclick="savePrinterSettings()" class="w-full bg-brand-primary text-white py-3 rounded-xl font-bold text-xs">Salvar Configuração</button>
-      <button onclick="togglePrinterSettingsModal(false)" class="w-full text-gray-400 py-1 text-xs">Cancelar</button>
     </div>
   </div>
 
@@ -516,9 +518,29 @@
     let autoPrintSetting = localStorage.getItem('popfood_autoprint') === 'true';
     let continuousBuzzerSetting = localStorage.getItem('popfood_continuous_buzzer') !== 'false';
     let autoAcceptSetting = localStorage.getItem('popfood_auto_accept') === 'true';
-    let localPrinterServerUrl = localStorage.getItem('popfood_printer_url') || '';
-    let selectedPrinterName = localStorage.getItem('popfood_printer_name') || '';
-    let localPrinterWidth = localStorage.getItem('popfood_printer_width') || '58';
+    
+    // Support for multiple printers
+    let localPrinters = [];
+    try {
+      localPrinters = JSON.parse(localStorage.getItem('popfood_printers_list') || '[]');
+    } catch(e) {
+      localPrinters = [];
+    }
+
+    // Migration for old single printer settings
+    const oldUrl = localStorage.getItem('popfood_printer_url');
+    if (oldUrl && localPrinters.length === 0) {
+      localPrinters.push({
+        url: oldUrl,
+        name: localStorage.getItem('popfood_printer_name') || '',
+        width: localStorage.getItem('popfood_printer_width') || '58'
+      });
+      localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
+      localStorage.removeItem('popfood_printer_url');
+      localStorage.removeItem('popfood_printer_name');
+      localStorage.removeItem('popfood_printer_width');
+    }
+
     let currentLayout = localStorage.getItem('popfood_orders_layout') || 'list';
     let selectedSound = localStorage.getItem('popfood_notification_sound') || 'default';
     let loadedRestaurantProfile = null;
@@ -582,11 +604,9 @@
         if (typeof updateNotificationIndicator === 'function') {
           updateNotificationIndicator();
         }
-        document.getElementById('printer-server-url').value = localPrinterServerUrl;
-        document.getElementById('printer-width').value = localPrinterWidth;
-        
-        // Load saved printer if url exists
-        if (localPrinterServerUrl) fetchPrinters(false);
+        const lastUrl = localPrinters.length > 0 ? localPrinters[localPrinters.length - 1].url : "";
+        document.getElementById('printer-server-url').value = lastUrl;
+        if (lastUrl) fetchPrinters(false);
 
         // Load restaurant settings realtime
         try {
@@ -644,10 +664,72 @@
 
     // Printer settings toggler
     window.togglePrinterSettingsModal = function(show) {
-      document.getElementById('printer-settings-modal').classList.toggle('hidden', !show);
-      if(show) updatePrintPreview();
+      const modal = document.getElementById('printer-settings-modal');
+      if (show) {
+        modal.classList.remove('hidden');
+        renderPrintersList();
+      } else {
+        modal.classList.add('hidden');
+      }
     }
-    
+
+    function renderPrintersList() {
+      const container = document.getElementById('printers-list-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (localPrinters.length === 0) {
+        container.innerHTML = '<div class="text-center py-6 border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 text-[10px] font-medium">Nenhuma impressora configurada.</div>';
+        return;
+      }
+
+      localPrinters.forEach((printer, index) => {
+        const item = document.createElement('div');
+        item.className = 'bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between gap-3 group hover:border-orange-200 transition-colors';
+        item.innerHTML = `
+          <div class="flex-grow min-w-0">
+            <div class="flex items-center gap-2">
+              <p class="text-[11px] font-bold text-slate-800 truncate">${printer.name || 'Impressora'}</p>
+              <span class="text-[8px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">${printer.width}mm</span>
+            </div>
+            <p class="text-[9px] text-slate-400 truncate mt-0.5">${printer.url}</p>
+          </div>
+          <button onclick="removePrinter(${index})" class="text-slate-300 hover:text-red-500 transition-colors cursor-pointer p-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    window.removePrinter = function(index) {
+      if(!confirm("Deseja remover esta impressora?")) return;
+      localPrinters.splice(index, 1);
+      localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
+      renderPrintersList();
+    }
+
+    window.addNewPrinterToList = function() {
+      const url = document.getElementById('printer-server-url').value.trim();
+      const name = document.getElementById('printer-select').value;
+      const width = document.getElementById('printer-width').value;
+
+      if (!url) { alert("Por favor, informe a URL do servidor."); return; }
+      if (!name) { alert("Por favor, selecione uma impressora da lista."); return; }
+
+      // Check for duplicates
+      const isDup = localPrinters.some(p => p.url === url && p.name === name);
+      if (isDup) { alert("Esta impressora já foi adicionada."); return; }
+
+      localPrinters.push({ url, name, width });
+      localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
+      
+      // Reset form but keep URL for convenience maybe
+      document.getElementById('printer-select').value = "";
+      renderPrintersList();
+      alert("Impressora adicionada com sucesso!");
+    }
+
     window.fetchPrinters = async function(showAlert = true) {
         const url = document.getElementById('printer-server-url').value.trim();
         if (!url) { alert("Informe a URL do servidor primeiro."); return; }
@@ -663,7 +745,6 @@
                 const opt = document.createElement('option');
                 opt.value = p;
                 opt.textContent = p;
-                if (p === selectedPrinterName) opt.selected = true;
                 select.appendChild(opt);
             });
             if (showAlert) alert("Impressoras listadas com sucesso!");
@@ -673,109 +754,38 @@
         }
     }
     
-    window.updatePrintPreview = function() {
-      const container = document.getElementById('print-preview-container');
-      const printerWidth = document.getElementById('printer-width').value || '58';
-      
-      const mockOrder = {
-        id: "TST123",
-        items: [
-           { quantity: 1, name: "filetino leonardo", totalItemPrice: 90 },
-        ],
-        subtotal: 90,
-        deliveryFee: 5,
-        desconto: 0,
-        total: 95,
-        paymentMethod: "Pix",
-        customer: { name: "Cliente Teste", phone: "0000", address: "Rua Exemplo, 123", type: "delivery" }
-      };
-
-      const storeName = loadedRestaurantProfile ? loadedRestaurantProfile.name : "PopFood Delivery";
-      const storePhone = loadedRestaurantProfile ? loadedRestaurantProfile.phone : "WhatsApp";
-      const storeAddress = loadedRestaurantProfile ? loadedRestaurantProfile.address : "";
-      
-      const cols = printerWidth === '58' ? 30 : 44;
-      function formatLine(leftText, rightText) {
-        let spaceCount = Math.max(1, cols - leftText.length - rightText.length);
-        if (leftText.length + rightText.length > cols) {
-           const maxLeftLen = cols - 1 - rightText.length;
-           leftText = leftText.substring(0, maxLeftLen);
-           spaceCount = 1;
-        }
-        return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
-      }
-
-      let textReceipt = "";
-      textReceipt += `================================\n`;
-      textReceipt += `          ${storeName.toUpperCase()}\n`;
-      if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
-      textReceipt += `================================\n`;
-      textReceipt += `PEDIDO: #${mockOrder.id}\n`;
-      textReceipt += `================================\n`;
-      textReceipt += `CLIENTE: ${mockOrder.customer.name.toUpperCase()}\n`;
-      textReceipt += `ENTREGA: ${mockOrder.customer.type === 'pickup' ? 'RETIRADA' : 'DELIVERY'}\n`;
-      textReceipt += `--------------------------------\n`;
-      textReceipt += `ITENS DO PEDIDO:\n`;
-      
-      mockOrder.items.forEach(item => {
-        const lineTotalStr = ((item.totalItemPrice || 0) * item.quantity).toFixed(2).replace('.', ',');
-        textReceipt += formatLine(`${item.quantity}x ${item.name.toLowerCase()}`, `R$ ${lineTotalStr}`);
-      });
-      
-      textReceipt += `--------------------------------\n`;
-      textReceipt += formatLine(`subtotal`, `R$ ${mockOrder.subtotal.toFixed(2).replace('.', ',')}`);
-      if (mockOrder.desconto) {
-        textReceipt += formatLine(`desconto`, `- R$ ${mockOrder.desconto.toFixed(2).replace('.', ',')}`);
-      }
-      textReceipt += formatLine(`taxa de entrega`, `R$ ${mockOrder.deliveryFee.toFixed(2).replace('.', ',')}`);
-      textReceipt += formatLine(`total`, `R$ ${mockOrder.total.toFixed(2).replace('.', ',')}`);
-      textReceipt += `================================\n`;
-      textReceipt += `PAGAMENTO: ${mockOrder.paymentMethod.toUpperCase()}\n`;
-
-      const fontSize = printerWidth === '58' ? '12px' : '14px';
-
-      container.innerHTML = `
-        <div style="width: 100%; overflow-x: auto;">
-          <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0; background: white; white-space: pre;">${textReceipt}</pre>
-        </div>
-      `;
-      
-      // Store current text receipt so test page can use it
-      window.__lastTestReceipt = textReceipt;
-      window.__lastTestHtml = container.innerHTML;
-    };
 
     window.printTestPage = function() {
        const url = document.getElementById('printer-server-url').value.trim();
+       const name = document.getElementById('printer-select').value;
+       const width = document.getElementById('printer-width').value || '58';
+
        if (!url) { alert("Informe a URL do servidor primeiro."); return; }
+       if (!name) { alert("Selecione uma impressora da lista primeiro."); return; }
        
-       const w = document.getElementById('printer-width').value || '58';
-       const temp = localPrinterWidth;
-       localPrinterWidth = w;
-       
+       const mockOrder = {
+          id: "TESTE",
+          customer: { name: "CLIENTE TESTE", phone: "00000000", type: "delivery", address: "RUA DE TESTE, 123" },
+          items: [{ quantity: 1, name: "item de teste", price: 10, totalItemPrice: 10 }],
+          paymentMethod: "Dinheiro", subtotal: 10, total: 10, deliveryFee: 0, desconto: 0, createdAt: new Date()
+       };
+
+       // Specialized test call
+       const parent = document.getElementById('receipt-print-layout');
+       // ... existing logic in triggerThermalComandaPrint would be duplicated or I can just temp push to localPrinters
+       const temp = [...localPrinters];
+       localPrinters = [{ url, name, width }];
        try {
-           const mockOrder = {
-             id: "TST123",
-             customer: { name: "Cliente Teste", phone: "0000", type: "delivery", address: "Rua Exemplo" },
-             items: [{ quantity: 1, name: "filetino leonardo testes", price: 90, totalItemPrice: 90 }],
-             paymentMethod: "Pix", subtotal: 90, total: 95, deliveryFee: 5, desconto: 0, createdAt: new Date()
-           };
-           window.triggerThermalComandaPrint(mockOrder);
-           alert("Impressão de teste enviada! O recibo foi enviado na mesma formatação de um pedido real.");
+         window.triggerThermalComandaPrint(mockOrder);
+         alert("Impressão de teste enviada para " + name);
        } finally {
-           localPrinterWidth = temp;
+         localPrinters = temp;
        }
     };
     
     window.savePrinterSettings = function() {
-      localPrinterServerUrl = document.getElementById('printer-server-url').value.trim();
-      selectedPrinterName = document.getElementById('printer-select').value;
-      localPrinterWidth = document.getElementById('printer-width').value;
-      localStorage.setItem('popfood_printer_url', localPrinterServerUrl);
-      localStorage.setItem('popfood_printer_name', selectedPrinterName);
-      localStorage.setItem('popfood_printer_width', localPrinterWidth);
+      // Logic handled by individual add/remove actions now
       window.togglePrinterSettingsModal(false);
-      alert("Configuração de impressora salva com sucesso!");
     }
 
     window.setLayout = function(layout) {
@@ -1728,26 +1738,26 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
         if (printTriggered) return;
         printTriggered = true;
 
-        if (localPrinterServerUrl) {
-          // Direct POST to local print service, sending multiple common layout keys
-          fetch(`${localPrinterServerUrl.replace(/\/$/, '')}/imprimir`, {
-            method: 'POST',
-            body: JSON.stringify({ 
-                impressora: selectedPrinterName,
-                largura: localPrinterWidth,
-                html: parent.innerHTML,
-                texto: textReceipt,
-                conteudo: textReceipt,
-                conteudo_html: parent.innerHTML,
-                content: textReceipt,
-                text: textReceipt,
-                // Passing order data as expected by server structure
-                ...order
-            }),
-            headers: { 'Content-Type': 'application/json' }
-          }).catch(err => {
-            console.error("Local printer call failed: ", err);
-            window.print(); // Fallback to browser print if local server call fails
+        if (localPrinters && localPrinters.length > 0) {
+          // Print to all configured printers
+          localPrinters.forEach(printer => {
+            fetch(`${printer.url.replace(/\/$/, '')}/imprimir`, {
+              method: 'POST',
+              body: JSON.stringify({ 
+                  impressora: printer.name,
+                  largura: printer.width,
+                  html: parent.innerHTML,
+                  texto: textReceipt,
+                  conteudo: textReceipt,
+                  conteudo_html: parent.innerHTML,
+                  content: textReceipt,
+                  text: textReceipt,
+                  ...order
+              }),
+              headers: { 'Content-Type': 'application/json' }
+            }).catch(err => {
+              console.error(`Local printer (${printer.name}) call failed: `, err);
+            });
           });
         } else {
           window.print();
