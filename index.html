@@ -779,6 +779,13 @@ storeId: window.currentStoreId
         const qSnap = await getDocs(q);
         if (!qSnap.empty) {
           const matchedStoreDoc = qSnap.docs[0];
+          const storeData = matchedStoreDoc.data();
+          
+          if (storeData.isStoreOwner === false || storeData.isStoreOwner === "false") {
+            alert("Acesso Negado: Você não tem permissão de 'Dono de Loja'. Entre em contato com o administrador.");
+            return;
+          }
+
           const matchedStoreId = matchedStoreDoc.id;
           localStorage.setItem('popfood_custom_store_id', matchedStoreId);
           localStorage.setItem('popfood_custom_store_email', mail);

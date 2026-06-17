@@ -85,6 +85,9 @@
       </div>
 
       <div class="flex items-center gap-3 flex-wrap">
+        <button onclick="toggleUsersModal(true)" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all">
+          👥 Usuários
+        </button>
         <button onclick="toggleRegisterStoreModal(true)" class="bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all">
           ➕ Cadastrar Nova Loja
         </button>
@@ -181,6 +184,22 @@
     </section>
 
   </main>
+
+  <!-- MODAL: USERS MANAGEMENT -->
+  <div id="users-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
+    <div class="bg-white rounded-2xl w-full max-w-3xl p-6 shadow-2xl flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">👥</span>
+          <h3 class="font-display font-extrabold text-gray-800 text-sm">Gestão de Permissões de Usuários</h3>
+        </div>
+        <button onclick="toggleUsersModal(false)" class="text-gray-400 hover:text-gray-600 font-bold text-sm">✕</button>
+      </div>
+      <div class="overflow-y-auto pr-1 flex-grow font-sans space-y-3" id="users-list-container">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: REGISTER NEW STORE -->
   <div id="register-store-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
@@ -510,9 +529,6 @@
             <button onclick="toggleStoreSuspension('${store.id}', ${isSuspended})" class="w-full mt-2 font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer ${isSuspended ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}">
               ${isSuspended ? '🟢 Liberar Acesso' : '⛔ Suspender Loja (Inadimplência)'}
             </button>
-            <button onclick="toggleStoreAdminRights('${store.id}', ${store.isSuperAdmin === true || store.isSuperAdmin === 'true'})" class="w-full mt-1.5 font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer ${store.isSuperAdmin === true || store.isSuperAdmin === 'true' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-300' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'}">
-              ${store.isSuperAdmin === true || store.isSuperAdmin === 'true' ? '👑 Revogar Privilégio Super-Admin' : '👑 Conceder Acesso Painel Geral'}
-            </button>
             ` : ''}
           </div>
         `;
@@ -557,24 +573,79 @@
       }
     }
 
-    window.toggleStoreAdminRights = async function(storeId, currentAdminStatus) {
-      if(storeId === 'main') return;
-      const newStatus = !currentAdminStatus;
+    window.toggleUsersModal = function(show) {
+      const modal = document.getElementById('users-modal');
+      if(show) {
+        modal.classList.remove('hidden');
+        renderUsersList();
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function renderUsersList() {
+      const container = document.getElementById('users-list-container');
+      container.innerHTML = '';
       
-      const confirmMsg = newStatus 
-        ? "Tem certeza que deseja CONCEDER privilégios de Administrador Geral para este usuário?\n\nEle(a) terá acesso ao Console Geral e poderá visualizar todas as lojas." 
-        : "Tem certeza que deseja REVOGAR os privilégios de Administrador Geral deste usuário?";
+      if(loadedStores.length === 0) {
+        container.innerHTML = `<div class="text-center text-gray-400 py-8">Nenhum usuário encontrado.</div>`;
+        return;
+      }
 
-      if(!await window.customConfirm(confirmMsg)) return;
+      loadedStores.forEach(store => {
+        const email = store.adminEmail || 'Sem email cadastrado';
+        const isSuperAdmin = store.isSuperAdmin === true || store.isSuperAdmin === 'true';
+        const isStoreOwner = store.isStoreOwner !== false && store.isStoreOwner !== 'false';
 
+        // O dono do app sempre tem tudo.
+        const isAbsoluteOwner = email === 'iranildo@popfood.com';
+
+        const div = document.createElement('div');
+        div.className = "flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-gray-100 rounded-xl bg-gray-50 gap-3 sm:gap-0";
+        div.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0">
+              👤
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-gray-800">${email} ${isAbsoluteOwner ? '<span class="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] ml-1">Dono</span>' : ''}</h4>
+              <p class="text-[10px] text-gray-400">Loja vinculada: ${store.name || 'Sem nome'}</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-4">
+            <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold ${isSuperAdmin ? 'text-amber-600' : 'text-gray-400'}">
+              <input type="checkbox" onchange="updateUserRole('${store.id}', 'isSuperAdmin', this.checked)" ${isSuperAdmin ? 'checked' : ''} ${isAbsoluteOwner ? 'disabled' : ''} class="w-4 h-4 text-amber-500 rounded focus:ring-amber-500 border-gray-300">
+              Super-Admin
+            </label>
+            <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold ${isStoreOwner ? 'text-blue-600' : 'text-gray-400'}">
+              <input type="checkbox" onchange="updateUserRole('${store.id}', 'isStoreOwner', this.checked)" ${isStoreOwner ? 'checked' : ''} ${isAbsoluteOwner ? 'disabled' : ''} class="w-4 h-4 text-blue-500 rounded focus:ring-blue-500 border-gray-300">
+              Dono de Loja
+            </label>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    window.updateUserRole = async function(storeId, roleField, newValue) {
+      if(!await window.customConfirm(`Deseja alterar esta permissão de acesso?`)) {
+        renderUsersList(); // revert UI toggle if cancelled
+        return;
+      }
       try {
-        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
-          isSuperAdmin: newStatus
-        });
-        window.customAlert(newStatus ? "Privilégio de Super Admin CONCEDIDO com sucesso." : "Privilégio de Super Admin REVOGADO com sucesso.");
-        initDashboardData();
+        const payload = {};
+        payload[roleField] = newValue;
+        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), payload);
+        
+        // update local cache to keep UI fresh
+        const store = loadedStores.find(s => s.id === storeId);
+        if(store) store[roleField] = newValue;
+        
+        renderUsersList(); 
+        initDashboardData(); // sync general dashboard lists if we changed superAdmin logic
       } catch(err) {
-        window.customAlert("Erro ao alterar privilégios: " + err.message);
+        window.customAlert("Erro ao atualizar: " + err.message);
+        renderUsersList();
       }
     }
 
