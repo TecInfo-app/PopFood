@@ -317,16 +317,30 @@
         const userCredential = await signInWithEmailAndPassword(auth, email, code);
         const loggedEmail = userCredential.user.email.toLowerCase();
 
-        // 🚨 LISTA DE E-MAILS DE SUPER-ADMINISTRADORES AUTORIZADOS 🚨
-        const superAdmins = [
-          'ciachopp2016@gmail.com',
-          // você pode adicionar outros emails aqui, ex: 'meusocio@gmail.com'
-        ];
+        let isAuthorized = false;
 
-        if (!superAdmins.includes(loggedEmail)) {
-          // Se o login for de uma loja comum, deslogamos imediatamente e bloqueamos.
+        // 🚨 DONO DO APP ABSOLUTO 🚨
+        if (loggedEmail === 'iranildo@popfood.com') {
+          isAuthorized = true;
+        } else {
+          // Verifica se a loja pertencente a este email tem permissão concedida
+          const profilesRef = collection(db, COLLECTIONS.restaurantProfile);
+          const q = query(profilesRef, where("adminEmail", "==", loggedEmail));
+          const qSnap = await getDocs(q);
+          
+          if (!qSnap.empty) {
+            qSnap.forEach(doc => {
+              if (doc.data().isSuperAdmin === true || doc.data().isSuperAdmin === 'true') {
+                isAuthorized = true;
+              }
+            });
+          }
+        }
+
+        if (!isAuthorized) {
+          // Se o login for de uma loja comum que não ganhou acesso
           await signOut(auth);
-          window.customAlert("Acesso Negado!\n\nEste e-mail pertence a um lojista e não tem permissões globais de Administrador.\nApenas os donos do aplicativo podem acessar este painel.");
+          window.customAlert("Acesso Negado!\n\nEste e-mail não tem permissões globais de Super Administrador.\nO Dono do App precisa conceder permissão para o seu E-mail no Painel Geral.");
           return;
         }
 
@@ -496,6 +510,9 @@
             <button onclick="toggleStoreSuspension('${store.id}', ${isSuspended})" class="w-full mt-2 font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer ${isSuspended ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}">
               ${isSuspended ? '🟢 Liberar Acesso' : '⛔ Suspender Loja (Inadimplência)'}
             </button>
+            <button onclick="toggleStoreAdminRights('${store.id}', ${store.isSuperAdmin === true || store.isSuperAdmin === 'true'})" class="w-full mt-1.5 font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer ${store.isSuperAdmin === true || store.isSuperAdmin === 'true' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 border border-amber-300' : 'bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200'}">
+              ${store.isSuperAdmin === true || store.isSuperAdmin === 'true' ? '👑 Revogar Privilégio Super-Admin' : '👑 Conceder Acesso Painel Geral'}
+            </button>
             ` : ''}
           </div>
         `;
@@ -537,6 +554,27 @@
         console.log(`Instant status changed for store ${storeId} to ${nextStatus}`);
       } catch (err) {
         window.customAlert("Erro ao alterar o status da loja: " + err.message);
+      }
+    }
+
+    window.toggleStoreAdminRights = async function(storeId, currentAdminStatus) {
+      if(storeId === 'main') return;
+      const newStatus = !currentAdminStatus;
+      
+      const confirmMsg = newStatus 
+        ? "Tem certeza que deseja CONCEDER privilégios de Administrador Geral para este usuário?\n\nEle(a) terá acesso ao Console Geral e poderá visualizar todas as lojas." 
+        : "Tem certeza que deseja REVOGAR os privilégios de Administrador Geral deste usuário?";
+
+      if(!await window.customConfirm(confirmMsg)) return;
+
+      try {
+        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
+          isSuperAdmin: newStatus
+        });
+        window.customAlert(newStatus ? "Privilégio de Super Admin CONCEDIDO com sucesso." : "Privilégio de Super Admin REVOGADO com sucesso.");
+        initDashboardData();
+      } catch(err) {
+        window.customAlert("Erro ao alterar privilégios: " + err.message);
       }
     }
 
