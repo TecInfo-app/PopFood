@@ -196,6 +196,16 @@
           <button onclick="requestDesktopNotificationPermission()" id="btn-desktop-notifications" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer" title="Ativar Alertas no Computador">
             <span id="lbl-notification-indicator">🔔 Notificações: Inativo</span>
           </button>
+          <!-- Sound selector -->
+          <div class="relative group">
+            <select id="sound-selector" onchange="changeNotificationSound(this.value)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6">
+              <option value="default">🔔 Bell Padrão</option>
+              <option value="modern">🎵 Digital Sip</option>
+              <option value="urgent">📢 Alerta Urgente</option>
+            </select>
+            <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]">▼</div>
+          </div>
+
           <!-- Continuous Buzzer -->
           <button onclick="toggleContinuousBuzzer()" id="btn-continuous-buzzer" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer" title="Repetir som a cada 10 segundos para novos pedidos pendentes">
             <span id="lbl-continuous-buzzer">🚨 Campainha: ON</span>
@@ -233,6 +243,18 @@
         <button onclick="selectStateFilter('Saiu para entrega')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Saiu para entrega">Rota de Entrega</button>
         <button onclick="selectStateFilter('Entregue')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Entregue">Entregues</button>
         <button onclick="selectStateFilter('Cancelado')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Cancelado">Cancelados</button>
+        
+        <div class="h-6 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
+
+        <!-- Layout Toggle -->
+        <div class="flex items-center bg-gray-100 rounded-full p-1 border border-gray-200">
+          <button onclick="setLayout('list')" id="btn-layout-list" class="p-1.5 rounded-full transition-all cursor-pointer" title="Visualização em Lista">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+          <button onclick="setLayout('grid')" id="btn-layout-grid" class="p-1.5 rounded-full transition-all cursor-pointer" title="Visualização em Mosaico">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
+          </button>
+        </div>
       </div>
 
       <!-- Search Box input element -->
@@ -496,6 +518,8 @@
     let localPrinterServerUrl = localStorage.getItem('popfood_printer_url') || '';
     let selectedPrinterName = localStorage.getItem('popfood_printer_name') || '';
     let localPrinterWidth = localStorage.getItem('popfood_printer_width') || '58';
+    let currentLayout = localStorage.getItem('popfood_orders_layout') || 'list';
+    let selectedSound = localStorage.getItem('popfood_notification_sound') || 'default';
     let loadedRestaurantProfile = null;
     let firstLoadDone = false;
 
@@ -552,6 +576,8 @@
         document.getElementById('lbl-auto-indicator').textContent = autoPrintSetting ? "🖨️ Impressão Auto: ON" : "🖨️ Impressão Auto: OFF";
         document.getElementById('lbl-continuous-buzzer').textContent = continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
         document.getElementById('lbl-auto-accept').textContent = autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
+        document.getElementById('sound-selector').value = selectedSound;
+        updateLayoutUI();
         if (typeof updateNotificationIndicator === 'function') {
           updateNotificationIndicator();
         }
@@ -751,6 +777,49 @@
       alert("Configuração de impressora salva com sucesso!");
     }
 
+    window.setLayout = function(layout) {
+      currentLayout = layout;
+      localStorage.setItem('popfood_orders_layout', layout);
+      updateLayoutUI();
+      renderVisualOrdersGrid();
+    }
+
+    function updateLayoutUI() {
+      const btnList = document.getElementById('btn-layout-list');
+      const btnGrid = document.getElementById('btn-layout-grid');
+      const activeGrid = document.getElementById('active-orders-grid');
+      const archivedGrid = document.getElementById('archived-orders-grid');
+
+      if (currentLayout === 'list') {
+        btnList.classList.add('bg-white', 'text-orange-500', 'shadow-sm');
+        btnList.classList.remove('text-gray-400');
+        btnGrid.classList.remove('bg-white', 'text-orange-500', 'shadow-sm');
+        btnGrid.classList.add('text-gray-400');
+
+        activeGrid.classList.remove('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3', 'gap-4');
+        activeGrid.classList.add('space-y-4');
+        archivedGrid.classList.remove('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3', 'gap-4');
+        archivedGrid.classList.add('space-y-4');
+      } else {
+        btnGrid.classList.add('bg-white', 'text-orange-500', 'shadow-sm');
+        btnGrid.classList.remove('text-gray-400');
+        btnList.classList.remove('bg-white', 'text-orange-500', 'shadow-sm');
+        btnList.classList.add('text-gray-400');
+
+        activeGrid.classList.remove('space-y-4');
+        activeGrid.classList.add('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-2', 'gap-4');
+        archivedGrid.classList.remove('space-y-4');
+        archivedGrid.classList.add('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-2', 'gap-4');
+      }
+    }
+
+    window.changeNotificationSound = function(sound) {
+      selectedSound = sound;
+      localStorage.setItem('popfood_notification_sound', sound);
+      // Play a preview
+      triggerNewOrderAlert(true);
+    }
+
     // Auto print toggler
     window.toggleAutoPrint = function() {
       autoPrintSetting = !autoPrintSetting;
@@ -928,7 +997,12 @@
       
       // If Pendente, highlight with a glowing soft light orange background
       const pendenteBg = order.status === 'Pendente' ? 'bg-orange-50 border-orange-200 shadow-orange-500/5' : 'bg-white border-gray-100 shadow-sm';
-      card.className = `${pendenteBg} rounded-2xl p-4.5 border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-all relative overflow-hidden group`;
+      
+      if (currentLayout === 'list') {
+        card.className = `${pendenteBg} rounded-2xl p-4.5 border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-all relative overflow-hidden group`;
+      } else {
+        card.className = `${pendenteBg} rounded-2xl p-4.5 border flex flex-col justify-between items-stretch gap-4 hover:shadow-md transition-all relative overflow-hidden group h-full`;
+      }
 
       // Draw status color maps
       let statusColor = "bg-gray-100 text-gray-500";
@@ -950,32 +1024,41 @@
         ? `<span class="bg-indigo-55 rounded bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 text-[10px] inline-flex items-center gap-1 border border-indigo-100">🏪 Retirada no Local</span>`
         : `<p class="text-[11px] text-gray-400 line-clamp-1">📍 ${order.customer.address}</p>`;
 
+      const headerLayout = currentLayout === 'list' 
+        ? 'flex-grow space-y-1.5' 
+        : 'space-y-2';
+
+      const actionsLayout = currentLayout === 'list'
+        ? 'flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 flex-wrap justify-end'
+        : 'flex items-center gap-2 w-full pt-3 border-t border-gray-100 mt-auto';
+
+      const btnFull = currentLayout === 'list' ? '' : 'flex-1';
+
       card.innerHTML = `
-        <div class="flex-grow space-y-1.5 cursor-pointer w-full" onclick="showOrderDetailsDrawer('${order.id}')">
+        <div class="${headerLayout} cursor-pointer" onclick="showOrderDetailsDrawer('${order.id}')">
           <div class="flex items-center justify-between sm:justify-start gap-3">
             <h4 class="font-display font-bold text-sm text-gray-800">Pedido #${order.id}</h4>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusColor}">${displayStatus}</span>
           </div>
           <p class="text-[11px] text-gray-400 font-medium">🕒 ${order.date} | 👤 ${order.customer.name}</p>
-          <p class="text-xs text-gray-600 font-semibold line-clamp-1 capitalize">${itemsOverview}</p>
+          <p class="text-xs text-gray-600 font-semibold line-clamp-2 capitalize">${itemsOverview}</p>
           ${addressLine}
         </div>
         
-
-        <div class="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 flex-wrap justify-end">
+        <div class="${actionsLayout}">
           <!-- Print -->
-          <button onclick="triggerThermalComandaPrintById('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs" title="Imprimir Comanda">
-            🖨️ Imprimir
+          <button onclick="triggerThermalComandaPrintById('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Imprimir Comanda">
+            🖨️
           </button>
           
           ${order.status === 'Pendente' ? `
-            <button onclick="changeOrderStatus('${order.id}', 'Preparando')" class="bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all">
+            <button onclick="changeOrderStatus('${order.id}', 'Preparando')" class="bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
               🚀 Preparar
             </button>
           ` : ''}
 
           ${order.status === 'Preparando' ? `
-            <button onclick="changeOrderStatus('${order.id}', 'Saiu para entrega')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all">
+            <button onclick="changeOrderStatus('${order.id}', 'Saiu para entrega')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
               ${isPickup ? '🛍️ Pronto' : '🏍️ Despachar'}
             </button>
           ` : ''}
@@ -1381,22 +1464,31 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
     }
 
     // Audio Alert Sound Notification Station
-    function triggerNewOrderAlert() {
-      // Toggle banner display
-      const banner = document.getElementById('new-order-banner');
-      if (banner) banner.classList.remove('hidden');
+    function triggerNewOrderAlert(isPreview = false) {
+      // Toggle banner display if not a preview
+      if (!isPreview) {
+        const banner = document.getElementById('new-order-banner');
+        if (banner) banner.classList.remove('hidden');
+      }
 
       // play Audio beep synthesized or standard player in cascade fallback
       const audio = document.getElementById('bell-beep-player');
-      if (audio) {
-        audio.play().catch(err => {
-          console.warn("Could not play som.mp3 automatically. Synthesizing buzzer frequencies natively via Web Audio...", err);
-          synthesizeBellRingerBeep();
-        });
+      
+      // If we have custom sounds or if it's the default, we can use synthesized versions to ensure diversity
+      if (selectedSound === 'default') {
+        if (audio && !isPreview) {
+          audio.play().catch(err => {
+            synthesizeBellRingerBeep('default');
+          });
+        } else {
+          synthesizeBellRingerBeep('default');
+        }
+      } else {
+        synthesizeBellRingerBeep(selectedSound);
       }
 
-      // Trigger Web Desktop Notification if allowed
-      if ('Notification' in window && Notification.permission === 'granted') {
+      // Trigger Web Desktop Notification if allowed and not a preview
+      if (!isPreview && 'Notification' in window && Notification.permission === 'granted') {
         try {
           new Notification("🚨 Novo Pedido Recebido!", {
             body: "Um novo pedido pendente acaba de ser recebido pelo sistema PopFood!",
@@ -1451,7 +1543,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
     }
 
     // Build rich beep bells using AudioContext
-    function synthesizeBellRingerBeep() {
+    function synthesizeBellRingerBeep(type = 'default') {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         if (ctx.state === 'suspended') {
@@ -1459,17 +1551,17 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
         }
         
         // Multi frequency chime
-        const playTone = (freq, delay, dur) => {
+        const playTone = (freq, delay, dur, vol = 0.3, waveType = 'sine') => {
           setTimeout(() => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.connect(gain);
             gain.connect(ctx.destination);
             
-            osc.type = 'sine';
+            osc.type = waveType;
             osc.frequency.setValueAtTime(freq, ctx.currentTime);
             
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.setValueAtTime(vol, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
             
             osc.start();
@@ -1477,10 +1569,24 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
           }, delay);
         };
 
-        // Standard sequence chime
-        playTone(587.33, 0, 0.4); // D5
-        playTone(659.25, 200, 0.4); // E5
-        playTone(880.00, 400, 0.6); // A5
+        if (type === 'default') {
+          // Standard sequence chime
+          playTone(587.33, 0, 0.4); // D5
+          playTone(659.25, 200, 0.4); // E5
+          playTone(880.00, 400, 0.6); // A5
+        } else if (type === 'modern') {
+          // Digital Sip (Soft 4 notes)
+          playTone(1200, 0, 0.15, 0.4);
+          playTone(1600, 50, 0.15, 0.4);
+          playTone(1200, 100, 0.15, 0.4);
+          playTone(1600, 150, 0.15, 0.4);
+        } else if (type === 'urgent') {
+          // Alerta Urgente (Loud dual-tone)
+          playTone(500, 0, 0.4, 0.5, 'square');
+          playTone(400, 400, 0.4, 0.5, 'square');
+          playTone(500, 800, 0.4, 0.5, 'square');
+          playTone(400, 1200, 0.4, 0.5, 'square');
+        }
       } catch (err) {
         console.warn("Native oscillator compilation fail: ", err);
       }
