@@ -204,9 +204,6 @@
     "/coupons/{couponId}": {
       "schema": "coupon",
       "description": "Coupons for discounts"
-    },
-    "/appSettings/{settingId}": {
-      "description": "System-wide global settings and API keys"
     }
   }
 }

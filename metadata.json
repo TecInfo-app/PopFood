@@ -1,6 +1,6 @@
 {
   "name": "PRONTO PARA USAR -  PopFood Delivery 28-05-2026",
-  "description": "Sistema completo de delivery multisite com gestão de faturamento recorrente via Abacate Pay, painel super-admin, pedidos em tempo real, CRM e portal do motoboy.",
+  "description": "Sistema completo de delivery integrado com Firestore contendo cardápio de clientes, painel de pedidos em tempo real, gestão de produtos, complementos, CRM, relatórios de vendas e cupons.",
   "requestFramePermissions": ["geolocation"],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

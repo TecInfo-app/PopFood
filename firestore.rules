@@ -73,9 +73,5 @@ service cloud.firestore {
     match /clients/{phone} {
       allow read, write: if true;
     }
-
-    match /appSettings/{settingId} {
-      allow read, write: if true;
-    }
   }
 }

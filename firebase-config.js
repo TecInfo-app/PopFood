@@ -43,8 +43,7 @@ const COLLECTIONS = {
   orders: "orders",
   clients: "clients",
   restaurantProfile: "restaurantProfile",
-  coupons: "coupons",
-  appSettings: "appSettings"
+  coupons: "coupons"
 };
 
 // --- UTIL FUNCTIONS (UI) ---
@@ -199,7 +198,6 @@ export {
   where,
   orderBy,
   onSnapshot,
-  Timestamp,
 
   // Auth APIs
   signInWithEmailAndPassword,

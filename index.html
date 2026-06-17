@@ -525,11 +525,7 @@
       </div>
 
       <div class="flex flex-col gap-2 pt-1 font-sans">
-        <button id="btn-pay-billing-abacate" onclick="window.payBillingWithAbacatePay()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer group">
-          <span>⚡ Pagar com PIX Automático</span>
-          <span class="group-hover:translate-x-1 transition-transform">➔</span>
-        </button>
-        <button onclick="document.getElementById('invoice-modal').classList.add('hidden')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center transition-all cursor-pointer">
+        <button onclick="document.getElementById('invoice-modal').classList.add('hidden')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center transition-all shadow-3xs cursor-pointer">
           Fechar
         </button>
       </div>
@@ -943,39 +939,6 @@ storeId: window.currentStoreId
       document.getElementById('invoice-lbl-date').textContent = `Todo dia ${window.currentInvoiceDetails.date}`;
       document.getElementById('invoice-lbl-pix').textContent = window.currentInvoiceDetails.pix;
       document.getElementById('invoice-modal').classList.remove('hidden');
-    }
-
-    window.payBillingWithAbacatePay = async function() {
-      const btn = document.getElementById('btn-pay-billing-abacate');
-      const originalText = btn.innerHTML;
-      
-      try {
-        btn.disabled = true;
-        btn.innerHTML = `<span>⏳ Gerando link...</span>`;
-        
-        const response = await fetch('/api/billing/create-charge', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storeId: window.currentStoreId })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || "Erro ao gerar fatura.");
-        }
-        
-        // Abre o checkout do Abacate Pay em uma nova aba
-        window.open(data.url, '_blank');
-        
-        // Mantém o estado visual mas permite fechar
-        btn.innerHTML = `<span>✅ Link Gerado! Abra na nova aba</span>`;
-      } catch (err) {
-        console.error("Billing error:", err);
-        alert("Erro ao processar cobrança: " + err.message);
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-      }
     }
 
     window.logoutAdmin = async function() {
