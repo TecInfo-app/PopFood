@@ -53,7 +53,9 @@
       </div>
 
       <div class="space-y-4 text-left">
-        <label class="block text-[10px] uppercase font-bold text-gray-400 tracking-wider">Por favor, insira o Código do Admin:</label>
+        <label class="block text-[10px] uppercase font-bold text-gray-400 tracking-wider">E-mail do Firebase (Obrigatório para Editar):</label>
+        <input type="email" id="admin-email" placeholder="admin@popfood.com" class="w-full text-center p-3 text-sm font-bold border border-gray-250 rounded-xl focus:border-orange-500 focus:outline-none transition-all tracking-widest bg-gray-50 mb-2" />
+        <label class="block text-[10px] uppercase font-bold text-gray-400 tracking-wider">Código de Acesso / Senha Firebase:</label>
         <input type="password" id="admin-passcode" placeholder="••••••••" class="w-full text-center p-3 text-lg font-bold border border-gray-250 rounded-xl focus:border-orange-500 focus:outline-none transition-all tracking-widest bg-gray-50" />
       </div>
 
@@ -287,22 +289,39 @@
   </div>
 
   <script type="module">
-    import { db, auth, createUserWithEmailAndPassword, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
+    import { db, auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
 
     let loadedStores = [];
     let activeFilterKeyword = '';
 
     // Verify passcode sign-in
-    window.attemptAdminAccess = function() {
+    window.attemptAdminAccess = async function() {
+      const email = document.getElementById('admin-email')?.value.trim();
       const code = document.getElementById('admin-passcode').value;
-      if (code === 'admin321' || code === '120934' || code === 'popfood' || code === 'admin') {
+
+      if (!email) {
+        // Fallback backward compatibility for view-only local codes
+        if (code === 'admin321' || code === '120934' || code === 'popfood' || code === 'admin') {
+          sessionStorage.setItem('popfood_super_admin_verified', 'true');
+          document.getElementById('admin-auth-gate').classList.add('hidden');
+          document.getElementById('real-dashboard-header').classList.remove('hidden');
+          document.getElementById('real-dashboard-main').classList.remove('hidden');
+          initDashboardData();
+        } else {
+          window.customAlert("Por favor, preencha o E-mail e Senha (ou digite o código de acesso correto).");
+        }
+        return;
+      }
+
+      try {
+        await signInWithEmailAndPassword(auth, email, code);
         sessionStorage.setItem('popfood_super_admin_verified', 'true');
         document.getElementById('admin-auth-gate').classList.add('hidden');
         document.getElementById('real-dashboard-header').classList.remove('hidden');
         document.getElementById('real-dashboard-main').classList.remove('hidden');
         initDashboardData();
-      } else {
-        window.customAlert("Código de Administrador incorreto! Tente 'admin', 'popfood' ou consulte com TI administrador.");
+      } catch (err) {
+        window.customAlert("Erro ao logar no Firebase Authentication.\n" + err.message + "\n\nSeu painel exige um Login real para editar valores no Firestore devido às Regras de Segurança (allow write: if isSignedIn).");
       }
     }
 
@@ -323,7 +342,8 @@
       }
     }
 
-    window.signOutSuperAdmin = () => {
+    window.signOutSuperAdmin = async () => {
+      try { await signOut(auth); } catch(e) {}
       sessionStorage.removeItem('popfood_super_admin_verified');
       window.location.reload();
     }
