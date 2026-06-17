@@ -1066,6 +1066,13 @@ storeId: window.currentStoreId
             }
 
             if (daysLeft <= 5) {
+              const currentMonthYear = `${today.getMonth()}-${today.getFullYear()}`;
+              if (profileData.lastPaidMonthYear === currentMonthYear) {
+                noticeEl.classList.add('hidden');
+                noticeEl.classList.remove('flex');
+                return;
+              }
+
               noticeEl.classList.remove('hidden');
               noticeEl.classList.add('flex');
               

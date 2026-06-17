@@ -562,6 +562,10 @@
               <span class="text-gray-500 text-xs">Chave PIX (Copia e Cola):</span>
               <span id="assinatura-pix" class="font-mono text-gray-800 break-all text-right max-w-[200px]">--</span>
             </div>
+            <div class="flex justify-between items-center text-xs font-bold pt-2 border-t border-gray-100">
+              <span class="text-gray-500 text-xs">Status do Mês:</span>
+              <span id="assinatura-status" class="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider bg-gray-100 text-gray-500">Pendente</span>
+            </div>
           </div>
 
           <form id="profile-assinatura-form" class="space-y-4 mt-6 pt-4 border-t border-gray-100">
@@ -952,6 +956,15 @@
           document.getElementById('assinatura-fee').textContent = profileData.monthlyFee ? `R$ ${parseFloat(profileData.monthlyFee).toFixed(2).replace('.', ',')}` : 'R$ 0,00';
           document.getElementById('assinatura-pix').textContent = profileData.pixKey || '--';
           document.getElementById('store-billing-day').value = profileData.billingDay || '';
+
+          const today = new Date();
+          const currentMonthYear = `${today.getMonth()}-${today.getFullYear()}`;
+          const isPaidStatus = profileData.lastPaidMonthYear === currentMonthYear;
+          const statusEl = document.getElementById('assinatura-status');
+          if (statusEl) {
+            statusEl.textContent = isPaidStatus ? 'Pago / Confirmado' : 'Pendente';
+            statusEl.className = isPaidStatus ? 'px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider bg-green-100 text-green-700' : 'px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider bg-orange-100 text-orange-700';
+          }
           
           if (profileData.paymentMethods) {
             document.getElementById('pay-offline-pix').checked = profileData.paymentMethods.offlinePix ?? true;

@@ -507,13 +507,20 @@
         const isSuspended = store.suspended === true;
         const opacityClass = isSuspended ? 'opacity-80 grayscale-[0.2]' : '';
 
+        const today = new Date();
+        const currentMonthYear = `${today.getMonth()}-${today.getFullYear()}`;
+        const isPaidThisMonth = store.lastPaidMonthYear === currentMonthYear;
+
         const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
         const clientUrl = `${window.location.origin}${basePath}/cliente.html?store=${store.id}`;
         const motoboyUrl = `${window.location.origin}${basePath}/motoboy.html?store=${store.id}`;
 
         storeCard.innerHTML = `
           <div class="${opacityClass}">
-            ${isSuspended ? '<div class="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-1.5 rounded-lg mb-2 shadow-sm border border-red-300 text-center uppercase tracking-wider flex items-center justify-center gap-1 font-sans">⛔ Loja Suspensa</div>' : ''}
+            <div class="flex gap-2 mb-2">
+              ${isSuspended ? '<div class="flex-1 bg-red-50 text-red-600 text-[9px] font-bold px-2 py-1 rounded-lg shadow-sm border border-red-300 text-center uppercase tracking-wider flex items-center justify-center gap-1 font-sans">⛔ Suspensa</div>' : ''}
+              ${isPaidThisMonth ? '<div class="flex-1 bg-emerald-50 text-emerald-600 text-[9px] font-bold px-2 py-1 rounded-lg shadow-sm border border-emerald-300 text-center uppercase tracking-wider flex items-center justify-center gap-1 font-sans">✅ Pago</div>' : ''}
+            </div>
             <div class="flex items-center justify-between mb-2">
               <span class="text-[9px] font-mono uppercase bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-md truncate max-w-[130px]" title="ID do Estabelecimento / Slug">ID: ${store.id}</span>
               <span id="badge-open-${store.id}" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${openBadgeColor}">${openBadgeText}</span>
@@ -563,9 +570,14 @@
             </div>
             
             ${store.id !== 'main' ? `
-            <button onclick="toggleStoreSuspension('${store.id}', ${isSuspended})" class="w-full mt-2 font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer ${isSuspended ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}">
-              ${isSuspended ? '🟢 Liberar Acesso' : '⛔ Suspender Loja (Inadimplência)'}
-            </button>
+            <div class="flex gap-2 mt-2">
+              <button onclick="toggleStoreSuspension('${store.id}', ${isSuspended})" class="flex-grow font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer ${isSuspended ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}">
+                ${isSuspended ? '🟢 Liberar Acesso' : '⛔ Suspender'}
+              </button>
+              <button onclick="confirmPayment('${store.id}')" class="flex-grow bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer">
+                💰 Confirmar Pago
+              </button>
+            </div>
             ` : ''}
           </div>
         `;
@@ -804,6 +816,26 @@
         initDashboardData();
       } catch(err) {
         window.customAlert("Erro ao alterar status de suspensão: " + err.message);
+      }
+    }
+
+    window.confirmPayment = async function(storeId) {
+      if(!await window.customConfirm("Deseja confirmar o pagamento desta mensalidade?\n\nIsso irá liberar o acesso da loja (caso suspensa) e removerá o aviso de fatura pendente para este mês.")) return;
+      
+      try {
+        const today = new Date();
+        const currentMonthYear = `${today.getMonth()}-${today.getFullYear()}`;
+        
+        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
+          suspended: false,
+          lastPaidMonthYear: currentMonthYear,
+          updatedAt: new Date().toISOString()
+        });
+        
+        window.customAlert("Pagamento confirmado com sucesso!");
+        initDashboardData();
+      } catch (err) {
+        window.customAlert("Erro ao confirmar pagamento: " + err.message);
       }
     }
 
