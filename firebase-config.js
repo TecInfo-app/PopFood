@@ -43,7 +43,8 @@ const COLLECTIONS = {
   orders: "orders",
   clients: "clients",
   restaurantProfile: "restaurantProfile",
-  coupons: "coupons"
+  coupons: "coupons",
+  appSettings: "appSettings"
 };
 
 // --- UTIL FUNCTIONS (UI) ---

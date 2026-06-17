@@ -85,6 +85,9 @@
       </div>
 
       <div class="flex items-center gap-3 flex-wrap">
+        <button onclick="toggleSystemSettingsModal(true)" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all">
+          ⚙️ Configurações
+        </button>
         <button onclick="toggleUsersModal(true)" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all">
           👥 Usuários
         </button>
@@ -184,6 +187,31 @@
     </section>
 
   </main>
+
+  <!-- MODAL: SYSTEM SETTINGS -->
+  <div id="system-settings-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all text-left">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">⚙️</span>
+          <h3 class="font-display font-extrabold text-gray-800 text-sm">Configurações do Sistema</h3>
+        </div>
+        <button onclick="toggleSystemSettingsModal(false)" class="text-gray-400 hover:text-gray-600 font-bold text-sm">✕</button>
+      </div>
+      
+      <form id="system-settings-form" class="space-y-4" onsubmit="handleSystemSettingsSubmit(event)">
+        <div class="space-y-1">
+          <label class="block text-[10px] uppercase font-bold text-gray-400">Abacate Pay API Key (SISTEMA)</label>
+          <input type="password" id="system-abacate-key" placeholder="Bearer sk_live_..." required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none" />
+          <p class="text-[9px] text-gray-400 leading-relaxed font-medium">Esta chave será usada para gerar as cobranças das mensalidades dos lojistas para VOCÊ.</p>
+        </div>
+
+        <button type="submit" class="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-md mt-2">
+          Salvar Configurações Globais
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- MODAL: USERS MANAGEMENT -->
   <div id="users-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
@@ -470,6 +498,15 @@
         document.getElementById('stat-open-stores').textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
         document.getElementById('stat-total-orders').textContent = totalOrdersCount;
         document.getElementById('stat-total-clients').textContent = totalClientsCount;
+
+        // 4. Load System Billing Settings
+        const billingSnap = await getDoc(doc(db, COLLECTIONS.appSettings, 'billing'));
+        if (billingSnap.exists()) {
+          window.systemBillingSettings = billingSnap.data();
+          if (document.getElementById('system-abacate-key')) {
+            document.getElementById('system-abacate-key').value = window.systemBillingSettings.abacatePayKey || '';
+          }
+        }
 
         renderStoresListUI();
       } catch (err) {
@@ -910,6 +947,30 @@
     }
 
     // Form submit pipeline
+    window.toggleSystemSettingsModal = function(show) {
+      const modal = document.getElementById('system-settings-modal');
+      if (show) modal.classList.remove('hidden');
+      else modal.classList.add('hidden');
+    }
+
+    window.handleSystemSettingsSubmit = async function(event) {
+      event.preventDefault();
+      const abacateKey = document.getElementById('system-abacate-key').value.trim();
+      
+      try {
+        await setDoc(doc(db, COLLECTIONS.appSettings, 'billing'), {
+          abacatePayKey: abacateKey,
+          updatedAt: Timestamp.now()
+        }, { merge: true });
+        
+        window.systemBillingSettings = { abacatePayKey: abacateKey };
+        window.customAlert("Configurações do sistema salvas com sucesso!");
+        window.toggleSystemSettingsModal(false);
+      } catch (err) {
+        window.customAlert("Erro ao salvar configurações do sistema: " + err.message);
+      }
+    }
+
     window.handleNewStoreSubmit = async function(event) {
       event.preventDefault();
       

@@ -254,6 +254,17 @@
           <span class="font-bold">➔</span>
         </button>
 
+        <button type="button" onclick="switchTab('assinatura')" id="menu-btn-assinatura" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-green-50/40">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">💰</span>
+            <div>
+              <p class="font-bold text-gray-850">Fatura / Mensalidade</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Data de pagamento e PIX</p>
+            </div>
+          </div>
+          <span class="font-bold text-green-500">➔</span>
+        </button>
+
         <button type="button" onclick="switchTab('motoboy')" id="menu-btn-motoboy" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-amber-50/40">
           <div class="flex items-center gap-3">
             <span class="text-lg">🛵</span>
@@ -531,6 +542,50 @@
         </form>
       </div>
 
+      <!-- TAB: ASSINATURA / MENSALIDADE -->
+      <div id="tab-assinatura" class="space-y-6 hidden">
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">💰</span>
+            <div>
+              <h3 class="font-display font-bold text-sm text-gray-800">Sua Fatura e Assinatura</h3>
+              <p class="text-[10px] text-gray-400 font-medium">Veja os detalhes da sua assinatura e o código PIX para pagamento.</p>
+            </div>
+          </div>
+
+          <div class="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-3">
+            <div class="flex justify-between items-center text-sm font-bold">
+              <span class="text-gray-500">Valor da Mensalidade:</span>
+              <span id="assinatura-fee" class="text-green-700">R$ 0,00</span>
+            </div>
+            <div class="flex justify-between items-center text-xs font-bold pt-1">
+              <span class="text-gray-500 text-xs">Chave PIX (Copia e Cola):</span>
+              <span id="assinatura-pix" class="font-mono text-gray-800 break-all text-right max-w-[200px]">--</span>
+            </div>
+            
+            <div class="pt-4 mt-2 border-t border-gray-100 flex flex-col gap-3">
+              <p class="text-[9px] text-gray-400">Você também pode gerar um link de pagamento instantâneo via Abacate Pay:</p>
+              <button type="button" id="btn-pay-assinatura" onclick="window.payAssinaturaAbacate()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 group">
+                <span>⚡ Gerar Pagamento PIX Automático</span>
+                <span class="group-hover:translate-x-1 transition-transform">➔</span>
+              </button>
+            </div>
+          </div>
+
+          <form id="profile-assinatura-form" class="space-y-4 mt-6 pt-4 border-t border-gray-100">
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Dia de Vencimento de Preferência</label>
+              <input type="number" id="store-billing-day" min="1" max="31" placeholder="Ex: 5" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none focus:border-green-500">
+              <p class="text-[9px] text-gray-400 mt-0.5">Defina o dia do mês que melhor se adequa ao seu fluxo de caixa.</p>
+            </div>
+            
+            <button type="submit" class="w-full bg-slate-900 border border-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-4 rounded-xl text-xs transition-all shadow-sm">
+              Salvar Preferência de Vencimento
+            </button>
+          </form>
+        </div>
+      </div>
+
       <!-- TAB: PORTAL DO MOTOBOY -->
       <div id="tab-motoboy" class="space-y-6 hidden">
         <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 text-left">
@@ -660,7 +715,7 @@
 
     // Switch tab handler
     window.switchTab = function(tabId) {
-      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'pagamentos', 'motoboy'];
+      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'pagamentos', 'assinatura', 'motoboy'];
       tabs.forEach(id => {
         const tabEl = document.getElementById(`tab-${id}`);
         if (tabEl) tabEl.classList.add('hidden');
@@ -682,6 +737,10 @@
           activeBtn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-amber-50 text-amber-700 border-l-4 border-amber-500 pl-2.5";
           const arrow = activeBtn.querySelector('span:last-child');
           if (arrow) arrow.className = "text-amber-600 font-bold translate-x-1 transition-transform";
+        } else if (tabId === 'assinatura') {
+          activeBtn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-green-50 text-green-700 border-l-4 border-green-500 pl-2.5";
+          const arrow = activeBtn.querySelector('span:last-child');
+          if (arrow) arrow.className = "text-green-600 font-bold translate-x-1 transition-transform";
         } else {
           activeBtn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-orange-50 text-brand-primary border-l-4 border-brand-primary pl-2.5";
           const arrow = activeBtn.querySelector('span:last-child');
@@ -759,11 +818,78 @@
 
       document.getElementById('profile-meta-form').onsubmit = saveRestaurantProfileDetails;
       document.getElementById('profile-payments-form').onsubmit = saveRestaurantProfileDetails;
+      document.getElementById('profile-assinatura-form').onsubmit = saveBillingDay;
       document.getElementById('coupon-modal-form').onsubmit = saveOrUpdateCouponDetails;
 
       const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
       window.switchTab(lastTab);
     };
+
+    async function saveBillingDay(e) {
+      e.preventDefault();
+      const day = parseInt(document.getElementById('store-billing-day').value, 10);
+      if (isNaN(day) || day < 1 || day > 31) {
+        alert("Favor inserir um dia válido entre 1 e 31.");
+        return;
+      }
+
+      try {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
+          billingDay: day
+        }, { merge: true });
+        
+        const btn = e.target.querySelector('button[type="submit"]');
+        if (btn) {
+          const orig = btn.textContent;
+          btn.textContent = "✅ Dia de Vencimento Salvo!";
+          btn.classList.add('bg-green-500', 'hover:bg-green-600', 'border-green-500');
+          btn.classList.remove('bg-slate-900', 'hover:bg-slate-800', 'border-slate-900');
+          
+          setTimeout(() => {
+            btn.textContent = orig;
+            btn.classList.remove('bg-green-500', 'hover:bg-green-600', 'border-green-500');
+            btn.classList.add('bg-slate-900', 'hover:bg-slate-800', 'border-slate-900');
+          }, 3000);
+        }
+      } catch (err) {
+        console.error("Saving billing day error: ", err);
+        alert("Erro ao salvar dia: " + err.message);
+      }
+    }
+
+    window.payAssinaturaAbacate = async function() {
+      const btn = document.getElementById('btn-pay-assinatura');
+      const originalText = btn.innerHTML;
+      
+      try {
+        btn.disabled = true;
+        btn.innerHTML = `<span>⏳ Gerando pagamento...</span>`;
+        
+        const response = await fetch('/api/billing/create-charge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storeId: window.currentStoreId })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+           throw new Error(data.error || "Falha ao comunicar com API de cobrança.");
+        }
+        
+        window.open(data.url, '_blank');
+        btn.innerHTML = `<span>✅ Link Aberto em nova aba</span>`;
+        setTimeout(() => {
+           btn.disabled = false;
+           btn.innerHTML = originalText;
+        }, 5000);
+      } catch (err) {
+        console.error("Payment error:", err);
+        alert("Erro ao gerar PIX: " + err.message);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
 
     window.copyMotoboyLink = function() {
       const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
@@ -863,6 +989,11 @@
           document.getElementById('store-open').value = profileData.openTime || '';
           document.getElementById('store-close').value = profileData.closeTime || '';
           document.getElementById('abacatepay-token').value = profileData.abacatePayToken || '';
+
+          // Assinatura
+          document.getElementById('assinatura-fee').textContent = profileData.monthlyFee ? `R$ ${parseFloat(profileData.monthlyFee).toFixed(2).replace('.', ',')}` : 'R$ 0,00';
+          document.getElementById('assinatura-pix').textContent = profileData.pixKey || '--';
+          document.getElementById('store-billing-day').value = profileData.billingDay || '';
           
           if (profileData.paymentMethods) {
             document.getElementById('pay-offline-pix').checked = profileData.paymentMethods.offlinePix ?? true;
