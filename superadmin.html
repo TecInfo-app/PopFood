@@ -201,6 +201,43 @@
     </div>
   </div>
 
+  <!-- MODAL: BILLING SETTINGS -->
+  <div id="billing-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">💰</span>
+          <h3 class="font-display font-extrabold text-gray-800 text-sm">Configuração de Cobrança</h3>
+        </div>
+        <button onclick="document.getElementById('billing-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600 font-bold text-sm">✕</button>
+      </div>
+      
+      <form id="billing-settings-form" class="space-y-4" onsubmit="handleBillingSubmit(event)">
+        <input type="hidden" id="billing-store-id" />
+        
+        <div class="space-y-1">
+          <label class="block text-[10px] uppercase font-bold text-gray-400">Dia de Pagamento / Vencimento</label>
+          <input type="number" min="1" max="31" id="billing-day" placeholder="Ex: 5" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-green-500 focus:outline-none" />
+          <p class="text-[9px] text-gray-400">A notificação será enviada ao lojista 5 dias antes desse dia.</p>
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-[10px] uppercase font-bold text-gray-400">Valor da Mensalidade (R$)</label>
+          <input type="number" step="0.01" min="0" id="billing-fee" placeholder="Ex: 149.90" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-green-500 focus:outline-none" />
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-[10px] uppercase font-bold text-gray-400">Chave PIX para Recebimento</label>
+          <input type="text" id="billing-pix" placeholder="Ex: email@dominio.com ou CPF/CNPJ" required class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-green-500 focus:outline-none" />
+        </div>
+
+        <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold text-xs py-3 rounded-xl transition-all shadow-md mt-2">
+          Salvar Configurações
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: REGISTER NEW STORE -->
   <div id="register-store-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
     <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl scale-95 transition-transform duration-200 border border-gray-100 flex flex-col max-h-[90vh]">
@@ -636,8 +673,9 @@
                 Dono de Loja
               </label>
             </div>
-            <div class="flex gap-2 w-full sm:w-auto">
-              ${!isAbsoluteOwner ? `<button onclick="editUserEmail('${store.id}', '${store.adminEmail || ''}')" class="flex-1 sm:flex-none text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-bold transition-all">Editar E-mail/Senha</button>` : ''}
+            <div class="flex gap-2 w-full sm:w-auto mt-2">
+              ${!isAbsoluteOwner ? `<button onclick="openBillingSettings('${store.id}')" class="flex-1 sm:flex-none text-[10px] bg-green-100 hover:bg-green-200 text-green-700 px-3 py-1.5 rounded-lg font-bold transition-all">💰 Cobrança / PIX</button>` : ''}
+              ${!isAbsoluteOwner ? `<button onclick="editUserEmail('${store.id}', '${store.adminEmail || ''}')" class="flex-1 sm:flex-none text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-bold transition-all">E-mail/Senha</button>` : ''}
               ${!isAbsoluteOwner ? `<button onclick="deleteUser('${store.id}')" class="flex-1 sm:flex-none text-[10px] bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg font-bold transition-all">Excluir</button>` : ''}
             </div>
           </div>
@@ -672,6 +710,45 @@
         renderUsersList();
       } catch (err) {
         window.customAlert("Erro ao atualizar credenciais: " + err.message);
+      }
+    }
+
+    window.openBillingSettings = function(storeId) {
+      const store = loadedStores.find(s => s.id === storeId);
+      if(!store) return;
+      document.getElementById('billing-store-id').value = storeId;
+      document.getElementById('billing-day').value = store.billingDay || '';
+      document.getElementById('billing-fee').value = store.monthlyFee || '';
+      document.getElementById('billing-pix').value = store.pixKey || '';
+      document.getElementById('billing-modal').classList.remove('hidden');
+    }
+
+    window.handleBillingSubmit = async function(event) {
+      event.preventDefault();
+      const storeId = document.getElementById('billing-store-id').value;
+      const billingDay = parseInt(document.getElementById('billing-day').value, 10);
+      const monthlyFee = parseFloat(document.getElementById('billing-fee').value);
+      const pixKey = document.getElementById('billing-pix').value.trim();
+
+      try {
+        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
+          billingDay: billingDay,
+          monthlyFee: monthlyFee,
+          pixKey: pixKey
+        });
+        
+        const store = loadedStores.find(s => s.id === storeId);
+        if(store) {
+          store.billingDay = billingDay;
+          store.monthlyFee = monthlyFee;
+          store.pixKey = pixKey;
+        }
+
+        document.getElementById('billing-modal').classList.add('hidden');
+        window.customAlert("Configurações de cobrança salvas com sucesso!");
+        renderUsersList();
+      } catch (err) {
+        window.customAlert("Erro ao salvar cobrança: " + err.message);
       }
     }
 

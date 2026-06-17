@@ -260,7 +260,21 @@
         </div>
       </header>
 
-      <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Billing Notification Banner -->
+      <div id="store-billing-notice" class="hidden bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3 mx-4 mt-6 rounded-xl shadow-lg flex-col sm:flex-row items-center justify-between gap-3 transform transition-all cursor-pointer">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl bg-white/20 p-2 rounded-lg">⚠️</span>
+          <div>
+            <h4 class="font-bold text-sm" id="billing-notice-title">Sua fatura vence em x dias!</h4>
+            <p class="text-xs text-red-100 mt-0.5 max-w-lg" id="billing-notice-desc">Evite o bloqueio da sua loja realizando o pagamento da mensalidade via PIX.</p>
+          </div>
+        </div>
+        <button onclick="window.viewInvoice()" class="bg-white text-red-600 text-xs font-bold py-2 px-4 rounded-lg hover:bg-red-50 hover:scale-105 active:scale-95 transition-all shadow-sm whitespace-nowrap">
+          📄 Ver Fatura / PIX
+        </button>
+      </div>
+
+      <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6" id="dashboard-main-content">
       
       <!-- COLUMN 1: CATEGORIES MANAGER BLOCK -->
       <section class="lg:col-span-1 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-5 h-fit text-left">
@@ -476,6 +490,43 @@
         </button>
         <button onclick="toggleImportMenuModal(false)" class="w-full text-center py-1 text-xs font-semibold text-gray-500 hover:text-gray-700 cursor-pointer">
           Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: INVOICE / FATURA -->
+  <div id="invoice-modal" class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 hidden backdrop-blur-xs">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col relative text-left space-y-4">
+      <button onclick="document.getElementById('invoice-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 p-2 text-xs font-bold z-10 cursor-pointer">✕</button>
+      
+      <div class="space-y-1">
+        <h3 class="font-display font-bold text-base text-gray-800">📄 Fatura Mensalidade</h3>
+        <p class="text-[11px] text-gray-450 leading-normal" id="invoice-modal-subtitle">Detalhes para pagamento da sua loja.</p>
+      </div>
+
+      <div class="bg-gray-50 p-4 border border-gray-100 rounded-xl space-y-3 text-[11px]">
+        <div class="flex justify-between items-center text-gray-700">
+          <span class="font-medium text-gray-500">Valor da Mensalidade:</span>
+          <span id="invoice-lbl-fee" class="font-bold text-green-700 text-sm">R$ 0,00</span>
+        </div>
+        <div class="flex justify-between items-center text-gray-700">
+          <span class="font-medium text-gray-500">Data de Vencimento:</span>
+          <span id="invoice-lbl-date" class="font-bold">Todo dia --</span>
+        </div>
+        
+        <div class="pt-3 border-t border-gray-200">
+          <span class="block font-bold text-gray-600 mb-1">Pagamento via PIX (Chave):</span>
+          <div class="bg-white border border-gray-300 rounded p-2 text-center select-all cursor-text font-mono font-bold text-sm" id="invoice-lbl-pix">
+            --
+          </div>
+          <p class="text-[9px] text-center text-gray-400 mt-1">Copie a chave acima e realize o pagamento.</p>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-2 pt-1 font-sans">
+        <button onclick="document.getElementById('invoice-modal').classList.add('hidden')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center transition-all shadow-3xs cursor-pointer">
+          Fechar
         </button>
       </div>
     </div>
@@ -882,6 +933,14 @@ storeId: window.currentStoreId
       }
     }
 
+    window.viewInvoice = function() {
+      if (!window.currentInvoiceDetails) return;
+      document.getElementById('invoice-lbl-fee').textContent = `R$ ${window.currentInvoiceDetails.fee}`;
+      document.getElementById('invoice-lbl-date').textContent = `Todo dia ${window.currentInvoiceDetails.date}`;
+      document.getElementById('invoice-lbl-pix').textContent = window.currentInvoiceDetails.pix;
+      document.getElementById('invoice-modal').classList.remove('hidden');
+    }
+
     window.logoutAdmin = async function() {
       localStorage.removeItem('popfood_custom_store_id');
       localStorage.removeItem('popfood_custom_store_email');
@@ -980,6 +1039,63 @@ storeId: window.currentStoreId
                  <button onclick="window.logoutAdmin()" class="bg-white hover:bg-gray-100 text-slate-900 font-bold py-3 px-8 rounded-xl transition-all shadow-lg hover:scale-[1.02] active:scale-95">Sair e Deslogar</button>
               </div>
             `;
+          }
+        }
+
+        // --- BILLING EVALUATION ---
+        if (docSnap.exists()) {
+          const profileData = docSnap.data();
+          const billingDay = profileData.billingDay;
+          const monthlyFee = profileData.monthlyFee;
+          const pixKey = profileData.pixKey;
+
+          const noticeEl = document.getElementById('store-billing-notice');
+          if (billingDay && monthlyFee && pixKey && noticeEl) {
+            const today = new Date();
+            const currentDay = today.getDate();
+            
+            // Calculate days left to billing day
+            let daysLeft = 0;
+            if (billingDay >= currentDay) {
+              daysLeft = billingDay - currentDay;
+            } else {
+              // Billing day is in next month
+              const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, billingDay);
+              const diffTime = nextMonth.getTime() - today.getTime();
+              daysLeft = Math.ceil(diffTime / (1000 * 3600 * 24));
+            }
+
+            if (daysLeft <= 5) {
+              noticeEl.classList.remove('hidden');
+              noticeEl.classList.add('flex');
+              
+              let title = `Sua fatura vence hoje!`;
+              let urgencyClass = 'from-red-600 to-red-800'; // Today
+              
+              if (daysLeft === 1) {
+                title = `Sua fatura vence amanhã!`;
+                urgencyClass = 'from-red-500 to-red-600';
+              } else if (daysLeft > 1) {
+                title = `Sua fatura vence em ${daysLeft} dias.`;
+                urgencyClass = 'from-orange-500 to-red-500';
+              }
+
+              document.getElementById('billing-notice-title').textContent = title;
+              noticeEl.className = `bg-gradient-to-r ${urgencyClass} text-white px-4 py-3 mx-4 mt-6 rounded-xl shadow-lg flex-col sm:flex-row items-center justify-between gap-3 transform transition-all cursor-pointer`;
+              
+              // Helper details for modal
+              window.currentInvoiceDetails = {
+                fee: parseFloat(monthlyFee).toFixed(2).replace('.', ','),
+                date: billingDay,
+                pix: pixKey
+              };
+            } else {
+              noticeEl.classList.add('hidden');
+              noticeEl.classList.remove('flex');
+            }
+          } else if (noticeEl) {
+            noticeEl.classList.add('hidden');
+            noticeEl.classList.remove('flex');
           }
         }
       });
