@@ -601,7 +601,7 @@
         const isAbsoluteOwner = email === 'iranildo@popfood.com';
 
         const div = document.createElement('div');
-        div.className = "flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-gray-100 rounded-xl bg-gray-50 gap-3 sm:gap-0";
+        div.className = "flex flex-col sm:flex-row items-start justify-between p-3 border border-gray-100 rounded-xl bg-gray-50 gap-3";
         div.innerHTML = `
           <div class="flex items-center gap-3">
             <div class="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg shrink-0">
@@ -612,19 +612,69 @@
               <p class="text-[10px] text-gray-400">Loja vinculada: ${store.name || 'Sem nome'}</p>
             </div>
           </div>
-          <div class="flex flex-wrap items-center gap-4">
-            <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold ${isSuperAdmin ? 'text-amber-600' : 'text-gray-400'}">
-              <input type="checkbox" onchange="updateUserRole('${store.id}', 'isSuperAdmin', this.checked)" ${isSuperAdmin ? 'checked' : ''} ${isAbsoluteOwner ? 'disabled' : ''} class="w-4 h-4 text-amber-500 rounded focus:ring-amber-500 border-gray-300">
-              Super-Admin
-            </label>
-            <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold ${isStoreOwner ? 'text-blue-600' : 'text-gray-400'}">
-              <input type="checkbox" onchange="updateUserRole('${store.id}', 'isStoreOwner', this.checked)" ${isStoreOwner ? 'checked' : ''} ${isAbsoluteOwner ? 'disabled' : ''} class="w-4 h-4 text-blue-500 rounded focus:ring-blue-500 border-gray-300">
-              Dono de Loja
-            </label>
+          <div class="flex flex-col gap-3 w-full sm:w-auto mt-2 sm:mt-0 items-end">
+            <div class="flex flex-wrap items-center justify-end gap-4">
+              <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold ${isSuperAdmin ? 'text-amber-600' : 'text-gray-400'}">
+                <input type="checkbox" onchange="updateUserRole('${store.id}', 'isSuperAdmin', this.checked)" ${isSuperAdmin ? 'checked' : ''} ${isAbsoluteOwner ? 'disabled' : ''} class="w-4 h-4 text-amber-500 rounded focus:ring-amber-500 border-gray-300">
+                Super-Admin
+              </label>
+              <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold ${isStoreOwner ? 'text-blue-600' : 'text-gray-400'}">
+                <input type="checkbox" onchange="updateUserRole('${store.id}', 'isStoreOwner', this.checked)" ${isStoreOwner ? 'checked' : ''} ${isAbsoluteOwner ? 'disabled' : ''} class="w-4 h-4 text-blue-500 rounded focus:ring-blue-500 border-gray-300">
+                Dono de Loja
+              </label>
+            </div>
+            <div class="flex gap-2 w-full sm:w-auto">
+              ${!isAbsoluteOwner ? `<button onclick="editUserEmail('${store.id}', '${store.adminEmail || ''}')" class="flex-1 sm:flex-none text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-bold transition-all">Editar E-mail/Senha</button>` : ''}
+              ${!isAbsoluteOwner ? `<button onclick="deleteUser('${store.id}')" class="flex-1 sm:flex-none text-[10px] bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg font-bold transition-all">Excluir</button>` : ''}
+            </div>
           </div>
         `;
         container.appendChild(div);
       });
+    }
+
+    window.editUserEmail = async function(storeId, currentEmail) {
+      const newEmail = prompt("Digite o NOVO E-mail de login para este usuário:", currentEmail);
+      if (!newEmail || newEmail.trim() === "" || newEmail === currentEmail) return;
+      
+      const newPassword = prompt("Digite a NOVA Senha para este usuário (mínimo 6 caracteres):");
+      if (!newPassword || newPassword.trim().length < 6) {
+        window.customAlert("Senha inválida ou muito curta (mínimo 6 caracteres). Operação cancelada.");
+        return;
+      }
+
+      try {
+        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
+          adminEmail: newEmail.trim().toLowerCase(),
+          adminPassword: newPassword.trim()
+        });
+        
+        const store = loadedStores.find(s => s.id === storeId);
+        if(store) {
+          store.adminEmail = newEmail.trim().toLowerCase();
+          store.adminPassword = newPassword.trim();
+        }
+        
+        window.customAlert("Credenciais atualizadas com sucesso!");
+        renderUsersList();
+      } catch (err) {
+        window.customAlert("Erro ao atualizar credenciais: " + err.message);
+      }
+    }
+
+    window.deleteUser = async function(storeId) {
+      if(!await window.customConfirm("Tem CERTEZA que deseja EXCLUIR este usuário permanentemente? Isso apagará também os dados da loja vinculada a este perfil.")) {
+        return;
+      }
+      try {
+        await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, storeId));
+        loadedStores = loadedStores.filter(s => s.id !== storeId);
+        window.customAlert("Usuário e loja excluídos com sucesso!");
+        renderUsersList();
+        initDashboardData();
+      } catch (err) {
+        window.customAlert("Erro ao excluir usuário: " + err.message);
+      }
     }
 
     window.updateUserRole = async function(storeId, roleField, newValue) {
