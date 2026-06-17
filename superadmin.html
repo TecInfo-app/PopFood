@@ -373,7 +373,7 @@
   </div>
 
   <script type="module">
-    import { db, auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
+    import { db, auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, Timestamp } from './firebase-config.js';
 
     let loadedStores = [];
     let activeFilterKeyword = '';
@@ -499,13 +499,17 @@
         document.getElementById('stat-total-orders').textContent = totalOrdersCount;
         document.getElementById('stat-total-clients').textContent = totalClientsCount;
 
-        // 4. Load System Billing Settings
-        const billingSnap = await getDoc(doc(db, COLLECTIONS.appSettings, 'billing'));
-        if (billingSnap.exists()) {
-          window.systemBillingSettings = billingSnap.data();
-          if (document.getElementById('system-abacate-key')) {
-            document.getElementById('system-abacate-key').value = window.systemBillingSettings.abacatePayKey || '';
+        // 4. Load System Billing Settings (Resilient to permissions errors)
+        try {
+          const billingSnap = await getDoc(doc(db, COLLECTIONS.appSettings, 'billing'));
+          if (billingSnap.exists()) {
+            window.systemBillingSettings = billingSnap.data();
+            if (document.getElementById('system-abacate-key')) {
+              document.getElementById('system-abacate-key').value = window.systemBillingSettings.abacatePayKey || '';
+            }
           }
+        } catch (billingErr) {
+          console.warn("Could not load system billing settings:", billingErr);
         }
 
         renderStoresListUI();
