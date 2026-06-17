@@ -569,6 +569,12 @@
               </button>
             </div>
             
+            <div class="flex items-center gap-2 text-[9px] text-gray-500 mb-1">
+              <span>📅 Vencimento:</span>
+              <input type="number" id="billing-day-${store.id}" value="${store.billingDay || ''}" min="1" max="31" class="w-10 bg-white border border-gray-200 rounded px-1 py-0.5 text-center font-bold text-gray-800">
+              <button onclick="updateBillingDay('${store.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-0.5 rounded font-bold cursor-pointer transition-all">Salvar</button>
+            </div>
+            
             ${store.id !== 'main' ? `
             <div class="flex gap-2 mt-2">
               <button onclick="toggleStoreSuspension('${store.id}', ${isSuspended})" class="flex-grow font-bold text-[10px] py-2 rounded-xl transition-all cursor-pointer ${isSuspended ? 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'}">
@@ -816,6 +822,27 @@
         initDashboardData();
       } catch(err) {
         window.customAlert("Erro ao alterar status de suspensão: " + err.message);
+      }
+    }
+
+    window.updateBillingDay = async function(storeId) {
+      const dayInput = document.getElementById(`billing-day-${storeId}`);
+      const newDay = dayInput.value;
+      
+      if(!newDay || newDay < 1 || newDay > 31) {
+        window.customAlert("Por favor, insira um dia válido entre 1 e 31.");
+        return;
+      }
+      
+      try {
+        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
+          billingDay: newDay,
+          updatedAt: new Date().toISOString()
+        });
+        window.customAlert("Dia de vencimento atualizado com sucesso!");
+        initDashboardData();
+      } catch (err) {
+        window.customAlert("Erro ao atualizar dia de vencimento: " + err.message);
       }
     }
 
