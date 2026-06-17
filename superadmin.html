@@ -587,12 +587,25 @@
       const container = document.getElementById('users-list-container');
       container.innerHTML = '';
       
-      if(loadedStores.length === 0) {
+      // Ensure the absolute owner is always in the list visually
+      let allUsers = [...loadedStores];
+      const hasOwner = allUsers.some(s => s.adminEmail === 'iranildo@popfood.com');
+      if (!hasOwner) {
+        allUsers.unshift({
+          id: 'owner-system-record',
+          adminEmail: 'iranildo@popfood.com',
+          name: 'Painel Geral PopFood',
+          isSuperAdmin: true,
+          isStoreOwner: true
+        });
+      }
+
+      if(allUsers.length === 0) {
         container.innerHTML = `<div class="text-center text-gray-400 py-8">Nenhum usuário encontrado.</div>`;
         return;
       }
 
-      loadedStores.forEach(store => {
+      allUsers.forEach(store => {
         const email = store.adminEmail || 'Sem email cadastrado';
         const isSuperAdmin = store.isSuperAdmin === true || store.isSuperAdmin === 'true';
         const isStoreOwner = store.isStoreOwner !== false && store.isStoreOwner !== 'false';
