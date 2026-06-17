@@ -296,7 +296,7 @@
 
     // Verify passcode sign-in
     window.attemptAdminAccess = async function() {
-      const email = document.getElementById('admin-email')?.value.trim();
+      const email = document.getElementById('admin-email')?.value.trim().toLowerCase();
       const code = document.getElementById('admin-passcode').value;
 
       if (!email) {
@@ -314,7 +314,23 @@
       }
 
       try {
-        await signInWithEmailAndPassword(auth, email, code);
+        const userCredential = await signInWithEmailAndPassword(auth, email, code);
+        const loggedEmail = userCredential.user.email.toLowerCase();
+
+        // 🚨 LISTA DE E-MAILS DE SUPER-ADMINISTRADORES AUTORIZADOS 🚨
+        const superAdmins = [
+          'ciachopp2016@gmail.com',
+          // você pode adicionar outros emails aqui, ex: 'meusocio@gmail.com'
+        ];
+
+        if (!superAdmins.includes(loggedEmail)) {
+          // Se o login for de uma loja comum, deslogamos imediatamente e bloqueamos.
+          await signOut(auth);
+          window.customAlert("Acesso Negado!\n\nEste e-mail pertence a um lojista e não tem permissões globais de Administrador.\nApenas os donos do aplicativo podem acessar este painel.");
+          return;
+        }
+
+        // Se passou, logou com sucesso e é superadmin!
         sessionStorage.setItem('popfood_super_admin_verified', 'true');
         document.getElementById('admin-auth-gate').classList.add('hidden');
         document.getElementById('real-dashboard-header').classList.remove('hidden');
