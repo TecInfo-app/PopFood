@@ -659,10 +659,7 @@
 
     // Application State Variables
     let backendHost = '';
-    const alternateBackendHost = 'https://ais-dev-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-    if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
-      backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-    }
+    const alternateBackendHost = '';
 
     // Helper for CORS-safe requests using fallbacks and open proxies
     async function makeProxySafeRequest(url, method, headers, body) {
@@ -738,13 +735,12 @@
             text: async () => JSON.stringify(resultObj)
           };
         } else {
-          console.log("[Payment Bridge] Gerando link de Checkout Cartão diretamente no navegador...");
+          console.log("[Payment Bridge] Criando checkout de cartão no AbacatePay...");
           const basePath = window.location.origin + window.location.pathname;
           const storeId = window.currentStoreId || payload.storeId || 'main';
           const orderId = payload.orderId || '';
           const returnUrl = `${basePath}?store=${storeId}&orderId=${orderId}&abacateReturn=1`;
 
-          // AbacatePay v2 — cria produto e checkout em uma única chamada
           const checkoutPayload = {
             products: [{
               externalId: orderId || `pedido-${Date.now()}`,
@@ -766,6 +762,8 @@
           const actualCheckout = checkoutData.data || checkoutData;
           const paymentId = actualCheckout.id;
           localStorage.setItem('popfood_pending_payment_id', paymentId);
+          localStorage.setItem('popfood_pending_order_id', orderId);
+          localStorage.setItem('popfood_pending_store_id', storeId);
 
           const resultObj = {
             provider: 'abacatepay',
@@ -834,32 +832,22 @@
       throw new Error(`Endpoint não suportado pelo cliente bypass: ${path}`);
     }
 
-    // Resilient API calling helper with automatic client-side AbacatePay bypass + server failovers
+    // Pagamentos sempre via Cloudflare Worker (AbacatePay) — sem servidor antigo
     window.resilientFetch = async function(path, options = {}) {
-      // If the restaurant profile has AbacatePay token loaded, bypass backend completely
-      // to avoid Google Ingress / Cloud Run CORS blocks for github.io domains!
-      if (restaurantProfile && restaurantProfile.abacatePayToken && (path.includes('/api/create-payment') || path.includes('/api/check-payment'))) {
-        try {
+      if (path.includes('/api/create-payment') || path.includes('/api/check-payment')) {
+        if (restaurantProfile && restaurantProfile.abacatePayToken) {
           return await executeAbacatePayClientSide(path, options);
-        } catch (bypassErr) {
-          console.warn("[Payment Bridge] Falha no Bypass Client-Side. Tentando requisição via servidor...", bypassErr);
+        } else {
+          throw new Error("Token AbacatePay não configurado no perfil desta loja.");
         }
       }
-
       try {
         const url = `${backendHost || ''}${path}`;
         const response = await fetch(url, options);
-        if (!response.ok && response.status >= 500) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+        if (!response.ok && response.status >= 500) throw new Error(`HTTP ${response.status}`);
         return response;
       } catch (err) {
-        console.warn(`[API] Erro ao conectar com o host principal (${backendHost}). Tentando host alternativo (${alternateBackendHost})... Erro:`, err);
-        if (alternateBackendHost && backendHost !== alternateBackendHost) {
-          backendHost = alternateBackendHost;
-          const altUrl = `${alternateBackendHost}${path}`;
-          return await fetch(altUrl, options);
-        }
+        console.warn(`[API] Erro: ${err.message}`);
         throw err;
       }
     };
