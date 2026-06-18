@@ -699,9 +699,14 @@
             </div>
             <p class="text-[9px] text-slate-400 truncate">${printer.url}</p>
           </div>
-          <button onclick="removePrinter(${index})" class="text-slate-300 hover:text-red-500 transition-colors cursor-pointer p-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-          </button>
+          <div class="flex items-center gap-1">
+            <button onclick="printSpecificTestPage(${index})" class="text-slate-300 hover:text-blue-500 transition-colors cursor-pointer p-1" title="Testar Impressão">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            </button>
+            <button onclick="removePrinter(${index})" class="text-slate-300 hover:text-red-500 transition-colors cursor-pointer p-1" title="Remover Impressora">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+          </div>
         `;
         container.appendChild(item);
       });
@@ -766,6 +771,26 @@
     }
     
 
+    window.printSpecificTestPage = function(index) {
+       const p = localPrinters[index];
+       if (!p) return;
+       const mockOrder = {
+          id: "TESTE",
+          customer: { name: "CLIENTE TESTE", phone: "00000000", type: "delivery", address: "RUA DE TESTE, 123" },
+          items: [{ quantity: 1, name: "item de teste", price: 10, totalItemPrice: 10 }],
+          paymentMethod: "Dinheiro", subtotal: 10, total: 10, deliveryFee: 0, desconto: 0, createdAt: new Date()
+       };
+
+       const temp = [...localPrinters];
+       localPrinters = [{ ...p, active: true }];
+       try {
+         window.triggerThermalComandaPrint(mockOrder);
+         alert("Impressão de teste enviada para " + p.name);
+       } finally {
+         localPrinters = temp;
+       }
+    };
+
     window.printTestPage = function() {
        const url = document.getElementById('printer-server-url').value.trim();
        const name = document.getElementById('printer-select').value;
@@ -782,10 +807,8 @@
        };
 
        // Specialized test call
-       const parent = document.getElementById('receipt-print-layout');
-       // ... existing logic in triggerThermalComandaPrint would be duplicated or I can just temp push to localPrinters
        const temp = [...localPrinters];
-       localPrinters = [{ url, name, width }];
+       localPrinters = [{ url, name, width, active: true }];
        try {
          window.triggerThermalComandaPrint(mockOrder);
          alert("Impressão de teste enviada para " + name);
