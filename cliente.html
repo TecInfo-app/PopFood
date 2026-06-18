@@ -742,15 +742,14 @@
           const returnUrl = `${basePath}?store=${storeId}&orderId=${orderId}&abacateReturn=1`;
 
           const checkoutPayload = {
-            products: [{
+            items: [{
               externalId: orderId || `pedido-${Date.now()}`,
               name: description,
               description: description,
               price: amountCents,
               quantity: 1
             }],
-            returnUrl: returnUrl,
-            methods: ['CREDIT_CARD', 'DEBIT_CARD']
+            returnUrl: returnUrl
           };
 
           const checkoutData = await makeProxySafeRequest('https://api.abacatepay.com/v2/checkouts/create', 'POST', {
