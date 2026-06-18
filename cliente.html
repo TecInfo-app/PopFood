@@ -931,35 +931,62 @@
       // Check for AbacatePay return flag
       const params = new URLSearchParams(window.location.search);
       if (params.get('abacateReturn') === '1') {
-        const orderId = params.get('orderId');
-        const storeId = params.get('store');
+        const orderId = params.get('orderId') || localStorage.getItem('popfood_pending_order_id') || '';
+        const storeId = params.get('store') || localStorage.getItem('popfood_pending_store_id') || '';
         
         if (orderId && storeId) {
-          showToast("⏳ Verificando confirmação do pagamento...", false);
+          showToast("⏳ Verificando pagamento do cartão...", false);
           
           try {
-            // Give it a tiny delay for backend processing
-            setTimeout(async () => {
-              const paymentId = params.get('paymentId') || localStorage.getItem('popfood_pending_payment_id') || '';
-              const res = await window.resilientFetch(`/api/check-payment?orderId=${orderId}&storeId=${storeId}&paymentId=${paymentId}`);
-              if (res.ok) {
-                const data = await res.json();
-                if (data.isPaid) {
-                  showToast("✅ Pagamento confirmado! Seu pedido está sendo preparado.", false);
-                  const succOrderIdEl = document.getElementById('succ-order-id');
-                  if (succOrderIdEl) succOrderIdEl.textContent = orderId;
-                  localStorage.setItem('popfood_last_order_id', orderId);
-                  localStorage.removeItem('popfood_pending_payment_id'); // Cleanup
-                  const successModal = document.getElementById('success-modal');
-                  if (successModal) successModal.classList.remove('hidden');
-                  
-                  const newUrl = window.location.origin + window.location.pathname + "?store=" + storeId;
-                  window.history.replaceState({}, document.title, newUrl);
-                } else {
-                  showToast("⚠️ Pagamento ainda pendente de confirmação. Você pode acompanhar o status na aba 'Pedidos'.", true);
+            // Polling após retorno do checkout — tenta até 5x com 2s de intervalo
+            let attempts = 0;
+            const maxAttempts = 5;
+            const checkAfterReturn = async () => {
+              attempts++;
+              const paymentId = params.get('paymentId') 
+                || localStorage.getItem('popfood_pending_payment_id') 
+                || '';
+              try {
+                const res = await window.resilientFetch(
+                  `/api/check-payment?orderId=${orderId}&storeId=${storeId}&paymentId=${paymentId}`
+                );
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.isPaid || data.status === 'PAID') {
+                    // Atualiza pedido no Firestore
+                    try {
+                      await setDoc(doc(db, COLLECTIONS.orders, orderId), {
+                        status: 'Pendente',
+                        paymentApproved: true,
+                        isPaid: true,
+                        paymentStatus: 'Aprovado'
+                      }, { merge: true });
+                    } catch(e) { console.warn('Erro ao atualizar pedido:', e); }
+
+                    localStorage.removeItem('popfood_pending_payment_id');
+                    localStorage.removeItem('popfood_pending_order_id');
+                    localStorage.removeItem('popfood_pending_store_id');
+
+                    showToast("✅ Pagamento confirmado! Pedido realizado com sucesso.");
+                    const succOrderIdEl = document.getElementById('succ-order-id');
+                    if (succOrderIdEl) succOrderIdEl.textContent = orderId;
+                    localStorage.setItem('popfood_last_order_id', orderId);
+                    const successModal = document.getElementById('success-modal');
+                    if (successModal) successModal.classList.remove('hidden');
+                    const newUrl = window.location.origin + window.location.pathname + "?store=" + storeId;
+                    window.history.replaceState({}, document.title, newUrl);
+                  } else if (attempts < maxAttempts) {
+                    setTimeout(checkAfterReturn, 2000);
+                  } else {
+                    showToast("⚠️ Pagamento pendente. Acompanhe na aba Pedidos.", true);
+                  }
                 }
+              } catch(e) {
+                if (attempts < maxAttempts) setTimeout(checkAfterReturn, 2000);
+                else showToast("⚠️ Não foi possível verificar o pagamento. Verifique na aba Pedidos.", true);
               }
-            }, 1500);
+            };
+            setTimeout(checkAfterReturn, 1500);
           } catch (e) {
             console.error("Erro ao verificar retorno do AbacatePay:", e);
           }
@@ -4024,5 +4051,6 @@
       💳 Pagar Pix
     </button>
   </div>
+
 </body>
 </html>
