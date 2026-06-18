@@ -247,11 +247,16 @@
       
       <!-- Cart Header -->
       <div class="px-6 py-5 border-b border-gray-150/60 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 shadow-3xs">
-        <h2 class="font-display font-extrabold text-lg text-gray-950 flex items-center gap-2.5">
-          <span class="text-xl">🛍️</span>
-          <span>Sua Sacola</span>
-          <span id="cart-items-count" class="text-[10px] bg-orange-100 text-brand-primary px-3 py-1 rounded-full font-black tracking-wider border border-orange-200/50">0</span>
-        </h2>
+        <div class="flex items-center gap-3">
+          <button id="btn-cart-back" onclick="goToPreviousCartStep()" class="hidden text-brand-primary hover:bg-orange-50 p-1.5 rounded-lg transition-colors cursor-pointer shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+          </button>
+          <h2 class="font-display font-extrabold text-lg text-gray-950 flex items-center gap-2.5">
+            <span class="text-xl" id="cart-header-icon">🛍️</span>
+            <span id="cart-header-title">Sua Sacola</span>
+            <span id="cart-items-count" class="text-[10px] bg-orange-100 text-brand-primary px-3 py-1 rounded-full font-black tracking-wider border border-orange-200/50">0</span>
+          </h2>
+        </div>
         <div class="flex items-center gap-2">
           <button id="btn-clear-cart" onclick="clearCart()" class="hidden text-[10px] tracking-wider uppercase text-red-500 hover:text-red-700 font-black px-3 py-2 rounded-xl hover:bg-red-50/80 transition-all cursor-pointer">
             Limpar tudo
@@ -265,22 +270,26 @@
       </div>
 
       <!-- Cart Content and Checkout Forms scrollable -->
-      <div class="flex-grow overflow-y-auto p-5 space-y-6">
-        <!-- List of items inside cart -->
-        <div id="cart-items-list" class="space-y-3.5">
-          <!-- Empty cart visual -->
-          <div class="py-16 text-center text-gray-400 space-y-3 bg-white border border-gray-155 rounded-3xl p-6 shadow-sm">
-            <span class="text-5xl block animate-bounce duration-1000">🥡</span>
-            <h3 class="text-sm font-bold text-gray-800">Sua sacola está vazia</h3>
-            <p class="text-xs text-gray-400 max-w-xs mx-auto">Adicione itens deliciosos do nosso catálogo para começar seu pedido!</p>
+      <div class="flex-grow overflow-y-auto p-5 space-y-6 overflow-x-hidden">
+        
+        <!-- STEP 1: SACOLA -->
+        <div id="cart-step-1" class="space-y-6 animate-fade-in">
+          <!-- List of items inside cart -->
+          <div id="cart-items-list" class="space-y-3.5">
+            <!-- Empty cart visual -->
+            <div class="py-16 text-center text-gray-400 space-y-3 bg-white border border-gray-155 rounded-3xl p-6 shadow-sm">
+              <span class="text-5xl block animate-bounce duration-1000">🥡</span>
+              <h3 class="text-sm font-bold text-gray-800">Sua sacola está vazia</h3>
+              <p class="text-xs text-gray-400 max-w-xs mx-auto">Adicione itens deliciosos do nosso catálogo para começar seu pedido!</p>
+            </div>
           </div>
         </div>
 
-        <!-- Checkout forms: Display only if cart has items -->
-        <div id="checkout-forms-section" class="hidden space-y-6 bg-white border border-gray-150/70 rounded-3xl p-5 shadow-xs">
+        <!-- STEP 2: DADOS DE ENVIO -->
+        <div id="cart-step-2" class="hidden space-y-6 bg-white border border-gray-150/70 rounded-3xl p-5 shadow-xs animate-fade-in">
           <div class="flex items-center gap-2 border-b border-gray-50 pb-3">
             <div class="w-1 h-5 bg-brand-primary rounded-full"></div>
-            <h3 id="checkout-forms-title" class="font-display font-extrabold text-sm text-gray-900 tracking-tight">Dados de Envio & Identificação</h3>
+            <h3 class="font-display font-extrabold text-sm text-gray-900 tracking-tight">Dados de Envio & Identificação</h3>
           </div>
 
           <!-- Opção de Recebimento -->
@@ -375,9 +384,12 @@
               <span>🔄 Calcular Taxa de Entrega</span>
             </button>
           </div>
+        </div>
 
+        <!-- STEP 3: PAGAMENTO -->
+        <div id="cart-step-3" class="hidden space-y-6 bg-white border border-gray-150/70 rounded-3xl p-5 shadow-xs animate-fade-in">
           <!-- Coupons coupon codes block -->
-          <div class="space-y-2 border-t border-gray-100 pt-5">
+          <div class="space-y-2">
             <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">🏷️ Cupom de Desconto</label>
             <div class="flex gap-2">
               <input type="text" id="coupon-code-field" placeholder="Digite seu cupom" class="w-full text-xs p-3.5 bg-gray-55 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:ring-4 focus:ring-orange-500/10 focus:outline-none transition-all uppercase font-black text-gray-800 placeholder:font-normal">
@@ -452,8 +464,8 @@
           </div>
         </div>
 
-        <button onclick="openPaymentModal()" id="btn-submit-checkout" class="w-full bg-brand-primary text-white font-extrabold py-4 rounded-2xl hover:bg-orange-600 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-98 cursor-pointer">
-          Continuar para Pagamento
+        <button onclick="goToNextCartStep()" id="btn-submit-checkout" class="w-full bg-brand-primary text-white font-extrabold py-4 rounded-2xl hover:bg-orange-600 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-98 cursor-pointer">
+          Continuar
         </button>
       </div>
 
@@ -2279,11 +2291,95 @@
       toggleProductModal(false);
     }
 
+    let currentCartStep = 1;
+    function updateCartStepUI() {
+      const step1 = document.getElementById('cart-step-1');
+      const step2 = document.getElementById('cart-step-2');
+      const step3 = document.getElementById('cart-step-3');
+      const btnBack = document.getElementById('btn-cart-back');
+      const titleSpan = document.getElementById('cart-header-title');
+      const iconSpan = document.getElementById('cart-header-icon');
+      const submitBtn = document.getElementById('btn-submit-checkout');
+
+      step1.classList.add('hidden');
+      if(step2) step2.classList.add('hidden');
+      if(step3) step3.classList.add('hidden');
+
+      if (currentCartStep === 1) {
+        step1.classList.remove('hidden');
+        btnBack.classList.add('hidden');
+        titleSpan.textContent = 'Sua Sacola';
+        iconSpan.textContent = '🛍️';
+        submitBtn.textContent = 'Continuar';
+        submitBtn.onclick = goToNextCartStep;
+      } else if (currentCartStep === 2) {
+        if(step2) step2.classList.remove('hidden');
+        btnBack.classList.remove('hidden');
+        titleSpan.textContent = 'Identificação e Entrega';
+        iconSpan.textContent = '📍';
+        submitBtn.textContent = 'Continuar para Pagamento';
+        submitBtn.onclick = goToNextCartStep;
+      } else if (currentCartStep === 3) {
+        if(step3) step3.classList.remove('hidden');
+        btnBack.classList.remove('hidden');
+        titleSpan.textContent = 'Pagamento';
+        iconSpan.textContent = '💳';
+        submitBtn.textContent = 'Finalizar Pedido';
+        submitBtn.onclick = openPaymentModal;
+      }
+    }
+
+    window.goToNextCartStep = function() {
+      if (currentCartStep === 1) {
+        if (shoppingCart.length === 0) {
+           window.customAlert("Sua sacola está vazia.");
+           return;
+        }
+        currentCartStep = 2;
+        updateCartStepUI();
+      } else if (currentCartStep === 2) {
+        // Validate inputs before moving to step 3
+        const name = document.getElementById('cust-name').value.trim();
+        const phone = document.getElementById('cust-phone').value.trim();
+        if (!name || !phone) {
+          window.customAlert("Por favor, preencha nome e WhatsApp.");
+          return;
+        }
+        
+        const optionNodes = document.getElementsByName('delivery-option');
+        let selectedOption = 'delivery';
+        for (const opt of optionNodes) {
+          if (opt.checked) selectedOption = opt.value;
+        }
+        
+        if (selectedOption === 'delivery') {
+          const street = document.getElementById('cust-street').value.trim();
+          const number = document.getElementById('cust-number').value.trim();
+          if (!street || !number) {
+            window.customAlert("Por favor, informe seu endereço (Rua e Número).");
+            return;
+          }
+        }
+        
+        currentCartStep = 3;
+        updateCartStepUI();
+      }
+    };
+
+    window.goToPreviousCartStep = function() {
+      if (currentCartStep > 1) {
+        currentCartStep--;
+        updateCartStepUI();
+      }
+    };
+
     // Cart Modal View Toggle
     window.toggleCartModal = function(show) {
       const modal = document.getElementById('cart-modal');
       const inner = modal.querySelector('div');
       if (show) {
+        currentCartStep = 1;
+        updateCartStepUI();
         modal.classList.remove('hidden');
         setTimeout(() => {
           inner.classList.remove('translate-x-full');
@@ -2312,7 +2408,6 @@
       document.getElementById('cart-items-count').textContent = shoppingCart.length;
 
       const listDiv = document.getElementById('cart-items-list');
-      const formsSec = document.getElementById('checkout-forms-section');
       const footerSec = document.getElementById('cart-footer');
       const clearBtn = document.getElementById('btn-clear-cart');
 
@@ -2325,13 +2420,11 @@
             <p class="text-sm font-medium">Seu carrinho está vazio</p>
             <p class="text-xs text-gray-400">Escolha pratos deliciosos para começar!</p>
           </div>`;
-        formsSec.classList.add('hidden');
         footerSec.classList.add('hidden');
         if (clearBtn) clearBtn.classList.add('hidden');
         return;
       }
 
-      formsSec.classList.remove('hidden');
       footerSec.classList.remove('hidden');
       if (clearBtn) clearBtn.classList.remove('hidden');
 
