@@ -85,6 +85,9 @@
       </div>
 
       <div class="flex items-center gap-3 flex-wrap">
+        <button onclick="toggleGlobalSettingsModal(true)" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all">
+          ⚙️ Configurações Globais
+        </button>
         <button onclick="toggleUsersModal(true)" class="bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs py-2.5 px-4 rounded-xl flex items-center gap-1.5 shadow-sm hover:scale-105 active:scale-95 transition-all">
           👥 Usuários
         </button>
@@ -190,6 +193,33 @@
     </section>
 
   </main>
+
+  <!-- MODAL: GLOBAL SETTINGS -->
+  <div id="global-settings-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl scale-95 transition-transform duration-200 border border-gray-100 flex flex-col max-h-[90vh]">
+      <div class="flex items-center justify-between pb-3 border-b border-gray-100 mb-4 shrink-0">
+        <div class="flex items-center gap-2">
+          <span>⚙️</span>
+          <h3 class="font-display font-extrabold text-gray-800 text-sm">Configurações Globais</h3>
+        </div>
+        <button onclick="toggleGlobalSettingsModal(false)" class="text-gray-400 hover:text-gray-600 font-sans font-bold text-sm">✕</button>
+      </div>
+
+      <form id="global-settings-form" onsubmit="handleGlobalSettingsSubmit(event)" class="space-y-4 overflow-y-auto pr-1 flex-grow font-sans">
+        
+        <div class="space-y-1">
+          <label class="block text-[10px] uppercase font-bold text-gray-400">WhatsApp Suporte / Pagamento</label>
+          <input type="text" id="global-admin-whatsapp" placeholder="Ex: 5511999999999" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none" />
+          <p class="text-[9px] text-gray-400 mt-0.5">Sem espaços e formatação. Para onde o comprovante PIX será enviado.</p>
+        </div>
+
+        <div class="pt-4 flex gap-3 shrink-0">
+          <button type="button" onclick="toggleGlobalSettingsModal(false)" class="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl text-xs font-semibold cursor-pointer transition-all font-display">Cancelar</button>
+          <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer font-display">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- MODAL: USERS MANAGEMENT -->
   <div id="users-modal" class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
@@ -936,6 +966,34 @@
         initDashboardData();
       } catch (err) {
         window.customAlert("Erro ao atualizar dia de vencimento: " + err.message);
+      }
+    }
+
+    window.toggleGlobalSettingsModal = async function(show) {
+      document.getElementById('global-settings-modal').classList.toggle('hidden', !show);
+      if(show) {
+        try {
+          const snap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, 'GLOBAL_SETTINGS'));
+          if(snap.exists()) {
+            document.getElementById('global-admin-whatsapp').value = snap.data().adminWhatsApp || '';
+          }
+        } catch(e) {
+          console.error("Erro ao carregar settings", e);
+        }
+      }
+    }
+
+    window.handleGlobalSettingsSubmit = async function(e) {
+      e.preventDefault();
+      const adminWhatsApp = document.getElementById('global-admin-whatsapp').value.replace(/\D/g, '');
+      try {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, 'GLOBAL_SETTINGS'), {
+          adminWhatsApp: adminWhatsApp
+        }, { merge: true });
+        window.customAlert("Configuração salva com sucesso!");
+        toggleGlobalSettingsModal(false);
+      } catch(err) {
+        window.customAlert("Erro ao salvar opções globais: " + err.message);
       }
     }
 
