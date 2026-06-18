@@ -685,14 +685,19 @@
 
       localPrinters.forEach((printer, index) => {
         const item = document.createElement('div');
-        item.className = 'bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between gap-3 group hover:border-orange-200 transition-colors';
+        const isActive = printer.active !== false;
+        item.className = `bg-slate-50 border ${isActive ? 'border-brand-primary/30' : 'border-slate-100 opacity-50'} rounded-xl p-3 flex items-center justify-between gap-3 group hover:border-orange-200 transition-all`;
         item.innerHTML = `
           <div class="flex-grow min-w-0">
-            <div class="flex items-center gap-2">
-              <p class="text-[11px] font-bold text-slate-800 truncate">${printer.name || 'Impressora'}</p>
+            <div class="flex items-center gap-2 mb-1">
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" class="sr-only peer" ${isActive ? 'checked' : ''} onchange="togglePrinterActive(${index}, this.checked)">
+                <div class="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-brand-primary"></div>
+              </label>
+              <p class="text-[11px] font-bold text-slate-800 truncate ${!isActive ? 'line-through text-slate-400' : ''}">${printer.name || 'Impressora'}</p>
               <span class="text-[8px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">${printer.width}mm</span>
             </div>
-            <p class="text-[9px] text-slate-400 truncate mt-0.5">${printer.url}</p>
+            <p class="text-[9px] text-slate-400 truncate">${printer.url}</p>
           </div>
           <button onclick="removePrinter(${index})" class="text-slate-300 hover:text-red-500 transition-colors cursor-pointer p-1">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -700,6 +705,12 @@
         `;
         container.appendChild(item);
       });
+    }
+
+    window.togglePrinterActive = function(index, checked) {
+      localPrinters[index].active = checked;
+      localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
+      renderPrintersList();
     }
 
     window.removePrinter = function(index) {
@@ -721,7 +732,7 @@
       const isDup = localPrinters.some(p => p.url === url && p.name === name);
       if (isDup) { alert("Esta impressora já foi adicionada."); return; }
 
-      localPrinters.push({ url, name, width });
+      localPrinters.push({ url, name, width, active: true });
       localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
       
       // Reset form but keep URL for convenience maybe
@@ -1643,7 +1654,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
       }
 
       // Configure text print width
-      const cols = localPrinterWidth === '58' ? 30 : 44;
+      let printWidth = '58';
+      if (typeof localPrinters !== 'undefined' && localPrinters.length > 0) {
+          const activePrinter = localPrinters.find(p => p.active !== false);
+          if (activePrinter) printWidth = activePrinter.width;
+      }
+      const cols = printWidth === '58' ? 30 : 44;
       
       function formatLine(leftText, rightText) {
         let spaceCount = Math.max(1, cols - leftText.length - rightText.length);
@@ -1725,7 +1741,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
       textReceipt += `Powered by PopFood Delivery\n`;
       
       // Inject identical <pre> formatted HTML
-      const fontSize = localPrinterWidth === '58' ? '12px' : '14px';
+      const fontSize = printWidth === '58' ? '12px' : '14px';
       parent.innerHTML = `
         <div style="width: 100%; overflow-x: auto; background: white; color: black; font-family: monospace;">
           <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0; background: white; white-space: pre-wrap;">${textReceipt}</pre>
@@ -1739,26 +1755,32 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
         printTriggered = true;
 
         if (localPrinters && localPrinters.length > 0) {
-          // Print to all configured printers
-          localPrinters.forEach(printer => {
-            fetch(`${printer.url.replace(/\/$/, '')}/imprimir`, {
-              method: 'POST',
-              body: JSON.stringify({ 
-                  impressora: printer.name,
-                  largura: printer.width,
-                  html: parent.innerHTML,
-                  texto: textReceipt,
-                  conteudo: textReceipt,
-                  conteudo_html: parent.innerHTML,
-                  content: textReceipt,
-                  text: textReceipt,
-                  ...order
-              }),
-              headers: { 'Content-Type': 'application/json' }
-            }).catch(err => {
-              console.error(`Local printer (${printer.name}) call failed: `, err);
+          const activePrinters = localPrinters.filter(p => p.active !== false);
+          if (activePrinters.length > 0) {
+            // Print to all active configured printers
+            activePrinters.forEach(printer => {
+              fetch(`${printer.url.replace(/\/$/, '')}/imprimir`, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    impressora: printer.name,
+                    largura: printer.width,
+                    html: parent.innerHTML,
+                    texto: textReceipt,
+                    conteudo: textReceipt,
+                    conteudo_html: parent.innerHTML,
+                    content: textReceipt,
+                    text: textReceipt,
+                    ...order
+                }),
+                headers: { 'Content-Type': 'application/json' }
+              }).catch(err => {
+                console.error(`Local printer (${printer.name}) call failed: `, err);
+              });
             });
-          });
+          } else {
+            // No active local printers, fallback to browser print if desired, or skip
+            console.warn("No active local printers configured.");
+          }
         } else {
           window.print();
         }
