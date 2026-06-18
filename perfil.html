@@ -1003,16 +1003,65 @@
           if (storeBilling) storeBilling.value = profileData.billingDay || '';
           document.getElementById('assinatura-due-date').textContent = profileData.billingDay ? `Dia ${profileData.billingDay}` : 'Não Definido';
 
-          const isPending = (paidMonths < planMonths) && profileData.billingDay;
+          const today = new Date();
+          const currentMonth = today.getMonth();
+          const currentYear = today.getFullYear();
+          let monthsDiff = 999;
+
+          if (profileData.lastPaidMonthYear) {
+              const parts = profileData.lastPaidMonthYear.split('-');
+              if (parts.length === 2) {
+                  const lastM = parseInt(parts[0], 10);
+                  const lastY = parseInt(parts[1], 10);
+                  monthsDiff = (currentYear - lastY) * 12 + (currentMonth - lastM);
+              }
+          }
+
+          let alertStatusText = 'REGULAR / PAGO';
+          let alertStatusClass = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+          if (profileData.billingDay) {
+              const billingDay = parseInt(profileData.billingDay, 10);
+              const currentDay = today.getDate();
+              const daysUntilDue = billingDay - currentDay;
+
+              if (monthsDiff > 1 && profileData.lastPaidMonthYear) {
+                  alertStatusText = 'FATURA VENCIDA';
+                  alertStatusClass = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-red-500/20 text-red-500 border border-red-500/30';
+              } else if (monthsDiff === 1 && profileData.lastPaidMonthYear) {
+                  if (daysUntilDue < 0) {
+                      alertStatusText = 'FATURA VENCIDA';
+                      alertStatusClass = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-red-500/20 text-red-500 border border-red-500/30';
+                  } else if (daysUntilDue <= 5) {
+                      alertStatusText = 'VENCIMENTO PRÓXIMO';
+                      alertStatusClass = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                  } else {
+                      alertStatusText = 'REGULAR / AGUARDANDO CICLO';
+                  }
+              }
+              
+              if (!profileData.lastPaidMonthYear) {
+                 alertStatusText = 'PAGAMENTO PENDENTE';
+                 alertStatusClass = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-amber-500/20 text-amber-400 border border-amber-500/30';
+              }
+          } else {
+              // no billing day defined
+              if (!profileData.lastPaidMonthYear || monthsDiff >= 1) {
+                  alertStatusText = 'PAGAMENTO PENDENTE';
+                  alertStatusClass = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-amber-500/20 text-amber-400 border border-amber-500/30';
+              }
+          }
+
+          if (paidMonths >= planMonths && planMonths > 0) {
+             // Fully paid plan
+             alertStatusText = 'PLANO CONCLUÍDO';
+             alertStatusClass = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-indigo-500/20 text-indigo-400 border border-indigo-500/30';
+          }
+
           const statusEl = document.getElementById('assinatura-status');
           if (statusEl) {
-             if (isPending) {
-                statusEl.textContent = 'PAGAMENTO PENDENTE';
-                statusEl.className = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-amber-500/20 text-amber-400 border border-amber-500/30';
-             } else {
-                statusEl.textContent = 'REGULAR / CONFIRMADO';
-                statusEl.className = 'px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-             }
+             statusEl.textContent = alertStatusText;
+             statusEl.className = alertStatusClass;
           }
 
           window.sendPixReceiptWhatsApp = function() {
