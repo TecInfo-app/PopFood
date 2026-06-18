@@ -999,7 +999,8 @@
 
           document.getElementById('assinatura-pix').textContent = profileData.pixKey || '--';
           
-          document.getElementById('store-billing-day').value = profileData.billingDay || '';
+          const storeBilling = document.getElementById('store-billing-day');
+          if (storeBilling) storeBilling.value = profileData.billingDay || '';
           document.getElementById('assinatura-due-date').textContent = profileData.billingDay ? `Dia ${profileData.billingDay}` : 'Não Definido';
 
           const isPending = (paidMonths < planMonths) && profileData.billingDay;
