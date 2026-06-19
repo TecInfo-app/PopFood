@@ -2570,7 +2570,10 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 ""
               ).toUpperCase().trim();
               if (currentGroup && currentGroup !== lastGroup) {
-                textReceipt += `  [${currentGroup}]\n`;
+                if (lastGroup !== "") {
+                  textReceipt += `\n`;
+                }
+                textReceipt += `${currentGroup}\n`;
                 lastGroup = currentGroup;
               }
               const compPrice = c.price || 0;
@@ -2582,7 +2585,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 ""
               ).toUpperCase().trim();
               textReceipt += formatLine(
-                `  + ${optionLabel}`,
+                `+1 ${optionLabel}`,
                 `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
               );
             });
