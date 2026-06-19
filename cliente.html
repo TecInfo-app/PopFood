@@ -659,7 +659,10 @@
 
     // Application State Variables
     let backendHost = '';
-    const alternateBackendHost = '';
+    const alternateBackendHost = 'https://ais-dev-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
+    if (window.location.hostname.includes('github.io') || window.location.hostname.includes('127.0.0.1') || window.location.hostname.includes('localhost')) {
+      backendHost = 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
+    }
 
     // Helper for CORS-safe requests using fallbacks and open proxies
     async function makeProxySafeRequest(url, method, headers, body) {
@@ -735,21 +738,23 @@
             text: async () => JSON.stringify(resultObj)
           };
         } else {
-          console.log("[Payment Bridge] Criando checkout de cartão no AbacatePay...");
+          console.log("[Payment Bridge] Gerando link de Checkout Cartão diretamente no navegador...");
           const basePath = window.location.origin + window.location.pathname;
           const storeId = window.currentStoreId || payload.storeId || 'main';
           const orderId = payload.orderId || '';
           const returnUrl = `${basePath}?store=${storeId}&orderId=${orderId}&abacateReturn=1`;
 
+          // AbacatePay v2 — cria produto e checkout em uma única chamada
           const checkoutPayload = {
-            items: [{
+            products: [{
               externalId: orderId || `pedido-${Date.now()}`,
               name: description,
               description: description,
               price: amountCents,
               quantity: 1
             }],
-            returnUrl: returnUrl
+            returnUrl: returnUrl,
+            methods: ['CREDIT_CARD', 'DEBIT_CARD']
           };
 
           const checkoutData = await makeProxySafeRequest('https://api.abacatepay.com/v2/checkouts/create', 'POST', {
@@ -761,8 +766,6 @@
           const actualCheckout = checkoutData.data || checkoutData;
           const paymentId = actualCheckout.id;
           localStorage.setItem('popfood_pending_payment_id', paymentId);
-          localStorage.setItem('popfood_pending_order_id', orderId);
-          localStorage.setItem('popfood_pending_store_id', storeId);
 
           const resultObj = {
             provider: 'abacatepay',
@@ -831,22 +834,32 @@
       throw new Error(`Endpoint não suportado pelo cliente bypass: ${path}`);
     }
 
-    // Pagamentos sempre via Cloudflare Worker (AbacatePay) — sem servidor antigo
+    // Resilient API calling helper with automatic client-side AbacatePay bypass + server failovers
     window.resilientFetch = async function(path, options = {}) {
-      if (path.includes('/api/create-payment') || path.includes('/api/check-payment')) {
-        if (restaurantProfile && restaurantProfile.abacatePayToken) {
+      // If the restaurant profile has AbacatePay token loaded, bypass backend completely
+      // to avoid Google Ingress / Cloud Run CORS blocks for github.io domains!
+      if (restaurantProfile && restaurantProfile.abacatePayToken && (path.includes('/api/create-payment') || path.includes('/api/check-payment'))) {
+        try {
           return await executeAbacatePayClientSide(path, options);
-        } else {
-          throw new Error("Token AbacatePay não configurado no perfil desta loja.");
+        } catch (bypassErr) {
+          console.warn("[Payment Bridge] Falha no Bypass Client-Side. Tentando requisição via servidor...", bypassErr);
         }
       }
+
       try {
         const url = `${backendHost || ''}${path}`;
         const response = await fetch(url, options);
-        if (!response.ok && response.status >= 500) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok && response.status >= 500) {
+          throw new Error(`HTTP ${response.status}`);
+        }
         return response;
       } catch (err) {
-        console.warn(`[API] Erro: ${err.message}`);
+        console.warn(`[API] Erro ao conectar com o host principal (${backendHost}). Tentando host alternativo (${alternateBackendHost})... Erro:`, err);
+        if (alternateBackendHost && backendHost !== alternateBackendHost) {
+          backendHost = alternateBackendHost;
+          const altUrl = `${alternateBackendHost}${path}`;
+          return await fetch(altUrl, options);
+        }
         throw err;
       }
     };
@@ -918,62 +931,35 @@
       // Check for AbacatePay return flag
       const params = new URLSearchParams(window.location.search);
       if (params.get('abacateReturn') === '1') {
-        const orderId = params.get('orderId') || localStorage.getItem('popfood_pending_order_id') || '';
-        const storeId = params.get('store') || localStorage.getItem('popfood_pending_store_id') || '';
+        const orderId = params.get('orderId');
+        const storeId = params.get('store');
         
         if (orderId && storeId) {
-          showToast("⏳ Verificando pagamento do cartão...", false);
+          showToast("⏳ Verificando confirmação do pagamento...", false);
           
           try {
-            // Polling após retorno do checkout — tenta até 5x com 2s de intervalo
-            let attempts = 0;
-            const maxAttempts = 5;
-            const checkAfterReturn = async () => {
-              attempts++;
-              const paymentId = params.get('paymentId') 
-                || localStorage.getItem('popfood_pending_payment_id') 
-                || '';
-              try {
-                const res = await window.resilientFetch(
-                  `/api/check-payment?orderId=${orderId}&storeId=${storeId}&paymentId=${paymentId}`
-                );
-                if (res.ok) {
-                  const data = await res.json();
-                  if (data.isPaid || data.status === 'PAID') {
-                    // Atualiza pedido no Firestore
-                    try {
-                      await setDoc(doc(db, COLLECTIONS.orders, orderId), {
-                        status: 'Pendente',
-                        paymentApproved: true,
-                        isPaid: true,
-                        paymentStatus: 'Aprovado'
-                      }, { merge: true });
-                    } catch(e) { console.warn('Erro ao atualizar pedido:', e); }
-
-                    localStorage.removeItem('popfood_pending_payment_id');
-                    localStorage.removeItem('popfood_pending_order_id');
-                    localStorage.removeItem('popfood_pending_store_id');
-
-                    showToast("✅ Pagamento confirmado! Pedido realizado com sucesso.");
-                    const succOrderIdEl = document.getElementById('succ-order-id');
-                    if (succOrderIdEl) succOrderIdEl.textContent = orderId;
-                    localStorage.setItem('popfood_last_order_id', orderId);
-                    const successModal = document.getElementById('success-modal');
-                    if (successModal) successModal.classList.remove('hidden');
-                    const newUrl = window.location.origin + window.location.pathname + "?store=" + storeId;
-                    window.history.replaceState({}, document.title, newUrl);
-                  } else if (attempts < maxAttempts) {
-                    setTimeout(checkAfterReturn, 2000);
-                  } else {
-                    showToast("⚠️ Pagamento pendente. Acompanhe na aba Pedidos.", true);
-                  }
+            // Give it a tiny delay for backend processing
+            setTimeout(async () => {
+              const paymentId = params.get('paymentId') || localStorage.getItem('popfood_pending_payment_id') || '';
+              const res = await window.resilientFetch(`/api/check-payment?orderId=${orderId}&storeId=${storeId}&paymentId=${paymentId}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.isPaid) {
+                  showToast("✅ Pagamento confirmado! Seu pedido está sendo preparado.", false);
+                  const succOrderIdEl = document.getElementById('succ-order-id');
+                  if (succOrderIdEl) succOrderIdEl.textContent = orderId;
+                  localStorage.setItem('popfood_last_order_id', orderId);
+                  localStorage.removeItem('popfood_pending_payment_id'); // Cleanup
+                  const successModal = document.getElementById('success-modal');
+                  if (successModal) successModal.classList.remove('hidden');
+                  
+                  const newUrl = window.location.origin + window.location.pathname + "?store=" + storeId;
+                  window.history.replaceState({}, document.title, newUrl);
+                } else {
+                  showToast("⚠️ Pagamento ainda pendente de confirmação. Você pode acompanhar o status na aba 'Pedidos'.", true);
                 }
-              } catch(e) {
-                if (attempts < maxAttempts) setTimeout(checkAfterReturn, 2000);
-                else showToast("⚠️ Não foi possível verificar o pagamento. Verifique na aba Pedidos.", true);
               }
-            };
-            setTimeout(checkAfterReturn, 1500);
+            }, 1500);
           } catch (e) {
             console.error("Erro ao verificar retorno do AbacatePay:", e);
           }

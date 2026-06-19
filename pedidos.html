@@ -1,620 +1,1140 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Painel de Pedidos - PopFood Delivery</title>
-  <script type="importmap">
-    {
-      "imports": {
-        "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
-      }
-    }
-  </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            display: ['Outfit', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace']
-          },
-          colors: {
-            brand: {
-              primary: '#f97316',
-              secondary: '#22c55e',
-              danger: '#ef4444',
-              light: '#f3f4f6',
-            }
-          }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel de Pedidos - PopFood Delivery</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+          "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
         }
       }
-    }
-  </script>
-  <style>
-    /* Collapsable Sidebar Styles */
-    #main-sidebar {
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    #main-sidebar.collapsed {
-      width: 0 !important;
-      min-width: 0 !important;
-      overflow: hidden !important;
-      opacity: 0 !important;
-      pointer-events: none !important;
-    }
-    @media (max-width: 1023px) {
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              display: ["Outfit", "sans-serif"],
+              mono: ["JetBrains Mono", "monospace"],
+            },
+            colors: {
+              brand: {
+                primary: "#f97316",
+                secondary: "#22c55e",
+                danger: "#ef4444",
+                light: "#f3f4f6",
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* Collapsable Sidebar Styles */
       #main-sidebar {
-        transform: translateX(-100%) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
-      #main-sidebar.show-mobile {
-        transform: translateX(0) !important;
+      #main-sidebar.collapsed {
+        width: 0 !important;
+        min-width: 0 !important;
+        overflow: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
       }
-    }
-    /* Side navigation active state indicators */
-    .menu-active {
-      background-color: #1e293b !important; /* bg-slate-800 */
-      color: #f97316 !important; /* text-brand-primary */
-      border-left: 4px solid #f97316 !important;
-    }
-  </style>
-</head>
-<body class="bg-brand-light font-sans text-gray-800 min-h-screen flex flex-col">
+      @media (max-width: 1023px) {
+        #main-sidebar {
+          transform: translateX(-100%) !important;
+        }
+        #main-sidebar.show-mobile {
+          transform: translateX(0) !important;
+        }
+      }
+      /* Side navigation active state indicators */
+      .menu-active {
+        background-color: #1e293b !important; /* bg-slate-800 */
+        color: #f97316 !important; /* text-brand-primary */
+        border-left: 4px solid #f97316 !important;
+      }
+    </style>
+  </head>
+  <body
+    class="bg-brand-light font-sans text-gray-800 min-h-screen flex flex-col"
+  >
+    <!-- Authenticated Layout container -->
+    <div
+      class="flex-grow flex flex-col lg:flex-row min-h-screen relative bg-slate-50"
+    >
+      <!-- Mobile Sidebar overlay backdrop -->
+      <div
+        id="sidebar-overlay"
+        onclick="window.toggleSidebar(false)"
+        class="hidden fixed inset-0 bg-slate-900/40 z-40"
+      ></div>
 
-  <!-- Authenticated Layout container -->
-  <div class="flex-grow flex flex-col lg:flex-row min-h-screen relative bg-slate-50">
-    
-    <!-- Mobile Sidebar overlay backdrop -->
-    <div id="sidebar-overlay" onclick="window.toggleSidebar(false)" class="hidden fixed inset-0 bg-slate-900/40 z-40"></div>
-
-    <!-- MAIN SIDEBAR MENU -->
-    <aside id="main-sidebar" class="bg-slate-900 text-white w-64 flex-shrink-0 fixed lg:sticky top-0 left-0 h-screen z-50 flex flex-col justify-between transition-all duration-300">
-      
-      <!-- Top Branding Section -->
-      <div class="p-5 border-b border-slate-800">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2.5">
-            <span class="text-3xl">🍔</span>
-            <div>
-              <h2 class="font-display font-black text-sm tracking-wide text-orange-500 uppercase">PopFood</h2>
-              <p class="text-[9px] text-slate-400">Painel Administrativo</p>
+      <!-- MAIN SIDEBAR MENU -->
+      <aside
+        id="main-sidebar"
+        class="bg-slate-900 text-white w-64 flex-shrink-0 fixed lg:sticky top-0 left-0 h-screen z-50 flex flex-col justify-between transition-all duration-300"
+      >
+        <!-- Top Branding Section -->
+        <div class="p-5 border-b border-slate-800">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="text-3xl">🍔</span>
+              <div>
+                <h2
+                  class="font-display font-black text-sm tracking-wide text-orange-500 uppercase"
+                >
+                  PopFood
+                </h2>
+                <p class="text-[9px] text-slate-400">Painel Administrativo</p>
+              </div>
             </div>
-          </div>
-          <!-- Close button for mobile -->
-          <button onclick="window.toggleSidebar(false)" class="lg:hidden p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Scrollable Menu Items -->
-      <div class="flex-grow overflow-y-auto px-3.5 py-5 space-y-1.5 font-sans">
-        
-        <!-- Link: Cardápio / Painel -->
-        <a href="index.html" id="menu-link-cardapio" class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group">
-          <span class="text-base group-hover:scale-110 transition-transform">🍔</span>
-          <span>Cardápio / Painel</span>
-        </a>
-
-        <!-- Link: Meus Pedidos -->
-        <a href="pedidos.html" id="menu-link-pedidos" class="flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group menu-active">
-          <div class="flex items-center gap-3">
-            <span class="text-base group-hover:scale-110 transition-transform">🛵</span>
-            <span>Meus Pedidos</span>
-          </div>
-        </a>
-
-        <!-- Link: Editar Perfil -->
-        <a href="perfil.html" id="menu-link-perfil" class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group">
-          <span class="text-base group-hover:scale-110 transition-transform">⚙️</span>
-          <span>Editar Perfil</span>
-        </a>
-
-        <!-- Link: Clientes -->
-        <a href="clientes.html" id="menu-link-clientes" class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group">
-          <span class="text-base group-hover:scale-110 transition-transform">👥</span>
-          <span>Clientes</span>
-        </a>
-
-        <!-- Link: Relatórios -->
-        <a href="relatorios.html" id="menu-link-relatorios" class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group">
-          <span class="text-base group-hover:scale-110 transition-transform">📊</span>
-          <span>Relatórios</span>
-        </a>
-
-        <!-- Divider -->
-        <div class="border-t border-slate-800 my-4"></div>
-
-        <!-- Copiar Link Cliente Button -->
-        <button onclick="window.copyStoreLink()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all text-slate-355 hover:bg-slate-800 hover:text-white text-left cursor-pointer">
-          <span class="text-base">🔗</span>
-          <span>Copiar Link Cliente</span>
-        </button>
-
-        <!-- Ver Cardápio Live Link -->
-        <a id="btn-view-cardapio-sidebar" href="cliente.html" target="_blank" class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all text-slate-355 hover:bg-slate-800 hover:text-white">
-          <span class="text-base">👁️</span>
-          <span>Ver Cardápio Live</span>
-        </a>
-
-      </div>
-
-      <!-- Sair e logout bar at bottom -->
-      <div class="p-4 border-t border-slate-800">
-        <button onclick="window.logoutAdmin()" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all bg-red-950/30 text-red-400 hover:bg-red-900/40 hover:text-white cursor-pointer" id="btn-logout-sidebar">
-          <span class="text-base">🚪</span>
-          <span>Sair e Deslogar</span>
-        </button>
-      </div>
-
-    </aside>
-
-    <!-- CONTENT WRAPPER FOR SIDEBAR LAYOUT -->
-    <div class="flex-grow flex flex-col min-w-0">
-
-      <!-- Admin Top Header Bar -->
-      <header class="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 py-3 flex flex-col lg:flex-row items-center justify-between gap-4">
-        
-        <!-- Left details and menu toggle -->
-        <div class="flex items-center justify-between w-full lg:w-auto">
-          <div class="flex items-center gap-2.5">
-            <!-- Toggle Menu Button -->
-            <button onclick="window.toggleSidebar()" class="p-2 -ml-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all cursor-pointer" title="Mostrar/Ocultar Menu Lateral">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            <!-- Close button for mobile -->
+            <button
+              onclick="window.toggleSidebar(false)"
+              class="lg:hidden p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
               </svg>
             </button>
+          </div>
+        </div>
+
+        <!-- Scrollable Menu Items -->
+        <div
+          class="flex-grow overflow-y-auto px-3.5 py-5 space-y-1.5 font-sans"
+        >
+          <!-- Link: Cardápio / Painel -->
+          <a
+            href="index.html"
+            id="menu-link-cardapio"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group"
+          >
+            <span class="text-base group-hover:scale-110 transition-transform"
+              >🍔</span
+            >
+            <span>Cardápio / Painel</span>
+          </a>
+
+          <!-- Link: Meus Pedidos -->
+          <a
+            href="pedidos.html"
+            id="menu-link-pedidos"
+            class="flex items-center justify-between px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group menu-active"
+          >
             <div class="flex items-center gap-3">
-              <span class="text-2xl hidden sm:inline">📋</span>
-              <div>
-                <h1 class="font-display font-bold text-base text-gray-800 leading-none">Painel de Pedidos</h1>
-                <div class="flex items-center gap-1.5 mt-1 leading-none">
-                  <span class="inline-block w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
-                  <span class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Tempo Real 🔴</span>
+              <span class="text-base group-hover:scale-110 transition-transform"
+                >🛵</span
+              >
+              <span>Meus Pedidos</span>
+            </div>
+          </a>
+
+          <!-- Link: Editar Perfil -->
+          <a
+            href="perfil.html"
+            id="menu-link-perfil"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group"
+          >
+            <span class="text-base group-hover:scale-110 transition-transform"
+              >⚙️</span
+            >
+            <span>Editar Perfil</span>
+          </a>
+
+          <!-- Link: Clientes -->
+          <a
+            href="clientes.html"
+            id="menu-link-clientes"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group"
+          >
+            <span class="text-base group-hover:scale-110 transition-transform"
+              >👥</span
+            >
+            <span>Clientes</span>
+          </a>
+
+          <!-- Link: Relatórios -->
+          <a
+            href="relatorios.html"
+            id="menu-link-relatorios"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all hover:bg-slate-800 hover:text-orange-500 group"
+          >
+            <span class="text-base group-hover:scale-110 transition-transform"
+              >📊</span
+            >
+            <span>Relatórios</span>
+          </a>
+
+          <!-- Divider -->
+          <div class="border-t border-slate-800 my-4"></div>
+
+          <!-- Copiar Link Cliente Button -->
+          <button
+            onclick="window.copyStoreLink()"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all text-slate-355 hover:bg-slate-800 hover:text-white text-left cursor-pointer"
+          >
+            <span class="text-base">🔗</span>
+            <span>Copiar Link Cliente</span>
+          </button>
+
+          <!-- Ver Cardápio Live Link -->
+          <a
+            id="btn-view-cardapio-sidebar"
+            href="cliente.html"
+            target="_blank"
+            class="flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all text-slate-355 hover:bg-slate-800 hover:text-white"
+          >
+            <span class="text-base">👁️</span>
+            <span>Ver Cardápio Live</span>
+          </a>
+        </div>
+
+        <!-- Sair e logout bar at bottom -->
+        <div class="p-4 border-t border-slate-800">
+          <button
+            onclick="window.logoutAdmin()"
+            class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all bg-red-950/30 text-red-400 hover:bg-red-900/40 hover:text-white cursor-pointer"
+            id="btn-logout-sidebar"
+          >
+            <span class="text-base">🚪</span>
+            <span>Sair e Deslogar</span>
+          </button>
+        </div>
+      </aside>
+
+      <!-- CONTENT WRAPPER FOR SIDEBAR LAYOUT -->
+      <div class="flex-grow flex flex-col min-w-0">
+        <!-- Admin Top Header Bar -->
+        <header
+          class="bg-white border-b border-gray-200 sticky top-0 z-30 px-4 py-3 flex flex-col lg:flex-row items-center justify-between gap-4"
+        >
+          <!-- Left details and menu toggle -->
+          <div class="flex items-center justify-between w-full lg:w-auto">
+            <div class="flex items-center gap-2.5">
+              <!-- Toggle Menu Button -->
+              <button
+                onclick="window.toggleSidebar()"
+                class="p-2 -ml-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
+                title="Mostrar/Ocultar Menu Lateral"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  ></path>
+                </svg>
+              </button>
+              <div class="flex items-center gap-3">
+                <span class="text-2xl hidden sm:inline">📋</span>
+                <div>
+                  <h1
+                    class="font-display font-bold text-base text-gray-800 leading-none"
+                  >
+                    Painel de Pedidos
+                  </h1>
+                  <div class="flex items-center gap-1.5 mt-1 leading-none">
+                    <span
+                      class="inline-block w-2 h-2 bg-green-500 rounded-full animate-ping"
+                    ></span>
+                    <span
+                      class="text-[9px] font-bold text-gray-400 uppercase tracking-wider"
+                      >Tempo Real 🔴</span
+                    >
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Quick Access settings toggles in the header area -->
-        <div class="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-          <!-- Thermal Receipt Print -->
-          <button onclick="toggleAutoPrint()" id="btn-autoprint" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer">
-            <span id="lbl-auto-indicator">🖨️ Impressão Auto: OFF</span>
-          </button>
-          <!-- Desktop Notifications -->
-          <button onclick="requestDesktopNotificationPermission()" id="btn-desktop-notifications" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer" title="Ativar Alertas no Computador">
-            <span id="lbl-notification-indicator">🔔 Notificações: Inativo</span>
-          </button>
-          <!-- Sound selector -->
-          <div class="relative group">
-            <select id="sound-selector" onchange="changeNotificationSound(this.value)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6">
-              <option value="default">🔔 Bell Padrão</option>
-              <option value="modern">🎵 Digital Sip</option>
-              <option value="urgent">📢 Alerta Urgente</option>
-              <option value="old_phone">☎️ Telefone Antigo</option>
-            </select>
-            <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]">▼</div>
+          <!-- Quick Access settings toggles in the header area -->
+          <div
+            class="flex items-center gap-2 flex-wrap justify-center sm:justify-start"
+          >
+            <!-- Thermal Receipt Print -->
+            <button
+              onclick="toggleAutoPrint()"
+              id="btn-autoprint"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              <span id="lbl-auto-indicator">🖨️ Impressão Auto: OFF</span>
+            </button>
+            <!-- Desktop Notifications -->
+            <button
+              onclick="requestDesktopNotificationPermission()"
+              id="btn-desktop-notifications"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+              title="Ativar Alertas no Computador"
+            >
+              <span id="lbl-notification-indicator"
+                >🔔 Notificações: Inativo</span
+              >
+            </button>
+            <!-- Sound selector -->
+            <div class="relative group">
+              <select
+                id="sound-selector"
+                onchange="changeNotificationSound(this.value)"
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6"
+              >
+                <option value="default">🔔 Bell Padrão</option>
+                <option value="modern">🎵 Digital Sip</option>
+                <option value="urgent">📢 Alerta Urgente</option>
+                <option value="old_phone">☎️ Telefone Antigo</option>
+              </select>
+              <div
+                class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]"
+              >
+                ▼
+              </div>
+            </div>
+
+            <!-- Continuous Buzzer -->
+            <button
+              onclick="toggleContinuousBuzzer()"
+              id="btn-continuous-buzzer"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+              title="Repetir som a cada 10 segundos para novos pedidos pendentes"
+            >
+              <span id="lbl-continuous-buzzer">🚨 Campainha: ON</span>
+            </button>
+            <!-- Auto Accept -->
+            <button
+              onclick="toggleAutoAccept()"
+              id="btn-auto-accept"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+              title="Aceitar novos pedidos de forma automática"
+            >
+              <span id="lbl-auto-accept">⚡ Auto-Aceitar: OFF</span>
+            </button>
+            <!-- Printer Settings -->
+            <button
+              onclick="togglePrinterSettingsModal(true)"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="Configurar Impressora Local"
+            >
+              ⚙️
+            </button>
+          </div>
+        </header>
+
+        <main
+          class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 flex flex-col gap-6"
+        >
+          <!-- Visual Sound Indicator Banner -->
+          <div
+            id="new-order-banner"
+            class="bg-orange-500 text-white rounded-2xl p-4 shadow-lg flex items-center justify-between hidden transition-all animate-bounce"
+          >
+            <div class="flex items-center gap-3">
+              <span class="text-2xl animate-pulse">🔔</span>
+              <div>
+                <h4 class="font-bold text-sm">NOVO PEDIDO RECEBIDO!</h4>
+                <p class="text-xs opacity-90">
+                  Um novo pedido acaba de ser enviado à cozinha. Verifique a aba
+                  Pendentes.
+                </p>
+              </div>
+            </div>
+            <button
+              onclick="dismissNewOrderBanner()"
+              class="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full outline-none font-bold text-xs"
+            >
+              OK
+            </button>
           </div>
 
-          <!-- Continuous Buzzer -->
-          <button onclick="toggleContinuousBuzzer()" id="btn-continuous-buzzer" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer" title="Repetir som a cada 10 segundos para novos pedidos pendentes">
-            <span id="lbl-continuous-buzzer">🚨 Campainha: ON</span>
-          </button>
-          <!-- Auto Accept -->
-          <button onclick="toggleAutoAccept()" id="btn-auto-accept" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer" title="Aceitar novos pedidos de forma automática">
-            <span id="lbl-auto-accept">⚡ Auto-Aceitar: OFF</span>
-          </button>
-          <!-- Printer Settings -->
-          <button onclick="togglePrinterSettingsModal(true)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer" title="Configurar Impressora Local">
-            ⚙️
-          </button>
-        </div>
-      </header>
+          <!-- Filter selectors row -->
+          <section
+            class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 pb-4"
+          >
+            <div class="flex flex-wrap items-center gap-2">
+              <button
+                onclick="selectStateFilter('Todos')"
+                class="filter-btn text-xs font-bold py-2 px-4 rounded-full border transition-all cursor-pointer bg-orange-500 border-orange-500 text-white"
+                data-status="Todos"
+              >
+                Todos
+              </button>
+              <button
+                onclick="selectStateFilter('Pendente')"
+                class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
+                data-status="Pendente"
+              >
+                Pendentes
+              </button>
+              <button
+                onclick="selectStateFilter('Preparando')"
+                class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
+                data-status="Preparando"
+              >
+                Preparando
+              </button>
+              <button
+                onclick="selectStateFilter('Saiu para entrega')"
+                class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
+                data-status="Saiu para entrega"
+              >
+                Rota de Entrega
+              </button>
+              <button
+                onclick="selectStateFilter('Entregue')"
+                class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
+                data-status="Entregue"
+              >
+                Entregues
+              </button>
+              <button
+                onclick="selectStateFilter('Cancelado')"
+                class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer"
+                data-status="Cancelado"
+              >
+                Cancelados
+              </button>
 
-      <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 flex flex-col gap-6">
-    <!-- Visual Sound Indicator Banner -->
-    <div id="new-order-banner" class="bg-orange-500 text-white rounded-2xl p-4 shadow-lg flex items-center justify-between hidden transition-all animate-bounce">
-      <div class="flex items-center gap-3">
-        <span class="text-2xl animate-pulse">🔔</span>
-        <div>
-          <h4 class="font-bold text-sm">NOVO PEDIDO RECEBIDO!</h4>
-          <p class="text-xs opacity-90">Um novo pedido acaba de ser enviado à cozinha. Verifique a aba Pendentes.</p>
-        </div>
+              <div class="h-6 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
+
+              <!-- Layout Toggle -->
+              <div
+                class="flex items-center bg-gray-100 rounded-full p-1 border border-gray-200"
+              >
+                <button
+                  onclick="setLayout('list')"
+                  id="btn-layout-list"
+                  class="p-1.5 rounded-full transition-all cursor-pointer"
+                  title="Visualização em Lista"
+                >
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 6h16M4 12h16M4 18h16"
+                    ></path>
+                  </svg>
+                </button>
+                <button
+                  onclick="setLayout('grid')"
+                  id="btn-layout-grid"
+                  class="p-1.5 rounded-full transition-all cursor-pointer"
+                  title="Visualização em Mosaico"
+                >
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Search Box input element -->
+            <div class="relative w-full md:w-72">
+              <span
+                class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400 text-xs"
+                >🔍</span
+              >
+              <input
+                type="text"
+                id="order-search-input"
+                oninput="handleOrderSearch(this.value)"
+                placeholder="Pesquisar por cliente, ID, itens, fone..."
+                class="w-full pl-9 pr-8 py-2.5 border border-gray-200 focus:border-orange-550 focus:border-orange-500 rounded-xl text-xs focus:outline-none transition-all shadow-xs"
+              />
+              <button
+                onclick="clearOrderSearch()"
+                id="btn-clear-search"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 hidden text-xs transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          </section>
+
+          <!-- Content Columns splits: Em Andamento vs Finalizados -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- SUBSECTION: ACTIVE PIPELINE orders (Pendente, Preparando, Em Rota) -->
+            <div class="space-y-4">
+              <h3
+                class="font-display font-semibold text-sm text-gray-500 flex items-center gap-2"
+              >
+                <span>🛠️ Em Andamento</span>
+                <span
+                  id="active-pipes-count"
+                  class="bg-orange-100 text-brand-primary px-2 py-0.5 rounded-md text-[10px] font-bold"
+                  >0</span
+                >
+              </h3>
+
+              <div id="active-orders-grid" class="space-y-4">
+                <!-- Populated dynamically -->
+                <div
+                  class="text-center py-12 bg-white rounded-xl border border-gray-100 text-gray-400"
+                >
+                  <p class="text-sm">
+                    Buscando transações do banco de dados...
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUBSECTION: FINALIZED orders (Entregue, Cancelado) -->
+            <div class="space-y-4">
+              <h3
+                class="font-display font-semibold text-sm text-gray-500 flex items-center gap-2"
+              >
+                <span>✅ Histórico Finalizados</span>
+                <span
+                  id="finish-pipes-count"
+                  class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md text-[10px] font-bold"
+                  >0</span
+                >
+              </h3>
+
+              <div id="archived-orders-grid" class="space-y-4">
+                <!-- Populated dynamically -->
+                <div
+                  class="text-center py-12 bg-white rounded-xl border border-gray-100 text-gray-400"
+                >
+                  <p class="text-sm border-gray-50">
+                    Sem registros finalizados
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
-      <button onclick="dismissNewOrderBanner()" class="bg-white/10 hover:bg-white/20 text-white p-2.5 rounded-full outline-none font-bold text-xs">OK</button>
+      <!-- Closing content wrapper -->
     </div>
+    <!-- Closing layout container -->
 
-    <!-- Filter selectors row -->
-    <section class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-200 pb-4">
-      <div class="flex flex-wrap items-center gap-2">
-        <button onclick="selectStateFilter('Todos')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border transition-all cursor-pointer bg-orange-500 border-orange-500 text-white" data-status="Todos">Todos</button>
-        <button onclick="selectStateFilter('Pendente')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Pendente">Pendentes</button>
-        <button onclick="selectStateFilter('Preparando')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Preparando">Preparando</button>
-        <button onclick="selectStateFilter('Saiu para entrega')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Saiu para entrega">Rota de Entrega</button>
-        <button onclick="selectStateFilter('Entregue')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Entregue">Entregues</button>
-        <button onclick="selectStateFilter('Cancelado')" class="filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer" data-status="Cancelado">Cancelados</button>
-        
-        <div class="h-6 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
-
-        <!-- Layout Toggle -->
-        <div class="flex items-center bg-gray-100 rounded-full p-1 border border-gray-200">
-          <button onclick="setLayout('list')" id="btn-layout-list" class="p-1.5 rounded-full transition-all cursor-pointer" title="Visualização em Lista">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-          </button>
-          <button onclick="setLayout('grid')" id="btn-layout-grid" class="p-1.5 rounded-full transition-all cursor-pointer" title="Visualização em Mosaico">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Search Box input element -->
-      <div class="relative w-full md:w-72">
-        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-gray-400 text-xs">🔍</span>
-        <input type="text" id="order-search-input" oninput="handleOrderSearch(this.value)" placeholder="Pesquisar por cliente, ID, itens, fone..." class="w-full pl-9 pr-8 py-2.5 border border-gray-200 focus:border-orange-550 focus:border-orange-500 rounded-xl text-xs focus:outline-none transition-all shadow-xs" />
-        <button onclick="clearOrderSearch()" id="btn-clear-search" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 hidden text-xs transition-colors">✕</button>
-      </div>
-    </section>
-
-    <!-- Content Columns splits: Em Andamento vs Finalizados -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      
-      <!-- SUBSECTION: ACTIVE PIPELINE orders (Pendente, Preparando, Em Rota) -->
-      <div class="space-y-4">
-        <h3 class="font-display font-semibold text-sm text-gray-500 flex items-center gap-2">
-          <span>🛠️ Em Andamento</span>
-          <span id="active-pipes-count" class="bg-orange-100 text-brand-primary px-2 py-0.5 rounded-md text-[10px] font-bold">0</span>
-        </h3>
-        
-        <div id="active-orders-grid" class="space-y-4">
-          <!-- Populated dynamically -->
-          <div class="text-center py-12 bg-white rounded-xl border border-gray-100 text-gray-400">
-            <p class="text-sm">Buscando transações do banco de dados...</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- SUBSECTION: FINALIZED orders (Entregue, Cancelado) -->
-      <div class="space-y-4">
-        <h3 class="font-display font-semibold text-sm text-gray-500 flex items-center gap-2">
-          <span>✅ Histórico Finalizados</span>
-          <span id="finish-pipes-count" class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md text-[10px] font-bold">0</span>
-        </h3>
-
-        <div id="archived-orders-grid" class="space-y-4">
-          <!-- Populated dynamically -->
-          <div class="text-center py-12 bg-white rounded-xl border border-gray-100 text-gray-400">
-            <p class="text-sm border-gray-50">Sem registros finalizados</p>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </main>
-    </div> <!-- Closing content wrapper -->
-  </div> <!-- Closing layout container -->
-
-  <!-- MODAL: DETALHES COMPLETOS DO PEDIDO (Drawer popup) -->
-  <div id="details-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden backdrop-blur-xs">
-    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col relative transform scale-95 duration-200 transition-transform">
-      <button onclick="toggleDetailsModal(false)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 p-2 text-sm font-bold z-10 cursor-pointer">✕</button>
-      
-      <div class="p-6 border-b border-gray-100">
-        <span id="modal-lbl-date" class="text-[10px] text-gray-400 font-mono">--/--/-- --:--</span>
-        <h2 id="modal-lbl-orderid" class="font-display font-bold text-lg text-gray-800 tracking-tight">Pedido #------</h2>
-        <div id="modal-lbl-status" class="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Status</div>
-      </div>
-
-      <!-- Scrollable segment details -->
-      <div class="p-6 overflow-y-auto max-h-[50vh] space-y-5">
-        
-        <!-- Customer details -->
-        <div class="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs">
-          <h4 class="font-bold text-gray-700">Cliente & Entrega</h4>
-          <p><strong class="text-gray-500 font-medium">Nome:</strong> <span id="modal-lbl-name">--</span></p>
-          <p><strong class="text-gray-500 font-medium">WhatsApp:</strong> <span id="modal-lbl-phone">--</span></p>
-          <p><strong class="text-gray-500 font-medium" id="modal-title-address">Endereço:</strong> <span id="modal-lbl-address">--</span></p>
-          <p id="modal-lbl-comp-row"><strong class="text-gray-500 font-medium">Complemento:</strong> <span id="modal-lbl-comp">--</span></p>
-          <p id="modal-lbl-ref-row"><strong class="text-gray-500 font-medium">Referência:</strong> <span id="modal-lbl-ref">--</span></p>
-          <p><strong class="text-gray-500 font-medium">Pagamento:</strong> <span id="modal-lbl-payment">--</span></p>
-          <p id="modal-lbl-troco-row"><strong class="text-gray-500 font-medium">Troco:</strong> <span id="modal-lbl-troco">--</span></p>
-        </div>
-
-        <!-- Rating Feedback details (Visible when order is rated) -->
-        <div id="modal-lbl-rating-row" class="hidden space-y-2 bg-amber-50/50 p-4 rounded-xl border border-amber-100 text-xs text-left">
-          <h4 class="font-bold text-amber-800 flex items-center gap-1">⭐ Avaliação do Cliente</h4>
-          <div class="space-y-1">
-            <p><strong class="text-gray-655 font-medium">🍔 Qualidade da Comida:</strong> <span id="modal-lbl-rating-food" class="font-bold text-amber-600">--</span></p>
-            <p><strong class="text-gray-655 font-medium">🛵 Serviço de Entrega:</strong> <span id="modal-lbl-rating-delivery" class="font-bold text-amber-600">--</span></p>
-            <p id="modal-lbl-rating-comment-sec" class="hidden"><strong class="text-gray-655 font-bold block mt-1.5">💬 Comentário:</strong> <span id="modal-lbl-rating-comment" class="italic text-gray-705 pl-1 inline-block">--</span></p>
-          </div>
-        </div>
-
-        <!-- Order Items lists -->
-        <div class="space-y-3">
-          <h4 class="font-bold text-xs text-gray-600 uppercase tracking-widest">Itens requisitados</h4>
-          <div id="modal-items-container" class="space-y-2"></div>
-        </div>
-
-        <hr class="border-gray-100">
-
-        <!-- Totals index table -->
-        <div class="space-y-1.5 text-xs text-gray-500 font-medium">
-          <div class="flex justify-between">
-            <span>Subtotal:</span>
-            <span id="modal-subtotal" class="font-bold text-gray-700">R$ 0,00</span>
-          </div>
-          <div class="flex justify-between text-brand-secondary">
-            <span>Desconto:</span>
-            <span id="modal-desconto" class="font-bold">- R$ 0,00</span>
-          </div>
-          <div class="flex justify-between">
-            <span>Taxa do Delivery:</span>
-            <span id="modal-taxa" class="font-bold text-gray-700">R$ 0,00</span>
-          </div>
-          <div class="flex justify-between text-sm font-bold text-gray-800 pt-2 border-t border-gray-100">
-            <span>Total da Fatura:</span>
-            <span id="modal-total" class="text-brand-primary text-base">R$ 0,00</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Footer control keys -->
-      <div class="p-4 border-t border-gray-100 bg-gray-50 flex items-center gap-2.5">
-        <button id="btn-action-preparar" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer">Preparar</button>
-        <button id="btn-action-despachar" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer">Despachar</button>
-        <button id="btn-action-cancelar" class="flex-1 border border-brand-danger hover:bg-red-50 text-brand-danger font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer">Cancelar</button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- OFFSOUND BUZZER / AUDIO PLAYER FOR SOUND INTEGRATION -->
-  <audio id="bell-beep-player" src="som.mp3" preload="auto"></audio>
-
-  <!-- OFFSITE mono style receipt container targeted by specialized print window frames -->
-  <div id="receipt-print-layout" class="hidden"></div>
-
-  <!-- STYLE SHEETS INJECTED TO ENFORCE RECEIPT THERMAL DISPLAY MONOCHROME WIDTH -->
-  <style>
-    @media print {
-      @page {
-        margin: 0;
-      }
-      body {
-        margin: 0;
-        background: white;
-      }
-      body * {
-        visibility: hidden;
-      }
-      #receipt-print-layout, #receipt-print-layout * {
-        visibility: visible;
-      }
-      #receipt-print-layout {
-        display: block !important;
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: min-content !important;
-        background: white !important;
-        color: black !important;
-        font-family: system-ui, -apple-system, sans-serif !important;
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-    }
-  </style>
-
-  <!-- MODAL: CONFIGURAÇÃO DE IMPRESSORA -->
-  <div id="printer-settings-modal" class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 hidden backdrop-blur-xs">
-    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-bold text-gray-800">⚙️ Impressoras Locais</h3>
-        <button onclick="togglePrinterSettingsModal(false)" class="text-gray-400 hover:text-gray-600">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+    <!-- MODAL: DETALHES COMPLETOS DO PEDIDO (Drawer popup) -->
+    <div
+      id="details-modal"
+      class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden backdrop-blur-xs"
+    >
+      <div
+        class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col relative transform scale-95 duration-200 transition-transform"
+      >
+        <button
+          onclick="toggleDetailsModal(false)"
+          class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 p-2 text-sm font-bold z-10 cursor-pointer"
+        >
+          ✕
         </button>
-      </div>
-      <p class="text-[10px] text-gray-500">Configure múltiplos destinos de impressão para automatizar seu fluxo de trabalho.</p>
-      
-      <!-- List of Configured Printers -->
-      <div id="printers-list-container" class="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-        <!-- List will be rendered here -->
-      </div>
 
-      <div class="pt-3 border-t border-gray-100 space-y-3">
-        <p class="text-[10px] font-bold text-gray-400 uppercase">Adicionar Nova</p>
-        
-        <div class="space-y-2">
-          <input type="text" id="printer-server-url" class="w-full text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none" placeholder="URL: http://localhost:8080">
+        <div class="p-6 border-b border-gray-100">
+          <span id="modal-lbl-date" class="text-[10px] text-gray-400 font-mono"
+            >--/--/-- --:--</span
+          >
+          <h2
+            id="modal-lbl-orderid"
+            class="font-display font-bold text-lg text-gray-800 tracking-tight"
+          >
+            Pedido #------
+          </h2>
+          <div
+            id="modal-lbl-status"
+            class="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold"
+          >
+            Status
+          </div>
+        </div>
+
+        <!-- Scrollable segment details -->
+        <div class="p-6 overflow-y-auto max-h-[50vh] space-y-5">
+          <!-- Customer details -->
+          <div
+            class="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs"
+          >
+            <h4 class="font-bold text-gray-700">Cliente & Entrega</h4>
+            <p>
+              <strong class="text-gray-500 font-medium">Nome:</strong>
+              <span id="modal-lbl-name">--</span>
+            </p>
+            <p>
+              <strong class="text-gray-500 font-medium">WhatsApp:</strong>
+              <span id="modal-lbl-phone">--</span>
+            </p>
+            <p>
+              <strong class="text-gray-500 font-medium" id="modal-title-address"
+                >Endereço:</strong
+              >
+              <span id="modal-lbl-address">--</span>
+            </p>
+            <p id="modal-lbl-comp-row">
+              <strong class="text-gray-500 font-medium">Complemento:</strong>
+              <span id="modal-lbl-comp">--</span>
+            </p>
+            <p id="modal-lbl-ref-row">
+              <strong class="text-gray-500 font-medium">Referência:</strong>
+              <span id="modal-lbl-ref">--</span>
+            </p>
+            <p>
+              <strong class="text-gray-500 font-medium">Pagamento:</strong>
+              <span id="modal-lbl-payment">--</span>
+            </p>
+            <p id="modal-lbl-troco-row">
+              <strong class="text-gray-500 font-medium">Troco:</strong>
+              <span id="modal-lbl-troco">--</span>
+            </p>
+          </div>
+
+          <!-- Rating Feedback details (Visible when order is rated) -->
+          <div
+            id="modal-lbl-rating-row"
+            class="hidden space-y-2 bg-amber-50/50 p-4 rounded-xl border border-amber-100 text-xs text-left"
+          >
+            <h4 class="font-bold text-amber-800 flex items-center gap-1">
+              ⭐ Avaliação do Cliente
+            </h4>
+            <div class="space-y-1">
+              <p>
+                <strong class="text-gray-655 font-medium"
+                  >🍔 Qualidade da Comida:</strong
+                >
+                <span
+                  id="modal-lbl-rating-food"
+                  class="font-bold text-amber-600"
+                  >--</span
+                >
+              </p>
+              <p>
+                <strong class="text-gray-655 font-medium"
+                  >🛵 Serviço de Entrega:</strong
+                >
+                <span
+                  id="modal-lbl-rating-delivery"
+                  class="font-bold text-amber-600"
+                  >--</span
+                >
+              </p>
+              <p id="modal-lbl-rating-comment-sec" class="hidden">
+                <strong class="text-gray-655 font-bold block mt-1.5"
+                  >💬 Comentário:</strong
+                >
+                <span
+                  id="modal-lbl-rating-comment"
+                  class="italic text-gray-705 pl-1 inline-block"
+                  >--</span
+                >
+              </p>
+            </div>
+          </div>
+
+          <!-- Order Items lists -->
+          <div class="space-y-3">
+            <h4
+              class="font-bold text-xs text-gray-600 uppercase tracking-widest"
+            >
+              Itens requisitados
+            </h4>
+            <div id="modal-items-container" class="space-y-2"></div>
+          </div>
+
+          <hr class="border-gray-100" />
+
+          <!-- Totals index table -->
+          <div class="space-y-1.5 text-xs text-gray-500 font-medium">
+            <div class="flex justify-between">
+              <span>Subtotal:</span>
+              <span id="modal-subtotal" class="font-bold text-gray-700"
+                >R$ 0,00</span
+              >
+            </div>
+            <div class="flex justify-between text-brand-secondary">
+              <span>Desconto:</span>
+              <span id="modal-desconto" class="font-bold">- R$ 0,00</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Taxa do Delivery:</span>
+              <span id="modal-taxa" class="font-bold text-gray-700"
+                >R$ 0,00</span
+              >
+            </div>
+            <div
+              class="flex justify-between text-sm font-bold text-gray-800 pt-2 border-t border-gray-100"
+            >
+              <span>Total da Fatura:</span>
+              <span id="modal-total" class="text-brand-primary text-base"
+                >R$ 0,00</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Footer control keys -->
+        <div
+          class="p-4 border-t border-gray-100 bg-gray-50 flex items-center gap-2.5"
+        >
+          <button
+            id="btn-action-preparar"
+            class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer"
+          >
+            Preparar
+          </button>
+          <button
+            id="btn-action-despachar"
+            class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer"
+          >
+            Despachar
+          </button>
+          <button
+            id="btn-action-cancelar"
+            class="flex-1 border border-brand-danger hover:bg-red-50 text-brand-danger font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OFFSOUND BUZZER / AUDIO PLAYER FOR SOUND INTEGRATION -->
+    <audio id="bell-beep-player" src="som.mp3" preload="auto"></audio>
+
+    <!-- OFFSITE mono style receipt container targeted by specialized print window frames -->
+    <div id="receipt-print-layout" class="hidden"></div>
+
+    <!-- STYLE SHEETS INJECTED TO ENFORCE RECEIPT THERMAL DISPLAY MONOCHROME WIDTH -->
+    <style>
+      @media print {
+        @page {
+          margin: 0;
+        }
+        body {
+          margin: 0;
+          background: white;
+        }
+        body * {
+          visibility: hidden;
+        }
+        #receipt-print-layout,
+        #receipt-print-layout * {
+          visibility: visible;
+        }
+        #receipt-print-layout {
+          display: block !important;
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: min-content !important;
+          background: white !important;
+          color: black !important;
+          font-family:
+            system-ui,
+            -apple-system,
+            sans-serif !important;
+          padding: 0 !important;
+          margin: 0 !important;
+        }
+      }
+    </style>
+
+    <!-- MODAL: CONFIGURAÇÃO DE IMPRESSORA -->
+    <div
+      id="printer-settings-modal"
+      class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 hidden backdrop-blur-xs"
+    >
+      <div
+        class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col space-y-4"
+      >
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-gray-800">⚙️ Impressoras Locais</h3>
+          <button
+            onclick="togglePrinterSettingsModal(false)"
+            class="text-gray-400 hover:text-gray-600"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+        <p class="text-[10px] text-gray-500">
+          Configure múltiplos destinos de impressão para automatizar seu fluxo
+          de trabalho.
+        </p>
+
+        <!-- List of Configured Printers -->
+        <div
+          id="printers-list-container"
+          class="space-y-2 max-h-[220px] overflow-y-auto pr-1"
+        >
+          <!-- List will be rendered here -->
+        </div>
+
+        <div class="pt-3 border-t border-gray-100 space-y-3">
+          <p class="text-[10px] font-bold text-gray-400 uppercase">
+            Adicionar Nova
+          </p>
+
+          <div class="space-y-2">
+            <input
+              type="text"
+              id="printer-server-url"
+              class="w-full text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none"
+              placeholder="URL: http://localhost:8080"
+            />
+            <div class="flex gap-2">
+              <select
+                id="printer-select"
+                class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white"
+              >
+                <option value="">Aguardando URL...</option>
+              </select>
+              <button
+                onclick="fetchPrinters()"
+                class="bg-slate-100 hover:bg-slate-200 px-3 rounded-xl text-[10px] font-bold text-slate-700 transition-colors uppercase"
+              >
+                Listar
+              </button>
+            </div>
+          </div>
+
           <div class="flex gap-2">
-            <select id="printer-select" class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white">
-              <option value="">Aguardando URL...</option>
+            <select
+              id="printer-width"
+              class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white"
+            >
+              <option value="58">58mm (Padrão)</option>
+              <option value="80">80mm (Grande)</option>
             </select>
-            <button onclick="fetchPrinters()" class="bg-slate-100 hover:bg-slate-200 px-3 rounded-xl text-[10px] font-bold text-slate-700 transition-colors uppercase">Listar</button>
+            <button
+              onclick="addNewPrinterToList()"
+              class="bg-brand-primary hover:bg-orange-600 text-white px-4 rounded-xl text-xs font-bold transition-all shadow-sm"
+            >
+              + ADICIONAR
+            </button>
           </div>
         </div>
 
-        <div class="flex gap-2">
-          <select id="printer-width" class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white">
-            <option value="58">58mm (Padrão)</option>
-            <option value="80">80mm (Grande)</option>
-          </select>
-          <button onclick="addNewPrinterToList()" class="bg-brand-primary hover:bg-orange-600 text-white px-4 rounded-xl text-xs font-bold transition-all shadow-sm">
-            + ADICIONAR
+        <div class="pt-2">
+          <button
+            onclick="printTestPage()"
+            class="w-full bg-slate-50 border border-slate-100 text-slate-500 py-2.5 rounded-xl font-bold text-[10px] hover:bg-slate-100 transition-colors uppercase tracking-wider"
+          >
+            🧪 Imprimir Página de Teste (Piloto)
           </button>
         </div>
       </div>
+    </div>
 
-      <div class="pt-2">
-        <button onclick="printTestPage()" class="w-full bg-slate-50 border border-slate-100 text-slate-500 py-2.5 rounded-xl font-bold text-[10px] hover:bg-slate-100 transition-colors uppercase tracking-wider">
-          🧪 Imprimir Página de Teste (Piloto)
-        </button>
+    <!-- MODAL: ESTIMAÇÃO DE TEMPO DO PREPARO -->
+    <div
+      id="prep-time-modal"
+      class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all"
+    >
+      <div
+        class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-gray-100 scale-95 transition-transform duration-200"
+      >
+        <div class="text-center space-y-4">
+          <div
+            class="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-xl"
+          >
+            ⏳
+          </div>
+          <div>
+            <h3 class="font-display font-extrabold text-gray-800 text-sm">
+              Tempo Estimado de Preparo
+            </h3>
+            <p class="text-[11px] text-gray-500 mt-1 leading-relaxed">
+              Selecione em quantos minutos o pedido estará pronto para entrega
+              ou retirada.
+            </p>
+          </div>
+
+          <!-- Pre-selected option labels -->
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              onclick="confirmPrepTimeSelection(20)"
+              class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            >
+              ⏱️ 20 min
+            </button>
+            <button
+              onclick="confirmPrepTimeSelection(30)"
+              class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans"
+            >
+              ⏱️ 30 min
+            </button>
+            <button
+              onclick="confirmPrepTimeSelection(40)"
+              class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans"
+            >
+              ⏱️ 40 min
+            </button>
+            <button
+              onclick="confirmPrepTimeSelection(50)"
+              class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer"
+            >
+              ⏱️ 50 min
+            </button>
+            <button
+              onclick="confirmPrepTimeSelection(60)"
+              class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans"
+            >
+              ⏱️ 60 min
+            </button>
+            <button
+              onclick="confirmPrepTimeSelection(80)"
+              class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans"
+            >
+              ⏱️ 80 min
+            </button>
+          </div>
+
+          <div class="space-y-1">
+            <label
+              class="block text-[10px] uppercase font-bold text-gray-400 text-left"
+              >Ou digite o tempo personalizado (min):</label
+            >
+            <input
+              type="number"
+              id="custom-prep-minutes"
+              placeholder="Ex: 45"
+              class="w-full text-center p-2.5 text-sm font-semibold border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all"
+            />
+          </div>
+
+          <div class="flex gap-2 pt-2">
+            <button
+              onclick="togglePrepTimeModal(false)"
+              class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl text-xs font-semibold cursor-pointer transition-all"
+            >
+              Cancelar
+            </button>
+            <button
+              onclick="confirmCustomPrepTime()"
+              class="flex-1 py-2.5 bg-brand-primary hover:bg-orange-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-all"
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- MODAL: ESTIMAÇÃO DE TEMPO DO PREPARO -->
-  <div id="prep-time-modal" class="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all">
-    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-gray-100 scale-95 transition-transform duration-200">
-      <div class="text-center space-y-4">
-        <div class="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-xl">⏳</div>
-        <div>
-          <h3 class="font-display font-extrabold text-gray-800 text-sm">Tempo Estimado de Preparo</h3>
-          <p class="text-[11px] text-gray-500 mt-1 leading-relaxed">Selecione em quantos minutos o pedido estará pronto para entrega ou retirada.</p>
-        </div>
-        
-        <!-- Pre-selected option labels -->
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="confirmPrepTimeSelection(20)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer">⏱️ 20 min</button>
-          <button onclick="confirmPrepTimeSelection(30)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans">⏱️ 30 min</button>
-          <button onclick="confirmPrepTimeSelection(40)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans">⏱️ 40 min</button>
-          <button onclick="confirmPrepTimeSelection(50)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer">⏱️ 50 min</button>
-          <button onclick="confirmPrepTimeSelection(60)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans">⏱️ 60 min</button>
-          <button onclick="confirmPrepTimeSelection(80)" class="bg-gray-50 hover:bg-orange-50 hover:text-orange-500 text-gray-700 border border-gray-100 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans">⏱️ 80 min</button>
-        </div>
+    <script type="module">
+      import {
+        db,
+        auth,
+        Timestamp,
+        COLLECTIONS,
+        collection,
+        doc,
+        query,
+        orderBy,
+        onSnapshot,
+        getDoc,
+        updateDoc,
+        onAuthStateChanged,
+        where,
+        signOut,
+      } from "./firebase-config.js";
 
-        <div class="space-y-1">
-          <label class="block text-[10px] uppercase font-bold text-gray-400 text-left">Ou digite o tempo personalizado (min):</label>
-          <input type="number" id="custom-prep-minutes" placeholder="Ex: 45" class="w-full text-center p-2.5 text-sm font-semibold border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
-        </div>
-
-        <div class="flex gap-2 pt-2">
-          <button onclick="togglePrepTimeModal(false)" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-650 rounded-xl text-xs font-semibold cursor-pointer transition-all">Cancelar</button>
-          <button onclick="confirmCustomPrepTime()" class="flex-1 py-2.5 bg-brand-primary hover:bg-orange-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-all">Confirmar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script type="module">
-    import { db, auth, Timestamp, COLLECTIONS, collection, doc, query, orderBy, onSnapshot, getDoc, updateDoc, onAuthStateChanged, where, signOut } from './firebase-config.js';
-
-    window.logoutAdmin = async function() {
-      localStorage.removeItem('popfood_custom_store_id');
-      localStorage.removeItem('popfood_custom_store_email');
-      localStorage.removeItem('popfood_admin_store_override');
-      try {
-        await signOut(auth);
-      } catch (err) {
-        console.error("Signout error: ", err);
-      }
-      window.location.href = "index.html";
-    };
-
-    let activeFilter = 'Todos';
-    let orderSearchKeyword = '';
-    let globalOrdersList = [];
-    let autoPrintSetting = localStorage.getItem('popfood_autoprint') === 'true';
-    let continuousBuzzerSetting = localStorage.getItem('popfood_continuous_buzzer') !== 'false';
-    let autoAcceptSetting = localStorage.getItem('popfood_auto_accept') === 'true';
-    
-    // Support for multiple printers
-    let localPrinters = [];
-    try {
-      localPrinters = JSON.parse(localStorage.getItem('popfood_printers_list') || '[]');
-    } catch(e) {
-      localPrinters = [];
-    }
-
-    // Migration for old single printer settings
-    const oldUrl = localStorage.getItem('popfood_printer_url');
-    if (oldUrl && localPrinters.length === 0) {
-      localPrinters.push({
-        url: oldUrl,
-        name: localStorage.getItem('popfood_printer_name') || '',
-        width: localStorage.getItem('popfood_printer_width') || '58'
-      });
-      localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
-      localStorage.removeItem('popfood_printer_url');
-      localStorage.removeItem('popfood_printer_name');
-      localStorage.removeItem('popfood_printer_width');
-    }
-
-    let currentLayout = localStorage.getItem('popfood_orders_layout') || 'list';
-    let selectedSound = localStorage.getItem('popfood_notification_sound') || 'default';
-    let loadedRestaurantProfile = null;
-    let firstLoadDone = false;
-
-    // Load printer settings
-    window.onload = async () => {
-      // Validate administrator active session
-      window.currentStoreId = null;
-      onAuthStateChanged(auth, async (user) => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlStoreId = urlParams.get('store');
-        const customStoreId = localStorage.getItem('popfood_custom_store_id');
-        const overrideStoreId = localStorage.getItem('popfood_admin_store_override');
-        
-        if (urlStoreId) {
-          window.currentStoreId = urlStoreId;
-        } else if (overrideStoreId) {
-          window.currentStoreId = overrideStoreId;
-        } else if (customStoreId) {
-          window.currentStoreId = customStoreId;
-        } else if (user) {
-          window.currentStoreId = user.uid;
-        }
-
-        if (!user && !customStoreId && !urlStoreId) {
-          alert("Acesso restrito! Por favor faça login primeiro.");
-          window.location.href = "index.html";
-          return;
-        }
-
-        if (!window.currentStoreId) {
-          window.location.href = "index.html";
-          return;
-        }
-
-        // Apply override visual styling if override exists
-        if (overrideStoreId && window.currentStoreId === overrideStoreId) {
-          injectOverrideBannerUI();
-        }
-
-        // Dynamically append currentStoreId universally to ALL internal admin links
-        document.querySelectorAll('a').forEach(el => {
-          const href = el.getAttribute('href');
-          if (href) {
-            const adminPages = ['index.html', 'perfil.html', 'pedidos.html', 'clientes.html', 'relatorios.html', 'cliente.html', 'motoboy.html'];
-            const basePath = href.split('?')[0];
-            if (adminPages.includes(basePath)) {
-              el.href = `${basePath}?store=${window.currentStoreId}`;
-            }
-          }
-        });
-  
-
-        // Synchronize auto indicator tags
-        document.getElementById('lbl-auto-indicator').textContent = autoPrintSetting ? "🖨️ Impressão Auto: ON" : "🖨️ Impressão Auto: OFF";
-        document.getElementById('lbl-continuous-buzzer').textContent = continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
-        document.getElementById('lbl-auto-accept').textContent = autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
-        document.getElementById('sound-selector').value = selectedSound;
-        updateLayoutUI();
-        if (typeof updateNotificationIndicator === 'function') {
-          updateNotificationIndicator();
-        }
-        const lastUrl = localPrinters.length > 0 ? localPrinters[localPrinters.length - 1].url : "";
-        document.getElementById('printer-server-url').value = lastUrl;
-        if (lastUrl) fetchPrinters(false);
-
-        // Load restaurant settings realtime
+      window.logoutAdmin = async function () {
+        localStorage.removeItem("popfood_custom_store_id");
+        localStorage.removeItem("popfood_custom_store_email");
+        localStorage.removeItem("popfood_admin_store_override");
         try {
-          const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
-          onSnapshot(profileRef, (docSnap) => {
-            const isSuperUserOverride = localStorage.getItem('popfood_admin_store_override') === window.currentStoreId;
-            
-            if (!docSnap.exists() && !isSuperUserOverride) {
+          await signOut(auth);
+        } catch (err) {
+          console.error("Signout error: ", err);
+        }
+        window.location.href = "index.html";
+      };
+
+      let activeFilter = "Todos";
+      let orderSearchKeyword = "";
+      let globalOrdersList = [];
+      let autoPrintSetting =
+        localStorage.getItem("popfood_autoprint") === "true";
+      let continuousBuzzerSetting =
+        localStorage.getItem("popfood_continuous_buzzer") !== "false";
+      let autoAcceptSetting =
+        localStorage.getItem("popfood_auto_accept") === "true";
+
+      // Support for multiple printers
+      let localPrinters = [];
+      try {
+        localPrinters = JSON.parse(
+          localStorage.getItem("popfood_printers_list") || "[]",
+        );
+      } catch (e) {
+        localPrinters = [];
+      }
+
+      // Migration for old single printer settings
+      const oldUrl = localStorage.getItem("popfood_printer_url");
+      if (oldUrl && localPrinters.length === 0) {
+        localPrinters.push({
+          url: oldUrl,
+          name: localStorage.getItem("popfood_printer_name") || "",
+          width: localStorage.getItem("popfood_printer_width") || "58",
+        });
+        localStorage.setItem(
+          "popfood_printers_list",
+          JSON.stringify(localPrinters),
+        );
+        localStorage.removeItem("popfood_printer_url");
+        localStorage.removeItem("popfood_printer_name");
+        localStorage.removeItem("popfood_printer_width");
+      }
+
+      let currentLayout =
+        localStorage.getItem("popfood_orders_layout") || "list";
+      let selectedSound =
+        localStorage.getItem("popfood_notification_sound") || "default";
+      let loadedRestaurantProfile = null;
+      let firstLoadDone = false;
+
+      // Load printer settings
+      window.onload = async () => {
+        // Validate administrator active session
+        window.currentStoreId = null;
+        onAuthStateChanged(auth, async (user) => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlStoreId = urlParams.get("store");
+          const customStoreId = localStorage.getItem("popfood_custom_store_id");
+          const overrideStoreId = localStorage.getItem(
+            "popfood_admin_store_override",
+          );
+
+          if (urlStoreId) {
+            window.currentStoreId = urlStoreId;
+          } else if (overrideStoreId) {
+            window.currentStoreId = overrideStoreId;
+          } else if (customStoreId) {
+            window.currentStoreId = customStoreId;
+          } else if (user) {
+            window.currentStoreId = user.uid;
+          }
+
+          if (!user && !customStoreId && !urlStoreId) {
+            alert("Acesso restrito! Por favor faça login primeiro.");
+            window.location.href = "index.html";
+            return;
+          }
+
+          if (!window.currentStoreId) {
+            window.location.href = "index.html";
+            return;
+          }
+
+          // Apply override visual styling if override exists
+          if (overrideStoreId && window.currentStoreId === overrideStoreId) {
+            injectOverrideBannerUI();
+          }
+
+          // Dynamically append currentStoreId universally to ALL internal admin links
+          document.querySelectorAll("a").forEach((el) => {
+            const href = el.getAttribute("href");
+            if (href) {
+              const adminPages = [
+                "index.html",
+                "perfil.html",
+                "pedidos.html",
+                "clientes.html",
+                "relatorios.html",
+                "cliente.html",
+                "motoboy.html",
+              ];
+              const basePath = href.split("?")[0];
+              if (adminPages.includes(basePath)) {
+                el.href = `${basePath}?store=${window.currentStoreId}`;
+              }
+            }
+          });
+
+          // Synchronize auto indicator tags
+          document.getElementById("lbl-auto-indicator").textContent =
+            autoPrintSetting
+              ? "🖨️ Impressão Auto: ON"
+              : "🖨️ Impressão Auto: OFF";
+          document.getElementById("lbl-continuous-buzzer").textContent =
+            continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
+          document.getElementById("lbl-auto-accept").textContent =
+            autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
+          document.getElementById("sound-selector").value = selectedSound;
+          updateLayoutUI();
+          if (typeof updateNotificationIndicator === "function") {
+            updateNotificationIndicator();
+          }
+          const lastUrl =
+            localPrinters.length > 0
+              ? localPrinters[localPrinters.length - 1].url
+              : "";
+          document.getElementById("printer-server-url").value = lastUrl;
+          if (lastUrl) fetchPrinters(false);
+
+          // Load restaurant settings realtime
+          try {
+            const profileRef = doc(
+              db,
+              COLLECTIONS.restaurantProfile,
+              window.currentStoreId,
+            );
+            onSnapshot(profileRef, (docSnap) => {
+              const isSuperUserOverride =
+                localStorage.getItem("popfood_admin_store_override") ===
+                window.currentStoreId;
+
+              if (!docSnap.exists() && !isSuperUserOverride) {
                 document.body.innerHTML = `
                   <div class="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 fixed inset-0 z-[9999999]">
                      <div class="bg-red-500/20 text-red-500 p-5 rounded-full mb-6 relative">
@@ -629,14 +1149,17 @@
                   </div>
                 `;
                 return;
-            }
+              }
 
-            if (docSnap.exists()) {
-              loadedRestaurantProfile = docSnap.data();
-              
-              // Apply Lock Screen
-              if (loadedRestaurantProfile.suspended === true && !isSuperUserOverride) {
-                document.body.innerHTML = `
+              if (docSnap.exists()) {
+                loadedRestaurantProfile = docSnap.data();
+
+                // Apply Lock Screen
+                if (
+                  loadedRestaurantProfile.suspended === true &&
+                  !isSuperUserOverride
+                ) {
+                  document.body.innerHTML = `
                   <div class="h-screen w-screen bg-slate-900 flex flex-col items-center justify-center text-white p-6 fixed inset-0 z-[9999999]">
                      <div class="bg-red-500/20 text-red-500 p-5 rounded-full mb-6 relative">
                         <div class="absolute inset-0 border-4 border-red-500/30 rounded-full animate-ping"></div>
@@ -650,51 +1173,52 @@
                      <button onclick="window.location.href='index.html'" class="bg-white hover:bg-gray-100 text-slate-900 font-bold py-3 px-8 rounded-xl transition-all shadow-lg hover:scale-[1.02] active:scale-95">Voltar</button>
                   </div>
                 `;
+                }
               }
-            }
-          });
-        } catch (err) {
-          console.warn("Could not retrieve profile metadata: ", err);
+            });
+          } catch (err) {
+            console.warn("Could not retrieve profile metadata: ", err);
+          }
+
+          // Boot firestore snapshots listeners
+          startRealtimeOrdersPipeline();
+        });
+      };
+
+      // Printer settings toggler
+      window.togglePrinterSettingsModal = function (show) {
+        const modal = document.getElementById("printer-settings-modal");
+        if (show) {
+          modal.classList.remove("hidden");
+          renderPrintersList();
+        } else {
+          modal.classList.add("hidden");
+        }
+      };
+
+      function renderPrintersList() {
+        const container = document.getElementById("printers-list-container");
+        if (!container) return;
+        container.innerHTML = "";
+
+        if (localPrinters.length === 0) {
+          container.innerHTML =
+            '<div class="text-center py-6 border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 text-[10px] font-medium">Nenhuma impressora configurada.</div>';
+          return;
         }
 
-        // Boot firestore snapshots listeners
-        startRealtimeOrdersPipeline();
-      });
-    };
-
-    // Printer settings toggler
-    window.togglePrinterSettingsModal = function(show) {
-      const modal = document.getElementById('printer-settings-modal');
-      if (show) {
-        modal.classList.remove('hidden');
-        renderPrintersList();
-      } else {
-        modal.classList.add('hidden');
-      }
-    }
-
-    function renderPrintersList() {
-      const container = document.getElementById('printers-list-container');
-      if (!container) return;
-      container.innerHTML = '';
-
-      if (localPrinters.length === 0) {
-        container.innerHTML = '<div class="text-center py-6 border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 text-[10px] font-medium">Nenhuma impressora configurada.</div>';
-        return;
-      }
-
-      localPrinters.forEach((printer, index) => {
-        const item = document.createElement('div');
-        const isActive = printer.active !== false;
-        item.className = `bg-slate-50 border ${isActive ? 'border-brand-primary/30' : 'border-slate-100 opacity-50'} rounded-xl p-3 flex items-center justify-between gap-3 group hover:border-orange-200 transition-all`;
-        item.innerHTML = `
+        localPrinters.forEach((printer, index) => {
+          const item = document.createElement("div");
+          const isActive = printer.active !== false;
+          item.className = `bg-slate-50 border ${isActive ? "border-brand-primary/30" : "border-slate-100 opacity-50"} rounded-xl p-3 flex items-center justify-between gap-3 group hover:border-orange-200 transition-all`;
+          item.innerHTML = `
           <div class="flex-grow min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" class="sr-only peer" ${isActive ? 'checked' : ''} onchange="togglePrinterActive(${index}, this.checked)">
+                <input type="checkbox" class="sr-only peer" ${isActive ? "checked" : ""} onchange="togglePrinterActive(${index}, this.checked)">
                 <div class="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-brand-primary"></div>
               </label>
-              <p class="text-[11px] font-bold text-slate-800 truncate ${!isActive ? 'line-through text-slate-400' : ''}">${printer.name || 'Impressora'}</p>
+              <p class="text-[11px] font-bold text-slate-800 truncate ${!isActive ? "line-through text-slate-400" : ""}">${printer.name || "Impressora"}</p>
               <span class="text-[8px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">${printer.width}mm</span>
             </div>
             <p class="text-[9px] text-slate-400 truncate">${printer.url}</p>
@@ -708,378 +1232,532 @@
             </button>
           </div>
         `;
-        container.appendChild(item);
-      });
-    }
-
-    window.togglePrinterActive = function(index, checked) {
-      localPrinters[index].active = checked;
-      localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
-      renderPrintersList();
-    }
-
-    window.removePrinter = function(index) {
-      if(!confirm("Deseja remover esta impressora?")) return;
-      localPrinters.splice(index, 1);
-      localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
-      renderPrintersList();
-    }
-
-    window.addNewPrinterToList = function() {
-      const url = document.getElementById('printer-server-url').value.trim();
-      const name = document.getElementById('printer-select').value;
-      const width = document.getElementById('printer-width').value;
-
-      if (!url) { alert("Por favor, informe a URL do servidor."); return; }
-      if (!name) { alert("Por favor, selecione uma impressora da lista."); return; }
-
-      // Check for duplicates
-      const isDup = localPrinters.some(p => p.url === url && p.name === name);
-      if (isDup) { alert("Esta impressora já foi adicionada."); return; }
-
-      localPrinters.push({ url, name, width, active: true });
-      localStorage.setItem('popfood_printers_list', JSON.stringify(localPrinters));
-      
-      // Reset form but keep URL for convenience maybe
-      document.getElementById('printer-select').value = "";
-      renderPrintersList();
-      alert("Impressora adicionada com sucesso!");
-    }
-
-    window.fetchPrinters = async function(showAlert = true) {
-        const url = document.getElementById('printer-server-url').value.trim();
-        if (!url) { alert("Informe a URL do servidor primeiro."); return; }
-        
-        try {
-            const resp = await fetch(`${url.replace(/\/$/, '')}/impressoras`);
-            const data = await resp.json();
-            const printers = data.impressoras || [];
-            
-            const select = document.getElementById('printer-select');
-            select.innerHTML = '<option value="">Selecione a impressora...</option>';
-            printers.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p;
-                opt.textContent = p;
-                select.appendChild(opt);
-            });
-            if (showAlert) alert("Impressoras listadas com sucesso!");
-        } catch (err) {
-            console.error(err);
-            alert("Erro ao buscar impressoras: " + (err.message || err));
-        }
-    }
-    
-
-    window.printSpecificTestPage = function(index) {
-       const p = localPrinters[index];
-       if (!p) return;
-       const mockOrder = {
-          id: "TESTE",
-          customer: { name: "CLIENTE TESTE", phone: "00000000", type: "delivery", address: "RUA DE TESTE, 123" },
-          items: [{ quantity: 1, name: "item de teste", price: 10, totalItemPrice: 10 }],
-          paymentMethod: "Dinheiro", subtotal: 10, total: 10, deliveryFee: 0, desconto: 0, createdAt: new Date()
-       };
-
-       const temp = [...localPrinters];
-       localPrinters = [{ ...p, active: true }];
-       try {
-         window.triggerThermalComandaPrint(mockOrder);
-         alert("Impressão de teste enviada para " + p.name);
-       } finally {
-         localPrinters = temp;
-       }
-    };
-
-    window.printTestPage = function() {
-       const url = document.getElementById('printer-server-url').value.trim();
-       const name = document.getElementById('printer-select').value;
-       const width = document.getElementById('printer-width').value || '58';
-
-       if (!url) { alert("Informe a URL do servidor primeiro."); return; }
-       if (!name) { alert("Selecione uma impressora da lista primeiro."); return; }
-       
-       const mockOrder = {
-          id: "TESTE",
-          customer: { name: "CLIENTE TESTE", phone: "00000000", type: "delivery", address: "RUA DE TESTE, 123" },
-          items: [{ quantity: 1, name: "item de teste", price: 10, totalItemPrice: 10 }],
-          paymentMethod: "Dinheiro", subtotal: 10, total: 10, deliveryFee: 0, desconto: 0, createdAt: new Date()
-       };
-
-       // Specialized test call
-       const temp = [...localPrinters];
-       localPrinters = [{ url, name, width, active: true }];
-       try {
-         window.triggerThermalComandaPrint(mockOrder);
-         alert("Impressão de teste enviada para " + name);
-       } finally {
-         localPrinters = temp;
-       }
-    };
-    
-    window.savePrinterSettings = function() {
-      // Logic handled by individual add/remove actions now
-      window.togglePrinterSettingsModal(false);
-    }
-
-    window.setLayout = function(layout) {
-      currentLayout = layout;
-      localStorage.setItem('popfood_orders_layout', layout);
-      updateLayoutUI();
-      renderVisualOrdersGrid();
-    }
-
-    function updateLayoutUI() {
-      const btnList = document.getElementById('btn-layout-list');
-      const btnGrid = document.getElementById('btn-layout-grid');
-      const activeGrid = document.getElementById('active-orders-grid');
-      const archivedGrid = document.getElementById('archived-orders-grid');
-
-      if (currentLayout === 'list') {
-        btnList.classList.add('bg-white', 'text-orange-500', 'shadow-sm');
-        btnList.classList.remove('text-gray-400');
-        btnGrid.classList.remove('bg-white', 'text-orange-500', 'shadow-sm');
-        btnGrid.classList.add('text-gray-400');
-
-        activeGrid.classList.remove('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3', 'gap-4');
-        activeGrid.classList.add('space-y-4');
-        archivedGrid.classList.remove('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-3', 'gap-4');
-        archivedGrid.classList.add('space-y-4');
-      } else {
-        btnGrid.classList.add('bg-white', 'text-orange-500', 'shadow-sm');
-        btnGrid.classList.remove('text-gray-400');
-        btnList.classList.remove('bg-white', 'text-orange-500', 'shadow-sm');
-        btnList.classList.add('text-gray-400');
-
-        activeGrid.classList.remove('space-y-4');
-        activeGrid.classList.add('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-2', 'gap-4');
-        archivedGrid.classList.remove('space-y-4');
-        archivedGrid.classList.add('grid', 'grid-cols-1', 'md:grid-cols-2', 'xl:grid-cols-2', 'gap-4');
+          container.appendChild(item);
+        });
       }
-    }
 
-    window.changeNotificationSound = function(sound) {
-      selectedSound = sound;
-      localStorage.setItem('popfood_notification_sound', sound);
-      // Play a preview
-      triggerNewOrderAlert(true);
-    }
+      window.togglePrinterActive = function (index, checked) {
+        localPrinters[index].active = checked;
+        localStorage.setItem(
+          "popfood_printers_list",
+          JSON.stringify(localPrinters),
+        );
+        renderPrintersList();
+      };
 
-    // Auto print toggler
-    window.toggleAutoPrint = function() {
-      autoPrintSetting = !autoPrintSetting;
-      localStorage.setItem('popfood_autoprint', autoPrintSetting.toString());
-      document.getElementById('lbl-auto-indicator').textContent = autoPrintSetting ? "🖨️ Impressão Auto: ON" : "🖨️ Impressão Auto: OFF";
-    }
+      window.removePrinter = function (index) {
+        if (!confirm("Deseja remover esta impressora?")) return;
+        localPrinters.splice(index, 1);
+        localStorage.setItem(
+          "popfood_printers_list",
+          JSON.stringify(localPrinters),
+        );
+        renderPrintersList();
+      };
 
-    // Connect real-time snap on Firestore database orders
-    function startRealtimeOrdersPipeline() {
-      const q = query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId));
-      
-      onSnapshot(q, (snapshot) => {
-        let hasNewPendente = false;
-        const incomingOrders = [];
+      window.addNewPrinterToList = function () {
+        const url = document.getElementById("printer-server-url").value.trim();
+        const name = document.getElementById("printer-select").value;
+        const width = document.getElementById("printer-width").value;
 
-        snapshot.forEach(docSnap => {
-          incomingOrders.push({ id: docSnap.id, ...docSnap.data() });
-        });
+        if (!url) {
+          alert("Por favor, informe a URL do servidor.");
+          return;
+        }
+        if (!name) {
+          alert("Por favor, selecione uma impressora da lista.");
+          return;
+        }
 
-        // Sort orders in memory to prevent requiring Firestore composite indexes
-        incomingOrders.sort((a, b) => {
-          const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-          const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-          return tB - tA;
-        });
+        // Check for duplicates
+        const isDup = localPrinters.some(
+          (p) => p.url === url && p.name === name,
+        );
+        if (isDup) {
+          alert("Esta impressora já foi adicionada.");
+          return;
+        }
 
-        // Detect if there is a new "Pendente" order to play notification sound
-        if (firstLoadDone) {
-          // Look if there are document creations where state was introduced as "Pendente"
-          const anyNewPendente = incomingOrders.some(order => {
-            const isPendente = order.status === "Pendente";
-            // Check if this Pendente order was not already in our global list
-            const isFresh = !globalOrdersList.some(g => g.id === order.id);
-            return isPendente && isFresh;
+        localPrinters.push({ url, name, width, active: true });
+        localStorage.setItem(
+          "popfood_printers_list",
+          JSON.stringify(localPrinters),
+        );
+
+        // Reset form but keep URL for convenience maybe
+        document.getElementById("printer-select").value = "";
+        renderPrintersList();
+        alert("Impressora adicionada com sucesso!");
+      };
+
+      window.fetchPrinters = async function (showAlert = true) {
+        const url = document.getElementById("printer-server-url").value.trim();
+        if (!url) {
+          alert("Informe a URL do servidor primeiro.");
+          return;
+        }
+
+        try {
+          const resp = await fetch(`${url.replace(/\/$/, "")}/impressoras`);
+          const data = await resp.json();
+          const printers = data.impressoras || [];
+
+          const select = document.getElementById("printer-select");
+          select.innerHTML =
+            '<option value="">Selecione a impressora...</option>';
+          printers.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p;
+            opt.textContent = p;
+            select.appendChild(opt);
           });
+          if (showAlert) alert("Impressoras listadas com sucesso!");
+        } catch (err) {
+          console.error(err);
+          alert("Erro ao buscar impressoras: " + (err.message || err));
+        }
+      };
 
-          if (anyNewPendente) {
-            hasNewPendente = true;
-          }
+      window.printSpecificTestPage = function (index) {
+        const p = localPrinters[index];
+        if (!p) return;
+        const mockOrder = {
+          id: "TESTE",
+          customer: {
+            name: "CLIENTE TESTE",
+            phone: "00000000",
+            type: "delivery",
+            address: "RUA DE TESTE, 123",
+          },
+          items: [
+            {
+              quantity: 1,
+              name: "item de teste",
+              price: 10,
+              totalItemPrice: 10,
+            },
+          ],
+          paymentMethod: "Dinheiro",
+          subtotal: 10,
+          total: 10,
+          deliveryFee: 0,
+          desconto: 0,
+          createdAt: new Date(),
+        };
+
+        const temp = [...localPrinters];
+        localPrinters = [{ ...p, active: true }];
+        try {
+          window.triggerThermalComandaPrint(mockOrder);
+          alert("Impressão de teste enviada para " + p.name);
+        } finally {
+          localPrinters = temp;
+        }
+      };
+
+      window.printTestPage = function () {
+        const url = document.getElementById("printer-server-url").value.trim();
+        const name = document.getElementById("printer-select").value;
+        const width = document.getElementById("printer-width").value || "58";
+
+        if (!url) {
+          alert("Informe a URL do servidor primeiro.");
+          return;
+        }
+        if (!name) {
+          alert("Selecione uma impressora da lista primeiro.");
+          return;
         }
 
-        globalOrdersList = incomingOrders;
-        firstLoadDone = true;
+        const mockOrder = {
+          id: "TESTE",
+          customer: {
+            name: "CLIENTE TESTE",
+            phone: "00000000",
+            type: "delivery",
+            address: "RUA DE TESTE, 123",
+          },
+          items: [
+            {
+              quantity: 1,
+              name: "item de teste",
+              price: 10,
+              totalItemPrice: 10,
+            },
+          ],
+          paymentMethod: "Dinheiro",
+          subtotal: 10,
+          total: 10,
+          deliveryFee: 0,
+          desconto: 0,
+          createdAt: new Date(),
+        };
 
-        if (typeof checkAndTriggerAutoAcceptance === 'function') {
-          checkAndTriggerAutoAcceptance();
+        // Specialized test call
+        const temp = [...localPrinters];
+        localPrinters = [{ url, name, width, active: true }];
+        try {
+          window.triggerThermalComandaPrint(mockOrder);
+          alert("Impressão de teste enviada para " + name);
+        } finally {
+          localPrinters = temp;
         }
+      };
 
-        if (hasNewPendente) {
-          triggerNewOrderAlert();
-          
-          const latestPendente = incomingOrders.find(o => o.status === "Pendente");
-          if (autoPrintSetting && latestPendente) {
-            // Avoid duplicate automatic prints
-            const printedOrders = JSON.parse(localStorage.getItem('popfood_printed_orders') || '[]');
-            if (!printedOrders.includes(latestPendente.id)) {
-                triggerThermalComandaPrint(latestPendente);
-                printedOrders.push(latestPendente.id);
-                // Keep only last 100 printed orders to prevent localstorage bloat
-                if(printedOrders.length > 100) printedOrders.shift();
-                localStorage.setItem('popfood_printed_orders', JSON.stringify(printedOrders));
+      window.savePrinterSettings = function () {
+        // Logic handled by individual add/remove actions now
+        window.togglePrinterSettingsModal(false);
+      };
+
+      window.setLayout = function (layout) {
+        currentLayout = layout;
+        localStorage.setItem("popfood_orders_layout", layout);
+        updateLayoutUI();
+        renderVisualOrdersGrid();
+      };
+
+      function updateLayoutUI() {
+        const btnList = document.getElementById("btn-layout-list");
+        const btnGrid = document.getElementById("btn-layout-grid");
+        const activeGrid = document.getElementById("active-orders-grid");
+        const archivedGrid = document.getElementById("archived-orders-grid");
+
+        if (currentLayout === "list") {
+          btnList.classList.add("bg-white", "text-orange-500", "shadow-sm");
+          btnList.classList.remove("text-gray-400");
+          btnGrid.classList.remove("bg-white", "text-orange-500", "shadow-sm");
+          btnGrid.classList.add("text-gray-400");
+
+          activeGrid.classList.remove(
+            "grid",
+            "grid-cols-1",
+            "md:grid-cols-2",
+            "xl:grid-cols-3",
+            "gap-4",
+          );
+          activeGrid.classList.add("space-y-4");
+          archivedGrid.classList.remove(
+            "grid",
+            "grid-cols-1",
+            "md:grid-cols-2",
+            "xl:grid-cols-3",
+            "gap-4",
+          );
+          archivedGrid.classList.add("space-y-4");
+        } else {
+          btnGrid.classList.add("bg-white", "text-orange-500", "shadow-sm");
+          btnGrid.classList.remove("text-gray-400");
+          btnList.classList.remove("bg-white", "text-orange-500", "shadow-sm");
+          btnList.classList.add("text-gray-400");
+
+          activeGrid.classList.remove("space-y-4");
+          activeGrid.classList.add(
+            "grid",
+            "grid-cols-1",
+            "md:grid-cols-2",
+            "xl:grid-cols-2",
+            "gap-4",
+          );
+          archivedGrid.classList.remove("space-y-4");
+          archivedGrid.classList.add(
+            "grid",
+            "grid-cols-1",
+            "md:grid-cols-2",
+            "xl:grid-cols-2",
+            "gap-4",
+          );
+        }
+      }
+
+      window.changeNotificationSound = function (sound) {
+        selectedSound = sound;
+        localStorage.setItem("popfood_notification_sound", sound);
+        // Play a preview
+        triggerNewOrderAlert(true);
+      };
+
+      // Auto print toggler
+      window.toggleAutoPrint = function () {
+        autoPrintSetting = !autoPrintSetting;
+        localStorage.setItem("popfood_autoprint", autoPrintSetting.toString());
+        document.getElementById("lbl-auto-indicator").textContent =
+          autoPrintSetting ? "🖨️ Impressão Auto: ON" : "🖨️ Impressão Auto: OFF";
+      };
+
+      // Connect real-time snap on Firestore database orders
+      function startRealtimeOrdersPipeline() {
+        const q = query(
+          collection(db, COLLECTIONS.orders),
+          where("storeId", "==", window.currentStoreId),
+        );
+
+        onSnapshot(
+          q,
+          (snapshot) => {
+            let hasNewPendente = false;
+            const incomingOrders = [];
+
+            snapshot.forEach((docSnap) => {
+              incomingOrders.push({ id: docSnap.id, ...docSnap.data() });
+            });
+
+            // Sort orders in memory to prevent requiring Firestore composite indexes
+            incomingOrders.sort((a, b) => {
+              const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+              const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+              return tB - tA;
+            });
+
+            // Detect if there is a new "Pendente" order to play notification sound
+            if (firstLoadDone) {
+              // Look if there are document creations where state was introduced as "Pendente"
+              const anyNewPendente = incomingOrders.some((order) => {
+                const isPendente = order.status === "Pendente";
+                // Check if this Pendente order was not already in our global list
+                const isFresh = !globalOrdersList.some(
+                  (g) => g.id === order.id,
+                );
+                return isPendente && isFresh;
+              });
+
+              if (anyNewPendente) {
+                hasNewPendente = true;
+              }
             }
+
+            globalOrdersList = incomingOrders;
+            firstLoadDone = true;
+
+            if (typeof checkAndTriggerAutoAcceptance === "function") {
+              checkAndTriggerAutoAcceptance();
+            }
+
+            if (hasNewPendente) {
+              triggerNewOrderAlert();
+
+              const latestPendente = incomingOrders.find(
+                (o) => o.status === "Pendente",
+              );
+              if (autoPrintSetting && latestPendente) {
+                // Avoid duplicate automatic prints
+                const printedOrders = JSON.parse(
+                  localStorage.getItem("popfood_printed_orders") || "[]",
+                );
+                if (!printedOrders.includes(latestPendente.id)) {
+                  window.triggerThermalComandaPrint(latestPendente);
+                  printedOrders.push(latestPendente.id);
+                  // Keep only last 100 printed orders to prevent localstorage bloat
+                  if (printedOrders.length > 100) printedOrders.shift();
+                  localStorage.setItem(
+                    "popfood_printed_orders",
+                    JSON.stringify(printedOrders),
+                  );
+                }
+              }
+            }
+
+            renderVisualOrdersGrid();
+          },
+          (err) => {
+            console.error("Listening synchronization orders error: ", err);
+          },
+        );
+      }
+
+      // State filter switches
+      window.selectStateFilter = function (statusStr) {
+        activeFilter = statusStr;
+
+        const btns = document.querySelectorAll(".filter-btn");
+        btns.forEach((btn) => {
+          const btnStat = btn.getAttribute("data-status");
+          if (btnStat === statusStr) {
+            btn.className =
+              "filter-btn text-xs font-bold py-2 px-4 rounded-full border transition-all cursor-pointer bg-orange-500 border-orange-500 text-white";
+          } else {
+            btn.className =
+              "filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer";
           }
-        }
+        });
 
         renderVisualOrdersGrid();
-      }, (err) => {
-        console.error("Listening synchronization orders error: ", err);
-      });
-    }
+      };
 
-    // State filter switches
-    window.selectStateFilter = function(statusStr) {
-      activeFilter = statusStr;
-      
-      const btns = document.querySelectorAll('.filter-btn');
-      btns.forEach(btn => {
-        const btnStat = btn.getAttribute('data-status');
-        if (btnStat === statusStr) {
-          btn.className = "filter-btn text-xs font-bold py-2 px-4 rounded-full border transition-all cursor-pointer bg-orange-500 border-orange-500 text-white";
-        } else {
-          btn.className = "filter-btn text-xs font-bold py-2 px-4 rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-all cursor-pointer";
-        }
-      });
-
-      renderVisualOrdersGrid();
-    }
-
-    window.handleOrderSearch = function(val) {
-      orderSearchKeyword = val.toLowerCase().trim();
-      const btnClear = document.getElementById('btn-clear-search');
-      if (btnClear) {
-        if (orderSearchKeyword) {
-          btnClear.classList.remove('hidden');
-        } else {
-          btnClear.classList.add('hidden');
-        }
-      }
-      renderVisualOrdersGrid();
-    }
-
-    window.clearOrderSearch = function() {
-      const input = document.getElementById('order-search-input');
-      if (input) {
-        input.value = '';
-      }
-      window.handleOrderSearch('');
-    }
-
-    // Sort, aggregate and render orders separation (active-andamento vs finished-concluido)
-    function renderVisualOrdersGrid() {
-      const activeParent = document.getElementById('active-orders-grid');
-      const archivedParent = document.getElementById('archived-orders-grid');
-
-      activeParent.innerHTML = '';
-      archivedParent.innerHTML = '';
-
-      // Filters & Search
-      let drawingList = globalOrdersList;
-      if (activeFilter !== 'Todos') {
-        drawingList = globalOrdersList.filter(o => o.status === activeFilter);
-      }
-
-      if (orderSearchKeyword) {
-        drawingList = drawingList.filter(o => {
-          const idMatch = o.id && o.id.toLowerCase().includes(orderSearchKeyword);
-          const nameMatch = o.customer && o.customer.name && o.customer.name.toLowerCase().includes(orderSearchKeyword);
-          const phoneMatch = o.customer && o.customer.phone && o.customer.phone.toLowerCase().includes(orderSearchKeyword);
-          const addressMatch = o.customer && o.customer.address && o.customer.address.toLowerCase().includes(orderSearchKeyword);
-          const cepMatch = o.customer && o.customer.cep && o.customer.cep.toLowerCase().includes(orderSearchKeyword);
-          const payMatch = o.paymentMethod && o.paymentMethod.toLowerCase().includes(orderSearchKeyword);
-          
-          let itemsMatch = false;
-          if (o.items && o.items.length > 0) {
-            itemsMatch = o.items.some(item => item.name && item.name.toLowerCase().includes(orderSearchKeyword));
+      window.handleOrderSearch = function (val) {
+        orderSearchKeyword = val.toLowerCase().trim();
+        const btnClear = document.getElementById("btn-clear-search");
+        if (btnClear) {
+          if (orderSearchKeyword) {
+            btnClear.classList.remove("hidden");
+          } else {
+            btnClear.classList.add("hidden");
           }
+        }
+        renderVisualOrdersGrid();
+      };
 
-          return idMatch || nameMatch || phoneMatch || addressMatch || cepMatch || payMatch || itemsMatch;
-        });
-      }
+      window.clearOrderSearch = function () {
+        const input = document.getElementById("order-search-input");
+        if (input) {
+          input.value = "";
+        }
+        window.handleOrderSearch("");
+      };
 
-      // Separate arrays
-      const andamentoList = drawingList.filter(o => o.status === "Pendente" || o.status === "Preparando" || o.status === "Saiu para entrega");
-      const finalizadosList = drawingList.filter(o => o.status === "Entregue" || o.status === "Cancelado");
+      // Sort, aggregate and render orders separation (active-andamento vs finished-concluido)
+      function renderVisualOrdersGrid() {
+        const activeParent = document.getElementById("active-orders-grid");
+        const archivedParent = document.getElementById("archived-orders-grid");
 
-      document.getElementById('active-pipes-count').textContent = andamentoList.length;
-      document.getElementById('finish-pipes-count').textContent = finalizadosList.length;
+        activeParent.innerHTML = "";
+        archivedParent.innerHTML = "";
 
-      if (andamentoList.length === 0) {
-        activeParent.innerHTML = `
+        // Filters & Search
+        let drawingList = globalOrdersList;
+        if (activeFilter !== "Todos") {
+          drawingList = globalOrdersList.filter(
+            (o) => o.status === activeFilter,
+          );
+        }
+
+        if (orderSearchKeyword) {
+          drawingList = drawingList.filter((o) => {
+            const idMatch =
+              o.id && o.id.toLowerCase().includes(orderSearchKeyword);
+            const nameMatch =
+              o.customer &&
+              o.customer.name &&
+              o.customer.name.toLowerCase().includes(orderSearchKeyword);
+            const phoneMatch =
+              o.customer &&
+              o.customer.phone &&
+              o.customer.phone.toLowerCase().includes(orderSearchKeyword);
+            const addressMatch =
+              o.customer &&
+              o.customer.address &&
+              o.customer.address.toLowerCase().includes(orderSearchKeyword);
+            const cepMatch =
+              o.customer &&
+              o.customer.cep &&
+              o.customer.cep.toLowerCase().includes(orderSearchKeyword);
+            const payMatch =
+              o.paymentMethod &&
+              o.paymentMethod.toLowerCase().includes(orderSearchKeyword);
+
+            let itemsMatch = false;
+            if (o.items && o.items.length > 0) {
+              itemsMatch = o.items.some(
+                (item) =>
+                  item.name &&
+                  item.name.toLowerCase().includes(orderSearchKeyword),
+              );
+            }
+
+            return (
+              idMatch ||
+              nameMatch ||
+              phoneMatch ||
+              addressMatch ||
+              cepMatch ||
+              payMatch ||
+              itemsMatch
+            );
+          });
+        }
+
+        // Separate arrays
+        const andamentoList = drawingList.filter(
+          (o) =>
+            o.status === "Pendente" ||
+            o.status === "Preparando" ||
+            o.status === "Saiu para entrega",
+        );
+        const finalizadosList = drawingList.filter(
+          (o) => o.status === "Entregue" || o.status === "Cancelado",
+        );
+
+        document.getElementById("active-pipes-count").textContent =
+          andamentoList.length;
+        document.getElementById("finish-pipes-count").textContent =
+          finalizadosList.length;
+
+        if (andamentoList.length === 0) {
+          activeParent.innerHTML = `
           <div class="text-center py-10 bg-white border border-gray-100 rounded-xl text-gray-400">
             <p class="text-sm">Não há pedidos ativos nesta categoria de filtro.</p>
           </div>`;
-      } else {
-        andamentoList.forEach(order => {
-          activeParent.appendChild(createOrderVisualCard(order, true));
-        });
-      }
+        } else {
+          andamentoList.forEach((order) => {
+            activeParent.appendChild(createOrderVisualCard(order, true));
+          });
+        }
 
-      if (finalizadosList.length === 0) {
-        archivedParent.innerHTML = `
+        if (finalizadosList.length === 0) {
+          archivedParent.innerHTML = `
           <div class="text-center py-10 bg-white border border-gray-100 rounded-xl text-gray-400">
             <p class="text-sm">Não há pedidos finalizados nesta categoria de filtro.</p>
           </div>`;
-      } else {
-        finalizadosList.forEach(order => {
-          archivedParent.appendChild(createOrderVisualCard(order, false));
-        });
-      }
-    }
-
-    // Build responsive order element structure
-    function createOrderVisualCard(order, isActivePipeline) {
-      const card = document.createElement('div');
-      
-      // If Pendente, highlight with a glowing soft light orange background
-      const pendenteBg = order.status === 'Pendente' ? 'bg-orange-50 border-orange-200 shadow-orange-500/5' : 'bg-white border-gray-100 shadow-sm';
-      
-      if (currentLayout === 'list') {
-        card.className = `${pendenteBg} rounded-2xl p-4.5 border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-all relative overflow-hidden group`;
-      } else {
-        card.className = `${pendenteBg} rounded-2xl p-4.5 border flex flex-col justify-between items-stretch gap-4 hover:shadow-md transition-all relative overflow-hidden group h-full`;
+        } else {
+          finalizadosList.forEach((order) => {
+            archivedParent.appendChild(createOrderVisualCard(order, false));
+          });
+        }
       }
 
-      // Draw status color maps
-      let statusColor = "bg-gray-100 text-gray-500";
-      if (order.status === "Pendente") statusColor = "bg-orange-200 text-orange-700 font-bold animate-pulse";
-      if (order.status === "Preparando") statusColor = "bg-blue-100 text-blue-600";
-      if (order.status === "Saiu para entrega") statusColor = "bg-purple-100 text-purple-600";
-      if (order.status === "Entregue") statusColor = "bg-green-100 text-green-700";
-      if (order.status === "Cancelado") statusColor = "bg-red-100 text-red-650";
+      // Build responsive order element structure
+      function createOrderVisualCard(order, isActivePipeline) {
+        const card = document.createElement("div");
 
-      // Consolidar simple visual descriptor of items
-      const itemsOverview = order.items.map(i => `${i.quantity}x ${i.name}`).join(', ');
-      const isPickup = order.customer && order.customer.type === 'pickup';
-      let displayStatus = order.status;
-      if (isPickup && order.status === "Saiu para entrega") {
-        displayStatus = "Pronto p/ Retirada";
-      }
+        // If Pendente, highlight with a glowing soft light orange background
+        const pendenteBg =
+          order.status === "Pendente"
+            ? "bg-orange-50 border-orange-200 shadow-orange-500/5"
+            : "bg-white border-gray-100 shadow-sm";
 
-      const addressLine = isPickup 
-        ? `<span class="bg-indigo-55 rounded bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 text-[10px] inline-flex items-center gap-1 border border-indigo-100">🏪 Retirada no Local</span>`
-        : `<p class="text-[11px] text-gray-400 line-clamp-1">📍 ${order.customer.address}</p>`;
+        if (currentLayout === "list") {
+          card.className = `${pendenteBg} rounded-2xl p-4.5 border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-md transition-all relative overflow-hidden group`;
+        } else {
+          card.className = `${pendenteBg} rounded-2xl p-4.5 border flex flex-col justify-between items-stretch gap-4 hover:shadow-md transition-all relative overflow-hidden group h-full`;
+        }
 
-      const headerLayout = currentLayout === 'list' 
-        ? 'flex-grow space-y-1.5' 
-        : 'space-y-2';
+        // Draw status color maps
+        let statusColor = "bg-gray-100 text-gray-500";
+        if (order.status === "Pendente")
+          statusColor = "bg-orange-200 text-orange-700 font-bold animate-pulse";
+        if (order.status === "Preparando")
+          statusColor = "bg-blue-100 text-blue-600";
+        if (order.status === "Saiu para entrega")
+          statusColor = "bg-purple-100 text-purple-600";
+        if (order.status === "Entregue")
+          statusColor = "bg-green-100 text-green-700";
+        if (order.status === "Cancelado")
+          statusColor = "bg-red-100 text-red-650";
 
-      const actionsLayout = currentLayout === 'list'
-        ? 'flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 flex-wrap justify-end'
-        : 'flex items-center gap-2 w-full pt-3 border-t border-gray-100 mt-auto';
+        // Consolidar simple visual descriptor of items
+        const itemsOverview = order.items
+          .map((i) => `${i.quantity}x ${i.name}`)
+          .join(", ");
+        const isPickup = order.customer && order.customer.type === "pickup";
+        let displayStatus = order.status;
+        if (isPickup && order.status === "Saiu para entrega") {
+          displayStatus = "Pronto p/ Retirada";
+        }
 
-      const btnFull = currentLayout === 'list' ? '' : 'flex-1';
+        const addressLine = isPickup
+          ? `<span class="bg-indigo-55 rounded bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 text-[10px] inline-flex items-center gap-1 border border-indigo-100">🏪 Retirada no Local</span>`
+          : `<p class="text-[11px] text-gray-400 line-clamp-1">📍 ${order.customer.address}</p>`;
 
-      card.innerHTML = `
+        const headerLayout =
+          currentLayout === "list" ? "flex-grow space-y-1.5" : "space-y-2";
+
+        const actionsLayout =
+          currentLayout === "list"
+            ? "flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 flex-wrap justify-end"
+            : "flex items-center gap-2 w-full pt-3 border-t border-gray-100 mt-auto";
+
+        const btnFull = currentLayout === "list" ? "" : "flex-1";
+
+        card.innerHTML = `
         <div class="${headerLayout} cursor-pointer" onclick="showOrderDetailsDrawer('${order.id}')">
           <div class="flex items-center justify-between sm:justify-start gap-3">
             <h4 class="font-display font-bold text-sm text-gray-800">Pedido #${order.id}</h4>
@@ -1096,151 +1774,183 @@
             🖨️
           </button>
           
-          ${order.status === 'Pendente' ? `
+          ${
+            order.status === "Pendente"
+              ? `
             <button onclick="changeOrderStatus('${order.id}', 'Preparando')" class="bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
               🚀 Preparar
             </button>
-          ` : ''}
+          `
+              : ""
+          }
 
-          ${order.status === 'Preparando' ? `
+          ${
+            order.status === "Preparando"
+              ? `
             <button onclick="changeOrderStatus('${order.id}', 'Saiu para entrega')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
-              ${isPickup ? '🛍️ Pronto' : '🏍️ Despachar'}
+              ${isPickup ? "🛍️ Pronto" : "🏍️ Despachar"}
             </button>
-          ` : ''}
+          `
+              : ""
+          }
         </div>
       `;
 
-      return card;
-    }
-
-    // Status transitions
-    window.changeOrderStatus = async function(orderId, nextState, prepTimeOverride = null) {
-      if (nextState === 'Preparando' && prepTimeOverride === null) {
-        window.pendingPrepOrderId = orderId;
-        window.togglePrepTimeModal(true);
-        return;
+        return card;
       }
 
-      try {
-        const orderRef = doc(db, COLLECTIONS.orders, orderId);
-        const updatePayload = {
-          status: nextState
-        };
-
-        if (nextState === 'Preparando') {
-          const minutes = parseInt(prepTimeOverride) || 40;
-          updatePayload.estimatedMinutes = minutes;
-          updatePayload.prepStartedAt = new Date().toISOString();
+      // Status transitions
+      window.changeOrderStatus = async function (
+        orderId,
+        nextState,
+        prepTimeOverride = null,
+      ) {
+        if (nextState === "Preparando" && prepTimeOverride === null) {
+          window.pendingPrepOrderId = orderId;
+          window.togglePrepTimeModal(true);
+          return;
         }
 
-        await updateDoc(orderRef, updatePayload);
-        
-        // Dynamic drawer updater
-        const modal = document.getElementById('details-modal');
-        if (modal && !modal.classList.contains("hidden")) {
-          showOrderDetailsDrawer(orderId);
+        try {
+          const orderRef = doc(db, COLLECTIONS.orders, orderId);
+          const updatePayload = {
+            status: nextState,
+          };
+
+          if (nextState === "Preparando") {
+            const minutes = parseInt(prepTimeOverride) || 40;
+            updatePayload.estimatedMinutes = minutes;
+            updatePayload.prepStartedAt = new Date().toISOString();
+          }
+
+          await updateDoc(orderRef, updatePayload);
+
+          // Dynamic drawer updater
+          const modal = document.getElementById("details-modal");
+          if (modal && !modal.classList.contains("hidden")) {
+            showOrderDetailsDrawer(orderId);
+          }
+        } catch (err) {
+          console.error("Failing status transition error: ", err);
+          alert("Erro ao transicionar status: " + err.message);
         }
-      } catch (err) {
-        console.error("Failing status transition error: ", err);
-        alert("Erro ao transicionar status: " + err.message);
-      }
-    }
+      };
 
-    // Toggles for new settings
-    window.toggleContinuousBuzzer = function() {
-      continuousBuzzerSetting = !continuousBuzzerSetting;
-      localStorage.setItem('popfood_continuous_buzzer', continuousBuzzerSetting.toString());
-      document.getElementById('lbl-continuous-buzzer').textContent = continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
-    }
+      // Toggles for new settings
+      window.toggleContinuousBuzzer = function () {
+        continuousBuzzerSetting = !continuousBuzzerSetting;
+        localStorage.setItem(
+          "popfood_continuous_buzzer",
+          continuousBuzzerSetting.toString(),
+        );
+        document.getElementById("lbl-continuous-buzzer").textContent =
+          continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
+      };
 
-    window.toggleAutoAccept = function() {
-      autoAcceptSetting = !autoAcceptSetting;
-      localStorage.setItem('popfood_auto_accept', autoAcceptSetting.toString());
-      document.getElementById('lbl-auto-accept').textContent = autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
-      
-      if (autoAcceptSetting) {
-        checkAndTriggerAutoAcceptance();
-      }
-    }
+      window.toggleAutoAccept = function () {
+        autoAcceptSetting = !autoAcceptSetting;
+        localStorage.setItem(
+          "popfood_auto_accept",
+          autoAcceptSetting.toString(),
+        );
+        document.getElementById("lbl-auto-accept").textContent =
+          autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
 
-    // Auto-Accept trigger checker
-    async function checkAndTriggerAutoAcceptance() {
-      if (!autoAcceptSetting) return;
-      
-      for (const order of globalOrdersList) {
-        if (order.status === 'Pendente') {
-          console.log(`Auto-accepting order ${order.id}`);
-          await changeOrderStatus(order.id, 'Preparando', 40); // default to 40min for auto-acceptance
+        if (autoAcceptSetting) {
+          checkAndTriggerAutoAcceptance();
+        }
+      };
+
+      // Auto-Accept trigger checker
+      async function checkAndTriggerAutoAcceptance() {
+        if (!autoAcceptSetting) return;
+
+        for (const order of globalOrdersList) {
+          if (order.status === "Pendente") {
+            console.log(`Auto-accepting order ${order.id}`);
+            await changeOrderStatus(order.id, "Preparando", 40); // default to 40min for auto-acceptance
+          }
         }
       }
-    }
 
-    // Continuous Buzzer 10-second loop checker
-    let buzzerIntervalId = null;
-    function checkAndPlayBuzzerLoop() {
-      if (!continuousBuzzerSetting) return;
-      
-      const hasPending = globalOrdersList.some(o => o.status === 'Pendente');
-      if (hasPending) {
-        console.log("Continuous bell ringer triggered for pending orders...");
-        const audio = document.getElementById('bell-beep-player');
-        if (audio) {
-          audio.currentTime = 0;
-          audio.play().catch(err => {
-            console.warn("Continuous play som.mp3 blocked. Synthesizing buzzer...", err);
+      // Continuous Buzzer 10-second loop checker
+      let buzzerIntervalId = null;
+      function checkAndPlayBuzzerLoop() {
+        if (!continuousBuzzerSetting) return;
+
+        const hasPending = globalOrdersList.some(
+          (o) => o.status === "Pendente",
+        );
+        if (hasPending) {
+          console.log("Continuous bell ringer triggered for pending orders...");
+          const audio = document.getElementById("bell-beep-player");
+          if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch((err) => {
+              console.warn(
+                "Continuous play som.mp3 blocked. Synthesizing buzzer...",
+                err,
+              );
+              synthesizeBellRingerBeep();
+            });
+          } else {
             synthesizeBellRingerBeep();
-          });
-        } else {
-          synthesizeBellRingerBeep();
+          }
         }
       }
-    }
 
-    if (!buzzerIntervalId) {
-      buzzerIntervalId = setInterval(checkAndPlayBuzzerLoop, 10000);
-    }
-
-    // Prep time selection modal helpers
-    window.togglePrepTimeModal = function(show) {
-      const modal = document.getElementById('prep-time-modal');
-      if (!modal) return;
-      const box = modal.querySelector('div');
-      if (show) {
-        modal.classList.remove('hidden');
-        setTimeout(() => box.classList.remove('scale-100', 'scale-95'), 10);
-        document.getElementById('custom-prep-minutes').value = '';
-      } else {
-        box.classList.add('scale-95');
-        setTimeout(() => modal.classList.add('hidden'), 200);
+      if (!buzzerIntervalId) {
+        buzzerIntervalId = setInterval(checkAndPlayBuzzerLoop, 10000);
       }
-    }
 
-    window.confirmPrepTimeSelection = function(minutes) {
-      if (window.pendingPrepOrderId) {
-        window.changeOrderStatus(window.pendingPrepOrderId, 'Preparando', minutes);
-        window.pendingPrepOrderId = null;
-      }
-      window.togglePrepTimeModal(false);
-    }
+      // Prep time selection modal helpers
+      window.togglePrepTimeModal = function (show) {
+        const modal = document.getElementById("prep-time-modal");
+        if (!modal) return;
+        const box = modal.querySelector("div");
+        if (show) {
+          modal.classList.remove("hidden");
+          setTimeout(() => box.classList.remove("scale-100", "scale-95"), 10);
+          document.getElementById("custom-prep-minutes").value = "";
+        } else {
+          box.classList.add("scale-95");
+          setTimeout(() => modal.classList.add("hidden"), 200);
+        }
+      };
 
-    window.confirmCustomPrepTime = function() {
-      const input = document.getElementById('custom-prep-minutes').value;
-      const val = parseInt(input);
-      if (!val || val <= 0) {
-        alert("Por favor insira um tempo válido em minutos (ex: 45)");
-        return;
-      }
-      window.confirmPrepTimeSelection(val);
-    }
+      window.confirmPrepTimeSelection = function (minutes) {
+        if (window.pendingPrepOrderId) {
+          window.changeOrderStatus(
+            window.pendingPrepOrderId,
+            "Preparando",
+            minutes,
+          );
+          window.pendingPrepOrderId = null;
+        }
+        window.togglePrepTimeModal(false);
+      };
 
-    function injectOverrideBannerUI() {
-      const overrideStoreName = localStorage.getItem('popfood_admin_store_name_override') || 'Parceiro';
-      let ribbon = document.getElementById('superuser-override-ribbon');
-      if (!ribbon) {
-        ribbon = document.createElement('div');
-        ribbon.id = 'superuser-override-ribbon';
-        ribbon.className = "bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold py-2.5 px-4 text-center flex items-center justify-between gap-3 shadow-md sticky top-0 z-[9999]";
-        ribbon.innerHTML = `
+      window.confirmCustomPrepTime = function () {
+        const input = document.getElementById("custom-prep-minutes").value;
+        const val = parseInt(input);
+        if (!val || val <= 0) {
+          alert("Por favor insira um tempo válido em minutos (ex: 45)");
+          return;
+        }
+        window.confirmPrepTimeSelection(val);
+      };
+
+      function injectOverrideBannerUI() {
+        const overrideStoreName =
+          localStorage.getItem("popfood_admin_store_name_override") ||
+          "Parceiro";
+        let ribbon = document.getElementById("superuser-override-ribbon");
+        if (!ribbon) {
+          ribbon = document.createElement("div");
+          ribbon.id = "superuser-override-ribbon";
+          ribbon.className =
+            "bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-semibold py-2.5 px-4 text-center flex items-center justify-between gap-3 shadow-md sticky top-0 z-[9999]";
+          ribbon.innerHTML = `
           <div class="mx-auto flex items-center gap-1.5 flex-wrap justify-center">
             <span>🛡️</span>
             <span><strong>MODO SIMULAÇÃO SUPER-USUÁRIO ATIVO:</strong> Gerenciando a loja <strong class="underline">${overrideStoreName}</strong></span>
@@ -1249,542 +1959,666 @@
             Sair e Voltar ao Admin Geral
           </button>
         `;
-        document.body.insertBefore(ribbon, document.body.firstChild);
-      }
-    }
-
-    // Modal drawer view state configurations
-    window.toggleDetailsModal = function(show) {
-      const modal = document.getElementById('details-modal');
-      const box = modal.querySelector('div');
-      
-      if (show) {
-        modal.classList.remove('hidden');
-        setTimeout(() => {
-          box.classList.remove('scale-95');
-        }, 50);
-        document.body.classList.add('overflow-hidden');
-      } else {
-        box.classList.add('scale-95');
-        setTimeout(() => {
-          modal.classList.add('hidden');
-        }, 200);
-        document.body.classList.remove('overflow-hidden');
-      }
-    }
-
-    window.showOrderDetailsDrawer = function(orderId) {
-      const order = globalOrdersList.find(o => o.id === orderId);
-      if (!order) return;
-
-      document.getElementById('modal-lbl-orderid').textContent = `Pedido #${order.id}`;
-      document.getElementById('modal-lbl-date').textContent = order.date;
-      
-      const isPickup = order.customer && order.customer.type === 'pickup';
-      const badge = document.getElementById('modal-lbl-status');
-      
-      let displayStatus = order.status;
-      if (isPickup && order.status === 'Saiu para entrega') {
-        displayStatus = "Pronto p/ Retirada";
-      }
-      
-      badge.textContent = displayStatus;
-      badge.className = "inline-block mt-2 px-3.5 py-1 rounded-full text-[11px] font-bold";
-      if (order.status === 'Pendente') badge.classList.add('bg-orange-100', 'text-brand-primary');
-      else if (order.status === 'Preparando') badge.classList.add('bg-blue-100', 'text-blue-600');
-      else if (order.status === 'Saiu para entrega') badge.classList.add('bg-purple-100', 'text-purple-600');
-      else if (order.status === 'Entregue') badge.classList.add('bg-green-100', 'text-green-700');
-      else badge.classList.add('bg-red-100', 'text-brand-danger');
-
-      // Client details
-      document.getElementById('modal-lbl-name').textContent = order.customer.name;
-      document.getElementById('modal-lbl-phone').textContent = order.customer.phone;
-      
-      const addressLabelEl = document.getElementById('modal-title-address');
-      if (addressLabelEl) {
-        addressLabelEl.textContent = isPickup ? "Tipo/Retirada:" : "Endereço:";
+          document.body.insertBefore(ribbon, document.body.firstChild);
+        }
       }
 
-      if (isPickup) {
-        document.getElementById('modal-lbl-address').textContent = "Retirada no Restaurante (Vou buscar)";
-      } else {
-        if (order.customer && order.customer.cep) {
-          document.getElementById('modal-lbl-address').textContent = `${order.customer.address} (CEP: ${order.customer.cep})`;
+      // Modal drawer view state configurations
+      window.toggleDetailsModal = function (show) {
+        const modal = document.getElementById("details-modal");
+        const box = modal.querySelector("div");
+
+        if (show) {
+          modal.classList.remove("hidden");
+          setTimeout(() => {
+            box.classList.remove("scale-95");
+          }, 50);
+          document.body.classList.add("overflow-hidden");
         } else {
-          document.getElementById('modal-lbl-address').textContent = order.customer ? order.customer.address : "Não informado";
+          box.classList.add("scale-95");
+          setTimeout(() => {
+            modal.classList.add("hidden");
+          }, 200);
+          document.body.classList.remove("overflow-hidden");
         }
-      }
-      
-      const compVal = document.getElementById('modal-lbl-comp');
-      if (order.customer.complement) {
-        document.getElementById('modal-lbl-comp-row').classList.remove('hidden');
-        compVal.textContent = order.customer.complement;
-      } else {
-        document.getElementById('modal-lbl-comp-row').classList.add('hidden');
-      }
+      };
 
-      const refVal = document.getElementById('modal-lbl-ref');
-      if (order.customer.reference) {
-        document.getElementById('modal-lbl-ref-row').classList.remove('hidden');
-        refVal.textContent = order.customer.reference;
-      } else {
-        document.getElementById('modal-lbl-ref-row').classList.add('hidden');
-      }
+      window.showOrderDetailsDrawer = function (orderId) {
+        const order = globalOrdersList.find((o) => o.id === orderId);
+        if (!order) return;
 
-      // Populate Payment and Troco
-      // Label de pagamento no modal
-      let modalPayLabel = order.paymentMethod || "Não informado";
-      if (order.paymentProvider === 'abacatepay' || order.isPaid) {
-        if (order.paymentMethod === 'PixOnline' || order.paymentMethod === 'Pix Imediato') {
-          modalPayLabel = '⚡ Pix Online (Pago)';
-        } else if (order.paymentMethod === 'Online' || order.paymentMethod === 'Cartão de Crédito' || order.paymentMethod === 'CartaoOnline') {
-          modalPayLabel = '💳 Cartão Online (Pago)';
-        } else if (order.isPaid) {
-          modalPayLabel = `${modalPayLabel} ✅ Pago Online`;
+        document.getElementById("modal-lbl-orderid").textContent =
+          `Pedido #${order.id}`;
+        document.getElementById("modal-lbl-date").textContent = order.date;
+
+        const isPickup = order.customer && order.customer.type === "pickup";
+        const badge = document.getElementById("modal-lbl-status");
+
+        let displayStatus = order.status;
+        if (isPickup && order.status === "Saiu para entrega") {
+          displayStatus = "Pronto p/ Retirada";
         }
-      }
-      document.getElementById('modal-lbl-payment').textContent = modalPayLabel;
-      
-      const trocoRow = document.getElementById('modal-lbl-troco-row');
-      const trocoVal = document.getElementById('modal-lbl-troco');
-      if (order.paymentMethod === 'Dinheiro' && order.troco) {
-        trocoRow.classList.remove('hidden');
-        trocoVal.textContent = order.troco;
-      } else {
-        trocoRow.classList.add('hidden');
-      }
 
-      // Populate Client Rating if available
-      const rRow = document.getElementById('modal-lbl-rating-row');
-      if (order.rating) {
-        rRow.classList.remove('hidden');
-        const starsFood = parseInt(order.rating.starsFood) || 0;
-        const starsDeliv = parseInt(order.rating.starsDelivery) || 0;
-        document.getElementById('modal-lbl-rating-food').textContent = "★".repeat(starsFood) + "☆".repeat(5 - starsFood) + ` (${starsFood}/5)`;
-        document.getElementById('modal-lbl-rating-delivery').textContent = "★".repeat(starsDeliv) + "☆".repeat(5 - starsDeliv) + ` (${starsDeliv}/5)`;
-        
-        const rCommentSec = document.getElementById('modal-lbl-rating-comment-sec');
-        if (order.rating.comment && order.rating.comment.trim() !== '') {
-          rCommentSec.classList.remove('hidden');
-          document.getElementById('modal-lbl-rating-comment').textContent = `"${order.rating.comment}"`;
+        badge.textContent = displayStatus;
+        badge.className =
+          "inline-block mt-2 px-3.5 py-1 rounded-full text-[11px] font-bold";
+        if (order.status === "Pendente")
+          badge.classList.add("bg-orange-100", "text-brand-primary");
+        else if (order.status === "Preparando")
+          badge.classList.add("bg-blue-100", "text-blue-600");
+        else if (order.status === "Saiu para entrega")
+          badge.classList.add("bg-purple-100", "text-purple-600");
+        else if (order.status === "Entregue")
+          badge.classList.add("bg-green-100", "text-green-700");
+        else badge.classList.add("bg-red-100", "text-brand-danger");
+
+        // Client details
+        document.getElementById("modal-lbl-name").textContent =
+          order.customer.name;
+        document.getElementById("modal-lbl-phone").textContent =
+          order.customer.phone;
+
+        const addressLabelEl = document.getElementById("modal-title-address");
+        if (addressLabelEl) {
+          addressLabelEl.textContent = isPickup
+            ? "Tipo/Retirada:"
+            : "Endereço:";
+        }
+
+        if (isPickup) {
+          document.getElementById("modal-lbl-address").textContent =
+            "Retirada no Restaurante (Vou buscar)";
         } else {
-          rCommentSec.classList.add('hidden');
-        }
-      } else {
-        rRow.classList.add('hidden');
-      }
-
-      // Populate Items details list
-      const container = document.getElementById('modal-items-container');
-      container.innerHTML = '';
-
-      order.items.forEach(item => {
-        const row = document.createElement('div');
-        row.className = "flex justify-between text-xs border-b border-gray-50 pb-2";
-
-        let compText = '';
-        if (item.complements && item.complements.length > 0) {
-          compText = `<div class="text-[9px] text-gray-400 mt-0.5">Com: ` + item.complements.map(c => c.optionName).join(', ') + `</div>`;
+          if (order.customer && order.customer.cep) {
+            document.getElementById("modal-lbl-address").textContent =
+              `${order.customer.address} (CEP: ${order.customer.cep})`;
+          } else {
+            document.getElementById("modal-lbl-address").textContent =
+              order.customer ? order.customer.address : "Não informado";
+          }
         }
 
-        const notesText = item.notes ? `<div class="text-[9px] text-orange-500 italic mt-0.5">Obs: "${item.notes}"</div>` : '';
+        const compVal = document.getElementById("modal-lbl-comp");
+        if (order.customer.complement) {
+          document
+            .getElementById("modal-lbl-comp-row")
+            .classList.remove("hidden");
+          compVal.textContent = order.customer.complement;
+        } else {
+          document.getElementById("modal-lbl-comp-row").classList.add("hidden");
+        }
 
-        row.innerHTML = `
+        const refVal = document.getElementById("modal-lbl-ref");
+        if (order.customer.reference) {
+          document
+            .getElementById("modal-lbl-ref-row")
+            .classList.remove("hidden");
+          refVal.textContent = order.customer.reference;
+        } else {
+          document.getElementById("modal-lbl-ref-row").classList.add("hidden");
+        }
+
+        // Populate Payment and Troco
+        // Label de pagamento no modal
+        let modalPayLabel = order.paymentMethod || "Não informado";
+        if (order.paymentProvider === "abacatepay" || order.isPaid) {
+          if (
+            order.paymentMethod === "PixOnline" ||
+            order.paymentMethod === "Pix Imediato"
+          ) {
+            modalPayLabel = "⚡ Pix Online (Pago)";
+          } else if (
+            order.paymentMethod === "Online" ||
+            order.paymentMethod === "Cartão de Crédito" ||
+            order.paymentMethod === "CartaoOnline"
+          ) {
+            modalPayLabel = "💳 Cartão Online (Pago)";
+          } else if (order.isPaid) {
+            modalPayLabel = `${modalPayLabel} ✅ Pago Online`;
+          }
+        }
+        document.getElementById("modal-lbl-payment").textContent =
+          modalPayLabel;
+
+        const trocoRow = document.getElementById("modal-lbl-troco-row");
+        const trocoVal = document.getElementById("modal-lbl-troco");
+        if (order.paymentMethod === "Dinheiro" && order.troco) {
+          trocoRow.classList.remove("hidden");
+          trocoVal.textContent = order.troco;
+        } else {
+          trocoRow.classList.add("hidden");
+        }
+
+        // Populate Client Rating if available
+        const rRow = document.getElementById("modal-lbl-rating-row");
+        if (order.rating) {
+          rRow.classList.remove("hidden");
+          const starsFood = parseInt(order.rating.starsFood) || 0;
+          const starsDeliv = parseInt(order.rating.starsDelivery) || 0;
+          document.getElementById("modal-lbl-rating-food").textContent =
+            "★".repeat(starsFood) +
+            "☆".repeat(5 - starsFood) +
+            ` (${starsFood}/5)`;
+          document.getElementById("modal-lbl-rating-delivery").textContent =
+            "★".repeat(starsDeliv) +
+            "☆".repeat(5 - starsDeliv) +
+            ` (${starsDeliv}/5)`;
+
+          const rCommentSec = document.getElementById(
+            "modal-lbl-rating-comment-sec",
+          );
+          if (order.rating.comment && order.rating.comment.trim() !== "") {
+            rCommentSec.classList.remove("hidden");
+            document.getElementById("modal-lbl-rating-comment").textContent =
+              `"${order.rating.comment}"`;
+          } else {
+            rCommentSec.classList.add("hidden");
+          }
+        } else {
+          rRow.classList.add("hidden");
+        }
+
+        // Populate Items details list
+        const container = document.getElementById("modal-items-container");
+        container.innerHTML = "";
+
+        order.items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className =
+            "flex justify-between text-xs border-b border-gray-50 pb-2";
+
+          let compText = "";
+          if (item.complements && item.complements.length > 0) {
+            compText =
+              `<div class="text-[9px] text-gray-400 mt-0.5">Com: ` +
+              item.complements.map((c) => c.optionName).join(", ") +
+              `</div>`;
+          }
+
+          const notesText = item.notes
+            ? `<div class="text-[9px] text-orange-500 italic mt-0.5">Obs: "${item.notes}"</div>`
+            : "";
+
+          row.innerHTML = `
           <div>
             <div class="font-bold text-gray-700 capitalize">${item.quantity}x ${item.name}</div>
             ${compText}
             ${notesText}
           </div>
-          <span class="font-semibold text-gray-700">R$ ${(item.totalItemPrice * item.quantity).toFixed(2).replace('.', ',')}</span>
+          <span class="font-semibold text-gray-700">R$ ${(item.totalItemPrice * item.quantity).toFixed(2).replace(".", ",")}</span>
         `;
-        container.appendChild(row);
-      });
+          container.appendChild(row);
+        });
 
-      // Populate values receipt summaries
-      document.getElementById('modal-subtotal').textContent = `R$ ${order.subtotal.toFixed(2).replace('.', ',')}`;
-      document.getElementById('modal-desconto').textContent = `- R$ ${(order.desconto || 0).toFixed(2).replace('.', ',')}`;
-      document.getElementById('modal-taxa').textContent = `R$ ${order.deliveryFee.toFixed(2).replace('.', ',')}`;
-      document.getElementById('modal-total').textContent = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
+        // Populate values receipt summaries
+        document.getElementById("modal-subtotal").textContent =
+          `R$ ${order.subtotal.toFixed(2).replace(".", ",")}`;
+        document.getElementById("modal-desconto").textContent =
+          `- R$ ${(order.desconto || 0).toFixed(2).replace(".", ",")}`;
+        document.getElementById("modal-taxa").textContent =
+          `R$ ${order.deliveryFee.toFixed(2).replace(".", ",")}`;
+        document.getElementById("modal-total").textContent =
+          `R$ ${order.total.toFixed(2).replace(".", ",")}`;
 
-      // Configured event listeners with actions trigger buttons on details popup
-      const btnPre = document.getElementById('btn-action-preparar');
-      const btnDes = document.getElementById('btn-action-despachar');
-      const btnCan = document.getElementById('btn-action-cancelar');
+        // Configured event listeners with actions trigger buttons on details popup
+        const btnPre = document.getElementById("btn-action-preparar");
+        const btnDes = document.getElementById("btn-action-despachar");
+        const btnCan = document.getElementById("btn-action-cancelar");
 
-      btnPre.onclick = () => { changeOrderStatus(order.id, 'Preparando'); toggleDetailsModal(false); };
-      btnDes.onclick = () => { changeOrderStatus(order.id, 'Saiu para entrega'); toggleDetailsModal(false); };
-      btnCan.onclick = async () => {
-        const can = await window.customConfirm("Deseja realmente cancelar este pedido de forma irreversível?");
-        if (can) {
-          // Verificar se pedido foi pago via Pix Online para reembolso automático
-          if (order.paymentProvider === 'abacatepay' && order.isPaid && order.paymentId) {
-            const confirmRefund = await window.customConfirm(
-              "Este pedido foi pago via Pix. Deseja processar o reembolso automático para o cliente?"
-            );
-            if (confirmRefund) {
-              try {
-                const token = loadedRestaurantProfile?.abacatePayToken || '';
-                if (!token) throw new Error("Token AbacatePay não encontrado.");
+        btnPre.onclick = () => {
+          changeOrderStatus(order.id, "Preparando");
+          toggleDetailsModal(false);
+        };
+        btnDes.onclick = () => {
+          changeOrderStatus(order.id, "Saiu para entrega");
+          toggleDetailsModal(false);
+        };
+        btnCan.onclick = async () => {
+          const can = await window.customConfirm(
+            "Deseja realmente cancelar este pedido de forma irreversível?",
+          );
+          if (can) {
+            // Verificar se pedido foi pago via Pix Online para reembolso automático
+            if (
+              order.paymentProvider === "abacatepay" &&
+              order.isPaid &&
+              order.paymentId
+            ) {
+              const confirmRefund = await window.customConfirm(
+                "Este pedido foi pago via Pix. Deseja processar o reembolso automático para o cliente?",
+              );
+              if (confirmRefund) {
+                try {
+                  const token = loadedRestaurantProfile?.abacatePayToken || "";
+                  if (!token)
+                    throw new Error("Token AbacatePay não encontrado.");
 
-                const WORKER_URL = 'https://abacatepay-proxy.iranildo-jobs.workers.dev';
-                const refundRes = await fetch(`${WORKER_URL}/v2/transparents/refund`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                  },
-                  body: JSON.stringify({ id: order.paymentId })
-                });
+                  const WORKER_URL =
+                    "https://abacatepay-proxy.iranildo-jobs.workers.dev";
+                  const refundRes = await fetch(
+                    `${WORKER_URL}/v2/transparents/refund`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                      },
+                      body: JSON.stringify({ id: order.paymentId }),
+                    },
+                  );
 
-                const refundData = await refundRes.json();
+                  const refundData = await refundRes.json();
 
-                if (refundData.success || refundRes.ok) {
-                  // Reembolso aprovado — cancelar pedido e registrar estorno
-                  await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
-                    status: 'Cancelado',
-                    cancelReason: 'Cancelado pelo restaurante',
-                    refunded: true,
-                    refundedAt: new Date().toISOString(),
-                    refundId: refundData.data?.id || ''
-                  });
-                  alert("✅ Pedido cancelado e reembolso enviado ao cliente com sucesso!");
-                } else {
-                  const errMsg = refundData.error || 'Erro desconhecido';
+                  if (refundData.success || refundRes.ok) {
+                    // Reembolso aprovado — cancelar pedido e registrar estorno
+                    await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
+                      status: "Cancelado",
+                      cancelReason: "Cancelado pelo restaurante",
+                      refunded: true,
+                      refundedAt: new Date().toISOString(),
+                      refundId: refundData.data?.id || "",
+                    });
+                    alert(
+                      "✅ Pedido cancelado e reembolso enviado ao cliente com sucesso!",
+                    );
+                  } else {
+                    const errMsg = refundData.error || "Erro desconhecido";
+                    const forceCancel = await window.customConfirm(
+                      `⚠️ Não foi possível processar o reembolso automático: ${errMsg}.
+
+Deseja cancelar o pedido mesmo assim e fazer o reembolso manualmente pelo painel do AbacatePay?`,
+                    );
+                    if (forceCancel) {
+                      await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
+                        status: "Cancelado",
+                        cancelReason:
+                          "Cancelado pelo restaurante — reembolso manual pendente",
+                        refunded: false,
+                      });
+                    }
+                  }
+                } catch (err) {
+                  console.error("Erro ao processar reembolso:", err);
                   const forceCancel = await window.customConfirm(
-                    `⚠️ Não foi possível processar o reembolso automático: ${errMsg}.
+                    `⚠️ Erro ao processar reembolso: ${err.message}.
 
-Deseja cancelar o pedido mesmo assim e fazer o reembolso manualmente pelo painel do AbacatePay?`
+Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                   );
                   if (forceCancel) {
-                    await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
-                      status: 'Cancelado',
-                      cancelReason: 'Cancelado pelo restaurante — reembolso manual pendente',
-                      refunded: false
-                    });
+                    changeOrderStatus(order.id, "Cancelado");
                   }
                 }
-              } catch (err) {
-                console.error("Erro ao processar reembolso:", err);
-                const forceCancel = await window.customConfirm(
-                  `⚠️ Erro ao processar reembolso: ${err.message}.
-
-Deseja cancelar o pedido e fazer o reembolso manualmente?`
-                );
-                if (forceCancel) {
-                  changeOrderStatus(order.id, 'Cancelado');
-                }
+              } else {
+                // Cancelar sem reembolso
+                await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
+                  status: "Cancelado",
+                  cancelReason: "Cancelado pelo restaurante — sem reembolso",
+                  refunded: false,
+                });
               }
             } else {
-              // Cancelar sem reembolso
-              await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
-                status: 'Cancelado',
-                cancelReason: 'Cancelado pelo restaurante — sem reembolso',
-                refunded: false
-              });
+              // Pedido sem pagamento online — cancelar normalmente
+              changeOrderStatus(order.id, "Cancelado");
             }
-          } else {
-            // Pedido sem pagamento online — cancelar normalmente
-            changeOrderStatus(order.id, 'Cancelado');
+            toggleDetailsModal(false);
           }
-          toggleDetailsModal(false);
+        };
+
+        // Hide/Show action buttons based on status
+        btnPre.classList.add("hidden");
+        btnDes.classList.add("hidden");
+        btnCan.classList.add("hidden");
+
+        if (order.status === "Pendente") {
+          btnPre.classList.remove("hidden");
+          btnCan.classList.remove("hidden");
+        } else if (order.status === "Preparando") {
+          btnDes.classList.remove("hidden");
+          btnCan.classList.remove("hidden");
+        } else if (order.status === "Saiu para entrega") {
+          btnCan.classList.remove("hidden");
+        }
+
+        toggleDetailsModal(true);
+      };
+
+      // Audio Alert Sound Notification Station
+      function triggerNewOrderAlert(isPreview = false) {
+        // Toggle banner display if not a preview
+        if (!isPreview) {
+          const banner = document.getElementById("new-order-banner");
+          if (banner) banner.classList.remove("hidden");
+        }
+
+        // play Audio beep synthesized or standard player in cascade fallback
+        const audio = document.getElementById("bell-beep-player");
+
+        // If we have custom sounds or if it's the default, we can use synthesized versions to ensure diversity
+        if (selectedSound === "default") {
+          if (audio && !isPreview) {
+            audio.play().catch((err) => {
+              synthesizeBellRingerBeep("default");
+            });
+          } else {
+            synthesizeBellRingerBeep("default");
+          }
+        } else {
+          synthesizeBellRingerBeep(selectedSound);
+        }
+
+        // Trigger Web Desktop Notification if allowed and not a preview
+        if (
+          !isPreview &&
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          try {
+            new Notification("🚨 Novo Pedido Recebido!", {
+              body: "Um novo pedido pendente acaba de ser recebido pelo sistema PopFood!",
+              tag: "new-order",
+              renotify: true,
+              requireInteraction: true,
+              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+            });
+          } catch (e) {
+            console.warn("Failed to summon Notification constructor:", e);
+          }
+        }
+      }
+
+      window.requestDesktopNotificationPermission = async function () {
+        if (!("Notification" in window)) {
+          alert(
+            "Este navegador ou dispositivo não suporta notificações de desktop.",
+          );
+          return;
+        }
+
+        try {
+          const permission = await Notification.requestPermission();
+          updateNotificationIndicator(permission);
+
+          if (permission === "granted") {
+            new Notification("Notificações Ativas! 🔔", {
+              body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
+              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+            });
+          }
+        } catch (e) {
+          console.error("Error requesting notification permission:", e);
         }
       };
 
-      // Hide/Show action buttons based on status
-      btnPre.classList.add('hidden');
-      btnDes.classList.add('hidden');
-      btnCan.classList.add('hidden');
-
-      if (order.status === "Pendente") {
-        btnPre.classList.remove('hidden');
-        btnCan.classList.remove('hidden');
-      } else if (order.status === "Preparando") {
-        btnDes.classList.remove('hidden');
-        btnCan.classList.remove('hidden');
-      } else if (order.status === "Saiu para entrega") {
-        btnCan.classList.remove('hidden');
-      }
-
-      toggleDetailsModal(true);
-    }
-
-    // Audio Alert Sound Notification Station
-    function triggerNewOrderAlert(isPreview = false) {
-      // Toggle banner display if not a preview
-      if (!isPreview) {
-        const banner = document.getElementById('new-order-banner');
-        if (banner) banner.classList.remove('hidden');
-      }
-
-      // play Audio beep synthesized or standard player in cascade fallback
-      const audio = document.getElementById('bell-beep-player');
-      
-      // If we have custom sounds or if it's the default, we can use synthesized versions to ensure diversity
-      if (selectedSound === 'default') {
-        if (audio && !isPreview) {
-          audio.play().catch(err => {
-            synthesizeBellRingerBeep('default');
-          });
+      function updateNotificationIndicator(state = null) {
+        const el = document.getElementById("lbl-notification-indicator");
+        if (!el) return;
+        const current =
+          state ||
+          ("Notification" in window ? Notification.permission : "unsupported");
+        if (current === "granted") {
+          el.textContent = "🔔 Notificações: Ativas ✅";
+        } else if (current === "denied") {
+          el.textContent = "🔕 Notificações: Bloqueadas ❌";
         } else {
-          synthesizeBellRingerBeep('default');
+          el.textContent = "🔔 Notificações: Desativadas ⚠️";
         }
-      } else {
-        synthesizeBellRingerBeep(selectedSound);
       }
+      window.updateNotificationIndicator = updateNotificationIndicator;
 
-      // Trigger Web Desktop Notification if allowed and not a preview
-      if (!isPreview && 'Notification' in window && Notification.permission === 'granted') {
+      window.dismissNewOrderBanner = function () {
+        document.getElementById("new-order-banner").classList.add("hidden");
+      };
+
+      // Build rich beep bells using AudioContext
+      function synthesizeBellRingerBeep(type = "default") {
         try {
-          new Notification("🚨 Novo Pedido Recebido!", {
-            body: "Um novo pedido pendente acaba de ser recebido pelo sistema PopFood!",
-            tag: "new-order",
-            renotify: true,
-            requireInteraction: true,
-            icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
-          });
-        } catch (e) {
-          console.warn("Failed to summon Notification constructor:", e);
-        }
-      }
-    }
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          if (ctx.state === "suspended") {
+            ctx.resume();
+          }
 
-    window.requestDesktopNotificationPermission = async function() {
-      if (!('Notification' in window)) {
-        alert("Este navegador ou dispositivo não suporta notificações de desktop.");
-        return;
-      }
+          // Multi frequency chime
+          const playTone = (freq, delay, dur, vol = 0.3, waveType = "sine") => {
+            setTimeout(() => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain);
+              gain.connect(ctx.destination);
 
-      try {
-        const permission = await Notification.requestPermission();
-        updateNotificationIndicator(permission);
+              osc.type = waveType;
+              osc.frequency.setValueAtTime(freq, ctx.currentTime);
 
-        if (permission === 'granted') {
-          new Notification("Notificações Ativas! 🔔", {
-            body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
-            icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
-          });
-        }
-      } catch (e) {
-        console.error("Error requesting notification permission:", e);
-      }
-    };
+              gain.gain.setValueAtTime(vol, ctx.currentTime);
+              gain.gain.exponentialRampToValueAtTime(
+                0.01,
+                ctx.currentTime + dur,
+              );
 
-    function updateNotificationIndicator(state = null) {
-      const el = document.getElementById('lbl-notification-indicator');
-      if (!el) return;
-      const current = state || (('Notification' in window) ? Notification.permission : 'unsupported');
-      if (current === 'granted') {
-        el.textContent = "🔔 Notificações: Ativas ✅";
-      } else if (current === 'denied') {
-        el.textContent = "🔕 Notificações: Bloqueadas ❌";
-      } else {
-        el.textContent = "🔔 Notificações: Desativadas ⚠️";
-      }
-    }
-    window.updateNotificationIndicator = updateNotificationIndicator;
-
-    window.dismissNewOrderBanner = function() {
-      document.getElementById('new-order-banner').classList.add('hidden');
-    }
-
-    // Build rich beep bells using AudioContext
-    function synthesizeBellRingerBeep(type = 'default') {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        if (ctx.state === 'suspended') {
-          ctx.resume();
-        }
-        
-        // Multi frequency chime
-        const playTone = (freq, delay, dur, vol = 0.3, waveType = 'sine') => {
-          setTimeout(() => {
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            
-            osc.type = waveType;
-            osc.frequency.setValueAtTime(freq, ctx.currentTime);
-            
-            gain.gain.setValueAtTime(vol, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + dur);
-            
-            osc.start();
-            osc.stop(ctx.currentTime + dur);
-          }, delay);
-        };
-
-        if (type === 'default') {
-          // Standard sequence chime
-          playTone(587.33, 0, 0.4); // D5
-          playTone(659.25, 200, 0.4); // E5
-          playTone(880.00, 400, 0.6); // A5
-        } else if (type === 'modern') {
-          // Digital Sip (Soft 4 notes)
-          playTone(1200, 0, 0.15, 0.4);
-          playTone(1600, 50, 0.15, 0.4);
-          playTone(1200, 100, 0.15, 0.4);
-          playTone(1600, 150, 0.15, 0.4);
-        } else if (type === 'urgent') {
-          // Alerta Urgente (Loud dual-tone)
-          playTone(500, 0, 0.4, 0.5, 'square');
-          playTone(400, 400, 0.4, 0.5, 'square');
-          playTone(500, 800, 0.4, 0.5, 'square');
-          playTone(400, 1200, 0.4, 0.5, 'square');
-        } else if (type === 'old_phone') {
-          // Trim-Trim-Trim (Classic sharp ringer)
-          const playTrim = (startTime) => {
-            for (let i = 0; i < 8; i++) {
-              const d = startTime + (i * 40);
-              playTone(1800, d, 0.04, 0.4, 'sine');
-              playTone(2200, d + 20, 0.04, 0.4, 'sine');
-            }
+              osc.start();
+              osc.stop(ctx.currentTime + dur);
+            }, delay);
           };
-          playTrim(0);   // Trim
-          playTrim(500);  // Trim
-          playTrim(1000); // Trim
+
+          if (type === "default") {
+            // Standard sequence chime
+            playTone(587.33, 0, 0.4); // D5
+            playTone(659.25, 200, 0.4); // E5
+            playTone(880.0, 400, 0.6); // A5
+          } else if (type === "modern") {
+            // Digital Sip (Soft 4 notes)
+            playTone(1200, 0, 0.15, 0.4);
+            playTone(1600, 50, 0.15, 0.4);
+            playTone(1200, 100, 0.15, 0.4);
+            playTone(1600, 150, 0.15, 0.4);
+          } else if (type === "urgent") {
+            // Alerta Urgente (Loud dual-tone)
+            playTone(500, 0, 0.4, 0.5, "square");
+            playTone(400, 400, 0.4, 0.5, "square");
+            playTone(500, 800, 0.4, 0.5, "square");
+            playTone(400, 1200, 0.4, 0.5, "square");
+          } else if (type === "old_phone") {
+            // Trim-Trim-Trim (Classic sharp ringer)
+            const playTrim = (startTime) => {
+              for (let i = 0; i < 8; i++) {
+                const d = startTime + i * 40;
+                playTone(1800, d, 0.04, 0.4, "sine");
+                playTone(2200, d + 20, 0.04, 0.4, "sine");
+              }
+            };
+            playTrim(0); // Trim
+            playTrim(500); // Trim
+            playTrim(1000); // Trim
+          }
+        } catch (err) {
+          console.warn("Native oscillator compilation fail: ", err);
         }
-      } catch (err) {
-        console.warn("Native oscillator compilation fail: ", err);
       }
-    }
 
-    window.triggerThermalComandaPrintById = function(orderId) {
-      const order = globalOrdersList.find(o => o.id === orderId);
-      if (order) triggerThermalComandaPrint(order);
-    }
+      window.triggerThermalComandaPrintById = function (orderId) {
+        const order = globalOrdersList.find((o) => o.id === orderId);
+        if (order) window.triggerThermalComandaPrint(order);
+      };
 
-    function triggerThermalComandaPrint(order) {
-      const parent = document.getElementById('receipt-print-layout');
-      parent.innerHTML = '';
+      window.triggerThermalComandaPrint = function (order) {
+        const parent = document.getElementById("receipt-print-layout");
+        parent.innerHTML = "";
 
-      const storeName = loadedRestaurantProfile ? loadedRestaurantProfile.name : "PopFood Delivery";
-      const storePhone = loadedRestaurantProfile ? loadedRestaurantProfile.phone : "WhatsApp";
-      const storeAddress = loadedRestaurantProfile ? loadedRestaurantProfile.address : "";
-      
-      let orderDate = order.date || '';
-      if (order.createdAt) {
-        if (typeof order.createdAt === 'object' && typeof order.createdAt.seconds === 'number') {
-          orderDate = new Date(order.createdAt.seconds * 1000).toLocaleString('pt-BR');
-        } else if (typeof order.createdAt === 'object' && typeof order.createdAt.toDate === 'function') {
-          orderDate = order.createdAt.toDate().toLocaleString('pt-BR');
-        } else {
-          const checkD = new Date(order.createdAt);
-          if (!isNaN(checkD.getTime())) {
-            orderDate = checkD.toLocaleString('pt-BR');
+        const storeName = loadedRestaurantProfile
+          ? loadedRestaurantProfile.name
+          : "PopFood Delivery";
+        const storePhone = loadedRestaurantProfile
+          ? loadedRestaurantProfile.phone
+          : "WhatsApp";
+        const storeAddress = loadedRestaurantProfile
+          ? loadedRestaurantProfile.address
+          : "";
+
+        let orderDate = order.date || "";
+        if (order.createdAt) {
+          if (
+            typeof order.createdAt === "object" &&
+            typeof order.createdAt.seconds === "number"
+          ) {
+            orderDate = new Date(order.createdAt.seconds * 1000).toLocaleString(
+              "pt-BR",
+            );
+          } else if (
+            typeof order.createdAt === "object" &&
+            typeof order.createdAt.toDate === "function"
+          ) {
+            orderDate = order.createdAt.toDate().toLocaleString("pt-BR");
+          } else {
+            const checkD = new Date(order.createdAt);
+            if (!isNaN(checkD.getTime())) {
+              orderDate = checkD.toLocaleString("pt-BR");
+            }
           }
         }
-      }
 
-      // Configure text print width
-      let printWidth = '58';
-      if (typeof localPrinters !== 'undefined' && localPrinters.length > 0) {
-          const activePrinter = localPrinters.find(p => p.active !== false);
+        // Configure text print width
+        let printWidth = "58";
+        if (typeof localPrinters !== "undefined" && localPrinters.length > 0) {
+          const activePrinter = localPrinters.find((p) => p.active !== false);
           if (activePrinter) printWidth = activePrinter.width;
-      }
-      const cols = printWidth === '58' ? 30 : 44;
-      
-      function formatLine(leftText, rightText) {
-        let spaceCount = Math.max(1, cols - leftText.length - rightText.length);
-        if (leftText.length + rightText.length > cols) {
-           const maxLeftLen = cols - 1 - rightText.length;
-           leftText = leftText.substring(0, maxLeftLen);
-           spaceCount = 1;
         }
-        return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
-      }
+        const cols = printWidth === "58" ? 30 : 44;
 
-      let textReceipt = "";
-      textReceipt += `================================\n`;
-      textReceipt += `          ${storeName.toUpperCase()}\n`;
-      if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
-      if (storeAddress) textReceipt += `${storeAddress}\n`;
-      textReceipt += `================================\n`;
-      textReceipt += `PEDIDO: #${order.id.slice(-6).toUpperCase()}\n`;
-      textReceipt += `DATA: ${orderDate}\n`;
-      textReceipt += `================================\n`;
-      if (order.customer) {
-        textReceipt += `CLIENTE: ${order.customer.name.toUpperCase()}\n`;
-        textReceipt += `FONE: ${order.customer.phone}\n`;
-        textReceipt += `ENTREGA: ${order.customer.type === 'pickup' ? 'RETIRADA NO LOCAL' : 'DELIVERY'}\n`;
-        if (order.customer.address) textReceipt += `ENDERECO: ${order.customer.address.toUpperCase()}\n`;
-        if (order.customer.complement) textReceipt += `COMP: ${order.customer.complement.toUpperCase()}\n`;
-        if (order.customer.reference) textReceipt += `REF: ${order.customer.reference.toUpperCase()}\n`;
-        if (order.customer.cep) textReceipt += `CEP: ${order.customer.cep}\n`;
-      }
-      textReceipt += `--------------------------------\n`;
-      textReceipt += `ITENS DO PEDIDO:\n`;
-      
-      order.items.forEach(item => {
-        const itemVal = item.price || 0;
-        const lineTotal = (item.totalItemPrice || 0) * item.quantity;
-        const lineTotalStr = lineTotal.toFixed(2).replace('.', ',');
-        
-        textReceipt += formatLine(`${item.quantity}x ${item.name.toLowerCase()}`, `R$ ${lineTotalStr}`);
+        function formatLine(leftText, rightText) {
+          let spaceCount = Math.max(
+            1,
+            cols - leftText.length - rightText.length,
+          );
+          if (leftText.length + rightText.length > cols) {
+            const maxLeftLen = cols - 1 - rightText.length;
+            leftText = leftText.substring(0, maxLeftLen);
+            spaceCount = 1;
+          }
+          return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
+        }
 
-        if (item.complements && item.complements.length > 0) {
-          item.complements.forEach(c => {
-            const compPrice = c.price || 0;
-            textReceipt += formatLine(`+ ${c.optionName.toLowerCase()}`, `R$ ${compPrice.toFixed(2).replace('.', ',')}`);
-          });
+        let textReceipt = "";
+        textReceipt += `================================\n`;
+        textReceipt += `          ${storeName.toUpperCase()}\n`;
+        if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
+        if (storeAddress) textReceipt += `${storeAddress}\n`;
+        textReceipt += `================================\n`;
+        textReceipt += `PEDIDO: #${order.id.slice(-6).toUpperCase()}\n`;
+        textReceipt += `DATA: ${orderDate}\n`;
+        textReceipt += `================================\n`;
+        if (order.customer) {
+          textReceipt += `CLIENTE: ${order.customer.name.toUpperCase()}\n`;
+          textReceipt += `FONE: ${order.customer.phone}\n`;
+          textReceipt += `ENTREGA: ${order.customer.type === "pickup" ? "RETIRADA NO LOCAL" : "DELIVERY"}\n`;
+          if (order.customer.address)
+            textReceipt += `ENDERECO: ${order.customer.address.toUpperCase()}\n`;
+          if (order.customer.complement)
+            textReceipt += `COMP: ${order.customer.complement.toUpperCase()}\n`;
+          if (order.customer.reference)
+            textReceipt += `REF: ${order.customer.reference.toUpperCase()}\n`;
+          if (order.customer.cep) textReceipt += `CEP: ${order.customer.cep}\n`;
         }
-        if (item.notes) {
-          textReceipt += `Obs: ${item.notes}\n`;
+        textReceipt += `--------------------------------\n`;
+        textReceipt += `ITENS DO PEDIDO:\n`;
+
+        order.items.forEach((item) => {
+          const itemVal = item.price || 0;
+          const lineTotal = (item.totalItemPrice || 0) * item.quantity;
+          const lineTotalStr = lineTotal.toFixed(2).replace(".", ",");
+
+          textReceipt += formatLine(
+            `${item.quantity}x ${item.name.toLowerCase()}`,
+            `R$ ${lineTotalStr}`,
+          );
+
+          if (item.complements && item.complements.length > 0) {
+            item.complements.forEach((c) => {
+              const compPrice = c.price || 0;
+              textReceipt += formatLine(
+                `+ ${c.optionName.toLowerCase()}`,
+                `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
+              );
+            });
+          }
+          if (item.notes) {
+            textReceipt += `Obs: ${item.notes}\n`;
+          }
+        });
+
+        textReceipt += `--------------------------------\n`;
+        textReceipt += formatLine(
+          `subtotal`,
+          `R$ ${(order.subtotal || 0).toFixed(2).replace(".", ",")}`,
+        );
+
+        if (order.desconto) {
+          textReceipt += formatLine(
+            `desconto`,
+            `- R$ ${order.desconto.toFixed(2).replace(".", ",")}`,
+          );
         }
-      });
-      
-      textReceipt += `--------------------------------\n`;
-      textReceipt += formatLine(`subtotal`, `R$ ${(order.subtotal || 0).toFixed(2).replace('.', ',')}`);
-      
-      if (order.desconto) {
-        textReceipt += formatLine(`desconto`, `- R$ ${order.desconto.toFixed(2).replace('.', ',')}`);
-      }
-      
-      textReceipt += formatLine(`taxa de entrega`, `R$ ${(order.deliveryFee || 0).toFixed(2).replace('.', ',')}`);
-      textReceipt += formatLine(`total`, `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`);
-      
-      textReceipt += `================================\n`;
-      // Montar label correto da forma de pagamento
-      let paymentLabel = order.paymentMethod ? order.paymentMethod.toUpperCase() : 'N/A';
-      if (order.paymentProvider === 'abacatepay' || order.isPaid) {
-        if (order.paymentMethod === 'PixOnline' || order.paymentMethod === 'Pix Imediato') {
-          paymentLabel = 'PIX ONLINE (PAGO)';
-        } else if (order.paymentMethod === 'Online' || order.paymentMethod === 'Cartão de Crédito' || order.paymentMethod === 'CartaoOnline') {
-          paymentLabel = 'CARTÃO ONLINE (PAGO)';
-        } else if (order.isPaid) {
-          paymentLabel = `${paymentLabel} - PAGO ONLINE`;
+
+        textReceipt += formatLine(
+          `taxa de entrega`,
+          `R$ ${(order.deliveryFee || 0).toFixed(2).replace(".", ",")}`,
+        );
+        textReceipt += formatLine(
+          `total`,
+          `R$ ${(order.total || 0).toFixed(2).replace(".", ",")}`,
+        );
+
+        textReceipt += `================================\n`;
+        // Montar label correto da forma de pagamento
+        let paymentLabel = order.paymentMethod
+          ? order.paymentMethod.toUpperCase()
+          : "N/A";
+        if (order.paymentProvider === "abacatepay" || order.isPaid) {
+          if (
+            order.paymentMethod === "PixOnline" ||
+            order.paymentMethod === "Pix Imediato"
+          ) {
+            paymentLabel = "PIX ONLINE (PAGO)";
+          } else if (
+            order.paymentMethod === "Online" ||
+            order.paymentMethod === "Cartão de Crédito" ||
+            order.paymentMethod === "CartaoOnline"
+          ) {
+            paymentLabel = "CARTÃO ONLINE (PAGO)";
+          } else if (order.isPaid) {
+            paymentLabel = `${paymentLabel} - PAGO ONLINE`;
+          }
         }
-      }
-      textReceipt += `PAGAMENTO: ${paymentLabel}\n`;
-      if (order.paymentMethod === 'Dinheiro' && order.troco) {
-        textReceipt += `${order.troco.toUpperCase()}\n`;
-      }
-      textReceipt += `================================\n`;
-      textReceipt += `Obrigado pela preferência!\n`;
-      textReceipt += `Powered by PopFood Delivery\n`;
-      
-      // Inject identical <pre> formatted HTML
-      const fontSize = printWidth === '58' ? '12px' : '14px';
-      parent.innerHTML = `
+        textReceipt += `PAGAMENTO: ${paymentLabel}\n`;
+        if (order.paymentMethod === "Dinheiro" && order.troco) {
+          textReceipt += `${order.troco.toUpperCase()}\n`;
+        }
+        textReceipt += `================================\n`;
+        textReceipt += `Obrigado pela preferência!\n`;
+        textReceipt += `Powered by PopFood Delivery\n`;
+
+        // Inject identical <pre> formatted HTML
+        const fontSize = printWidth === "58" ? "12px" : "14px";
+        parent.innerHTML = `
         <div style="width: 100%; overflow-x: auto; background: white; color: black; font-family: monospace;">
           <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0; background: white; white-space: pre-wrap;">${textReceipt}</pre>
         </div>
       `;
 
-      // Trigger native browser printer with logo loading protection with safety flag to avoid duplicate calls
-      let printTriggered = false;
-      const executePrint = () => {
-        if (printTriggered) return;
-        printTriggered = true;
+        // Trigger native browser printer with logo loading protection with safety flag to avoid duplicate calls
+        let printTriggered = false;
+        const executePrint = () => {
+          if (printTriggered) return;
+          printTriggered = true;
 
-        if (localPrinters && localPrinters.length > 0) {
-          const activePrinters = localPrinters.filter(p => p.active !== false);
-          if (activePrinters.length > 0) {
-            // Print to all active configured printers
-            activePrinters.forEach(printer => {
-              fetch(`${printer.url.replace(/\/$/, '')}/imprimir`, {
-                method: 'POST',
-                body: JSON.stringify({ 
+          if (localPrinters && localPrinters.length > 0) {
+            const activePrinters = localPrinters.filter(
+              (p) => p.active !== false,
+            );
+            if (activePrinters.length > 0) {
+              // Print to all active configured printers
+              activePrinters.forEach((printer) => {
+                fetch(`${printer.url.replace(/\/$/, "")}/imprimir`, {
+                  method: "POST",
+                  body: JSON.stringify({
                     impressora: printer.name,
                     largura: printer.width,
                     html: parent.innerHTML,
@@ -1793,86 +2627,89 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`
                     conteudo_html: parent.innerHTML,
                     content: textReceipt,
                     text: textReceipt,
-                    ...order
-                }),
-                headers: { 'Content-Type': 'application/json' }
-              }).catch(err => {
-                console.error(`Local printer (${printer.name}) call failed: `, err);
+                    ...order,
+                  }),
+                  headers: { "Content-Type": "application/json" },
+                }).catch((err) => {
+                  console.error(
+                    `Local printer (${printer.name}) call failed: `,
+                    err,
+                  );
+                });
               });
-            });
+            } else {
+              // No active local printers, fallback to browser print if desired, or skip
+              console.warn("No active local printers configured.");
+            }
           } else {
-            // No active local printers, fallback to browser print if desired, or skip
-            console.warn("No active local printers configured.");
+            window.print();
+          }
+        };
+
+        const logoImg = parent.querySelector("img");
+        if (logoImg && logoImg.src) {
+          if (logoImg.complete) {
+            executePrint();
+          } else {
+            logoImg.onload = executePrint;
+            logoImg.onerror = executePrint;
+            setTimeout(executePrint, 1500); // Fail-safe fallback timeout
           }
         } else {
-          window.print();
+          executePrint();
         }
       };
 
-      const logoImg = parent.querySelector('img');
-      if (logoImg && logoImg.src) {
-        if (logoImg.complete) {
-          executePrint();
-        } else {
-          logoImg.onload = executePrint;
-          logoImg.onerror = executePrint;
-          setTimeout(executePrint, 1500); // Fail-safe fallback timeout
-        }
-      } else {
-        executePrint();
-      }
-    }
+      // Sidebar toggle and state handling
+      window.toggleSidebar = function (forceMobileShow) {
+        const sidebar = document.getElementById("main-sidebar");
+        const overlay = document.getElementById("sidebar-overlay");
+        if (!sidebar) return;
 
-    // Sidebar toggle and state handling
-    window.toggleSidebar = function(forceMobileShow) {
-      const sidebar = document.getElementById('main-sidebar');
-      const overlay = document.getElementById('sidebar-overlay');
-      if (!sidebar) return;
-
-      const isMobile = window.innerWidth < 1024;
-      if (isMobile) {
-        if (forceMobileShow === true) {
-          sidebar.classList.add('show-mobile');
-          if (overlay) overlay.classList.remove('hidden');
-        } else if (forceMobileShow === false) {
-          sidebar.classList.remove('show-mobile');
-          if (overlay) overlay.classList.add('hidden');
-        } else {
-          const isVisible = sidebar.classList.contains('show-mobile');
-          if (isVisible) {
-            sidebar.classList.remove('show-mobile');
-            if (overlay) overlay.classList.add('hidden');
+        const isMobile = window.innerWidth < 1024;
+        if (isMobile) {
+          if (forceMobileShow === true) {
+            sidebar.classList.add("show-mobile");
+            if (overlay) overlay.classList.remove("hidden");
+          } else if (forceMobileShow === false) {
+            sidebar.classList.remove("show-mobile");
+            if (overlay) overlay.classList.add("hidden");
           } else {
-            sidebar.classList.add('show-mobile');
-            if (overlay) overlay.classList.remove('hidden');
+            const isVisible = sidebar.classList.contains("show-mobile");
+            if (isVisible) {
+              sidebar.classList.remove("show-mobile");
+              if (overlay) overlay.classList.add("hidden");
+            } else {
+              sidebar.classList.add("show-mobile");
+              if (overlay) overlay.classList.remove("hidden");
+            }
+          }
+        } else {
+          const isCollapsed = sidebar.classList.contains("collapsed");
+          if (isCollapsed) {
+            sidebar.classList.remove("collapsed");
+            localStorage.setItem("popfood_sidebar_collapsed", "false");
+          } else {
+            sidebar.classList.add("collapsed");
+            localStorage.setItem("popfood_sidebar_collapsed", "true");
           }
         }
-      } else {
-        const isCollapsed = sidebar.classList.contains('collapsed');
-        if (isCollapsed) {
-          sidebar.classList.remove('collapsed');
-          localStorage.setItem('popfood_sidebar_collapsed', 'false');
-        } else {
-          sidebar.classList.add('collapsed');
-          localStorage.setItem('popfood_sidebar_collapsed', 'true');
-        }
-      }
-    }
+      };
 
-    // Apply sidebar state on load
-    const applySidebarState = () => {
-      const sidebar = document.getElementById('main-sidebar');
-      if (sidebar && window.innerWidth >= 1024) {
-        if (localStorage.getItem('popfood_sidebar_collapsed') === 'true') {
-          sidebar.classList.add('collapsed');
-        } else {
-          sidebar.classList.remove('collapsed');
+      // Apply sidebar state on load
+      const applySidebarState = () => {
+        const sidebar = document.getElementById("main-sidebar");
+        if (sidebar && window.innerWidth >= 1024) {
+          if (localStorage.getItem("popfood_sidebar_collapsed") === "true") {
+            sidebar.classList.add("collapsed");
+          } else {
+            sidebar.classList.remove("collapsed");
+          }
         }
-      }
-    }
-    
-    // Auto-detect load state
-    setTimeout(applySidebarState, 100);
-  </script>
-</body>
+      };
+
+      // Auto-detect load state
+      setTimeout(applySidebarState, 100);
+    </script>
+  </body>
 </html>
