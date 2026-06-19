@@ -2132,12 +2132,28 @@
             let lastGroup = "";
             let compParts = [];
             item.complements.forEach((c) => {
-              const currentGroup = (c.groupName || "").toUpperCase();
+              const currentGroup = (
+                c.groupName ||
+                c.group ||
+                c.grupo ||
+                c.group_name ||
+                c.category ||
+                c.gname ||
+                c.nomeGrupo ||
+                ""
+              ).toUpperCase().trim();
               if (currentGroup && currentGroup !== lastGroup) {
                 compParts.push(`<span class="font-bold text-gray-500">${currentGroup}:</span>`);
                 lastGroup = currentGroup;
               }
-              compParts.push(c.optionName);
+              const optionLabel = (
+                c.optionName ||
+                c.option ||
+                c.opcao ||
+                c.name ||
+                ""
+              ).trim();
+              compParts.push(optionLabel);
             });
             compText =
               `<div class="text-[9px] text-gray-400 mt-0.5 whitespace-normal">` +
@@ -2543,20 +2559,38 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           if (item.complements && item.complements.length > 0) {
             let lastGroup = "";
             item.complements.forEach((c) => {
-              const currentGroup = c.groupName || "";
+              const currentGroup = (
+                c.groupName ||
+                c.group ||
+                c.grupo ||
+                c.group_name ||
+                c.category ||
+                c.gname ||
+                c.nomeGrupo ||
+                ""
+              ).toUpperCase().trim();
               if (currentGroup && currentGroup !== lastGroup) {
-                if (lastGroup !== "") textReceipt += `\n`;
+                if (lastGroup !== "") {
+                  textReceipt += `\n`;
+                }
                 textReceipt += `${currentGroup}\n`;
                 lastGroup = currentGroup;
               }
               const compPrice = c.price || 0;
-              if (compPrice > 0) {
+              const optionLabel = (
+                c.optionName ||
+                c.option ||
+                c.opcao ||
+                c.name ||
+                ""
+              ).toUpperCase().trim();
+              if (currentGroup === "ACOMPANHAMENTOS") {
+                textReceipt += `+1 ${optionLabel}\n`;
+              } else {
                 textReceipt += formatLine(
-                  `+1 ${c.optionName}`,
+                  `+1 ${optionLabel}`,
                   `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
                 );
-              } else {
-                textReceipt += `+1 ${c.optionName}\n`;
               }
             });
           }
