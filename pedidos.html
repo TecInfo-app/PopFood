@@ -2449,32 +2449,18 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         if (order) window.triggerThermalComandaPrint(order);
       };
 
-      window.triggerThermalComandaPrint = async function (order) {
+      window.triggerThermalComandaPrint = function (order) {
         const parent = document.getElementById("receipt-print-layout");
         parent.innerHTML = "";
 
-        // Segurança extra: garante que o nome impresso é sempre da loja DONA do pedido,
-        // mesmo que o perfil carregado na sessão seja de outra loja (ex: override de superadmin)
-        let profileForReceipt = loadedRestaurantProfile;
-        if (order.storeId && window.currentStoreId && order.storeId !== window.currentStoreId) {
-          try {
-            const otherProfileSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, order.storeId));
-            if (otherProfileSnap.exists()) {
-              profileForReceipt = otherProfileSnap.data();
-            }
-          } catch (e) {
-            console.warn("Não foi possível buscar o perfil correto da loja do pedido:", e);
-          }
-        }
-
-        const storeName = profileForReceipt
-          ? profileForReceipt.name
+        const storeName = loadedRestaurantProfile
+          ? loadedRestaurantProfile.name
           : "PopFood Delivery";
-        const storePhone = profileForReceipt
-          ? profileForReceipt.phone
+        const storePhone = loadedRestaurantProfile
+          ? loadedRestaurantProfile.phone
           : "WhatsApp";
-        const storeAddress = profileForReceipt
-          ? profileForReceipt.address
+        const storeAddress = loadedRestaurantProfile
+          ? loadedRestaurantProfile.address
           : "";
 
         let orderDate = order.date || "";
