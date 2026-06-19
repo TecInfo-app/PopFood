@@ -595,7 +595,7 @@
             </p>
 
             <div id="assinatura-already-paid-msg" class="hidden bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-center">
-              <span class="text-emerald-400 text-xs font-bold">✅ Mensalidade em dia! Nenhuma ação necessária.</span>
+              <span class="text-emerald-400 text-xs font-bold">✅ Mensalidade em dia! Você pode adiantar o próximo ciclo se quiser.</span>
             </div>
 
             <div id="assinatura-pix-pending-box" class="hidden bg-white/5 border border-white/10 rounded-xl p-4 text-center space-y-3">
@@ -1073,12 +1073,11 @@
              statusEl.className = alertStatusClass;
           }
 
-          // Se já está pago/regular neste ciclo, esconde o botão de pagar e mostra mensagem
+          // Mostra o selo "em dia" como informação, mas mantém o botão de pagar sempre ativo
+          // (cliente pode adiantar parcelas ou pagar meses extras quando quiser)
           if (alertStatusText === 'REGULAR / PAGO' || alertStatusText === 'REGULAR / AGUARDANDO CICLO' || alertStatusText === 'PLANO CONCLUÍDO') {
             const paidMsg = document.getElementById('assinatura-already-paid-msg');
-            const payArea = document.getElementById('btn-gerar-pix-assinatura');
             if (paidMsg) paidMsg.classList.remove('hidden');
-            if (payArea) payArea.parentElement.classList.add('hidden');
           }
 
           // Buscar token master do AbacatePay (conta da plataforma, não da loja)
@@ -1182,7 +1181,7 @@
 
                     // Atualizar perfil da loja: incrementar mês pago e registrar mês/ano atual
                     const now = new Date();
-                    const newPaidMonths = Math.min(planMonths, paidMonths + 1);
+                    const newPaidMonths = paidMonths + 1; // sem limitar ao planMonths, permite adiantar parcelas
                     const lastPaidStr = `${now.getMonth() + 1}-${now.getFullYear()}`;
 
                     await updateDoc(doc(db, COLLECTIONS.restaurantProfile, currentStoreId), {
