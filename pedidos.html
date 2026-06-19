@@ -2534,7 +2534,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             let lastGroupName = null;
             item.complements.forEach((c) => {
               if (c.groupName && c.groupName !== lastGroupName) {
-                textReceipt += `     + ${c.groupName}\n`;
+                textReceipt += `     ${c.groupName.toUpperCase()}\n`;
                 lastGroupName = c.groupName;
               }
               const compPrice = c.price || 0;
@@ -2628,7 +2628,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 it.complements.forEach((c) => {
                   if (c.groupName && c.groupName !== lastGroup) {
                     newComps.push({
-                      optionName: `   + ${c.groupName}`,
+                      optionName: `   ${c.groupName.toUpperCase()}`,
                       price: 0,
                     });
                     lastGroup = c.groupName;
