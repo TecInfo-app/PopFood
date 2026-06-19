@@ -2132,12 +2132,28 @@
             let lastGroup = "";
             let compParts = [];
             item.complements.forEach((c) => {
-              const currentGroup = (c.groupName || "").toUpperCase();
+              const currentGroup = (
+                c.groupName ||
+                c.group ||
+                c.grupo ||
+                c.group_name ||
+                c.category ||
+                c.gname ||
+                c.nomeGrupo ||
+                ""
+              ).toUpperCase().trim();
               if (currentGroup && currentGroup !== lastGroup) {
                 compParts.push(`<span class="font-bold text-gray-500">${currentGroup}:</span>`);
                 lastGroup = currentGroup;
               }
-              compParts.push(c.optionName);
+              const optionLabel = (
+                c.optionName ||
+                c.option ||
+                c.opcao ||
+                c.name ||
+                ""
+              ).trim();
+              compParts.push(optionLabel);
             });
             compText =
               `<div class="text-[9px] text-gray-400 mt-0.5 whitespace-normal">` +
@@ -2543,14 +2559,30 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           if (item.complements && item.complements.length > 0) {
             let lastGroup = "";
             item.complements.forEach((c) => {
-              const currentGroup = (c.groupName || "").toUpperCase();
+              const currentGroup = (
+                c.groupName ||
+                c.group ||
+                c.grupo ||
+                c.group_name ||
+                c.category ||
+                c.gname ||
+                c.nomeGrupo ||
+                ""
+              ).toUpperCase().trim();
               if (currentGroup && currentGroup !== lastGroup) {
                 textReceipt += `  [${currentGroup}]\n`;
                 lastGroup = currentGroup;
               }
               const compPrice = c.price || 0;
+              const optionLabel = (
+                c.optionName ||
+                c.option ||
+                c.opcao ||
+                c.name ||
+                ""
+              ).toUpperCase().trim();
               textReceipt += formatLine(
-                `  + ${c.optionName.toUpperCase()}`,
+                `  + ${optionLabel}`,
                 `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
               );
             });
