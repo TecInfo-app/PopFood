@@ -2584,14 +2584,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 c.name ||
                 ""
               ).toUpperCase().trim();
-              if (currentGroup === "ACOMPANHAMENTOS") {
-                textReceipt += `+1 ${optionLabel}\n`;
-              } else {
-                textReceipt += formatLine(
-                  `+1 ${optionLabel}`,
-                  `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
-                );
-              }
+              
+              const priceDisplay = compPrice > 0 ? `R$ ${compPrice.toFixed(2).replace(".", ",")}` : "";
+              textReceipt += formatLine(
+                `+1 ${optionLabel}`,
+                priceDisplay
+              );
             });
           }
           if (item.notes) {
