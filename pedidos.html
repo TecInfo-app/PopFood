@@ -2617,6 +2617,21 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           if (printTriggered) return;
           printTriggered = true;
 
+          // Many external print clients don't process "groupName" natively, so we embed it into optionName
+          // just for the payload, ensuring it prints properly.
+          const payloadOrder = JSON.parse(JSON.stringify(order));
+          if (payloadOrder.items) {
+            payloadOrder.items.forEach((it) => {
+              if (it.complements) {
+                it.complements.forEach((c) => {
+                  if (c.groupName) {
+                    c.optionName = `[${c.groupName.toUpperCase()}] ${c.optionName || "Item"}`;
+                  }
+                });
+              }
+            });
+          }
+
           if (localPrinters && localPrinters.length > 0) {
             const activePrinters = localPrinters.filter(
               (p) => p.active !== false,
@@ -2635,7 +2650,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                     conteudo_html: parent.innerHTML,
                     content: textReceipt,
                     text: textReceipt,
-                    ...order,
+                    ...payloadOrder,
                   }),
                   headers: { "Content-Type": "application/json" },
                 }).catch((err) => {
