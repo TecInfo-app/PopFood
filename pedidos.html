@@ -2531,18 +2531,10 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           );
 
           if (item.complements && item.complements.length > 0) {
-            let lastGroupName = null;
             item.complements.forEach((c) => {
-              if (c.groupName && c.groupName !== lastGroupName) {
-                textReceipt += `     ${c.groupName.toUpperCase()}\n`;
-                lastGroupName = c.groupName;
-              }
               const compPrice = c.price || 0;
-              const rawOptName = c.optionName ? c.optionName : "item";
-              const cleanOptName = rawOptName.replace(/^\+?\s*/, "");
-              const q = c.quantity || 1;
               textReceipt += formatLine(
-                `     ${q} ${cleanOptName.toLowerCase()}`,
+                `+ ${c.optionName.toLowerCase()}`,
                 `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
               );
             });
@@ -2617,35 +2609,6 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           if (printTriggered) return;
           printTriggered = true;
 
-          // Many external print clients don't process "groupName" natively.
-          // We convert groups into pseudo-items so they print clearly as headers.
-          const payloadOrder = JSON.parse(JSON.stringify(order));
-          if (payloadOrder.items) {
-            payloadOrder.items.forEach((it) => {
-              if (it.complements && it.complements.length > 0) {
-                const newComps = [];
-                let lastGroup = null;
-                it.complements.forEach((c) => {
-                  if (c.groupName && c.groupName !== lastGroup) {
-                    newComps.push({
-                      optionName: `   ${c.groupName.toUpperCase()}`,
-                      price: 0,
-                    });
-                    lastGroup = c.groupName;
-                  }
-                  const rawOptName = c.optionName ? c.optionName : "Item";
-                  const cleanOptName = rawOptName.replace(/^\+?\s*/, "");
-                  const q = c.quantity || 1;
-                  newComps.push({
-                    optionName: `   ${q} ${cleanOptName}`,
-                    price: c.price || 0,
-                  });
-                });
-                it.complements = newComps;
-              }
-            });
-          }
-
           if (localPrinters && localPrinters.length > 0) {
             const activePrinters = localPrinters.filter(
               (p) => p.active !== false,
@@ -2664,7 +2627,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                     conteudo_html: parent.innerHTML,
                     content: textReceipt,
                     text: textReceipt,
-                    ...payloadOrder,
+                    ...order,
                   }),
                   headers: { "Content-Type": "application/json" },
                 }).catch((err) => {
