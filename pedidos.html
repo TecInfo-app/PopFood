@@ -2534,15 +2534,15 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             let lastGroupName = null;
             item.complements.forEach((c) => {
               if (c.groupName && c.groupName !== lastGroupName) {
-                textReceipt += `  ${c.groupName.toUpperCase()}:\n`;
+                textReceipt += `     ${c.groupName}\n`;
                 lastGroupName = c.groupName;
               }
               const compPrice = c.price || 0;
-              const optName = c.optionName
-                ? c.optionName.toLowerCase()
-                : "item";
+              const rawOptName = c.optionName ? c.optionName : "item";
+              const cleanOptName = rawOptName.replace(/^\+?\s*/, "");
+              const q = c.quantity || 1;
               textReceipt += formatLine(
-                `  + ${optName}`,
+                `     ${q} ${cleanOptName.toLowerCase()}`,
                 `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
               );
             });
@@ -2627,10 +2627,19 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 let lastGroup = null;
                 it.complements.forEach((c) => {
                   if (c.groupName && c.groupName !== lastGroup) {
-                    newComps.push({ optionName: c.groupName, price: 0 });
+                    newComps.push({
+                      optionName: `   ${c.groupName}`,
+                      price: 0,
+                    });
                     lastGroup = c.groupName;
                   }
-                  newComps.push({ optionName: `+ ${c.optionName || "Item"}`, price: c.price || 0 });
+                  const rawOptName = c.optionName ? c.optionName : "Item";
+                  const cleanOptName = rawOptName.replace(/^\+?\s*/, "");
+                  const q = c.quantity || 1;
+                  newComps.push({
+                    optionName: `   ${q} ${cleanOptName}`,
+                    price: c.price || 0,
+                  });
                 });
                 it.complements = newComps;
               }
