@@ -2552,7 +2552,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           const lineTotalStr = lineTotal.toFixed(2).replace(".", ",");
 
           textReceipt += formatLine(
-            `${item.quantity}X ${item.name.toUpperCase()}`,
+            `${item.quantity}x ${item.name.toUpperCase()}`,
             `R$ ${lineTotalStr}`,
           );
 
@@ -2583,7 +2583,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 c.opcao ||
                 c.name ||
                 ""
-              ).toLowerCase().trim();
+              ).toUpperCase().trim();
               textReceipt += formatLine(
                 `+1 ${optionLabel}`,
                 `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
