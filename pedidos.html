@@ -2129,9 +2129,19 @@
 
           let compText = "";
           if (item.complements && item.complements.length > 0) {
+            let lastGroup = "";
+            let compParts = [];
+            item.complements.forEach((c) => {
+              const currentGroup = (c.groupName || "").toUpperCase();
+              if (currentGroup && currentGroup !== lastGroup) {
+                compParts.push(`<span class="font-bold text-gray-500">${currentGroup}:</span>`);
+                lastGroup = currentGroup;
+              }
+              compParts.push(c.optionName);
+            });
             compText =
-              `<div class="text-[9px] text-gray-400 mt-0.5">Com: ` +
-              item.complements.map((c) => c.optionName).join(", ") +
+              `<div class="text-[9px] text-gray-400 mt-0.5 whitespace-normal">` +
+              compParts.join(" ") +
               `</div>`;
           }
 
@@ -2526,15 +2536,21 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           const lineTotalStr = lineTotal.toFixed(2).replace(".", ",");
 
           textReceipt += formatLine(
-            `${item.quantity}x ${item.name.toLowerCase()}`,
+            `${item.quantity}x ${item.name.toUpperCase()}`,
             `R$ ${lineTotalStr}`,
           );
 
           if (item.complements && item.complements.length > 0) {
+            let lastGroup = "";
             item.complements.forEach((c) => {
+              const currentGroup = (c.groupName || "").toUpperCase();
+              if (currentGroup && currentGroup !== lastGroup) {
+                textReceipt += `  [${currentGroup}]\n`;
+                lastGroup = currentGroup;
+              }
               const compPrice = c.price || 0;
               textReceipt += formatLine(
-                `+ ${c.optionName.toLowerCase()}`,
+                `  + ${c.optionName.toUpperCase()}`,
                 `R$ ${compPrice.toFixed(2).replace(".", ",")}`,
               );
             });
