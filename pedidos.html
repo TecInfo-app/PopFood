@@ -2617,17 +2617,22 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           if (printTriggered) return;
           printTriggered = true;
 
-          // Many external print clients don't process "groupName" natively, so we embed it into optionName
-          // just for the payload, ensuring it prints properly.
+          // Many external print clients don't process "groupName" natively.
+          // We convert groups into pseudo-items so they print clearly as headers.
           const payloadOrder = JSON.parse(JSON.stringify(order));
           if (payloadOrder.items) {
             payloadOrder.items.forEach((it) => {
-              if (it.complements) {
+              if (it.complements && it.complements.length > 0) {
+                const newComps = [];
+                let lastGroup = null;
                 it.complements.forEach((c) => {
-                  if (c.groupName) {
-                    c.optionName = `[${c.groupName.toUpperCase()}] ${c.optionName || "Item"}`;
+                  if (c.groupName && c.groupName !== lastGroup) {
+                    newComps.push({ optionName: c.groupName, price: 0 });
+                    lastGroup = c.groupName;
                   }
+                  newComps.push({ optionName: `+ ${c.optionName || "Item"}`, price: c.price || 0 });
                 });
+                it.complements = newComps;
               }
             });
           }
