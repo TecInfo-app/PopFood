@@ -208,15 +208,9 @@
       <form id="global-settings-form" onsubmit="handleGlobalSettingsSubmit(event)" class="space-y-4 overflow-y-auto pr-1 flex-grow font-sans">
         
         <div class="space-y-1">
-          <label class="block text-[10px] uppercase font-bold text-gray-400">WhatsApp Suporte</label>
+          <label class="block text-[10px] uppercase font-bold text-gray-400">WhatsApp Suporte / Pagamento</label>
           <input type="text" id="global-admin-whatsapp" placeholder="Ex: 5511999999999" class="w-full p-2.5 text-xs font-semibold border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none" />
-          <p class="text-[9px] text-gray-400 mt-0.5">Sem espaços e formatação. Usado como contato de suporte.</p>
-        </div>
-
-        <div class="space-y-1 pt-2 border-t border-gray-100">
-          <label class="block text-[10px] uppercase font-bold text-gray-400">Token Master AbacatePay (Mensalidades)</label>
-          <input type="text" id="global-abacatepay-master-token" placeholder="abc_prod_xxxxxxxxxxxx" class="w-full p-2.5 text-xs font-mono font-semibold border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none" />
-          <p class="text-[9px] text-gray-400 mt-0.5">Chave da SUA conta AbacatePay. Usada para gerar a cobrança Pix automática das mensalidades de todas as lojas.</p>
+          <p class="text-[9px] text-gray-400 mt-0.5">Sem espaços e formatação. Para onde o comprovante PIX será enviado.</p>
         </div>
 
         <div class="pt-4 flex gap-3 shrink-0">
@@ -982,7 +976,6 @@
           const snap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, 'GLOBAL_SETTINGS'));
           if(snap.exists()) {
             document.getElementById('global-admin-whatsapp').value = snap.data().adminWhatsApp || '';
-            document.getElementById('global-abacatepay-master-token').value = snap.data().abacatePayMasterToken || '';
           }
         } catch(e) {
           console.error("Erro ao carregar settings", e);
@@ -993,11 +986,9 @@
     window.handleGlobalSettingsSubmit = async function(e) {
       e.preventDefault();
       const adminWhatsApp = document.getElementById('global-admin-whatsapp').value.replace(/\D/g, '');
-      const masterToken = document.getElementById('global-abacatepay-master-token').value.trim();
       try {
         await setDoc(doc(db, COLLECTIONS.restaurantProfile, 'GLOBAL_SETTINGS'), {
-          adminWhatsApp: adminWhatsApp,
-          abacatePayMasterToken: masterToken
+          adminWhatsApp: adminWhatsApp
         }, { merge: true });
         window.customAlert("Configuração salva com sucesso!");
         toggleGlobalSettingsModal(false);
