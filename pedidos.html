@@ -2597,7 +2597,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 compPrice > 0
                   ? `R$ ${compPrice.toFixed(2).replace(".", ",")}`
                   : "";
-              textReceipt += formatLine(`+1 ${optionLabel}`, priceDisplay);
+              
+              if (priceDisplay) {
+                textReceipt += formatLine(`+1 ${optionLabel}`, priceDisplay);
+              } else {
+                textReceipt += `+1 ${optionLabel}\n`;
+              }
             });
           }
           if (item.notes) {
