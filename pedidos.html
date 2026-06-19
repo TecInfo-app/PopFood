@@ -2141,9 +2141,13 @@
                 c.gname ||
                 c.nomeGrupo ||
                 ""
-              ).toUpperCase().trim();
+              )
+                .toUpperCase()
+                .trim();
               if (currentGroup && currentGroup !== lastGroup) {
-                compParts.push(`<span class="font-bold text-gray-500">${currentGroup}:</span>`);
+                compParts.push(
+                  `<span class="font-bold text-gray-500">${currentGroup}:</span>`,
+                );
                 lastGroup = currentGroup;
               }
               const optionLabel = (
@@ -2568,7 +2572,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 c.gname ||
                 c.nomeGrupo ||
                 ""
-              ).toUpperCase().trim();
+              )
+                .toUpperCase()
+                .trim();
               if (currentGroup && currentGroup !== lastGroup) {
                 if (lastGroup !== "") {
                   textReceipt += `\n`;
@@ -2583,13 +2589,15 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 c.opcao ||
                 c.name ||
                 ""
-              ).toUpperCase().trim();
-              
-              const priceDisplay = compPrice > 0 ? `R$ ${compPrice.toFixed(2).replace(".", ",")}` : "";
-              textReceipt += formatLine(
-                `+1 ${optionLabel}`,
-                priceDisplay
-              );
+              )
+                .toUpperCase()
+                .trim();
+
+              const priceDisplay =
+                compPrice > 0
+                  ? `R$ ${compPrice.toFixed(2).replace(".", ",")}`
+                  : "";
+              textReceipt += formatLine(`+1 ${optionLabel}`, priceDisplay);
             });
           }
           if (item.notes) {
