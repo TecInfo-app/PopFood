@@ -2129,8 +2129,7 @@
 
           let compText = "";
           if (item.complements && item.complements.length > 0) {
-            let lastGroup = "";
-            let compParts = [];
+            const groupedComps = {};
             item.complements.forEach((c) => {
               const currentGroup = (
                 c.groupName ||
@@ -2144,21 +2143,31 @@
               )
                 .toUpperCase()
                 .trim();
-              if (currentGroup && currentGroup !== lastGroup) {
-                compParts.push(
-                  `<span class="font-bold text-gray-500">${currentGroup}:</span>`,
-                );
-                lastGroup = currentGroup;
+              if (!groupedComps[currentGroup]) {
+                groupedComps[currentGroup] = [];
               }
-              const optionLabel = (
-                c.optionName ||
-                c.option ||
-                c.opcao ||
-                c.name ||
-                ""
-              ).trim();
-              compParts.push(optionLabel);
+              groupedComps[currentGroup].push(c);
             });
+
+            let compParts = [];
+            Object.keys(groupedComps).forEach((groupKey) => {
+              if (groupKey) {
+                compParts.push(
+                  `<span class="font-bold text-gray-500">${groupKey}:</span>`,
+                );
+              }
+              groupedComps[groupKey].forEach((c) => {
+                const optionLabel = (
+                  c.optionName ||
+                  c.option ||
+                  c.opcao ||
+                  c.name ||
+                  ""
+                ).trim();
+                compParts.push(optionLabel);
+              });
+            });
+            
             compText =
               `<div class="text-[9px] text-gray-400 mt-0.5 whitespace-normal">` +
               compParts.join(" ") +
@@ -2561,7 +2570,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           );
 
           if (item.complements && item.complements.length > 0) {
-            let lastGroup = "";
+            const groupedComps = {};
             item.complements.forEach((c) => {
               const currentGroup = (
                 c.groupName ||
@@ -2575,33 +2584,45 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
               )
                 .toUpperCase()
                 .trim();
-              if (currentGroup && currentGroup !== lastGroup) {
-                if (lastGroup !== "") {
-                  textReceipt += `\n`;
-                }
-                textReceipt += `${currentGroup}\n`;
-                lastGroup = currentGroup;
-              }
-              const compPrice = c.price || 0;
-              const optionLabel = (
-                c.optionName ||
-                c.option ||
-                c.opcao ||
-                c.name ||
-                ""
-              )
-                .toUpperCase()
-                .trim();
 
-              const priceDisplay =
-                compPrice > 0
-                  ? `R$ ${compPrice.toFixed(2).replace(".", ",")}`
-                  : "";
-              
-              if (priceDisplay) {
-                textReceipt += formatLine(`+1 ${optionLabel}`, priceDisplay);
-              } else {
-                textReceipt += `+1 ${optionLabel}\n`;
+              if (!groupedComps[currentGroup]) {
+                groupedComps[currentGroup] = [];
+              }
+              groupedComps[currentGroup].push(c);
+            });
+
+            const groupKeys = Object.keys(groupedComps);
+            groupKeys.forEach((groupKey, index) => {
+              if (groupKey !== "") {
+                textReceipt += `${groupKey}\n`;
+              }
+
+              groupedComps[groupKey].forEach((c) => {
+                const compPrice = c.price || 0;
+                const optionLabel = (
+                  c.optionName ||
+                  c.option ||
+                  c.opcao ||
+                  c.name ||
+                  ""
+                )
+                  .toUpperCase()
+                  .trim();
+
+                const priceDisplay =
+                  compPrice > 0
+                    ? `R$ ${compPrice.toFixed(2).replace(".", ",")}`
+                    : "";
+
+                if (priceDisplay) {
+                  textReceipt += formatLine(`+1 ${optionLabel}`, priceDisplay);
+                } else {
+                  textReceipt += `+1 ${optionLabel}\n`;
+                }
+              });
+
+              if (index < groupKeys.length - 1) {
+                textReceipt += `\n`;
               }
             });
           }
