@@ -1291,12 +1291,18 @@
       };
 
       window.fetchPrinters = async function (showAlert = true) {
-        const url = document.getElementById("printer-server-url").value.trim();
+        let url = document.getElementById("printer-server-url").value.trim();
         if (!url) {
           alert("Informe a URL do servidor primeiro.");
           return;
         }
 
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+          url = "http://" + url;
+        }
+
+        document.getElementById("printer-server-url").value = url; // Update the input to show the corrected URL
+        
         try {
           const resp = await fetch(`${url.replace(/\/$/, "")}/impressoras`);
           const data = await resp.json();
