@@ -1302,7 +1302,7 @@
         }
 
         document.getElementById("printer-server-url").value = url; // Update the input to show the corrected URL
-        
+
         try {
           const resp = await fetch(`${url.replace(/\/$/, "")}/impressoras`);
           const data = await resp.json();
@@ -1515,18 +1515,21 @@
             });
 
             // Detect if there is a new "Pendente" order to play notification sound
+            let newlyPendenteOrders = [];
             if (firstLoadDone) {
-              // Look if there are document creations where state was introduced as "Pendente"
-              const anyNewPendente = incomingOrders.some((order) => {
+              // Look if there are document creations or updates where state was introduced as "Pendente"
+              newlyPendenteOrders = incomingOrders.filter((order) => {
                 const isPendente = order.status === "Pendente";
-                // Check if this Pendente order was not already in our global list
-                const isFresh = !globalOrdersList.some(
+                // Check if this Pendente order was not already in our global list AS Pendente
+                const oldOrderInfo = globalOrdersList.find(
                   (g) => g.id === order.id,
                 );
-                return isPendente && isFresh;
+                const isFreshPendente =
+                  !oldOrderInfo || oldOrderInfo.status !== "Pendente";
+                return isPendente && isFreshPendente;
               });
 
-              if (anyNewPendente) {
+              if (newlyPendenteOrders.length > 0) {
                 hasNewPendente = true;
               }
             }
@@ -1541,24 +1544,28 @@
             if (hasNewPendente) {
               triggerNewOrderAlert();
 
-              const latestPendente = incomingOrders.find(
-                (o) => o.status === "Pendente",
-              );
-              if (autoPrintSetting && latestPendente) {
+              if (autoPrintSetting && newlyPendenteOrders.length > 0) {
                 // Avoid duplicate automatic prints
                 const printedOrders = JSON.parse(
                   localStorage.getItem("popfood_printed_orders") || "[]",
                 );
-                if (!printedOrders.includes(latestPendente.id)) {
-                  window.triggerThermalComandaPrint(latestPendente);
-                  printedOrders.push(latestPendente.id);
-                  // Keep only last 100 printed orders to prevent localstorage bloat
-                  if (printedOrders.length > 100) printedOrders.shift();
-                  localStorage.setItem(
-                    "popfood_printed_orders",
-                    JSON.stringify(printedOrders),
-                  );
+
+                newlyPendenteOrders.forEach((newPendente) => {
+                  if (!printedOrders.includes(newPendente.id)) {
+                    window.triggerThermalComandaPrint(newPendente);
+                    printedOrders.push(newPendente.id);
+                  }
+                });
+
+                // Keep only last 100 printed orders to prevent localstorage bloat
+                if (printedOrders.length > 100) {
+                  printedOrders.splice(0, printedOrders.length - 100);
                 }
+
+                localStorage.setItem(
+                  "popfood_printed_orders",
+                  JSON.stringify(printedOrders),
+                );
               }
             }
 
@@ -2173,7 +2180,7 @@
                 compParts.push(optionLabel);
               });
             });
-            
+
             compText =
               `<div class="text-[9px] text-gray-400 mt-0.5 whitespace-normal">` +
               compParts.join(" ") +
