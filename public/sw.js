@@ -1,8 +1,8 @@
 const CACHE_NAME = 'popfood-v1';
 const urlsToCache = [
-  '/cliente.html',
-  '/manifest.json',
-  '/icon.jpg'
+  './cliente.html',
+  './manifest.json',
+  './icon.jpg'
 ];
 
 self.addEventListener('install', event => {

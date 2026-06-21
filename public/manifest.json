@@ -2,13 +2,13 @@
   "name": "PopFood Delivery",
   "short_name": "PopFood",
   "description": "Seu cardápio digital e sistema de pedidos.",
-  "start_url": "/cliente.html",
+  "start_url": "cliente.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ea580c",
   "icons": [
     {
-      "src": "/icon.jpg",
+      "src": "icon.jpg",
       "sizes": "512x512",
       "type": "image/jpeg"
     }
