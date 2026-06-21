@@ -1,7 +1,5 @@
-const CACHE_NAME = 'popfood-v1';
+const CACHE_NAME = 'popfood-v2';
 const urlsToCache = [
-  './cliente.html',
-  './manifest.json',
   './icon.jpg'
 ];
 
@@ -12,13 +10,28 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cache => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
-      })
+    fetch(event.request).catch(() => {
+      return caches.match(event.request);
+    })
   );
 });

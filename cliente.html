@@ -4,8 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ea580c" />
-    <link rel="manifest" href="manifest.json" />
+    <link rel="manifest" id="dynamic-manifest" />
     <link rel="apple-touch-icon" href="icon.jpg" />
+    <script>
+      (function() {
+        var storeParam = new URLSearchParams(window.location.search).get('store');
+        var startUrl = storeParam ? './cliente.html?store=' + storeParam : './cliente.html';
+        var manifest = {
+          "name": "PopFood Delivery",
+          "short_name": "PopFood",
+          "description": "Seu cardápio digital e sistema de pedidos.",
+          "start_url": startUrl,
+          "display": "standalone",
+          "background_color": "#ffffff",
+          "theme_color": "#ea580c",
+          "icons": [
+            { "src": "icon.jpg", "sizes": "192x192", "type": "image/jpeg" },
+            { "src": "icon.jpg", "sizes": "512x512", "type": "image/jpeg" }
+          ]
+        };
+        var encoded = encodeURIComponent(JSON.stringify(manifest));
+        document.getElementById('dynamic-manifest').setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encoded);
+      })();
+    </script>
     <title>Cardápio - PopFood Delivery</title>
     <script type="importmap">
       {
@@ -112,11 +133,17 @@
           </div>
         </div>
 
-        <button
-          onclick="toggleCartModal(true)"
-          id="cart-trigger-btn"
-          class="relative text-brand-primary p-2 hover:bg-orange-50 rounded-xl transition-all flex items-center justify-center cursor-pointer"
-        >
+        <div class="flex items-center gap-2">
+          <button id="install-pwa-btn" style="display: none;" class="hidden sm:flex text-[10px] font-bold bg-orange-100 text-orange-600 px-3 py-1.5 rounded-full items-center gap-1 hover:bg-orange-200 transition-colors">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Instalar App
+          </button>
+          
+          <button
+            onclick="toggleCartModal(true)"
+            id="cart-trigger-btn"
+            class="relative text-brand-primary p-2 hover:bg-orange-50 rounded-xl transition-all flex items-center justify-center cursor-pointer"
+          >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
@@ -137,6 +164,7 @@
             >0</span
           >
         </button>
+        </div>
       </div>
     </header>
 
@@ -5549,6 +5577,39 @@
     </div>
 
     <script>
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevent the mini-infobar from appearing on mobile
+        e.preventDefault();
+        // Stash the event so it can be triggered later.
+        deferredPrompt = e;
+        // Update UI notify the user they can install the PWA
+        const installBtn = document.getElementById('install-pwa-btn');
+        if (installBtn) {
+          installBtn.style.display = 'flex';
+          installBtn.addEventListener('click', async () => {
+            // Hide the app provided install promotion
+            installBtn.style.display = 'none';
+            // Show the install prompt
+            deferredPrompt.prompt();
+            // Wait for the user to respond to the prompt
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log(`User response to the install prompt: ${outcome}`);
+            // We've used the prompt, and can't use it again, throw it away
+            deferredPrompt = null;
+          });
+        }
+      });
+      
+      window.addEventListener('appinstalled', () => {
+        // Hide the app-provided install promotion
+        const installBtn = document.getElementById('install-pwa-btn');
+        if (installBtn) {
+          installBtn.style.display = 'none';
+        }
+        console.log('PWA was installed');
+      });
+
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker.register("sw.js").then(
