@@ -419,23 +419,27 @@
       <div
         class="bg-brand-light w-full max-w-lg h-full shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300"
       >
-        <!-- Cart Header -->
+        <!-- Cart Header (Redesigned like standard food app "SACOLA" header) -->
         <div
-          class="px-6 py-5 border-b border-gray-150/60 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 shadow-3xs"
+          class="px-4 py-4.5 border-b border-stone-150 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 shadow-3xs min-h-[56px]"
         >
-          <div class="flex items-center gap-3">
+          <!-- Left side: Back button -->
+          <div class="flex items-center shrink-0 min-w-[36px]">
             <button
-              id="btn-cart-back"
-              onclick="goToPreviousCartStep()"
-              class="hidden text-brand-primary hover:bg-orange-50 p-1.5 rounded-lg transition-colors cursor-pointer shrink-0"
+              id="btn-cart-back-custom"
+              onclick="handleCartHeaderBack()"
+              class="hover:bg-stone-100 p-2 rounded-full transition-colors cursor-pointer shrink-0 outline-none flex items-center justify-center select-none"
+              style="color: #000000 !important; display: flex !important;"
+              aria-label="Voltar"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
-                stroke-width="3"
+                stroke-width="3.2"
                 stroke="currentColor"
-                class="w-5 h-5"
+                class="w-5 h-5 text-black"
+                style="stroke: #000000 !important; color: #000000 !important;"
               >
                 <path
                   stroke-linecap="round"
@@ -444,45 +448,24 @@
                 />
               </svg>
             </button>
-            <h2
-              class="font-display font-extrabold text-lg text-gray-950 flex items-center gap-2.5"
-            >
-              <span class="text-xl" id="cart-header-icon">🛍️</span>
-              <span id="cart-header-title">Sua Sacola</span>
-              <span
-                id="cart-items-count"
-                class="text-[10px] bg-orange-100 text-brand-primary px-3 py-1 rounded-full font-black tracking-wider border border-orange-200/50"
-                >0</span
-              >
-            </h2>
           </div>
-          <div class="flex items-center gap-2">
+
+          <!-- Centered title -->
+          <h2
+            id="cart-header-title-custom"
+            class="font-display font-extrabold text-xs text-stone-850 tracking-[0.18em] uppercase text-center select-none"
+          >
+            SACOLA
+          </h2>
+
+          <!-- Right side: Clean "Limpar" action, or spacer if empty -->
+          <div class="flex items-center shrink-0 min-w-[36px] justify-end">
             <button
-              id="btn-clear-cart"
+              id="btn-clear-cart-custom"
               onclick="clearCart()"
-              class="hidden text-[10px] tracking-wider uppercase text-red-500 hover:text-red-700 font-black px-3 py-2 rounded-xl hover:bg-red-50/80 transition-all cursor-pointer"
+              class="hidden text-xs text-rose-600 hover:text-rose-700 font-extrabold px-1 py-1.5 rounded-xl transition-all cursor-pointer select-none"
             >
-              Limpar tudo
-            </button>
-            <button
-              onclick="toggleCartModal(false)"
-              class="text-gray-400 hover:text-gray-800 p-2 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer"
-              aria-label="Fechar Sacola"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="2.5"
-                stroke="currentColor"
-                class="w-5 h-5"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M6 18 18 6M6 6l12 12"
-                />
-              </svg>
+              Limpar
             </button>
           </div>
         </div>
@@ -509,6 +492,74 @@
                 </p>
               </div>
             </div>
+
+            <!-- SEÇÃO: Endereço de Entrega (Estilo iFood) -->
+            <div id="sacola-address-section" class="border-t border-stone-100 pt-4 space-y-3 hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-black text-stone-800 tracking-tight">Entregar no endereço</span>
+                <button onclick="window.currentCartStep = 2; window.updateCartStepUI();" class="text-xs font-extrabold text-rose-600 hover:text-rose-700 cursor-pointer">Trocar</button>
+              </div>
+              <div onclick="window.currentCartStep = 2; window.updateCartStepUI();" class="flex gap-3 bg-white border border-stone-150 p-4.5 rounded-2xl shadow-3xs hover:shadow-xs hover:border-stone-300 cursor-pointer transition-all pointer-events-auto">
+                <div class="w-9 h-9 rounded-full bg-stone-50 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5 text-stone-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div class="flex flex-col min-w-0">
+                  <span id="sacola-address-street-num" class="text-xs font-black text-stone-850 leading-snug">Cadastrar Endereço</span>
+                  <span id="sacola-address-neighborhood" class="text-[10px] text-stone-400 font-semibold mt-0.5 uppercase tracking-wide">Preencha na próxima etapa</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SEÇÃO: Retirada (Estilo iFood) -->
+            <div id="sacola-pickup-section" class="border-t border-stone-100 pt-4 space-y-3 hidden">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-black text-stone-800 tracking-tight">Retirar no estabelecimento</span>
+                <button onclick="window.currentCartStep = 2; window.updateCartStepUI();" class="text-xs font-extrabold text-rose-600 hover:text-rose-700 cursor-pointer">Trocar</button>
+              </div>
+              <div onclick="window.currentCartStep = 2; window.updateCartStepUI();" class="flex gap-3 bg-white border border-stone-150 p-4.5 rounded-2xl shadow-3xs hover:shadow-xs hover:border-stone-300 cursor-pointer transition-all">
+                <div class="w-9 h-9 rounded-full bg-stone-50 flex items-center justify-center shrink-0 text-xl">
+                  🏪
+                </div>
+                <div class="flex flex-col">
+                  <span id="sacola-pickup-store" class="text-xs font-black text-stone-850">Retirar no Balcão</span>
+                  <span id="sacola-pickup-desc" class="text-[10px] text-stone-400 font-semibold mt-0.5">Sem custo de taxa de entrega</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SEÇÃO: Opções de Entrega (Estilo iFood) -->
+            <div id="sacola-delivery-options-section" class="border-t border-stone-100 pt-4 space-y-3 hidden">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1">
+                  <span class="text-xs font-black text-stone-800 tracking-tight">Opções de entrega</span>
+                </div>
+              </div>
+              
+              <div class="border-2 border-rose-600 bg-white rounded-2xl p-4 flex items-center justify-between shadow-3xs relative">
+                <div class="flex flex-col text-left">
+                  <span class="text-xs font-black text-stone-850">Padrão</span>
+                  <span id="sacola-delivery-timing-label" class="text-[9.5px] text-stone-400 font-semibold mt-1">Hoje, 40 - 50min</span>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                  <div class="text-right">
+                    <span id="sacola-delivery-price-highlight" class="text-xs font-black text-emerald-600">Grátis</span>
+                    <span id="sacola-delivery-price-strikethrough" class="text-[10px] text-stone-400 line-through block font-medium">R$ 4,99</span>
+                  </div>
+                  <div class="w-5 h-5 rounded-full border-4 border-rose-600 flex items-center justify-center shrink-0">
+                    <div class="w-2.5 h-2.5 rounded-full bg-rose-600"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div onclick="window.currentCartStep = 2; window.updateCartStepUI();" class="text-[10px] text-stone-500 font-bold bg-stone-50 hover:bg-stone-100 p-3.5 rounded-xl border border-stone-150 mt-1.5 flex justify-between items-center transition-all cursor-pointer">
+                <span class="flex items-center gap-2">🌱 <span>Taxa grátis retirando seu pedido na loja</span></span>
+                <span class="text-stone-400 font-bold">></span>
+              </div>
+            </div>
           </div>
 
           <!-- STEP 2: DADOS DE ENVIO -->
@@ -525,16 +576,16 @@
               </h3>
             </div>
 
-            <!-- Opção de Recebimento -->
+            <!-- Opção de Recebimento compacta e moderna -->
             <div class="space-y-2">
               <label
-                class="block text-[10px] font-extrabold text-gray-400 uppercase tracking-wider"
+                class="block text-[9px] font-extrabold text-stone-400 uppercase tracking-wider"
                 >Como deseja receber seu pedido?</label
               >
-              <div class="grid grid-cols-2 gap-3.5">
+              <div class="grid grid-cols-2 gap-2.5">
                 <label
                   id="option-delivery-label"
-                  class="border-2 border-brand-primary bg-orange-50/50 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-sm"
+                  class="border-2 border-brand-primary bg-orange-50/50 text-brand-primary rounded-xl py-2 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-brand-primary/84 transition-all relative shadow-3xs active:scale-[0.98]"
                 >
                   <input
                     type="radio"
@@ -544,19 +595,21 @@
                     onchange="toggleDeliveryOption('delivery')"
                     class="hidden"
                   />
-                  <span class="text-2xl">🛵</span>
-                  <div class="flex flex-col">
-                    <span class="text-xs font-bold text-gray-900"
+                  <span class="text-base shrink-0 select-none">🛵</span>
+                  <div class="flex flex-col min-w-0">
+                    <span
+                      class="text-xs font-black text-stone-880 truncate leading-none"
                       >Receber em Casa</span
                     >
-                    <span class="text-[9px] text-gray-400"
+                    <span
+                      class="text-[8px] text-stone-400 font-medium truncate mt-0.5"
                       >Entrega via motoboy</span
                     >
                   </div>
                 </label>
                 <label
                   id="option-pickup-label"
-                  class="border-2 border-gray-150 rounded-2xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-orange-200 transition-all text-center relative"
+                  class="border-2 border-stone-200 rounded-xl py-2 px-3 flex items-center justify-center gap-2 cursor-pointer hover:border-brand-primary/40 transition-all relative shadow-3xs active:scale-[0.98]"
                 >
                   <input
                     type="radio"
@@ -565,16 +618,127 @@
                     onchange="toggleDeliveryOption('pickup')"
                     class="hidden"
                   />
-                  <span class="text-2xl">🏪</span>
-                  <div class="flex flex-col">
-                    <span class="text-xs font-bold text-gray-800"
+                  <span class="text-base shrink-0 select-none">🏪</span>
+                  <div class="flex flex-col min-w-0">
+                    <span
+                      class="text-xs font-bold text-stone-650 truncate leading-none"
                       >Retirar no Balcão</span
                     >
-                    <span class="text-[9px] text-gray-400 font-medium"
+                    <span
+                      class="text-[8px] text-stone-400 font-medium truncate mt-0.5"
                       >Sem custo de taxa</span
                     >
                   </div>
                 </label>
+              </div>
+            </div>
+
+            <!-- BANNER DADOS SALVOS (Atalho para ir direto para Pagamento) -->
+            <div
+              id="saved-data-banner"
+              class="hidden bg-stone-50 border border-stone-200 rounded-2xl p-4.5 flex flex-col gap-3.5 shadow-2xs hover:shadow-xs transition-shadow duration-300"
+            >
+              <div class="flex items-start gap-3">
+                <div
+                  class="w-8 h-8 rounded-full bg-brand-primary/10 flex items-center justify-center shrink-0"
+                >
+                  <svg
+                    class="w-4.5 h-4.5 text-brand-primary"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                  </svg>
+                </div>
+                <div class="flex-grow">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <h4 class="text-xs font-black text-stone-800">
+                      Pedido Expresso Habilitado
+                    </h4>
+                    <span
+                      class="inline-flex items-center bg-brand-primary/10 text-brand-primary text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider"
+                    >
+                      Dados Salvos
+                    </span>
+                  </div>
+                  <p class="text-[10px] text-stone-500 leading-relaxed mt-1">
+                    Detectamos seus dados de contato e endereço salvos
+                    localmente. Economize tempo e avance diretamente para a
+                    finalização do seu pedido.
+                  </p>
+
+                  <div
+                    class="mt-3 bg-white border border-stone-150 rounded-xl p-3.5 space-y-2.5 shadow-3xs"
+                  >
+                    <div class="flex items-start gap-2">
+                      <div
+                        class="text-[10px] text-stone-400 font-bold uppercase tracking-wider w-16 shrink-0 mt-0.5"
+                      >
+                        Cliente
+                      </div>
+                      <div
+                        class="text-xs font-extrabold text-stone-700 capitalize flex items-center gap-1.5 leading-none"
+                      >
+                        <span id="saved-banner-name">--</span>
+                        <span class="w-1 h-1 bg-stone-300 rounded-full"></span>
+                        <span
+                          class="text-[10px] font-normal text-stone-500"
+                          id="saved-banner-phone"
+                          >--</span
+                        >
+                      </div>
+                    </div>
+
+                    <div
+                      id="saved-banner-addr-row"
+                      class="flex items-start gap-2 border-t border-stone-50 pt-2.5"
+                    >
+                      <div
+                        class="text-[10px] text-stone-400 font-bold uppercase tracking-wider w-16 shrink-0 mt-0.5"
+                      >
+                        Entrega
+                      </div>
+                      <div
+                        class="text-[11px] text-stone-600 font-medium leading-relaxed"
+                      >
+                        <span id="saved-banner-addr">--</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex flex-col gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onclick="useSavedDataAndGoToPayment()"
+                  class="w-full bg-brand-primary hover:bg-brand-primary/95 text-white font-extrabold py-3.5 px-4 rounded-xl text-xs active:scale-98 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer font-display"
+                >
+                  Confirmar Dados e Ir Para Pagamento
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2.5"
+                      d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    ></path>
+                  </svg>
+                </button>
+                <p class="text-[9px] text-stone-400 text-center">
+                  Ou se preferir, você pode alterar ou revisar seus dados no
+                  formulário abaixo.
+                </p>
               </div>
             </div>
 
@@ -882,71 +1046,61 @@
         <!-- Footer calculations & Checkout action -->
         <div
           id="cart-footer"
-          class="p-5 border-t border-gray-150/60 bg-white sticky bottom-0 z-10 hidden shadow-lg"
+          class="p-5 border-t border-stone-150 bg-white sticky bottom-0 z-10 hidden shadow-[0_-4px_24px_rgba(0,0,0,0.035)]"
         >
-          <div class="space-y-2 text-xs text-gray-650 mb-4 font-semibold">
-            <div class="flex justify-between">
-              <span
-                class="text-gray-400 uppercase tracking-widest text-[9px] font-extrabold"
-                >Subtotal</span
-              >
-              <span
-                id="lbl-subtotal"
-                class="font-extrabold text-gray-900 text-sm"
-                >R$ 0,00</span
-              >
+          <!-- Resumo de Valores Heading -->
+          <h3 class="text-xs font-black text-stone-850 uppercase tracking-widest mb-3.5 select-none">
+            Resumo de valores
+          </h3>
+
+          <div class="space-y-2.5 text-xs text-stone-700 mb-5 font-semibold">
+            <!-- Total dos itens -->
+            <div class="flex justify-between items-center">
+              <span class="text-stone-400 font-bold">Total dos itens</span>
+              <span id="lbl-subtotal" class="font-extrabold text-stone-850 text-sm">R$ 0,00</span>
             </div>
+
+            <!-- Desconto de Cupom -->
             <div
               id="panel-desconto"
-              class="flex justify-between text-brand-secondary h-0 overflow-hidden transition-all"
+              class="flex justify-between items-center text-emerald-600 h-0 overflow-hidden transition-all"
             >
-              <span class="uppercase tracking-widest text-[9px] font-extrabold"
-                >Desconto de Cupom</span
-              >
-              <span id="lbl-desconto" class="font-extrabold text-sm"
-                >- R$ 0,00</span
-              >
+              <span class="font-bold">Desconto de Cupom</span>
+              <span id="lbl-desconto" class="font-black text-sm">- R$ 0,00</span>
             </div>
+
+            <!-- Desconto Fidelidade -->
             <div
               id="panel-desconto-fidelidade"
-              class="flex justify-between text-brand-secondary hidden transition-all"
+              class="flex justify-between items-center text-emerald-600 hidden transition-all"
             >
-              <span class="uppercase tracking-widest text-[9px] font-extrabold"
-                >Desconto Fidelidade</span
-              >
-              <span id="lbl-desconto-fidelidade" class="font-extrabold text-sm"
-                >- R$ 0,00</span
-              >
+              <span class="font-bold">Desconto Fidelidade Ativo</span>
+              <span id="lbl-desconto-fidelidade" class="font-black text-sm">- R$ 0,00</span>
             </div>
-            <div class="flex justify-between">
-              <span
-                class="text-gray-400 uppercase tracking-widest text-[9px] font-extrabold"
-                >Taxa de envio</span
-              >
-              <span id="lbl-taxa" class="font-extrabold text-gray-900 text-sm"
-                >R$ 0,00</span
-              >
+
+            <!-- Taxa de entrega -->
+            <div class="flex justify-between items-center">
+              <span class="text-stone-400 font-bold">Taxa de entrega</span>
+              <span id="lbl-taxa" class="font-extrabold text-stone-850 text-sm">R$ 0,00</span>
             </div>
-            <hr class="border-gray-100 my-2" />
-            <div
-              class="flex justify-between text-sm font-black text-gray-900 pb-1"
-            >
-              <span
-                class="text-gray-500 uppercase tracking-widest text-[10px] font-extrabold mt-0.5"
-                >Total estimado</span
-              >
-              <span id="lbl-total" class="text-brand-primary text-xl font-black"
-                >R$ 0,00</span
-              >
+
+            <hr class="border-stone-100 my-2.5" />
+
+            <!-- Total -->
+            <div class="flex justify-between items-center pb-1">
+              <span class="text-stone-850 font-black text-sm">Total</span>
+              <span id="lbl-total" class="text-rose-600 text-xl font-black">R$ 0,00</span>
             </div>
           </div>
 
+          <!-- Checkout active CTA button -->
           <button
             onclick="goToNextCartStep()"
             id="btn-submit-checkout"
-            class="w-full bg-brand-primary text-white font-extrabold py-4 rounded-2xl hover:bg-orange-600 transition-all text-center flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-98 cursor-pointer"
+            class="w-full bg-rose-600 text-white font-black py-4 rounded-xl hover:bg-rose-700 transition-all text-xs uppercase tracking-wider flex items-center justify-between px-5 shadow-lg shadow-rose-950/20 active:scale-98 cursor-pointer select-none"
           >
-            Continuar
+            <span>Continuar</span>
+            <span id="btn-submit-total" class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">R$ 0,00</span>
           </button>
         </div>
       </div>
@@ -1662,6 +1816,9 @@
           }
         }
         calculateReceiptTotals();
+        if (typeof window.checkAndShowSavedDataBanner === "function") {
+          window.checkAndShowSavedDataBanner();
+        }
       };
 
       // Init function
@@ -1854,6 +2011,24 @@
           }
         });
 
+        // Dynamic change listeners for the Saved Data Banner
+        [
+          "cust-name",
+          "cust-phone",
+          "cust-street",
+          "cust-number",
+          "cust-comp",
+        ].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener("input", () => {
+              if (typeof window.checkAndShowSavedDataBanner === "function") {
+                window.checkAndShowSavedDataBanner();
+              }
+            });
+          }
+        });
+
         // Automatically search CEP and calculate rate when exactly 8 numeric characters are configured
         const cepInputEl = document.getElementById("cust-cep");
         if (cepInputEl) {
@@ -1986,21 +2161,29 @@
         let htmlTiming = "";
         if (hasOffline) {
           htmlTiming += `
-          <label class="timing-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
+          <label class="timing-card border border-stone-200 rounded-xl py-2 px-3 flex items-center gap-2.5 cursor-pointer hover:border-brand-primary/45 transition-all relative shadow-3xs active:scale-[0.98] select-none bg-white">
             <input type="radio" name="payment-timing" value="offline" class="hidden">
-            <span class="text-2xl">🛵</span>
-            <span class="text-xs font-black text-gray-850">Na Entrega</span>
-            <p class="text-[9px] text-gray-400 font-medium">Pagar ao Motoboy</p>
+            <div class="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center shrink-0 text-base select-none">
+              🛵
+            </div>
+            <div class="flex flex-col text-left min-w-0">
+              <span class="text-xs font-black text-stone-850 leading-tight truncate">Na Entrega</span>
+              <span class="text-[8px] text-stone-400 font-medium leading-none truncate mt-0.5">Pagar ao Motoboy</span>
+            </div>
           </label>
         `;
         }
         if (hasOnline) {
           htmlTiming += `
-          <label class="timing-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
+          <label class="timing-card border border-stone-200 rounded-xl py-2 px-3 flex items-center gap-2.5 cursor-pointer hover:border-brand-primary/45 transition-all relative shadow-3xs active:scale-[0.98] select-none bg-white">
             <input type="radio" name="payment-timing" value="online" class="hidden">
-            <span class="text-2xl">📱</span>
-            <span class="text-xs font-black text-green-700">Pagar Online</span>
-            <p class="text-[9px] text-gray-400 font-medium">Rápido e Seguro</p>
+            <div class="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center shrink-0 text-base select-none">
+              📱
+            </div>
+            <div class="flex flex-col text-left min-w-0">
+              <span class="text-xs font-black text-stone-880 leading-tight truncate">Pagar Online</span>
+              <span class="text-[8px] text-stone-400 font-medium leading-none truncate mt-0.5">Automático e Rápido</span>
+            </div>
           </label>
         `;
         }
@@ -2011,7 +2194,9 @@
           card.addEventListener("click", () => {
             timingCards.forEach((c) => {
               c.classList.remove("border-brand-primary", "bg-orange-50/50");
+              c.classList.add("border-stone-200");
             });
+            card.classList.remove("border-stone-200");
             card.classList.add("border-brand-primary", "bg-orange-50/50");
             const radio = card.querySelector("input");
             radio.checked = true;
@@ -2073,9 +2258,9 @@
                 "bg-orange-50/50",
                 "text-brand-primary",
               );
-              c.classList.add("border-gray-200");
+              c.classList.add("border-stone-200");
             });
-            card.classList.remove("border-gray-200");
+            card.classList.remove("border-stone-200");
             card.classList.add(
               "border-brand-primary",
               "bg-orange-50/50",
@@ -2114,11 +2299,25 @@
       };
 
       function buildPaymentMethodCard(val, label, icon) {
+        let iconHtml = `<span class="text-base select-none">${icon}</span>`;
+        if (val === "Pix" || val === "PixOnline") {
+          iconHtml = `
+            <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12.0004 2.22217L2.22266 12.0004L12.0004 21.7787L21.7781 12.0004L12.0004 2.22217ZM12.0004 6.75545L17.2454 12.0004L12.0004 17.2454L6.75545 12.0004L12.0004 6.75545ZM12.0004 9.17767L14.8231 12.0004L12.0004 14.8232L9.17767 12.0004L12.0004 9.17767z" fill="#32BCAD"/>
+            </svg>
+          `;
+        }
+
         return `
-        <label class="payment-card border border-gray-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-orange-300 transition-all text-center relative shadow-3xs">
+        <label class="payment-card border border-stone-200 rounded-xl py-2 px-3 flex items-center gap-2.5 cursor-pointer hover:border-brand-primary/45 transition-all relative shadow-3xs active:scale-[0.98] select-none bg-white">
           <input type="radio" name="payment-method" value="${val}" class="hidden">
-          <span class="text-2xl">${icon}</span>
-          <span class="text-xs font-black text-gray-850">${label}</span>
+          <div class="w-8 h-8 rounded-full bg-stone-50 flex items-center justify-center shrink-0">
+            ${iconHtml}
+          </div>
+          <div class="flex flex-col text-left min-w-0">
+            <span class="text-xs font-black text-stone-800 leading-tight truncate">${val === "PixOnline" || val === "Pix" ? "Pix" : val}</span>
+            <span class="text-[8px] text-stone-400 font-medium leading-none truncate mt-0.5">${label}</span>
+          </div>
         </label>
       `;
       }
@@ -3393,53 +3592,212 @@
         toggleProductModal(false);
       };
 
-      let currentCartStep = 1;
-      function updateCartStepUI() {
+      window.currentCartStep = 1;
+      window.updateCartStepUI = function () {
         const step1 = document.getElementById("cart-step-1");
         const step2 = document.getElementById("cart-step-2");
         const step3 = document.getElementById("cart-step-3");
-        const btnBack = document.getElementById("btn-cart-back");
-        const titleSpan = document.getElementById("cart-header-title");
-        const iconSpan = document.getElementById("cart-header-icon");
+        
+        // Custom Header elements
+        const titleSpan = document.getElementById("cart-header-title-custom");
+        const clearBtn = document.getElementById("btn-clear-cart-custom");
+        const backBtn = document.getElementById("btn-cart-back-custom");
         const submitBtn = document.getElementById("btn-submit-checkout");
 
         step1.classList.add("hidden");
         if (step2) step2.classList.add("hidden");
         if (step3) step3.classList.add("hidden");
 
-        if (currentCartStep === 1) {
-          step1.classList.remove("hidden");
-          btnBack.classList.add("hidden");
-          titleSpan.textContent = "Sua Sacola";
-          iconSpan.textContent = "🛍️";
-          submitBtn.textContent = "Continuar";
-          submitBtn.onclick = goToNextCartStep;
-        } else if (currentCartStep === 2) {
-          if (step2) step2.classList.remove("hidden");
-          btnBack.classList.remove("hidden");
-          titleSpan.textContent = "Identificação e Entrega";
-          iconSpan.textContent = "📍";
-          submitBtn.textContent = "Continuar para Pagamento";
-          submitBtn.onclick = goToNextCartStep;
-        } else if (currentCartStep === 3) {
-          if (step3) step3.classList.remove("hidden");
-          btnBack.classList.remove("hidden");
-          titleSpan.textContent = "Pagamento";
-          iconSpan.textContent = "💳";
-          submitBtn.textContent = "Finalizar Pedido";
-          submitBtn.onclick = openPaymentModal;
+        if (backBtn) {
+          backBtn.classList.remove("hidden");
+          backBtn.style.setProperty("display", "flex", "important");
         }
+
+        if (window.currentCartStep === 1) {
+          step1.classList.remove("hidden");
+          if (titleSpan) titleSpan.textContent = "SACOLA";
+          if (clearBtn) {
+            if (shoppingCart.length > 0) {
+              clearBtn.classList.remove("hidden");
+            } else {
+              clearBtn.classList.add("hidden");
+            }
+          }
+          if (submitBtn) {
+            submitBtn.onclick = goToNextCartStep;
+          }
+        } else if (window.currentCartStep === 2) {
+          if (step2) step2.classList.remove("hidden");
+          if (titleSpan) titleSpan.textContent = "ENTREGA";
+          if (clearBtn) clearBtn.classList.add("hidden");
+          if (submitBtn) {
+            submitBtn.onclick = goToNextCartStep;
+          }
+          if (typeof window.checkAndShowSavedDataBanner === "function") {
+            window.checkAndShowSavedDataBanner();
+          }
+        } else if (window.currentCartStep === 3) {
+          if (step3) step3.classList.remove("hidden");
+          if (titleSpan) titleSpan.textContent = "PAGAMENTO";
+          if (clearBtn) clearBtn.classList.add("hidden");
+          if (submitBtn) {
+            submitBtn.onclick = openPaymentModal;
+          }
+        }
+
+        // Keep dynamic submit states always updated
+        refreshSubmitBtnWidget();
+        // Keep iFood panels synced properly on active view transitions
+        updateIFoodPanels();
       }
 
+      window.checkAndShowSavedDataBanner = function () {
+        const banner = document.getElementById("saved-data-banner");
+        if (!banner) return;
+
+        const name = document.getElementById("cust-name").value.trim();
+        const phone = document.getElementById("cust-phone").value.trim();
+
+        if (name && phone) {
+          document.getElementById("saved-banner-name").textContent = name;
+          document.getElementById("saved-banner-phone").textContent = phone;
+
+          // Check selected delivery option
+          const optionNodes = document.getElementsByName("delivery-option");
+          let selectedOption = "delivery";
+          for (const opt of optionNodes) {
+            if (opt.checked) selectedOption = opt.value;
+          }
+
+          if (selectedOption === "delivery") {
+            const street = document.getElementById("cust-street").value.trim();
+            const number = document.getElementById("cust-number").value.trim();
+            const comp = document.getElementById("cust-comp").value.trim();
+            if (street && number) {
+              let addrStr = `${street}, Nº ${number}`;
+              if (comp) addrStr += ` - ${comp}`;
+              document
+                .getElementById("saved-banner-addr-row")
+                .classList.remove("hidden");
+              document.getElementById("saved-banner-addr").textContent =
+                addrStr;
+              banner.classList.remove("hidden");
+            } else {
+              banner.classList.add("hidden");
+            }
+          } else {
+            // Pickup option
+            document
+              .getElementById("saved-banner-addr-row")
+              .classList.add("hidden");
+            banner.classList.remove("hidden");
+          }
+        } else {
+          banner.classList.add("hidden");
+        }
+      };
+
+      window.useSavedDataAndGoToPayment = function () {
+        const name = document.getElementById("cust-name").value.trim();
+        const phone = document.getElementById("cust-phone").value.trim();
+        if (!name || !phone) {
+          window.customAlert("Por favor, preencha nome e WhatsApp.");
+          return;
+        }
+
+        const optionNodes = document.getElementsByName("delivery-option");
+        let selectedOption = "delivery";
+        for (const opt of optionNodes) {
+          if (opt.checked) selectedOption = opt.value;
+        }
+
+        if (selectedOption === "delivery") {
+          const street = document.getElementById("cust-street").value.trim();
+          const number = document.getElementById("cust-number").value.trim();
+          if (!street || !number) {
+            window.customAlert(
+              "Por favor, informe seu endereço (Rua e Número).",
+            );
+            return;
+          }
+        }
+
+        // Save values in localStorage just in case they were modified
+        localStorage.setItem("popfood_cust_name", name);
+        localStorage.setItem("popfood_last_phone", phone);
+        if (selectedOption === "delivery") {
+          localStorage.setItem(
+            "popfood_cust_cep",
+            document.getElementById("cust-cep").value.trim(),
+          );
+          localStorage.setItem(
+            "popfood_cust_street",
+            document.getElementById("cust-street").value.trim(),
+          );
+          localStorage.setItem(
+            "popfood_cust_number",
+            document.getElementById("cust-number").value.trim(),
+          );
+          localStorage.setItem(
+            "popfood_cust_comp",
+            document.getElementById("cust-comp").value.trim(),
+          );
+          localStorage.setItem(
+            "popfood_cust_ref",
+            document.getElementById("cust-ref").value.trim(),
+          );
+        }
+        localStorage.setItem(
+          "popfood_cust_email",
+          document.getElementById("cust-email").value.trim(),
+        );
+
+        // Go directly to Step 3 (Payment)
+        window.currentCartStep = 3;
+        window.updateCartStepUI();
+
+        // Scroll back to top of the modal/cart container so the user sees Step 3 clearly
+        const cartHeading = document.getElementById("cart-header-title-custom");
+        if (cartHeading) {
+          cartHeading.scrollIntoView({ behavior: "smooth" });
+        }
+      };
+
       window.goToNextCartStep = function () {
-        if (currentCartStep === 1) {
+        if (window.currentCartStep === 1) {
           if (shoppingCart.length === 0) {
             window.customAlert("Sua sacola está vazia.");
             return;
           }
-          currentCartStep = 2;
-          updateCartStepUI();
-        } else if (currentCartStep === 2) {
+
+          // Check if we already have the customer details saved (i.e. not the first order)
+          const name = document.getElementById("cust-name")?.value?.trim() || localStorage.getItem("popfood_cust_name") || "";
+          const phone = document.getElementById("cust-phone")?.value?.trim() || localStorage.getItem("popfood_last_phone") || "";
+
+          let hasValidAddress = true;
+          if (selectedDeliveryOption === "delivery") {
+            const street = document.getElementById("cust-street")?.value?.trim() || localStorage.getItem("popfood_cust_street") || "";
+            const number = document.getElementById("cust-number")?.value?.trim() || localStorage.getItem("popfood_cust_number") || "";
+            if (!street || !number) {
+              hasValidAddress = false;
+            }
+          }
+
+          if (name && phone && hasValidAddress) {
+            // Check if address exceeds delivery area limit (10km) before transitioning directly to payment
+            if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
+              window.currentCartStep = 2; // Go to step 2 so user can modify the address
+              showToast("Endereço está fora da área de entrega. Por favor, forneça um endereço válido.", true);
+            } else {
+              // Not first order / already filled: Go straight to Step 3 (Payment)
+              window.currentCartStep = 3;
+            }
+          } else {
+            // First order or incomplete: Go to Step 2
+            window.currentCartStep = 2;
+          }
+          window.updateCartStepUI();
+        } else if (window.currentCartStep === 2) {
           // Validate inputs before moving to step 3
           const name = document.getElementById("cust-name").value.trim();
           const phone = document.getElementById("cust-phone").value.trim();
@@ -3463,17 +3821,33 @@
               );
               return;
             }
+            if (typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
+              window.customAlert("Não atendemos esta região! Limite máximo: 10km.");
+              return;
+            }
           }
 
-          currentCartStep = 3;
-          updateCartStepUI();
+          // Save inputs to localStorage
+          localStorage.setItem("popfood_cust_name", name);
+          localStorage.setItem("popfood_last_phone", phone);
+          if (selectedOption === "delivery") {
+            localStorage.setItem("popfood_cust_cep", document.getElementById("cust-cep").value.trim());
+            localStorage.setItem("popfood_cust_street", document.getElementById("cust-street").value.trim());
+            localStorage.setItem("popfood_cust_number", document.getElementById("cust-number").value.trim());
+            localStorage.setItem("popfood_cust_comp", document.getElementById("cust-comp").value.trim());
+            localStorage.setItem("popfood_cust_ref", document.getElementById("cust-ref").value.trim());
+          }
+          localStorage.setItem("popfood_cust_email", document.getElementById("cust-email").value.trim());
+
+          window.currentCartStep = 3;
+          window.updateCartStepUI();
         }
       };
 
       window.goToPreviousCartStep = function () {
-        if (currentCartStep > 1) {
-          currentCartStep--;
-          updateCartStepUI();
+        if (window.currentCartStep > 1) {
+          window.currentCartStep--;
+          window.updateCartStepUI();
         }
       };
 
@@ -3482,8 +3856,8 @@
         const modal = document.getElementById("cart-modal");
         const inner = modal.querySelector("div");
         if (show) {
-          currentCartStep = 1;
-          updateCartStepUI();
+          window.currentCartStep = 1;
+          window.updateCartStepUI();
           modal.classList.remove("hidden");
           setTimeout(() => {
             inner.classList.remove("translate-x-full");
@@ -3497,6 +3871,184 @@
           document.body.classList.remove("overflow-hidden");
         }
       };
+
+      window.handleCartHeaderBack = function () {
+        if (window.currentCartStep > 1) {
+          goToPreviousCartStep();
+        } else {
+          toggleCartModal(false);
+        }
+      };
+
+      function refreshSubmitBtnWidget() {
+        const submitBtn = document.getElementById("btn-submit-checkout");
+        if (!submitBtn) return;
+
+        // Get total price from calculated values
+        const totalEl = document.getElementById("lbl-total");
+        const totalText = totalEl ? totalEl.textContent : "R$ 0,00";
+
+        // Quantidade total de itens
+        const totalQty = shoppingCart.reduce(
+          (acc, current) => acc + current.quantity,
+          0,
+        );
+
+        // Reset state button to fully active default styles
+        submitBtn.disabled = false;
+        submitBtn.classList.remove(
+          "bg-gray-300",
+          "cursor-not-allowed",
+          "hover:bg-gray-300",
+        );
+        submitBtn.classList.add("bg-brand-primary", "hover:bg-orange-600");
+
+        if (window.currentCartStep === 1) {
+          submitBtn.innerHTML = `
+            <span>Continuar</span>
+            <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText} • ${totalQty} ${totalQty === 1 ? 'item' : 'itens'}</span>
+          `;
+        } else if (window.currentCartStep === 2) {
+          // Disable only if delivery option is active and calculated distance is out of delivery area
+          if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add(
+              "bg-gray-300",
+              "cursor-not-allowed",
+              "hover:bg-gray-300",
+            );
+            submitBtn.classList.remove("bg-brand-primary", "hover:bg-orange-600");
+            submitBtn.innerHTML = `
+              <span>Área de entrega indisponível</span>
+              <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText}</span>
+            `;
+          } else {
+            submitBtn.innerHTML = `
+              <span>Confirmar Entrega</span>
+              <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText}</span>
+            `;
+          }
+        } else if (window.currentCartStep === 3) {
+          submitBtn.innerHTML = `
+            <span>Finalizar Pedido</span>
+            <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText}</span>
+          `;
+        }
+      }
+
+      function updateIFoodPanels() {
+        const hasItems = shoppingCart.length > 0;
+        
+        const secAddress = document.getElementById("sacola-address-section");
+        const secPickup = document.getElementById("sacola-pickup-section");
+        const secDeliveryOpts = document.getElementById("sacola-delivery-options-section");
+
+        if (!hasItems) {
+          if (secAddress) secAddress.classList.add("hidden");
+          if (secPickup) secPickup.classList.add("hidden");
+          if (secDeliveryOpts) secDeliveryOpts.classList.add("hidden");
+          return;
+        }
+
+        // Show either Address or Pickup based on current option selected
+        if (selectedDeliveryOption === "delivery") {
+          if (secAddress) secAddress.classList.remove("hidden");
+          if (secPickup) secPickup.classList.add("hidden");
+          if (secDeliveryOpts) secDeliveryOpts.classList.remove("hidden");
+
+          // Fill street and num if saved, or offer fallback values
+          const street = document.getElementById("cust-street").value.trim() 
+            || localStorage.getItem("popfood_cust_street") 
+            || "Cadastrar Endereço de Entrega";
+          const num = document.getElementById("cust-number").value.trim() 
+            || localStorage.getItem("popfood_cust_number") 
+            || "";
+          
+          const streetNumSpan = document.getElementById("sacola-address-street-num");
+          if (streetNumSpan) {
+            streetNumSpan.textContent = num ? `${street}, ${num}` : street;
+          }
+
+          let neigh = "Preencha seus dados de Envio";
+          const refVal = document.getElementById("cust-ref")?.value?.trim() || localStorage.getItem("popfood_cust_ref") || "";
+          const compVal = document.getElementById("cust-comp")?.value?.trim() || localStorage.getItem("popfood_cust_comp") || "";
+          const savedStreet = document.getElementById("cust-street")?.value?.trim() || localStorage.getItem("popfood_cust_street") || "";
+          if (refVal) {
+            neigh = `Ref: ${refVal}`;
+          } else if (compVal) {
+            neigh = `Complemento: ${compVal}`;
+          } else if (savedStreet) {
+            neigh = "Endereço Cadastrado";
+          }
+          const neighborhoodSpan = document.getElementById("sacola-address-neighborhood");
+          if (neighborhoodSpan) {
+            neighborhoodSpan.textContent = neigh;
+          }
+
+          // Build dynamic delivery options price content
+          const currentFee = calculatedDeliveryFee;
+          const timingLabel = document.getElementById("sacola-delivery-timing-label");
+          // Format estimated delivery duration from restaurant profile or fallback
+          let timingStr = "Hoje, 40 - 50min";
+          if (restaurantProfile) {
+            let matchedKM = null;
+            // Get ceiling values (the KM distance thresholds configured by user)
+            const ceilings = Object.keys(restaurantProfile.deliveryRates || {}).map(Number).sort((a,b) => a-b);
+            const dist = (typeof calculatedDistance !== 'undefined' && calculatedDistance > 0) ? calculatedDistance : 2.0;
+            if (ceilings.length > 0) {
+              for (let c of ceilings) {
+                if (dist <= c) {
+                  matchedKM = c;
+                  break;
+                }
+              }
+              if (matchedKM === null) {
+                matchedKM = ceilings[ceilings.length - 1];
+              }
+            }
+            if (matchedKM !== null && restaurantProfile.deliveryTimes && restaurantProfile.deliveryTimes[matchedKM] !== undefined) {
+              const mins = restaurantProfile.deliveryTimes[matchedKM];
+              timingStr = `Hoje, ${mins} min`;
+            } else if (restaurantProfile.deliveryDuration) {
+              timingStr = `Hoje, ${restaurantProfile.deliveryDuration}`;
+            }
+          }
+          if (timingLabel) timingLabel.textContent = timingStr;
+
+          const priceHighlight = document.getElementById("sacola-delivery-price-highlight");
+          const priceStrikethrough = document.getElementById("sacola-delivery-price-strikethrough");
+
+          if (currentFee === 0) {
+            if (priceHighlight) {
+              priceHighlight.className = "text-xs font-black text-emerald-600";
+              priceHighlight.textContent = "Grátis";
+            }
+            if (priceStrikethrough) {
+              priceStrikethrough.textContent = "R$ 4,99";
+              priceStrikethrough.classList.remove("hidden");
+            }
+          } else {
+            if (priceHighlight) {
+              priceHighlight.className = "text-xs font-black text-stone-800";
+              priceHighlight.textContent = `R$ ${currentFee.toFixed(2).replace(".", ",")}`;
+            }
+            if (priceStrikethrough) {
+              priceStrikethrough.classList.add("hidden");
+            }
+          }
+
+        } else {
+          // Pickup mode
+          if (secAddress) secAddress.classList.add("hidden");
+          if (secPickup) secPickup.classList.remove("hidden");
+          if (secDeliveryOpts) secDeliveryOpts.classList.add("hidden");
+
+          const storeSpan = document.getElementById("sacola-pickup-store");
+          if (storeSpan && restaurantProfile) {
+            storeSpan.textContent = restaurantProfile.name || "Retirar no estabelecimento";
+          }
+        }
+      }
 
       // Draw active cart summaries
       function refreshCartOverview() {
@@ -3512,35 +4064,40 @@
           navCartBadge.textContent = totalQty;
           navCartBadge.classList.add("hidden");
         }
-        document.getElementById("cart-items-count").textContent =
-          shoppingCart.length;
 
         const listDiv = document.getElementById("cart-items-list");
         const footerSec = document.getElementById("cart-footer");
-        const clearBtn = document.getElementById("btn-clear-cart");
+        const clearBtn = document.getElementById("btn-clear-cart-custom");
 
         listDiv.innerHTML = "";
 
         if (shoppingCart.length === 0) {
           listDiv.innerHTML = `
-          <div class="py-12 text-center text-gray-400 space-y-3">
-            <span class="text-4xl">🥡</span>
-            <p class="text-sm font-medium">Seu carrinho está vazio</p>
-            <p class="text-xs text-gray-400">Escolha pratos deliciosos para começar!</p>
+          <div class="py-16 text-center text-gray-400 space-y-3 bg-white border border-stone-150 rounded-2xl p-6 shadow-3xs">
+            <span class="text-5xl block animate-bounce duration-1000">🥡</span>
+            <h3 class="text-sm font-bold text-stone-800">Sua sacola está vazia</h3>
+            <p class="text-xs text-stone-400 max-w-xs mx-auto">Adicione itens deliciosos do nosso catálogo para começar seu pedido!</p>
           </div>`;
           footerSec.classList.add("hidden");
           if (clearBtn) clearBtn.classList.add("hidden");
+          updateIFoodPanels();
           return;
         }
 
         footerSec.classList.remove("hidden");
         if (clearBtn) clearBtn.classList.remove("hidden");
 
+        // Section header label
+        const itemsHeading = document.createElement("div");
+        itemsHeading.className = "text-[11px] font-black uppercase text-stone-400 tracking-wider mb-2 mt-1 select-none";
+        itemsHeading.textContent = "Itens adicionados";
+        listDiv.appendChild(itemsHeading);
+
         // Populate elements
         shoppingCart.forEach((item) => {
           const itemRow = document.createElement("div");
           itemRow.className =
-            "bg-white border border-gray-150/60 p-4 rounded-2xl flex gap-4 relative shadow-2xs hover:shadow-xs transition-all duration-300";
+            "bg-white border-b border-stone-100 py-4 flex gap-4 relative last:border-b-0";
 
           const defaultSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fed7aa'/><text x='50' y='55' font-family='sans-serif' font-size='24' fill='%23ea580c' text-anchor='middle'>🍔</text></svg>`;
           const imgUrl = item.image || defaultSvg;
@@ -3549,46 +4106,66 @@
           let compsStr = "";
           if (item.complements && item.complements.length > 0) {
             compsStr =
-              `<div class="text-[9px] text-gray-500 bg-gray-50 py-1 px-2.5 rounded-lg mt-2 border border-gray-100/50 leading-relaxed font-semibold uppercase tracking-wider">` +
+              `<div class="text-[10px] text-stone-500 font-semibold space-y-0.5 mt-1.5 pl-1.5 border-l border-stone-200">` +
               item.complements
-                .map((c) => `${c.optionName} (+R$ ${c.price.toFixed(2)})`)
-                .join(", ") +
+                .map((c) => `<div class="flex items-center gap-1"><span>1</span><span class="text-stone-400 font-normal">x</span><span>${c.optionName}</span></div>`)
+                .join("") +
               `</div>`;
           }
 
           const notesStr = item.notes
-            ? `<div class="text-[10px] text-orange-600 font-bold bg-orange-50/40 border border-orange-100/30 px-2 py-1 rounded-lg leading-tight mt-1.5 line-clamp-1 italic">Obs: "${item.notes}"</div>`
+            ? `<div class="text-[9px] text-rose-600 font-bold bg-rose-50 border border-rose-100/30 px-2 py-0.5 rounded-lg leading-tight mt-1.5 w-max italic">Obs: "${item.notes}"</div>`
             : "";
 
+          const totalVal = item.totalItemPrice * item.quantity;
+          const priceRender = `
+            <div class="flex items-baseline gap-1.5 mt-2.5">
+              <span class="text-xs font-black text-stone-850">R$ ${totalVal.toFixed(2).replace(".", ",")}</span>
+            </div>
+          `;
+
+          // Quantity selector (Sleek red color match)
+          const minusHtml = item.quantity === 1 
+            ? `<svg class="w-4.5 h-4.5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`
+            : `<span class="text-base text-rose-600 font-extrabold leading-none">-</span>`;
+
           itemRow.innerHTML = `
-          <div class="w-16 h-16 rounded-xl overflow-hidden border border-gray-100 bg-orange-50/50 flex-shrink-0 flex items-center justify-center shadow-3xs">
+          <div class="relative w-16 h-16 rounded-xl overflow-hidden border border-stone-100/80 bg-stone-50 shrink-0 shadow-3xs flex items-center justify-center">
             <img src="${imgUrl}" class="w-full h-full object-cover">
           </div>
-          <div class="flex-grow pr-16">
-            <h4 class="text-xs font-black text-gray-900 capitalize tracking-tight leading-snug">${item.name}</h4>
+          
+          <div class="flex-grow min-w-0 pr-2">
+            <h4 class="text-xs font-black text-stone-850 capitalize tracking-tight leading-snug truncate">${item.name}</h4>
+            <p class="text-[9px] text-stone-400 truncate font-medium mt-0.5">${item.description || "Delicioso item preparado na hora"}</p>
             ${compsStr}
             ${notesStr}
-            <div class="text-xs font-extrabold text-brand-primary mt-2">R$ ${(item.totalItemPrice * item.quantity).toFixed(2).replace(".", ",")}</div>
+            ${priceRender}
           </div>
           
-          <!-- Delete absolute button top right -->
-          <button onclick="removeCartItem('${item.uniqueId}')" class="absolute top-4 right-4 text-gray-300 hover:text-brand-danger hover:bg-red-50 p-1 rounded-lg transition-colors cursor-pointer outline-none" title="Remover item">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-            </svg>
-          </button>
-
-          <!-- Incrementor container bottom right -->
-          <div class="absolute bottom-4 right-4 flex items-center bg-gray-50 border border-gray-150 rounded-xl px-2 py-1 shadow-3xs">
-            <button onclick="modifyCartQty('${item.uniqueId}', -1)" class="text-gray-400 hover:text-brand-danger hover:bg-white font-black text-xs px-1.5 py-0.5 rounded transition-all cursor-pointer">-</button>
-            <span class="text-xs font-extrabold text-gray-805 px-2 select-none">${item.quantity}</span>
-            <button onclick="modifyCartQty('${item.uniqueId}', 1)" class="text-brand-primary hover:text-orange-600 hover:bg-white font-black text-xs px-1.5 py-0.5 rounded transition-all cursor-pointer">+</button>
+          <div class="flex items-center justify-between shrink-0 self-end mb-1">
+            <div class="flex items-center bg-stone-50 border border-stone-200 rounded-xl px-1 py-0.5 gap-2.5 shadow-3xs">
+              <button onclick="modifyCartQty('${item.uniqueId}', -1)" class="w-6.5 h-6.5 hover:bg-white rounded-lg flex items-center justify-center transition-all cursor-pointer outline-none select-none">${minusHtml}</button>
+              <span class="text-xs font-black text-stone-800 select-none min-w-[12px] text-center">${item.quantity}</span>
+              <button onclick="modifyCartQty('${item.uniqueId}', 1)" class="w-6.5 h-6.5 hover:bg-white rounded-lg flex items-center justify-center text-lg text-rose-600 font-extrabold transition-all cursor-pointer outline-none select-none">+</button>
+            </div>
           </div>
         `;
           listDiv.appendChild(itemRow);
         });
 
-        // Render decorative/informative loyalty discount row right next to items inside the cart
+        // "Adicionar mais itens" text link centered at the list footer
+        const addMoreRow = document.createElement("button");
+        addMoreRow.type = "button";
+        addMoreRow.onclick = function () { toggleCartModal(false); };
+        addMoreRow.className = "w-full text-center text-xs font-extrabold text-rose-600 hover:text-rose-700 py-4 transition-all border-b border-stone-100 mb-1 select-none cursor-pointer outline-none";
+        addMoreRow.innerHTML = `
+          <span class="flex items-center justify-center gap-1 font-bold">
+            <span>Adicionar mais itens</span>
+          </span>
+        `;
+        listDiv.appendChild(addMoreRow);
+
+        // Render loyalty discounts block
         if (
           hasLoyaltyDiscount &&
           restaurantProfile &&
@@ -3596,7 +4173,7 @@
         ) {
           const discItemRow = document.createElement("div");
           discItemRow.className =
-            "bg-[#f0fdf4] border border-[#dcfce7] rounded-xl p-3.5 flex items-center justify-between gap-3 text-left";
+            "bg-emerald-50 border border-emerald-250/50 rounded-xl p-3.5 flex items-center justify-between gap-3 text-left mt-3.5 shadow-3xs";
 
           const discText =
             restaurantProfile.loyaltyType === "percentual"
@@ -3606,23 +4183,26 @@
                   .replace(".", ",")}`;
 
           discItemRow.innerHTML = `
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center text-lg flex-shrink-0 shadow-3xs">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-base flex-shrink-0 shadow-3xs">
               🌟
             </div>
             <div>
-              <h4 class="text-xs font-bold text-green-800">Desconto Fidelidade Ativo</h4>
-              <p class="text-[9px] text-[#16a34a] font-semibold uppercase leading-none mt-0.5">Identificado (${userOrdersCount} pedidos realizados)</p>
+              <h4 class="text-xs font-black text-emerald-800 leading-snug">Desconto Fidelidade Ativo</h4>
+              <p class="text-[9px] text-[#16a34a] font-semibold leading-none mt-0.5">Identificado para este pedido</p>
             </div>
           </div>
-          <div class="text-xs font-extrabold text-[#16a34a] whitespace-nowrap bg-white px-2.5 py-1.5 rounded-md border border-[#dcfce7] shadow-3xs">
+          <div class="text-xs font-black text-[#16a34a] whitespace-nowrap bg-white px-2.5 py-1.5 rounded-lg border border-[#dcfce7] shadow-3xs">
             - ${discText}
           </div>
         `;
           listDiv.appendChild(discItemRow);
         }
 
+        // Trigger iFood panels and billing summary update
+        updateIFoodPanels();
         calculateReceiptTotals();
+        refreshSubmitBtnWidget();
       }
 
       // Incr dec qty
