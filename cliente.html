@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ea580c" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="apple-touch-icon" href="icon.jpg" />
+    <link rel="apple-touch-icon" href="icon.png" />
     <title>Cardápio - PopFood Delivery</title>
     <script type="importmap">
       {
@@ -116,7 +116,7 @@
           <button
             id="install-pwa-btn"
             style="display: none"
-            class="hidden sm:flex text-[10px] font-bold bg-orange-100 text-orange-600 px-3 py-1.5 rounded-full items-center gap-1 hover:bg-orange-200 transition-colors"
+            class="flex text-[10px] font-bold bg-brand-primary text-white px-3 py-1.5 rounded-full items-center gap-1 hover:bg-orange-600 transition-colors shadow-sm"
           >
             <svg
               class="w-3 h-3"
@@ -5612,7 +5612,7 @@
 
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js").then(
+          navigator.serviceWorker.register("./sw.js").then(
             (registration) => {
               console.log(
                 "ServiceWorker registration successful with scope: ",

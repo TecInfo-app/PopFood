@@ -1,6 +1,6 @@
-const CACHE_NAME = 'popfood-v2';
+const CACHE_NAME = 'popfood-v3';
 const urlsToCache = [
-  './icon.jpg'
+  './icon.png'
 ];
 
 self.addEventListener('install', event => {
