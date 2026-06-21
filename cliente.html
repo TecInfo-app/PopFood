@@ -3,9 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ea580c" />
-    <link rel="manifest" href="manifest.json" />
-    <link rel="apple-touch-icon" href="icon.png" />
     <title>Cardápio - PopFood Delivery</title>
     <script type="importmap">
       {
@@ -112,54 +109,31 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button
-            id="install-pwa-btn"
-            style="display: none"
-            class="flex text-[10px] font-bold bg-brand-primary text-white px-3 py-1.5 rounded-full items-center gap-1 hover:bg-orange-600 transition-colors shadow-sm"
+        <button
+          onclick="toggleCartModal(true)"
+          id="cart-trigger-btn"
+          class="relative text-brand-primary p-2 hover:bg-orange-50 rounded-xl transition-all flex items-center justify-center cursor-pointer"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="2.3"
+            stroke="currentColor"
+            class="w-6 h-6"
           >
-            <svg
-              class="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              ></path>
-            </svg>
-            Instalar App
-          </button>
-
-          <button
-            onclick="toggleCartModal(true)"
-            id="cart-trigger-btn"
-            class="relative text-brand-primary p-2 hover:bg-orange-50 rounded-xl transition-all flex items-center justify-center cursor-pointer"
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+            />
+          </svg>
+          <span
+            id="cart-badge"
+            class="absolute top-[3px] right-[2px] bg-[#16a34a] text-white font-extrabold text-[9px] w-5 h-5 rounded-full border border-white flex items-center justify-center shadow-3xs"
+            >0</span
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke-width="2.3"
-              stroke="currentColor"
-              class="w-6 h-6"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-              />
-            </svg>
-            <span
-              id="cart-badge"
-              class="absolute top-[3px] right-[2px] bg-[#16a34a] text-white font-extrabold text-[9px] w-5 h-5 rounded-full border border-white flex items-center justify-center shadow-3xs"
-              >0</span
-            >
-          </button>
-        </div>
+        </button>
       </div>
     </header>
 
@@ -1295,14 +1269,9 @@
         where,
       } from "./firebase-config.js";
 
-      let urlStoreId = new URLSearchParams(window.location.search).get("store");
-      if (urlStoreId) {
-        localStorage.setItem("popfood_store_id", urlStoreId);
-        // Replace current history state so the parameter remains in URL visually
-        // without causing issues if they copy-paste, but PWA install will work fine
-      } else {
-        urlStoreId = localStorage.getItem("popfood_store_id");
-      }
+      const urlStoreId = new URLSearchParams(window.location.search).get(
+        "store",
+      );
       window.currentStoreId = urlStoreId;
       if (!window.currentStoreId) {
         alert(
@@ -5575,56 +5544,5 @@
         💳 Pagar Pix
       </button>
     </div>
-
-    <script>
-      let deferredPrompt;
-      window.addEventListener("beforeinstallprompt", (e) => {
-        // Prevent the mini-infobar from appearing on mobile
-        e.preventDefault();
-        // Stash the event so it can be triggered later.
-        deferredPrompt = e;
-        // Update UI notify the user they can install the PWA
-        const installBtn = document.getElementById("install-pwa-btn");
-        if (installBtn) {
-          installBtn.style.display = "flex";
-          installBtn.addEventListener("click", async () => {
-            // Hide the app provided install promotion
-            installBtn.style.display = "none";
-            // Show the install prompt
-            deferredPrompt.prompt();
-            // Wait for the user to respond to the prompt
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log(`User response to the install prompt: ${outcome}`);
-            // We've used the prompt, and can't use it again, throw it away
-            deferredPrompt = null;
-          });
-        }
-      });
-
-      window.addEventListener("appinstalled", () => {
-        // Hide the app-provided install promotion
-        const installBtn = document.getElementById("install-pwa-btn");
-        if (installBtn) {
-          installBtn.style.display = "none";
-        }
-        console.log("PWA was installed");
-      });
-
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("./sw.js").then(
-            (registration) => {
-              console.log(
-                "ServiceWorker registration successful with scope: ",
-                registration.scope,
-              );
-            },
-            (err) => {
-              console.log("ServiceWorker registration failed: ", err);
-            },
-          );
-        });
-      }
-    </script>
   </body>
 </html>
