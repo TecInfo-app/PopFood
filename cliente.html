@@ -400,7 +400,7 @@
             onclick="addCurrentToCart()"
             class="flex-grow bg-brand-primary text-white font-black py-4 px-6 rounded-2xl hover:bg-[#803805] hover:shadow-orange-950/15 transition-all flex justify-between items-center shadow-lg shadow-orange-950/20 cursor-pointer text-xs uppercase tracking-wider active:scale-98"
           >
-            <span>Adicionar</span>
+            <span id="modal-submit-text">Adicionar</span>
             <span
               id="modal-total-button-price"
               class="bg-black/15 px-3.5 py-1 rounded-xl text-[11px] font-black tracking-normal"
@@ -1751,6 +1751,7 @@
       let currentModalComplementsPrice = 0;
 
       // Cart details
+      window.editingCartItemUniqueId = null;
       let shoppingCart = JSON.parse(localStorage.getItem("popfood_cart")) || [];
       let appliedDiscountCoupon = null;
       let calculatedDistance = null;
@@ -3215,14 +3216,35 @@
           setTimeout(() => {
             modal.classList.add("hidden");
             document.body.classList.remove("overflow-hidden");
+            window.editingCartItemUniqueId = null;
           }, 400);
         }
       };
 
       // Fill complements details modal dynamically by reading Firestore complements map
-      async function openProductModal(prod) {
+      async function openProductModal(prod, isEditingUniqueId = null) {
+        window.editingCartItemUniqueId = isEditingUniqueId;
         currentSelectedProduct = prod;
-        currentModalQty = 1;
+
+        const submitTextSpan = document.getElementById("modal-submit-text");
+        if (submitTextSpan) {
+          submitTextSpan.textContent = isEditingUniqueId ? "Atualizar" : "Adicionar";
+        }
+
+        if (isEditingUniqueId) {
+          const cartItem = shoppingCart.find((i) => i.uniqueId === isEditingUniqueId);
+          if (cartItem) {
+            currentModalQty = cartItem.quantity;
+            document.getElementById("modal-product-notes").value = cartItem.notes || "";
+          } else {
+            currentModalQty = 1;
+            document.getElementById("modal-product-notes").value = "";
+          }
+        } else {
+          currentModalQty = 1;
+          document.getElementById("modal-product-notes").value = "";
+        }
+
         currentModalComplementsPrice = 0;
 
         document.getElementById("modal-qty").textContent = currentModalQty;
@@ -3250,8 +3272,6 @@
         } else {
           modalOrig.classList.add("hidden");
         }
-
-        document.getElementById("modal-product-notes").value = "";
 
         // Query database complements for current selected prd
         const compContainer = document.getElementById("modal-complements");
@@ -3316,6 +3336,17 @@
                   ? group.minSelection || 1
                   : 0;
 
+                let optQty = 0;
+                let optChecked = false;
+                if (isEditingUniqueId) {
+                  const cartItem = shoppingCart.find(i => i.uniqueId === isEditingUniqueId);
+                  if (cartItem && cartItem.complements) {
+                    const groupComps = cartItem.complements.filter(c => c.groupName === group.name && c.optionName === opt.name);
+                    optQty = groupComps.length;
+                    optChecked = optQty > 0;
+                  }
+                }
+
                 if (isMulti) {
                   optionDiv.className =
                     "flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs mb-2";
@@ -3330,7 +3361,7 @@
                       <button type="button" class="comp-minus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"></path></svg>
                       </button>
-                      <span class="comp-qty text-xs font-bold w-4 text-center text-gray-800" id="qty-${optId}" data-price="${opt.price || 0}" data-name="${opt.name}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}">0</span>
+                      <span class="comp-qty text-xs font-bold w-4 text-center text-gray-800" id="qty-${optId}" data-price="${opt.price || 0}" data-name="${opt.name}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}">${optQty}</span>
                       <button type="button" class="comp-plus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                       </button>
@@ -3342,7 +3373,7 @@
                     "flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs cursor-pointer select-none active:scale-[0.99] duration-150 mb-2";
                   optionDiv.innerHTML = `
                   <label for="${optId}" class="flex-grow flex items-center gap-3 cursor-pointer py-0.5">
-                    <input type="${inputType}" id="${optId}" name="group-${groupIdx}" value="${opt.name}" data-price="${opt.price || 0}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" class="complement-checkbox w-4.5 h-4.5 accent-brand-primary text-brand-primary focus:ring-brand-primary/25 border-stone-300 rounded">
+                    <input type="${inputType}" id="${optId}" name="group-${groupIdx}" value="${opt.name}" data-price="${opt.price || 0}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${optChecked ? 'checked' : ''} class="complement-checkbox w-4.5 h-4.5 accent-brand-primary text-brand-primary focus:ring-brand-primary/25 border-stone-300 rounded">
                     <div class="flex flex-col">
                       <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}</span>
                       ${optDescHtml}
@@ -3450,6 +3481,29 @@
                   recalculateModalPrice();
                 });
               });
+
+            // Apply initial maximum limits styling for checkbox groups
+            document.querySelectorAll(".complement-checkbox:checked").forEach((chk) => {
+              const groupName = chk.getAttribute("data-gname");
+              const max = parseInt(chk.getAttribute("data-gmax"));
+              const groupInputs = document.querySelectorAll(
+                `.complement-checkbox[data-gname="${groupName}"]`,
+              );
+              const checkedCount = Array.from(groupInputs).filter(
+                (i) => i.checked,
+              ).length;
+              if (checkedCount >= max) {
+                groupInputs.forEach((i) => {
+                  if (!i.checked) {
+                    i.disabled = true;
+                    i.closest("label").classList.add(
+                      "opacity-50",
+                      "cursor-not-allowed",
+                    );
+                  }
+                });
+              }
+            });
           }
         } catch (err) {
           console.error("Erro ao obter complementos: ", err);
@@ -3458,6 +3512,7 @@
         recalculateModalPrice();
         toggleProductModal(true);
       }
+      window.openProductModal = openProductModal;
 
       // Modal state controllers
       window.changeModalQty = function (val) {
@@ -3573,7 +3628,7 @@
 
         const shoppingItem = {
           uniqueId:
-            Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            window.editingCartItemUniqueId || (Date.now().toString(36) + Math.random().toString(36).substr(2, 5)),
           productId: currentSelectedProduct.id,
           name: currentSelectedProduct.name,
           image: currentSelectedProduct.image,
@@ -3585,11 +3640,32 @@
             currentSelectedProduct.price + currentModalComplementsPrice,
         };
 
-        shoppingCart.push(shoppingItem);
+        const isEditing = !!window.editingCartItemUniqueId;
+
+        if (window.editingCartItemUniqueId) {
+          const idx = shoppingCart.findIndex((i) => i.uniqueId === window.editingCartItemUniqueId);
+          if (idx !== -1) {
+            shoppingCart[idx] = shoppingItem;
+          } else {
+            shoppingCart.push(shoppingItem);
+          }
+        } else {
+          shoppingCart.push(shoppingItem);
+        }
+
         localStorage.setItem("popfood_cart", JSON.stringify(shoppingCart));
 
         refreshCartOverview();
+        
+        window.editingCartItemUniqueId = null;
+        
         toggleProductModal(false);
+
+        if (isEditing) {
+          setTimeout(() => {
+            toggleCartModal(true);
+          }, 450);
+        }
       };
 
       window.currentCartStep = 1;
@@ -4134,12 +4210,22 @@
             <img src="${imgUrl}" class="w-full h-full object-cover">
           </div>
           
-          <div class="flex-grow min-w-0 pr-2">
+          <div class="flex-grow min-w-0 pr-2 pb-1">
             <h4 class="text-xs font-black text-stone-850 capitalize tracking-tight leading-snug truncate">${item.name}</h4>
             <p class="text-[9px] text-stone-400 truncate font-medium mt-0.5">${item.description || "Delicioso item preparado na hora"}</p>
             ${compsStr}
             ${notesStr}
             ${priceRender}
+            <div class="flex items-center gap-3.5 mt-2 select-none">
+              <button onclick="editCartItem('${item.uniqueId}')" class="text-[10px] font-extrabold text-stone-400 hover:text-brand-primary flex items-center gap-1 cursor-pointer transition-colors outline-none select-none">
+                <svg class="w-3 h-3 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                Editar
+              </button>
+              <button onclick="removeCartItem('${item.uniqueId}')" class="text-[10px] font-extrabold text-rose-500 hover:text-rose-650 flex items-center gap-1 cursor-pointer transition-colors outline-none select-none">
+                <svg class="w-3 h-3 text-rose-450" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Excluir
+              </button>
+            </div>
           </div>
           
           <div class="flex items-center justify-between shrink-0 self-end mb-1">
@@ -4218,6 +4304,25 @@
           localStorage.setItem("popfood_cart", JSON.stringify(shoppingCart));
           refreshCartOverview();
         }
+      };
+
+      // Edit a cart item individually
+      window.editCartItem = function (uniqueId) {
+        const cartItem = shoppingCart.find((i) => i.uniqueId === uniqueId);
+        if (!cartItem) return;
+
+        // Find the base product in productsList
+        const prod = productsList.find((p) => p.id === cartItem.productId);
+        if (!prod) {
+          showToast("Produto não disponível para edição no momento.", true);
+          return;
+        }
+
+        // Close the cart modal so the user can interact with the product modal
+        toggleCartModal(false);
+
+        // Open product modal with the editing uniqueId parameter!
+        openProductModal(prod, uniqueId);
       };
 
       // Destroy product row
