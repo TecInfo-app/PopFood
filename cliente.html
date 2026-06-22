@@ -4010,8 +4010,12 @@
           }
 
           if (name && phone && hasValidAddress) {
-            // Check if address exceeds delivery area limit (10km) before transitioning directly to payment
-            if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
+            // Get max radius
+            const ceilings = Object.keys(restaurantProfile?.deliveryRates || {}).map(Number).sort((a, b) => a - b);
+            const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+
+            // Check if address exceeds delivery area limit before transitioning directly to payment
+            if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > maxRadius) {
               window.currentCartStep = 2; // Go to step 2 so user can modify the address
               showToast("Endereço está fora da área de entrega. Por favor, forneça um endereço válido.", true);
             } else {
@@ -4047,8 +4051,13 @@
               );
               return;
             }
-            if (typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
-              window.customAlert("Não atendemos esta região! Limite máximo: 10km.");
+            
+            // Get max radius
+            const ceilings = Object.keys(restaurantProfile?.deliveryRates || {}).map(Number).sort((a, b) => a - b);
+            const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+            
+            if (typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > maxRadius) {
+              window.customAlert(`Não atendemos esta região! Limite máximo: ${maxRadius.toFixed(1)}km.`);
               return;
             }
           }
@@ -5689,6 +5698,20 @@
           );
           return;
         }
+
+        // Validate max delivery distance one last time to prevent bypassing via geocode delay
+        if (selectedDeliveryOption === "delivery") {
+          const ceilings = Object.keys(restaurantProfile?.deliveryRates || {}).map(Number).sort((a, b) => a - b);
+          const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+          
+          if (typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > maxRadius) {
+            showToast(`Desculpe, seu endereço está fora da nossa área de atendimento (Limite: ${maxRadius.toFixed(1)}km).`, true);
+            window.currentCartStep = 2;
+            window.updateCartStepUI();
+            return;
+          }
+        }
+
         // Inputs verification first
         const name = document.getElementById("cust-name").value.trim();
         const phone = document.getElementById("cust-phone").value.trim();
@@ -5947,6 +5970,25 @@
           }
           togglePaymentModal(false);
           return;
+        }
+
+        // Validate max delivery distance one last time to prevent bypassing via geocode delay
+        if (selectedDeliveryOption === "delivery") {
+          const ceilings = Object.keys(restaurantProfile?.deliveryRates || {}).map(Number).sort((a, b) => a - b);
+          const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+          
+          if (typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > maxRadius) {
+            showToast(`Erro Crítico: Seu endereço (${calculatedDistance}km) excede o raio de entrega (${maxRadius.toFixed(1)}km).`, true);
+            const btn = document.getElementById("btn-confirm-and-save");
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = "<span>Confirmar Pedido</span>";
+            }
+            togglePaymentModal(false);
+            window.currentCartStep = 2;
+            window.updateCartStepUI();
+            return;
+          }
         }
 
         const btn = document.getElementById("btn-confirm-and-save");
