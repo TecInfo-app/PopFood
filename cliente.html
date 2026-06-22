@@ -4015,11 +4015,18 @@
             const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
 
             // Check if address exceeds delivery area limit before transitioning directly to payment
-            if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > maxRadius) {
-              window.currentCartStep = 2; // Go to step 2 so user can modify the address
-              showToast("Endereço está fora da área de entrega. Por favor, forneça um endereço válido.", true);
+            if (selectedDeliveryOption === "delivery") {
+              if (typeof calculatedDistance === "undefined" || calculatedDistance === null || calculatedDistance <= 0) {
+                window.currentCartStep = 2; // Force to step 2 to validate address
+                showToast("Por favor, valide as informações de entrega antes de continuar.", false);
+              } else if (calculatedDistance > maxRadius) {
+                window.currentCartStep = 2; // Force to step 2 to fix out of bounds
+                showToast("Endereço está fora da área de entrega. Por favor, forneça um endereço válido.", true);
+              } else {
+                window.currentCartStep = 3; // Valid: go straight to Payment
+              }
             } else {
-              // Not first order / already filled: Go straight to Step 3 (Payment)
+              // Not first order / already filled (Pickup): Go straight to Step 3 (Payment)
               window.currentCartStep = 3;
             }
           } else {
