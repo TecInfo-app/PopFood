@@ -1,60 +1,16 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Regra de segurança global: por padrão bloqueia tudo que não estiver mapeado abaixo
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /{document=**} { allow read, write: if false; }
+    function isSignedIn() { return request.auth != null; }
 
-    // Helper para verificar se temos um usuário autenticado no sistema
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Perfis dos Restaurantes
-    match /restaurantProfile/{profileId} {
-      allow read: if true; // Clientes precisam ler para ver o cardápio
-      allow write: if isSignedIn(); // Apenas parceiros logados e o admin escrevem
-    }
-
-    // Categorias de Cardápio
-    match /categories/{categoryId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // Produtos
-    match /products/{productId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // Complementos/Adicionais dos itens
-    match /complements/{productId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // Cupons ativos
-    match /coupons/{couponId} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    // Pedidos (Clientes e Restaurante gravam e leem)
-    match /orders/{orderId} {
-      allow read, write: if true;
-    }
-
-    // Clientes cadastrados para histórico
-    match /clients/{phone} {
-      allow read, write: if true;
-    }
-
-    // Permite salvar a chave API do sistema
-    match /appSettings/{settingId} {
-      allow read, write: if true;
-    }
+    match /restaurantProfile/{profileId} { allow read, write: if true; }
+    match /categories/{categoryId} { allow read: if true; allow write: if isSignedIn(); }
+    match /products/{productId} { allow read: if true; allow write: if isSignedIn(); }
+    match /complements/{productId} { allow read: if true; allow write: if isSignedIn(); }
+    match /coupons/{couponId} { allow read: if true; allow write: if isSignedIn(); }
+    match /orders/{orderId} { allow read, write: if true; }
+    match /clients/{phone} { allow read, write: if true; }
+    match /appSettings/{settingId} { allow read, write: if true; }
   }
 }
