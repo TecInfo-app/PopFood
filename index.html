@@ -399,6 +399,52 @@
           </div>
         </div>
 
+        <!-- Product Availability (Days & Hours) -->
+        <div class="bg-gray-50/70 rounded-xl p-4 border border-gray-150 space-y-3.5">
+          <h4 class="text-xs font-bold text-gray-800 uppercase tracking-wider block flex items-center gap-1.5 select-none">
+            ⏰ Disponibilidade do Produto
+          </h4>
+          <p class="text-[10px] text-gray-400 font-medium leading-tight">Escolha os dias da semana e a faixa de horário em que o produto estará visível para os clientes comprar.</p>
+          
+          <div class="space-y-1.5">
+            <span class="block text-[10px] font-bold text-gray-650">Disponível em quais dias?</span>
+            <div class="flex flex-wrap gap-2 py-0.5">
+              <label class="flex items-center gap-1 text-[11px] font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-2.5 py-1 rounded-lg hover:border-orange-200 hover:bg-orange-50/10 select-none">
+                <input type="checkbox" id="avail-day-1" class="w-3.5 h-3.5 text-orange-600 rounded"> Seg
+              </label>
+              <label class="flex items-center gap-1 text-[11px] font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-2.5 py-1 rounded-lg hover:border-orange-200 hover:bg-orange-50/10 select-none">
+                <input type="checkbox" id="avail-day-2" class="w-3.5 h-3.5 text-orange-600 rounded"> Ter
+              </label>
+              <label class="flex items-center gap-1 text-[11px] font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-2.5 py-1 rounded-lg hover:border-orange-200 hover:bg-orange-50/10 select-none">
+                <input type="checkbox" id="avail-day-3" class="w-3.5 h-3.5 text-orange-600 rounded"> Qua
+              </label>
+              <label class="flex items-center gap-1 text-[11px] font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-2.5 py-1 rounded-lg hover:border-orange-200 hover:bg-orange-50/10 select-none">
+                <input type="checkbox" id="avail-day-4" class="w-3.5 h-3.5 text-orange-600 rounded"> Qui
+              </label>
+              <label class="flex items-center gap-1 text-[11px] font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-2.5 py-1 rounded-lg hover:border-orange-200 hover:bg-orange-50/10 select-none">
+                <input type="checkbox" id="avail-day-5" class="w-3.5 h-3.5 text-orange-600 rounded"> Sex
+              </label>
+              <label class="flex items-center gap-1 text-[11px] font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-2.5 py-1 rounded-lg hover:border-orange-200 hover:bg-orange-50/10 select-none">
+                <input type="checkbox" id="avail-day-6" class="w-3.5 h-3.5 text-orange-600 rounded"> Sáb
+              </label>
+              <label class="flex items-center gap-1 text-[11px] font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-2.5 py-1 rounded-lg hover:border-orange-200 hover:bg-orange-50/10 select-none">
+                <input type="checkbox" id="avail-day-0" class="w-3.5 h-3.5 text-orange-600 rounded"> Dom
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3.5 pt-1">
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-650 font-sans">Hora de Início (opcional)</label>
+              <input type="time" id="avail-time-start" class="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-400">
+            </div>
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-650 font-sans">Hora de Fim (opcional)</label>
+              <input type="time" id="avail-time-end" class="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-400">
+            </div>
+          </div>
+        </div>
+
         <div class="flex items-center gap-2 py-1 select-none">
           <input type="checkbox" id="form-product-exclusive" class="w-4.5 h-4.5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 cursor-pointer">
           <label for="form-product-exclusive" class="text-xs font-semibold text-gray-700 cursor-pointer">Marcar como "⭐ Produto Exclusivo"</label>
@@ -1263,6 +1309,15 @@ storeId: window.currentStoreId
           document.getElementById('form-product-desc').value = prd.description || '';
           document.getElementById('form-product-exclusive').checked = !!prd.exclusivo;
 
+          // Setup availability fields
+          const days = prd.availableDays || [0, 1, 2, 3, 4, 5, 6];
+          for (let d = 0; d <= 6; d++) {
+            const dayChkbx = document.getElementById(`avail-day-${d}`);
+            if (dayChkbx) dayChkbx.checked = days.includes(d);
+          }
+          document.getElementById('avail-time-start').value = prd.availableTimeStart || '';
+          document.getElementById('avail-time-end').value = prd.availableTimeEnd || '';
+
           if (prd.image) {
             imageBase64Data = prd.image;
             document.getElementById('form-img-preview').src = prd.image;
@@ -1280,6 +1335,14 @@ storeId: window.currentStoreId
           imageBase64Data = "";
           document.getElementById('form-img-preview').classList.add('hidden');
           document.getElementById('form-img-placeholder').classList.remove('hidden');
+
+          // Reset availability fields to check all days
+          for (let d = 0; d <= 6; d++) {
+            const dayChkbx = document.getElementById(`avail-day-${d}`);
+            if (dayChkbx) dayChkbx.checked = true;
+          }
+          document.getElementById('avail-time-start').value = '';
+          document.getElementById('avail-time-end').value = '';
         }
 
         modal.classList.remove('hidden');
@@ -1331,6 +1394,19 @@ storeId: window.currentStoreId
       const desc = document.getElementById('form-product-desc').value.trim();
       const excl = document.getElementById('form-product-exclusive').checked;
 
+      // Extract available days
+      const availableDays = [];
+      for (let d = 0; d <= 6; d++) {
+        const checkbox = document.getElementById(`avail-day-${d}`);
+        if (checkbox && checkbox.checked) {
+          availableDays.push(d);
+        }
+      }
+
+      // Extract times
+      const availableTimeStart = document.getElementById('avail-time-start').value || null;
+      const availableTimeEnd = document.getElementById('avail-time-end').value || null;
+
       const productBlock = {
         id: prdId,
         name: name,
@@ -1342,11 +1418,13 @@ storeId: window.currentStoreId
         image: imageBase64Data,
         paused: false,
         exclusivo: excl,
+        availableDays: availableDays,
+        availableTimeStart: availableTimeStart,
+        availableTimeEnd: availableTimeEnd,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      ,
-storeId: window.currentStoreId
-};
+        updatedAt: new Date().toISOString(),
+        storeId: window.currentStoreId
+      };
 
       try {
         await setDoc(doc(db, COLLECTIONS.products, prdId), productBlock, { merge: true });
@@ -1638,6 +1716,14 @@ storeId: window.currentStoreId
                   <button onclick="addNewOptionToGroupByIndex(${idx})" class="bg-gray-800 hover:bg-gray-950 text-white py-1 px-3 text-[10px] rounded font-semibold transition-colors cursor-pointer flex-shrink-0">+</button>
                 </div>
                 <input type="text" id="add-opt-desc-${idx}" placeholder="Descrição opcional..." class="w-full text-[9px] text-gray-400 bg-transparent focus:outline-none border-t border-gray-50 pt-1">
+                <div class="flex items-center justify-between border-t border-gray-50 pt-1.5 px-0.5">
+                  <label class="flex items-center gap-1.5 text-[9px] font-semibold text-gray-500 hover:text-brand-primary cursor-pointer select-none">
+                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span>Adicionar Foto</span>
+                    <input type="file" id="add-opt-image-${idx}" accept="image/*" class="hidden" onchange="previewComplementOptionImage(${idx})">
+                  </label>
+                  <span id="add-opt-image-lbl-${idx}" class="text-[8px] text-emerald-600 font-bold hidden">✓ Foto Selecionada</span>
+                </div>
               </div>
             `;
 
@@ -1656,13 +1742,24 @@ storeId: window.currentStoreId
               const pdvLabel = opt.pdvCode ? `<span class="bg-gray-100 text-[8px] text-gray-500 font-mono px-1.5 py-0.5 rounded uppercase font-bold inline-block mt-0.5">PDV: ${opt.pdvCode}</span>` : "";
               const decorationClass = opt.paused ? "line-through text-gray-400" : "";
 
+              const optImgHtml = opt.image 
+                ? `<img src="${opt.image}" class="w-10 h-10 object-cover rounded-lg border border-gray-200 mr-2 flex-shrink-0">`
+                : `<div class="w-10 h-10 rounded-lg bg-gray-150 flex items-center justify-center text-[10px] text-gray-400 mr-2 flex-shrink-0 select-none">📷</div>`;
+
               optDiv.innerHTML = `
-                <div class="flex flex-col">
-                  <span class="font-medium capitalize ${decorationClass}">${opt.name} (${formattedPrice})</span>
-                  ${opt.description ? `<span class="text-[9px] text-gray-400 italic">${opt.description}</span>` : ""}
-                  ${pdvLabel}
+                <div class="flex items-center gap-2 max-w-[65%] min-w-0">
+                  ${optImgHtml}
+                  <div class="flex flex-col min-w-0">
+                    <span class="font-medium capitalize ${decorationClass} truncate">${opt.name} (${formattedPrice})</span>
+                    ${opt.description ? `<span class="text-[9px] text-gray-400 italic truncate">${opt.description}</span>` : ""}
+                    ${pdvLabel}
+                    <label class="text-[8px] text-brand-primary hover:underline cursor-pointer select-none mt-0.5 inline-block">
+                      Alterar Foto
+                      <input type="file" accept="image/*" class="hidden" onchange="uploadComplementOptionImageDirectly(${idx}, ${optIdx}, this)">
+                    </label>
+                  </div>
                 </div>
-                <div class="flex gap-1.5 items-center">
+                <div class="flex gap-1.5 items-center flex-shrink-0">
                   <button onclick="toggleComplementOptionPausedState(${idx}, ${optIdx}, ${opt.paused})" class="text-[9px] font-bold cursor-pointer ${opt.paused ? 'text-brand-primary bg-orange-100' : 'text-gray-500 bg-gray-100'} px-2 py-0.5 rounded transition-colors">${opt.paused ? 'Ativar' : 'Pausar'}</button>
                   <button onclick="triggerEditComplementOption(${idx}, ${optIdx})" class="text-[9px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-0.5 rounded transition-colors cursor-pointer">Editar</button>
                   <button onclick="removeComplementOptionByIndex(${idx}, ${optIdx})" class="text-[9px] font-bold text-brand-danger hover:text-red-700 bg-red-100 px-2 py-0.5 rounded transition-colors cursor-pointer font-sans">Remover</button>
@@ -1744,11 +1841,54 @@ storeId: window.currentStoreId
       }
     }
 
+    window.previewComplementOptionImage = function(groupIdx) {
+      const fileInput = document.getElementById(`add-opt-image-${groupIdx}`);
+      const lbl = document.getElementById(`add-opt-image-lbl-${groupIdx}`);
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        lbl.classList.remove('hidden');
+      } else {
+        lbl.classList.add('hidden');
+      }
+    }
+
+    window.uploadComplementOptionImageDirectly = async function(groupIdx, optIdx, fileInput) {
+      if (!fileInput || !fileInput.files || !fileInput.files[0]) return;
+      
+      const file = fileInput.files[0];
+      if (file.size > 950 * 1024) {
+        alert("🔒 Erro: Imagem do complemento excede 950KB.");
+        fileInput.value = '';
+        return;
+      }
+
+      try {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64 = reader.result;
+          
+          const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
+          const compSnap = await getDoc(docRef);
+
+          if (compSnap.exists()) {
+            const data = compSnap.data();
+            data.groups[groupIdx].options[optIdx].image = base64;
+            await setDoc(docRef, data);
+            drawProductComplementsStructure();
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch (e) {
+        console.error("Direct image edit error: ", e);
+        alert("Erro ao salvar imagem do complemento.");
+      }
+    }
+
     window.addNewOptionToGroupByIndex = async function(groupIdx) {
       const optNameField = document.getElementById(`add-opt-name-${groupIdx}`);
       const optPDVField = document.getElementById(`add-opt-pdv-${groupIdx}`);
       const optPriceField = document.getElementById(`add-opt-price-${groupIdx}`);
       const optDescField = document.getElementById(`add-opt-desc-${groupIdx}`);
+      const fileInput = document.getElementById(`add-opt-image-${groupIdx}`);
 
       const optName = optNameField.value.trim();
       const optPDV = optPDVField.value.trim();
@@ -1758,6 +1898,27 @@ storeId: window.currentStoreId
       if (!optName) {
         alert("Preencha o nome da opção!");
         return;
+      }
+
+      let optionImage = "";
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        if (file.size > 950 * 1024) {
+          alert("🔒 Erro: Imagem do complemento excede limite de 950KB.");
+          return;
+        }
+        
+        try {
+          optionImage = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (err) => reject(err);
+            reader.readAsDataURL(file);
+          });
+        } catch (e) {
+          alert("Erro ao ler arquivo da imagem.");
+          return;
+        }
       }
 
       try {
@@ -1776,6 +1937,7 @@ storeId: window.currentStoreId
             pdvCode: optPDV,
             price: optPrice,
             description: optDesc,
+            image: optionImage,
             paused: false
           });
 
@@ -1785,6 +1947,10 @@ storeId: window.currentStoreId
           optPDVField.value = '';
           optPriceField.value = '';
           optDescField.value = '';
+          if (fileInput) fileInput.value = '';
+          
+          const lbl = document.getElementById(`add-opt-image-lbl-${groupIdx}`);
+          if (lbl) lbl.classList.add('hidden');
 
           drawProductComplementsStructure();
         }

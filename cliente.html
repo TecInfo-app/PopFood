@@ -2953,6 +2953,59 @@
         renderCatalogItems();
       };
 
+      function isProductCurrentlyAvailable(prod) {
+        if (!prod.availableDays) return true;
+        if (Array.isArray(prod.availableDays) && prod.availableDays.length === 0) return true;
+
+        const now = new Date();
+        const currentDay = now.getDay(); // 0 (Domingo) to 6 (Sábado)
+
+        if (!prod.availableDays.includes(currentDay)) {
+          return false;
+        }
+
+        if (prod.availableTimeStart || prod.availableTimeEnd) {
+          const currentHourMin = now.toTimeString().split(' ')[0].substring(0, 5); // "HH:MM"
+          
+          if (prod.availableTimeStart && currentHourMin < prod.availableTimeStart) {
+            return false;
+          }
+          if (prod.availableTimeEnd && currentHourMin > prod.availableTimeEnd) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      function getProductAvailabilityText(prod) {
+        if (!prod.availableDays || prod.availableDays.length === 0) return "";
+        
+        const daysMap = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+        let daysStr = "";
+        
+        if (prod.availableDays.length === 7) {
+          daysStr = "Todos os dias";
+        } else if (prod.availableDays.length === 5 && !prod.availableDays.includes(0) && !prod.availableDays.includes(6)) {
+          daysStr = "Seg a Sex";
+        } else if (prod.availableDays.length === 2 && prod.availableDays.includes(0) && prod.availableDays.includes(6)) {
+          daysStr = "Finais de Semana";
+        } else {
+          daysStr = prod.availableDays.map(d => daysMap[d]).join(", ");
+        }
+
+        let timeStr = "";
+        if (prod.availableTimeStart && prod.availableTimeEnd) {
+          timeStr = ` das ${prod.availableTimeStart} às ${prod.availableTimeEnd}`;
+        } else if (prod.availableTimeStart) {
+          timeStr = ` a partir de ${prod.availableTimeStart}`;
+        } else if (prod.availableTimeEnd) {
+          timeStr = ` até as ${prod.availableTimeEnd}`;
+        }
+
+        return `${daysStr}${timeStr}`;
+      }
+
       // Draw catalog with sorting layout Horizontal (left-aligned photos, right-aligned meta + round plus button)
       function renderCatalogItems() {
         const parent = document.getElementById("menu-sections");
@@ -3020,13 +3073,22 @@
           grid.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
 
           relativeProducts.forEach((prod, pIdx) => {
+            const isAvailable = isProductCurrentlyAvailable(prod);
             const card = document.createElement("div");
-            // Clicking item opens detail modal, clicking button doesn't trigger bubble
-            card.onclick = () => {
-              openProductModal(prod);
-            };
-            card.className =
-              "bg-white p-4 rounded-[24px] flex gap-4 items-center border border-stone-200/50 shadow-[0_4px_16px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_28px_rgba(154,68,7,0.06)] hover:-translate-y-0.5 cursor-pointer transition-all duration-300 relative overflow-hidden group animate-card-fade";
+            
+            if (isAvailable) {
+              card.onclick = () => {
+                openProductModal(prod);
+              };
+              card.className =
+                "bg-white p-4 rounded-[24px] flex gap-4 items-center border border-stone-200/50 shadow-[0_4px_16px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_28px_rgba(154,68,7,0.06)] hover:-translate-y-0.5 cursor-pointer transition-all duration-300 relative overflow-hidden group animate-card-fade";
+            } else {
+              card.onclick = () => {
+                showToast(`Este produto está indisponível no momento. Disponível apenas: ${getProductAvailabilityText(prod)}`, true);
+              };
+              card.className =
+                "bg-white/80 p-4 rounded-[24px] flex gap-4 items-center border border-stone-200 opacity-60 saturate-50 cursor-pointer transition-all duration-300 relative overflow-hidden group animate-card-fade";
+            }
             card.style.animationDelay = `${pIdx * 45}ms`;
 
             // Left Image element
@@ -3036,9 +3098,19 @@
             const imgDiv = document.createElement("div");
             imgDiv.className =
               "w-28 h-28 rounded-[20px] bg-orange-50/50 flex-shrink-0 relative overflow-hidden flex items-center justify-center border border-stone-100 shadow-3xs";
+            
+            let badgeHtml = "";
+            if (!isAvailable) {
+              badgeHtml = `
+                <div class="absolute inset-0 bg-black/45 flex items-center justify-center p-1 text-center">
+                  <span class="text-[9px] font-black tracking-wider uppercase text-white leading-tight">Fora de Horário</span>
+                </div>
+              `;
+            }
             imgDiv.innerHTML = `
-            <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out">
-          `;
+              <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out">
+              ${badgeHtml}
+            `;
             card.appendChild(imgDiv);
 
             // Full Meta attributes
@@ -3056,8 +3128,10 @@
               <div class="flex items-center gap-1.5 flex-wrap">
                 <h4 class="font-display font-black text-[13.5px] leading-tight text-stone-900 group-hover:text-brand-primary transition-colors duration-200">${prod.name}</h4>
                 ${prod.exclusivo ? `<span class="bg-orange-50 text-brand-primary border border-orange-100 text-[8.5px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">⭐ Exclusivo</span>` : ""}
+                ${!isAvailable ? `<span class="bg-red-50 text-red-600 border border-red-150 text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Indisponível hoje</span>` : ""}
               </div>
               <p class="text-[11px] text-gray-400 font-semibold mt-1 line-clamp-2 leading-relaxed">${descStr}</p>
+              ${!isAvailable ? `<p class="text-[9px] text-orange-700/80 font-black tracking-tight mt-1 leading-snug">⏰ ${getProductAvailabilityText(prod)}</p>` : ""}
             </div>
             <div class="flex items-center gap-2 mt-2">
               <span class="text-sm font-black text-brand-primary leading-none">${formattedPrice}</span>
@@ -3067,16 +3141,18 @@
             card.appendChild(metaDiv);
 
             // Plus button trigger element aligned absolute right
-            const btn = document.createElement("button");
-            btn.type = "button";
-            btn.onclick = (e) => {
-              e.stopPropagation();
-              openProductModal(prod);
-            };
-            btn.className =
-              "absolute bottom-4 right-4 w-9 h-9 rounded-full bg-brand-primary text-white flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md hover:scale-105 active:scale-95";
-            btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4.5 h-4.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`;
-            card.appendChild(btn);
+            if (isAvailable) {
+              const btn = document.createElement("button");
+              btn.type = "button";
+              btn.onclick = (e) => {
+                e.stopPropagation();
+                openProductModal(prod);
+              };
+              btn.className =
+                "absolute bottom-4 right-4 w-9 h-9 rounded-full bg-brand-primary text-white flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md hover:scale-105 active:scale-95";
+              btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4.5 h-4.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`;
+              card.appendChild(btn);
+            }
 
             grid.appendChild(card);
           });
@@ -3410,23 +3486,31 @@
                   }
                 }
 
+                let optImgHtml = "";
+                if (opt.image) {
+                  optImgHtml = `<img src="${opt.image}" class="w-12 h-12 rounded-xl object-cover mr-2.5 border border-stone-100 flex-shrink-0 animate-card-fade">`;
+                }
+
                 if (isMulti) {
                   optionDiv.className =
                     "flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs mb-2";
                   optionDiv.innerHTML = `
-                  <div class="flex-grow flex flex-col py-0.5 mr-2">
-                    <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}</span>
-                    ${optDescHtml}
+                  <div class="flex items-center flex-grow min-w-0 mr-2">
+                    ${optImgHtml}
+                    <div class="flex flex-col py-0.5">
+                      <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}</span>
+                      ${optDescHtml}
+                    </div>
                   </div>
                   <div class="flex flex-col items-end gap-1.5 shrink-0">
                     <span class="text-[10px] font-bold text-brand-primary">${formattedAddPrice}</span>
                     <div class="flex items-center gap-1.5 bg-gray-50 rounded-lg p-0.5 border border-gray-100">
                       <button type="button" class="comp-minus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"></path></svg>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"></path></svg>
                       </button>
                       <span class="comp-qty text-xs font-bold w-4 text-center text-gray-800" id="qty-${optId}" data-price="${opt.price || 0}" data-name="${opt.name}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}">${optQty}</span>
                       <button type="button" class="comp-plus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                       </button>
                     </div>
                   </div>
@@ -3435,11 +3519,14 @@
                   optionDiv.className =
                     "flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs cursor-pointer select-none active:scale-[0.99] duration-150 mb-2";
                   optionDiv.innerHTML = `
-                  <label for="${optId}" class="flex-grow flex items-center gap-3 cursor-pointer py-0.5">
-                    <input type="${inputType}" id="${optId}" name="group-${groupIdx}" value="${opt.name}" data-price="${opt.price || 0}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${optChecked ? 'checked' : ''} class="complement-checkbox w-4.5 h-4.5 accent-brand-primary text-brand-primary focus:ring-brand-primary/25 border-stone-300 rounded">
-                    <div class="flex flex-col">
-                      <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}</span>
-                      ${optDescHtml}
+                  <label for="${optId}" class="flex-grow flex items-center gap-3 cursor-pointer py-0.5 min-w-0 font-sans">
+                    <input type="${inputType}" id="${optId}" name="group-${groupIdx}" value="${opt.name}" data-price="${opt.price || 0}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${optChecked ? 'checked' : ''} class="complement-checkbox w-4.5 h-4.5 accent-brand-primary text-brand-primary focus:ring-brand-primary/25 border-stone-300 rounded flex-shrink-0">
+                    <div class="flex items-center flex-grow min-w-0">
+                      ${optImgHtml}
+                      <div class="flex flex-col">
+                        <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}</span>
+                        ${optDescHtml}
+                      </div>
                     </div>
                   </label>
                   <span class="text-[10px] font-bold text-brand-primary shrink-0">${formattedAddPrice}</span>
