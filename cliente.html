@@ -4145,7 +4145,10 @@
           `;
         } else if (window.currentCartStep === 2) {
           // Disable only if delivery option is active and calculated distance is out of delivery area
-          if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
+          const ceilings = (restaurantProfile && restaurantProfile.deliveryRates) ? Object.keys(restaurantProfile.deliveryRates).map(Number).sort((a,b)=>a-b) : [];
+          const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+          
+          if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > maxRadius) {
             submitBtn.disabled = true;
             submitBtn.classList.add(
               "bg-gray-300",

@@ -63,7 +63,12 @@ service cloud.firestore {
       allow read: if (profileId == 'GLOBAL_SETTINGS') ? isSignedIn() : true;
       allow write: if (profileId == 'GLOBAL_SETTINGS') 
         ? isAdmin() 
-        : (isSignedIn() && (request.auth.uid == profileId || isAdmin()));
+        : (isSignedIn() && (
+            request.auth.uid == profileId || 
+            isAdmin() || 
+            (existing() != null && existing().storeId == request.auth.uid) ||
+            (existing() != null && request.auth.token.email != null && existing().adminEmail == request.auth.token.email)
+          ));
     }
 
     // Orders Rules - Multi-level authorization
