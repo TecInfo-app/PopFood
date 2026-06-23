@@ -4552,13 +4552,7 @@
             try {
               // Call Nominatim Reverse Geocoding to get CEP & Street
               const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
-                {
-                  headers: {
-                    "User-Agent": "PopFood-App-Customer",
-                    "Accept-Language": "pt-BR"
-                  }
-                }
+                `/api/proxy/nominatim-reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`
               );
               const data = await response.json();
 
@@ -4723,10 +4717,8 @@
 
             // Attempt 1: Search by Postal Code
             try {
-              const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
-              const response = await fetch(nominatimUrl, {
-                headers: { "User-Agent": "PopFood-App-Customer" },
-              });
+              const nominatimUrl = `/api/proxy/nominatim-search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
+              const response = await fetch(nominatimUrl);
               data = await response.json();
             } catch (e) {
               console.warn(
@@ -4742,10 +4734,8 @@
               if (streetValue) {
                 try {
                   const cleanStreet = streetValue.split("-")[0].trim();
-                  const queryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
-                  const response = await fetch(queryUrl, {
-                    headers: { "User-Agent": "PopFood-App-Customer" },
-                  });
+                  const queryUrl = `/api/proxy/nominatim-search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
+                  const response = await fetch(queryUrl);
                   data = await response.json();
                 } catch (e) {
                   console.warn("Nominatim Street geocoding failed too:", e);

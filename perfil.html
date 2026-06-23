@@ -1470,7 +1470,7 @@
       }
 
       try {
-        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+        const nominatimUrl = `/api/proxy/nominatim-search?format=json&q=${encodeURIComponent(address)}&limit=1`;
         const response = await fetch(nominatimUrl);
         const data = await response.json();
 
