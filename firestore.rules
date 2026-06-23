@@ -1,16 +1,89 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} { allow read, write: if false; }
-    function isSignedIn() { return request.auth != null; }
+    // Global Safety Net (Zero-Trust entry point)
+    match /{document=**} {
+      allow read, write: if false;
+    }
 
-    match /restaurantProfile/{profileId} { allow read, write: if true; }
-    match /categories/{categoryId} { allow read: if true; allow write: if isSignedIn(); }
-    match /products/{productId} { allow read: if true; allow write: if isSignedIn(); }
-    match /complements/{productId} { allow read: if true; allow write: if isSignedIn(); }
-    match /coupons/{couponId} { allow read: if true; allow write: if isSignedIn(); }
-    match /orders/{orderId} { allow read, write: if true; }
-    match /clients/{phone} { allow read, write: if true; }
-    match /appSettings/{settingId} { allow read, write: if true; }
+    // Reusable, hardened helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "iranildo@popfood.com" || 
+        request.auth.token.email == "ciachopp2016@gmail.com"
+      );
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Categories Rules
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+    }
+
+    // Products Rules
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+    }
+
+    // Complements Rules
+    match /complements/{productId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+    }
+
+    // Coupons Rules
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
+      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
+      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+    }
+
+    // Restaurant Profiles Rules
+    match /restaurantProfile/{profileId} {
+      allow read: if (profileId == 'GLOBAL_SETTINGS') ? isSignedIn() : true;
+      allow write: if (profileId == 'GLOBAL_SETTINGS') 
+        ? isAdmin() 
+        : (isSignedIn() && (request.auth.uid == profileId || isAdmin()));
+    }
+
+    // Orders Rules - Multi-level authorization
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if (isSignedIn() && (request.auth.uid == existing().storeId || isAdmin()))
+        || (!isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly([
+            'rating', 'deliveryPin', 'motoboyLatitude', 'motoboyLongitude', 
+            'status', 'deliveryProgress', 'deliveryMilestone', 
+            'paymentApproved', 'isPaid', 'paymentStatus'
+          ]));
+      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+    }
+
+    // Clients Rules - Restrict public lists
+    match /clients/{phone} {
+      allow read: if isSignedIn() && (request.auth.uid == resource.data.storeId || isAdmin());
+      allow create, update: if true;
+      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+    }
   }
 }
