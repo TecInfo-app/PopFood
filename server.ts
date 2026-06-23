@@ -35,61 +35,6 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Proxy routes for Nominatim to prevent client-side CORS and User-Agent block issues
-  app.get("/api/proxy/nominatim-search", async (req, res) => {
-    try {
-      const queryParams = new URLSearchParams(req.query as Record<string, string>);
-      if (!queryParams.has("format")) {
-        queryParams.set("format", "json");
-      }
-      const url = `https://nominatim.openstreetmap.org/search?${queryParams.toString()}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "PopFood-App-Proxy/1.0 (contact@example.com)",
-          "Accept-Language": "pt-BR,pt;q=0.9"
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Nominatim API returned HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      return res.json(data);
-    } catch (error: any) {
-      console.error("Proxy Nominatim Search Error:", error);
-      return res.status(500).json({ error: error.message || "Failed to search address" });
-    }
-  });
-
-  app.get("/api/proxy/nominatim-reverse", async (req, res) => {
-    try {
-      const queryParams = new URLSearchParams(req.query as Record<string, string>);
-      if (!queryParams.has("format")) {
-        queryParams.set("format", "json");
-      }
-      const url = `https://nominatim.openstreetmap.org/reverse?${queryParams.toString()}`;
-
-      const response = await fetch(url, {
-        headers: {
-          "User-Agent": "PopFood-App-Proxy/1.0 (contact@example.com)",
-          "Accept-Language": "pt-BR,pt;q=0.9"
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Nominatim API returned HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      return res.json(data);
-    } catch (error: any) {
-      console.error("Proxy Nominatim Reverse Error:", error);
-      return res.status(500).json({ error: error.message || "Failed to reverse geocode" });
-    }
-  });
-
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
     const { amount, paymentMethodType, cardToken, email, description, storeId, orderId } = req.body;

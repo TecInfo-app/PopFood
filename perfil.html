@@ -328,7 +328,7 @@
               </div>
               <div class="space-y-1">
                 <label class="block text-[10px] font-bold text-gray-400 uppercase">CEP da Loja</label>
-                <input type="text" id="store-cep" placeholder="00000000" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+                <input type="text" id="store-cep" placeholder="00000000" onblur="window.searchCepProfile(this.value)" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
               </div>
             </div>
             <div class="space-y-1">
@@ -1333,8 +1333,7 @@
           document.getElementById('logo-placeholder').classList.add('hidden');
 
           await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_logo"), {
-            logo: base64,
-            adminEmail: (auth.currentUser && auth.currentUser.email) ? auth.currentUser.email.toLowerCase() : ""
+            logo: base64
           }, { merge: true });
           alert("Logomarca updated!");
         } catch (err) {
@@ -1403,10 +1402,7 @@
       for (let i = 0; i < 3; i++) {
         const docRef = doc(db, COLLECTIONS.restaurantProfile, `${window.currentStoreId}_banner${i}`);
         if (i < bannersList.length) {
-          await setDoc(docRef, { 
-            banner: bannersList[i],
-            adminEmail: (auth.currentUser && auth.currentUser.email) ? auth.currentUser.email.toLowerCase() : ""
-          });
+          await setDoc(docRef, { banner: bannersList[i] });
         } else {
           await deleteDoc(docRef);
         }
@@ -1465,6 +1461,28 @@
       }
     }
 
+    window.searchCepProfile = async function(cepValue) {
+      if (!cepValue) return;
+      const cleanCep = cepValue.replace(/\D/g, '');
+      if (cleanCep.length !== 8) return;
+      
+      try {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+        const data = await response.json();
+        
+        if (data && !data.erro) {
+          const addressString = `${data.logradouro}, Número, ${data.bairro}, ${data.localidade} - ${data.uf}`;
+          document.getElementById('store-address').value = addressString;
+          // Optionally auto-geocode
+          // window.lookupGeoCoordinates();
+        } else {
+          console.warn("CEP não encontrado via ViaCEP.");
+        }
+      } catch (err) {
+        console.error("Erro ao buscar CEP: ", err);
+      }
+    };
+
     // Search coordinates using open Nominatim API from OpenStreetMap
     window.lookupGeoCoordinates = async function() {
       const address = document.getElementById('store-address').value.trim();
@@ -1474,33 +1492,9 @@
       }
 
       try {
-        let backendHost = "";
-        if (
-          window.location.hostname.includes("github.io") ||
-          window.location.hostname.includes("127.0.0.1") ||
-          window.location.hostname.includes("localhost")
-        ) {
-          backendHost = "https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app";
-        }
-        const nominatimUrl = `${backendHost}/api/proxy/nominatim-search?format=json&q=${encodeURIComponent(address)}&limit=1`;
-        let data;
-        try {
-          const response = await fetch(nominatimUrl);
-          if (response.ok) {
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-              data = await response.json();
-            }
-          }
-          if (!data) {
-            throw new Error("Proxy response not valid JSON");
-          }
-        } catch (proxyError) {
-          console.warn("Proxy Nominatim search failed, trying openstreetmap directly:", proxyError);
-          const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
-          const response = await fetch(fallbackUrl);
-          data = await response.json();
-        }
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+        const response = await fetch(nominatimUrl);
+        const data = await response.json();
 
         if (data && data.length > 0) {
           currentStoreLatitude = parseFloat(data[0].lat);
@@ -1559,9 +1553,7 @@
         loyaltyType: document.getElementById('loyalty-type').value,
         loyaltyValue: parseFloat(document.getElementById('loyalty-value').value || 0),
         loyaltyMinOrders: parseInt(document.getElementById('loyalty-min-orders').value || 3),
-        storeId: window.currentStoreId,
-        adminEmail: (profileData && profileData.adminEmail) ? profileData.adminEmail.toLowerCase() : ((auth.currentUser && auth.currentUser.email) ? auth.currentUser.email.toLowerCase() : ""),
-        adminPassword: (profileData && profileData.adminPassword) ? profileData.adminPassword : ""
+        storeId: window.currentStoreId
       };
 
       try {

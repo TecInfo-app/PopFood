@@ -4010,8 +4010,12 @@
           }
 
           if (name && phone && hasValidAddress) {
-            // Check if address exceeds delivery area limit (10km) before transitioning directly to payment
-            if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
+            // Get max radius
+            const ceilings = Object.keys(restaurantProfile?.deliveryRates || {}).map(Number).sort((a, b) => a - b);
+            const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+
+            // Check if address exceeds delivery area limit before transitioning directly to payment
+            if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > maxRadius) {
               window.currentCartStep = 2; // Go to step 2 so user can modify the address
               showToast("Endereço está fora da área de entrega. Por favor, forneça um endereço válido.", true);
             } else {
@@ -4041,14 +4045,31 @@
           if (selectedOption === "delivery") {
             const street = document.getElementById("cust-street").value.trim();
             const number = document.getElementById("cust-number").value.trim();
+            const cep = document.getElementById("cust-cep").value.trim();
             if (!street || !number) {
               window.customAlert(
                 "Por favor, informe seu endereço (Rua e Número).",
               );
               return;
             }
-            if (typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
-              window.customAlert("Não atendemos esta região! Limite máximo: 10km.");
+            if (!cep) {
+              window.customAlert(
+                "Por favor, informe e valide seu CEP para calcularmos a área de entrega.",
+              );
+              return;
+            }
+            
+            // Get max radius
+            const ceilings = Object.keys(restaurantProfile?.deliveryRates || {}).map(Number).sort((a, b) => a - b);
+            const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+            
+            if (typeof calculatedDistance === "undefined" || calculatedDistance === null) {
+              window.customAlert("Por favor, aguarde o cálculo de distância ou clique no botão de validar endereço.");
+              return;
+            }
+
+            if (calculatedDistance > maxRadius) {
+              window.customAlert(`Não atendemos esta região! Limite máximo: ${maxRadius.toFixed(1)}km.`);
               return;
             }
           }
@@ -4136,21 +4157,35 @@
           `;
         } else if (window.currentCartStep === 2) {
           // Disable only if delivery option is active and calculated distance is out of delivery area
-          if (selectedDeliveryOption === "delivery" && typeof calculatedDistance !== "undefined" && calculatedDistance !== null && calculatedDistance > 10.0) {
-            submitBtn.disabled = true;
-            submitBtn.classList.add(
-              "bg-gray-300",
-              "cursor-not-allowed",
-              "hover:bg-gray-300",
-            );
-            submitBtn.classList.remove("bg-brand-primary", "hover:bg-orange-600");
-            submitBtn.innerHTML = `
-              <span>Área de entrega indisponível</span>
-              <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText}</span>
-            `;
+          const ceilings = (restaurantProfile && restaurantProfile.deliveryRates) ? Object.keys(restaurantProfile.deliveryRates).map(Number).sort((a,b)=>a-b) : [];
+          const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+          
+          if (selectedDeliveryOption === "delivery") {
+            if (typeof calculatedDistance === "undefined" || calculatedDistance === null || calculatedDistance <= 0) {
+              submitBtn.disabled = true;
+              submitBtn.classList.add("bg-gray-300", "cursor-not-allowed", "hover:bg-gray-300");
+              submitBtn.classList.remove("bg-brand-primary", "hover:bg-orange-600");
+              submitBtn.innerHTML = `
+                <span>Valide o Address/CEP</span>
+                <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText}</span>
+              `;
+            } else if (calculatedDistance > maxRadius) {
+              submitBtn.disabled = true;
+              submitBtn.classList.add("bg-gray-300", "cursor-not-allowed", "hover:bg-gray-300");
+              submitBtn.classList.remove("bg-brand-primary", "hover:bg-orange-600");
+              submitBtn.innerHTML = `
+                <span>Área Indisponível</span>
+                <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText}</span>
+              `;
+            } else {
+              submitBtn.innerHTML = `
+                <span>Confirmar Entrega</span>
+                <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText}</span>
+              `;
+            }
           } else {
             submitBtn.innerHTML = `
-              <span>Confirmar Entrega</span>
+              <span>Confirmar Retirada</span>
               <span class="bg-black/15 px-3 py-1 rounded-lg text-[10px] font-black tracking-normal">${totalText}</span>
             `;
           }
@@ -4551,25 +4586,16 @@
 
             try {
               // Call Nominatim Reverse Geocoding to get CEP & Street
-              const nominatimUrl = `${backendHost}/api/proxy/nominatim-reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
-              let data;
-              try {
-                const response = await fetch(nominatimUrl);
-                if (response.ok) {
-                  const contentType = response.headers.get("content-type");
-                  if (contentType && contentType.includes("application/json")) {
-                    data = await response.json();
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+                {
+                  headers: {
+                    "User-Agent": "PopFood-App-Customer",
+                    "Accept-Language": "pt-BR"
                   }
                 }
-                if (!data) {
-                  throw new Error("Proxy response not valid JSON");
-                }
-              } catch (proxyError) {
-                console.warn("Proxy Nominatim reverse geocode failed, trying openstreetmap directly:", proxyError);
-                const fallbackUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
-                const response = await fetch(fallbackUrl);
-                data = await response.json();
-              }
+              );
+              const data = await response.json();
 
               if (data && data.address) {
                 const addr = data.address;
@@ -4732,24 +4758,11 @@
 
             // Attempt 1: Search by Postal Code
             try {
-              const nominatimUrl = `${backendHost}/api/proxy/nominatim-search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
-              try {
-                const response = await fetch(nominatimUrl);
-                if (response.ok) {
-                  const contentType = response.headers.get("content-type");
-                  if (contentType && contentType.includes("application/json")) {
-                    data = await response.json();
-                  }
-                }
-                if (!data) {
-                  throw new Error("Proxy response not valid JSON");
-                }
-              } catch (proxyError) {
-                console.warn("Proxy Postal Code search failed, trying openstreetmap directly:", proxyError);
-                const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
-                const response = await fetch(fallbackUrl);
-                data = await response.json();
-              }
+              const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
+              const response = await fetch(nominatimUrl, {
+                headers: { "User-Agent": "PopFood-App-Customer" },
+              });
+              data = await response.json();
             } catch (e) {
               console.warn(
                 "Nominatim ZIP geocoding failed, trying street address:",
@@ -4764,24 +4777,11 @@
               if (streetValue) {
                 try {
                   const cleanStreet = streetValue.split("-")[0].trim();
-                  const queryUrl = `${backendHost}/api/proxy/nominatim-search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
-                  try {
-                    const response = await fetch(queryUrl);
-                    if (response.ok) {
-                      const contentType = response.headers.get("content-type");
-                      if (contentType && contentType.includes("application/json")) {
-                        data = await response.json();
-                      }
-                    }
-                    if (!data) {
-                      throw new Error("Proxy response not valid JSON");
-                    }
-                  } catch (proxyError) {
-                    console.warn("Proxy Street search failed, trying openstreetmap directly:", proxyError);
-                    const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
-                    const response = await fetch(fallbackUrl);
-                    data = await response.json();
-                  }
+                  const queryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
+                  const response = await fetch(queryUrl, {
+                    headers: { "User-Agent": "PopFood-App-Customer" },
+                  });
+                  data = await response.json();
                 } catch (e) {
                   console.warn("Nominatim Street geocoding failed too:", e);
                 }
@@ -4873,40 +4873,27 @@
               "Could not find coords via Nominatim. Fallback configuration.",
             );
             alertDiv.classList.remove("hidden");
-            alertDiv.innerHTML = `⚠️ Não conseguimos obter as coordenadas do CEP via GPS. Por favor digite o número e ponto de referência corretamente.`;
+            alertDiv.innerHTML = `⚠️ Não conseguimos validar a distância do seu endereço. Por favor, detalhe mais o CEP e Nome da Rua.`;
 
-            calculatedDistance = 2.0; // Fallback estimate
+            // Get maximum configured delivery distance
+            const maxRadiusValidation = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
 
-            let matchedKM = null;
-            if (ceilings.length > 0) {
-              for (let c of ceilings) {
-                if (2.0 <= c) {
-                  matchedKM = c;
-                  break;
-                }
-              }
-              if (matchedKM === null) {
-                matchedKM = ceilings[ceilings.length - 1];
-              }
-            }
+            calculatedDistance = maxRadiusValidation + 0.1; // Fallback estimate forces block 
 
-            calculatedDeliveryFee =
-              matchedKM !== null
-                ? parseFloat(restaurantProfile.deliveryRates[matchedKM] || 5.0)
-                : 5.0;
+            calculatedDeliveryFee = 0;
             document.getElementById("delivery-calc-km").textContent =
-              `Aprox. 2.0 km`;
+              `Desconhecido`;
             document.getElementById("delivery-calc-fee").textContent =
-              `R$ ${calculatedDeliveryFee.toFixed(2).replace(".", ",")}`;
+              `R$ 0,00`;
 
-            btn.disabled = false;
-            btn.classList.remove(
+            btn.disabled = true;
+            btn.classList.add(
               "bg-gray-300",
               "cursor-not-allowed",
               "hover:bg-gray-300",
             );
-            btn.classList.add("bg-brand-primary", "hover:bg-orange-600");
-            btn.textContent = "Continuar para Pagamento";
+            btn.classList.remove("bg-brand-primary", "hover:bg-orange-600");
+            btn.textContent = "Área de entrega indisponível";
 
             localStorage.setItem("popfood_cust_distance", calculatedDistance);
             localStorage.setItem(
@@ -5724,6 +5711,27 @@
           );
           return;
         }
+
+        // Validate max delivery distance one last time to prevent bypassing via geocode delay
+        if (selectedDeliveryOption === "delivery") {
+          const ceilings = Object.keys(restaurantProfile?.deliveryRates || {}).map(Number).sort((a, b) => a - b);
+          const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+          
+          if (typeof calculatedDistance === "undefined" || calculatedDistance === null) {
+            showToast(`O cálculo da distância de entrega falhou ou está pendente. Verifique o endereço.`, true);
+            window.currentCartStep = 2;
+            window.updateCartStepUI();
+            return;
+          }
+
+          if (calculatedDistance > maxRadius) {
+            showToast(`Desculpe, seu endereço está fora da nossa área de atendimento (Limite: ${maxRadius.toFixed(1)}km).`, true);
+            window.currentCartStep = 2;
+            window.updateCartStepUI();
+            return;
+          }
+        }
+
         // Inputs verification first
         const name = document.getElementById("cust-name").value.trim();
         const phone = document.getElementById("cust-phone").value.trim();
@@ -5982,6 +5990,38 @@
           }
           togglePaymentModal(false);
           return;
+        }
+
+        // Validate max delivery distance one last time to prevent bypassing via geocode delay
+        if (selectedDeliveryOption === "delivery") {
+          const ceilings = Object.keys(restaurantProfile?.deliveryRates || {}).map(Number).sort((a, b) => a - b);
+          const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+          
+          if (typeof calculatedDistance === "undefined" || calculatedDistance === null) {
+            showToast(`Erro Crítico: O cálculo de distância falhou ou está incompleto. Volte para verificar o endereço.`, true);
+            const btn = document.getElementById("btn-confirm-and-save");
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = "<span>Confirmar Pedido</span>";
+            }
+            togglePaymentModal(false);
+            window.currentCartStep = 2;
+            window.updateCartStepUI();
+            return;
+          }
+
+          if (calculatedDistance > maxRadius) {
+            showToast(`Erro Crítico: Seu endereço (${calculatedDistance}km) excede o raio de entrega (${maxRadius.toFixed(1)}km).`, true);
+            const btn = document.getElementById("btn-confirm-and-save");
+            if (btn) {
+              btn.disabled = false;
+              btn.innerHTML = "<span>Confirmar Pedido</span>";
+            }
+            togglePaymentModal(false);
+            window.currentCartStep = 2;
+            window.updateCartStepUI();
+            return;
+          }
         }
 
         const btn = document.getElementById("btn-confirm-and-save");
