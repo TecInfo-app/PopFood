@@ -4775,9 +4775,12 @@
             document.getElementById("delivery-calc-km").textContent =
               `${calculatedDistance.toFixed(1)} km`;
 
-            // Exceed limitation bounds (Max 10km)
-            if (calculatedDistance > 10.0) {
-              alertDiv.innerHTML = `❌ Não atendemos esta região! Limite máximo: 10km. Distância aproximada: ${calculatedDistance.toFixed(1)}km.`;
+            // Get maximum configured delivery distance
+            const maxRadius = ceilings.length > 0 ? ceilings[ceilings.length - 1] : 10.0;
+
+            // Exceed limitation bounds
+            if (calculatedDistance > maxRadius) {
+              alertDiv.innerHTML = `❌ Não atendemos esta região! Limite máximo: ${maxRadius.toFixed(1)}km. Distância aproximada: ${calculatedDistance.toFixed(1)}km.`;
               alertDiv.classList.remove("hidden");
 
               calculatedDeliveryFee = 0;
