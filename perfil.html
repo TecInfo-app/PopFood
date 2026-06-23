@@ -1559,7 +1559,9 @@
         loyaltyType: document.getElementById('loyalty-type').value,
         loyaltyValue: parseFloat(document.getElementById('loyalty-value').value || 0),
         loyaltyMinOrders: parseInt(document.getElementById('loyalty-min-orders').value || 3),
-        storeId: window.currentStoreId
+        storeId: window.currentStoreId,
+        adminEmail: (profileData && profileData.adminEmail) ? profileData.adminEmail.toLowerCase() : ((auth.currentUser && auth.currentUser.email) ? auth.currentUser.email.toLowerCase() : ""),
+        adminPassword: (profileData && profileData.adminPassword) ? profileData.adminPassword : ""
       };
 
       try {

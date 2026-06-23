@@ -12,9 +12,21 @@ service cloud.firestore {
     }
 
     function isAdmin() {
+      return isSignedIn() && 
+        'email' in request.auth.token && (
+          request.auth.token.email.lower() == "iranildo@popfood.com" || 
+          request.auth.token.email.lower() == "ciachopp2016@gmail.com"
+        );
+    }
+
+    function isStoreOwner(storeId) {
       return isSignedIn() && (
-        request.auth.token.email == "iranildo@popfood.com" || 
-        request.auth.token.email == "ciachopp2016@gmail.com"
+        storeId == request.auth.uid || 
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/restaurantProfile/$(storeId)) && 
+         'email' in request.auth.token &&
+         get(/databases/$(database)/documents/restaurantProfile/$(storeId)).data.keys().hasAll(['adminEmail']) && 
+         get(/databases/$(database)/documents/restaurantProfile/$(storeId)).data.adminEmail.lower() == request.auth.token.email.lower())
       );
     }
 
@@ -29,33 +41,33 @@ service cloud.firestore {
     // Categories Rules
     match /categories/{categoryId} {
       allow read: if true;
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow create: if isStoreOwner(incoming().storeId);
+      allow update: if isStoreOwner(existing().storeId) && isStoreOwner(incoming().storeId);
+      allow delete: if isStoreOwner(existing().storeId);
     }
 
     // Products Rules
     match /products/{productId} {
       allow read: if true;
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow create: if isStoreOwner(incoming().storeId);
+      allow update: if isStoreOwner(existing().storeId) && isStoreOwner(incoming().storeId);
+      allow delete: if isStoreOwner(existing().storeId);
     }
 
     // Complements Rules
     match /complements/{productId} {
       allow read: if true;
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow create: if isStoreOwner(incoming().storeId);
+      allow update: if isStoreOwner(existing().storeId) && isStoreOwner(incoming().storeId);
+      allow delete: if isStoreOwner(existing().storeId);
     }
 
     // Coupons Rules
     match /coupons/{couponId} {
       allow read: if true;
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow create: if isStoreOwner(incoming().storeId);
+      allow update: if isStoreOwner(existing().storeId) && isStoreOwner(incoming().storeId);
+      allow delete: if isStoreOwner(existing().storeId);
     }
 
     // Restaurant Profiles Rules
@@ -67,10 +79,12 @@ service cloud.firestore {
           profId == request.auth.uid || 
           profId.matches('^' + request.auth.uid + '(_logo|_banner[0-2])?$') ||
           isAdmin() ||
-          (resource != null && resource.data.keys().hasAll(['adminEmail']) && 
-           resource.data.adminEmail.lower() == request.auth.token.email.lower()) ||
-          (request.resource != null && request.resource.data.keys().hasAll(['adminEmail']) && 
-           request.resource.data.adminEmail.lower() == request.auth.token.email.lower())
+          ('email' in request.auth.token && (
+            (resource != null && resource.data.keys().hasAll(['adminEmail']) && 
+             resource.data.adminEmail.lower() == request.auth.token.email.lower()) ||
+            (request.resource != null && request.resource.data.keys().hasAll(['adminEmail']) && 
+             request.resource.data.adminEmail.lower() == request.auth.token.email.lower())
+          ))
         );
       }
 
@@ -83,20 +97,20 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read: if true;
       allow create: if true;
-      allow update: if (isSignedIn() && (request.auth.uid == existing().storeId || isAdmin()))
+      allow update: if (isStoreOwner(existing().storeId))
         || (!isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly([
             'rating', 'deliveryPin', 'motoboyLatitude', 'motoboyLongitude', 
             'status', 'deliveryProgress', 'deliveryMilestone', 
             'paymentApproved', 'isPaid', 'paymentStatus'
           ]));
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow delete: if isStoreOwner(existing().storeId);
     }
 
     // Clients Rules - Restrict public lists
     match /clients/{phone} {
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.storeId || isAdmin());
+      allow read: if isStoreOwner(resource.data.storeId);
       allow create, update: if true;
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow delete: if isStoreOwner(existing().storeId);
     }
   }
 }
