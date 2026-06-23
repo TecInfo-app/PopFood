@@ -1192,12 +1192,21 @@
         </div>
 
         <div
-          class="bg-gray-50 p-4 rounded-xl border border-gray-100 text-left space-y-2 text-xs"
+          class="bg-gray-50 p-4 rounded-xl border border-gray-100 text-left space-y-3 text-xs"
         >
+          <div id="review-order-summary" class="space-y-1 mb-2 border-b border-gray-200 pb-2 max-h-32 overflow-y-auto">
+            <!-- Items will be injected here -->
+          </div>
           <div class="flex justify-between text-gray-500 font-medium">
             <span>Pagamento:</span>
             <span id="review-payment-method" class="font-bold text-gray-700"
               >Carregando...</span
+            >
+          </div>
+          <div id="review-address-row" class="flex justify-between text-gray-500 font-medium hidden">
+            <span>Endereço:</span>
+            <span id="review-address" class="font-bold text-gray-700 text-right pl-4 text-[11px] leading-tight flex-1"
+              ></span
             >
           </div>
           <div
@@ -1296,6 +1305,98 @@
           class="overflow-y-auto p-6 space-y-6"
         >
           <!-- Dyn. populated by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- FIRST ORDER COUPON MODAL -->
+    <div
+      id="first-order-modal"
+      class="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4 hidden backdrop-blur-sm transition-opacity duration-300 opacity-0"
+    >
+      <div
+        class="bg-gradient-to-b from-purple-600 to-indigo-700 rounded-3xl w-full max-w-sm p-1 shadow-2xl flex flex-col relative transform scale-90 transition-transform duration-300"
+        id="first-order-modal-inner"
+      >
+        <button
+          onclick="closeFirstOrderModal()"
+          class="absolute top-3 right-3 text-white/70 hover:text-white p-2 text-sm font-bold z-10 cursor-pointer bg-black/20 rounded-full w-8 h-8 flex items-center justify-center"
+        >
+          ✕
+        </button>
+        <div class="bg-white rounded-[22px] p-6 text-center space-y-4 pt-8 h-full relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 to-pink-500"></div>
+          
+          <div class="mx-auto w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-3xl mb-2 animate-bounce shadow-sm">
+            🎁
+          </div>
+          
+          <h3 class="font-display font-black text-2xl text-gray-800 leading-tight">
+            Seu Primeiro Pedido <br>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">Tem Desconto!</span>
+          </h3>
+          
+          <p class="text-sm text-gray-600 font-medium pb-2">
+            Cadastre-se agora e ganhe um desconto exclusivo para provar nossas delícias.
+          </p>
+          
+          <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-4 my-2 relative">
+            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Use o cupom no carrinho</p>
+            <div class="font-mono text-xl font-black text-gray-800 tracking-widest" id="first-order-coupon-code">
+              ---
+            </div>
+            <button onclick="copyFirstOrderCoupon()" class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow-md hover:bg-black transition-colors flex items-center gap-1 cursor-pointer">
+              <span>📋</span> Copiar
+            </button>
+          </div>
+          
+          <button
+            onclick="closeFirstOrderModalAndOpenProfile()"
+            class="w-full bg-gradient-to-r from-brand-primary to-orange-500 hover:from-orange-600 hover:to-orange-500 text-white font-black py-4 px-6 rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 text-sm uppercase tracking-wide mt-4 cursor-pointer"
+          >
+            Fazer Cadastro Agora
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOYALTY REWARD MODAL -->
+    <div
+      id="loyalty-reward-modal"
+      class="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4 hidden backdrop-blur-sm transition-opacity duration-300 opacity-0"
+    >
+      <div
+        class="bg-gradient-to-b from-orange-400 to-red-500 rounded-3xl w-full max-w-sm p-1 shadow-2xl flex flex-col relative transform scale-90 transition-transform duration-300"
+        id="loyalty-reward-modal-inner"
+      >
+        <button
+          onclick="closeLoyaltyRewardModal()"
+          class="absolute top-3 right-3 text-white/70 hover:text-white p-2 text-sm font-bold z-10 cursor-pointer bg-black/20 rounded-full w-8 h-8 flex items-center justify-center"
+        >
+          ✕
+        </button>
+        <div class="bg-white rounded-[22px] p-6 text-center space-y-4 pt-8 h-full relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 to-orange-500"></div>
+          
+          <div class="mx-auto w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-3xl mb-2 animate-bounce shadow-sm">
+            ⭐
+          </div>
+          
+          <h3 class="font-display font-black text-2xl text-gray-800 leading-tight">
+            Você Ganhou <br>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500" id="loyalty-reward-modal-discount-text">um Desconto!</span>
+          </h3>
+          
+          <p class="text-sm text-gray-600 font-medium pb-2" id="loyalty-reward-modal-subtitle">
+            Parabéns! Você atingiu o limite de pedidos e desbloqueou seu prêmio de fidelidade.
+          </p>
+          
+          <button
+            onclick="closeLoyaltyRewardModal()"
+            class="w-full bg-gradient-to-r from-brand-primary to-orange-500 hover:from-orange-600 hover:to-orange-500 text-white font-black py-4 px-6 rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 text-sm uppercase tracking-wide mt-4 cursor-pointer"
+          >
+            Aproveitar Agora
+          </button>
         </div>
       </div>
     </div>
@@ -2176,6 +2277,12 @@
             }
           }, 1500);
         }
+
+        setTimeout(() => {
+          if (typeof window.checkFirstOrderCoupon === "function") {
+            window.checkFirstOrderCoupon();
+          }
+        }, 2000);
       };
 
       let needsChange = false;
@@ -4925,6 +5032,126 @@
       }
 
       // Apply promo coupons code from database coupons collection
+      // Modal Close logic
+      window.closeFirstOrderModal = function() {
+        const modal = document.getElementById("first-order-modal");
+        const inner = document.getElementById("first-order-modal-inner");
+        inner.classList.add("scale-90");
+        modal.classList.remove("opacity-100");
+        modal.classList.add("opacity-0");
+        setTimeout(() => {
+          modal.classList.add("hidden");
+        }, 300);
+      };
+
+      window.closeFirstOrderModalAndOpenProfile = function() {
+        closeFirstOrderModal();
+        setTimeout(() => {
+          switchMobileTab('profile');
+        }, 300);
+      };
+
+      window.closeLoyaltyRewardModal = function() {
+        const modal = document.getElementById("loyalty-reward-modal");
+        const inner = document.getElementById("loyalty-reward-modal-inner");
+        inner.classList.add("scale-90");
+        modal.classList.remove("opacity-100");
+        modal.classList.add("opacity-0");
+        setTimeout(() => {
+          modal.classList.add("hidden");
+        }, 300);
+      };
+
+      window.checkLoyaltyRewardModal = function(discountValue, requiredOrders) {
+        if (sessionStorage.getItem("popfood_loyalty_reward_modal_shown")) return;
+        
+        const modal = document.getElementById("loyalty-reward-modal");
+        const inner = document.getElementById("loyalty-reward-modal-inner");
+        
+        document.getElementById("loyalty-reward-modal-discount-text").textContent = `${discountValue} de Desconto!`;
+        document.getElementById("loyalty-reward-modal-subtitle").textContent = `Parabéns! Você completou ${requiredOrders} pedidos e desbloqueou seu prêmio de fidelidade para usar na próxima compra.`;
+
+        modal.classList.remove("hidden");
+        setTimeout(() => {
+          modal.classList.remove("opacity-0");
+          modal.classList.add("opacity-100");
+          inner.classList.remove("scale-90");
+          inner.classList.add("scale-100");
+        }, 50);
+        
+        sessionStorage.setItem("popfood_loyalty_reward_modal_shown", "true");
+      };
+
+      window.copyFirstOrderCoupon = function() {
+        const code = document.getElementById("first-order-coupon-code").textContent.trim();
+        if (code && code !== "---") {
+          navigator.clipboard.writeText(code);
+          showToast("Cupom copiado!");
+        }
+      };
+
+      window.checkFirstOrderCoupon = async function() {
+        // Prevent showing if already viewed in this session or user already logged in with past orders
+        if (sessionStorage.getItem("popfood_first_order_modal_shown")) return;
+        
+        const cachedPhone = localStorage.getItem("popfood_last_phone") || "";
+        if (cachedPhone) {
+          // Verify if they have orders
+          try {
+            const ordersSnap = await getDocs(
+              query(
+                collection(db, COLLECTIONS.orders),
+                where("customerPhone", "==", cachedPhone.replace(/\D/g, "")),
+                where("storeId", "==", window.currentStoreId)
+              )
+            );
+            if (!ordersSnap.empty) {
+              return; // Already has orders
+            }
+          } catch(e) {
+            console.error("Erro verificando pedidos p/ modal: ", e);
+          }
+        }
+
+        try {
+          const now = new Date();
+          const couponsSnap = await getDocs(
+            query(
+              collection(db, COLLECTIONS.coupons),
+              where("storeId", "==", window.currentStoreId)
+            )
+          );
+          
+          let firstOrderCoupon = null;
+          couponsSnap.forEach((docSnap) => {
+            const cData = docSnap.data();
+            const limit = new Date(cData.expiry);
+            if (cData.active && cData.firstOrderOnly && limit >= now) {
+              firstOrderCoupon = cData;
+            }
+          });
+
+          if (firstOrderCoupon) {
+            document.getElementById("first-order-coupon-code").textContent = firstOrderCoupon.code;
+            const modal = document.getElementById("first-order-modal");
+            const inner = document.getElementById("first-order-modal-inner");
+            
+            modal.classList.remove("hidden");
+            // small delay for transition
+            setTimeout(() => {
+              modal.classList.remove("opacity-0");
+              modal.classList.add("opacity-100");
+              inner.classList.remove("scale-90");
+              inner.classList.add("scale-100");
+            }, 50);
+            
+            sessionStorage.setItem("popfood_first_order_modal_shown", "true");
+          }
+        } catch (e) {
+          console.error("Erro ao carregar cupom de primeiro pedido: ", e);
+        }
+      };
+
       window.applyDiscountCoupon = async function () {
         const codeInput = document
           .getElementById("coupon-code-field")
@@ -4964,6 +5191,32 @@
             msg.classList.add("text-brand-danger");
             appliedDiscountCoupon = null;
           } else {
+            // Verify First Order only constraint
+            if (matchCoupon.firstOrderOnly) {
+              const phoneInput = document.getElementById("cust-phone").value.trim().replace(/\D/g, "");
+              if (!phoneInput) {
+                 msg.textContent = "❌ Informe seu WhatsApp (Cadastro) para usar este cupom de Primeiro Pedido.";
+                 msg.classList.add("text-brand-danger");
+                 appliedDiscountCoupon = null;
+                 calculateReceiptTotals();
+                 return;
+              }
+              const ordersSnap = await getDocs(
+                query(
+                  collection(db, COLLECTIONS.orders),
+                  where("customerPhone", "==", phoneInput),
+                  where("storeId", "==", window.currentStoreId),
+                ),
+              );
+              if (!ordersSnap.empty) {
+                 msg.textContent = "❌ Este cupom é válido apenas para o seu primeiro pedido.";
+                 msg.classList.add("text-brand-danger");
+                 appliedDiscountCoupon = null;
+                 calculateReceiptTotals();
+                 return;
+              }
+            }
+
             // Verify expiry Date
             const now = new Date();
             const limit = new Date(matchCoupon.expiry);
@@ -5078,6 +5331,10 @@
                     .replace(".", ",")}`;
 
             loyaltyFeedback.innerHTML = `🌟 <b>Desconto Fidelidade Desbloqueado!</b> Você atingiu a meta de <b>${loyaltyMinNeeded} pedidos</b> e garantiu seu desconto de <b>${discText}</b> automático neste carrinho! <span class="font-normal text-xs text-gray-550 block mt-1">(Progresso atual para o próximo ciclo: ${userOrdersCount}/${loyaltyMinNeeded} pedidos. O pedido que ganha o desconto não soma na contagem para o próximo desconto.)</span>`;
+            
+            if (typeof window.checkLoyaltyRewardModal === "function") {
+              window.checkLoyaltyRewardModal(discText, loyaltyMinNeeded);
+            }
           } else {
             hasLoyaltyDiscount = false;
             loyaltyFeedback.classList.remove("hidden", "text-brand-secondary");
@@ -5828,10 +6085,66 @@
           }
         }
 
+        // Populate order summary in the confirmation modal
+        const summaryContainer = document.getElementById("review-order-summary");
+        if (summaryContainer) {
+          summaryContainer.innerHTML = '';
+          shoppingCart.forEach(item => {
+            const itemRow = document.createElement("div");
+            itemRow.className = "flex justify-between items-center text-gray-700 font-medium";
+            itemRow.innerHTML = `
+              <span class="truncate pr-2">${item.quantity}x ${item.name}</span>
+              <span class="shrink-0">R$ ${(item.totalItemPrice * item.quantity).toFixed(2).replace(".", ",")}</span>
+            `;
+            summaryContainer.appendChild(itemRow);
+          });
+          
+          if (discVal > 0) {
+            const discRow = document.createElement("div");
+            discRow.className = "flex justify-between items-center text-green-600 font-medium mt-1";
+            discRow.innerHTML = `
+              <span>Desconto de Cupom</span>
+              <span>- R$ ${discVal.toFixed(2).replace(".", ",")}</span>
+            `;
+            summaryContainer.appendChild(discRow);
+          }
+          if (loyaltyDisc > 0) {
+            const lDiscRow = document.createElement("div");
+            lDiscRow.className = "flex justify-between items-center text-green-600 font-medium mt-1";
+            lDiscRow.innerHTML = `
+              <span>Desconto de Fidelidade</span>
+              <span>- R$ ${loyaltyDisc.toFixed(2).replace(".", ",")}</span>
+            `;
+            summaryContainer.appendChild(lDiscRow);
+          }
+          if (feeToUse > 0) {
+            const feeRow = document.createElement("div");
+            feeRow.className = "flex justify-between items-center text-gray-500 font-medium mt-1";
+            feeRow.innerHTML = `
+              <span>Taxa de Entrega</span>
+              <span>R$ ${feeToUse.toFixed(2).replace(".", ",")}</span>
+            `;
+            summaryContainer.appendChild(feeRow);
+          }
+        }
+
         document.getElementById("review-payment-method").textContent = method;
         document.getElementById("review-phone").textContent = phone;
         document.getElementById("review-total").textContent =
           `R$ ${finalVal.toFixed(2).replace(".", ",")}`;
+
+        const reviewAddressRow = document.getElementById("review-address-row");
+        const reviewAddress = document.getElementById("review-address");
+        if (selectedDeliveryOption === "delivery") {
+          const comp = document.getElementById("cust-comp").value.trim();
+          let fullAddress = `${address}, ${num}`;
+          if (comp) fullAddress += ` - ${comp}`;
+          reviewAddress.textContent = fullAddress;
+          if (reviewAddressRow) reviewAddressRow.classList.remove("hidden");
+        } else {
+          reviewAddress.textContent = "Retirada no Local";
+          if (reviewAddressRow) reviewAddressRow.classList.remove("hidden");
+        }
 
         // Update change info in the confirmation modal
         const reviewChangeRow = document.getElementById("review-change-row");

@@ -713,6 +713,11 @@
           <label for="coupon-form-active" class="text-xs font-semibold text-gray-700 select-none cursor-pointer">Cupom ativo para uso?</label>
         </div>
 
+        <div class="flex items-center gap-1.5 py-1">
+          <input type="checkbox" id="coupon-form-first-order" class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500">
+          <label for="coupon-form-first-order" class="text-xs font-semibold text-gray-700 select-none cursor-pointer">Válido apenas no primeiro pedido</label>
+        </div>
+
         <div class="pt-2 flex gap-3">
           <button type="button" onclick="toggleCouponModal(false)" class="flex-1 border border-gray-200 py-3 rounded-xl text-xs text-gray-500 hover:bg-gray-50 font-semibold cursor-pointer">Cancelar</button>
           <button type="submit" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer">Salvar</button>
@@ -1708,11 +1713,15 @@
           const discountStr = coupon.type === "percentual" ? `${coupon.value}% de desconto` : `R$ ${coupon.value.toFixed(2)} de desconto`;
           const validityDate = new Date(coupon.expiry).toLocaleDateString('pt-BR');
           const isAtvPill = coupon.active ? 'bg-green-150 text-brand-secondary font-bold' : 'bg-red-150 text-brand-danger font-bold';
+          const isFirstOrderPill = coupon.firstOrderOnly ? '<span class="text-[9px] px-2 py-0.5 rounded-full bg-purple-150 text-purple-700 font-bold ml-1">1º Pedido</span>' : '';
 
           card.innerHTML = `
             <div class="space-y-1.5 w-full">
               <div class="flex items-center justify-between">
-                <span class="font-mono text-xs font-bold text-gray-800 tracking-wider">🏷️ ${coupon.code}</span>
+                <div>
+                  <span class="font-mono text-xs font-bold text-gray-800 tracking-wider">🏷️ ${coupon.code}</span>
+                  ${isFirstOrderPill}
+                </div>
                 <span class="text-[9px] px-2 py-0.5 rounded-full ${isAtvPill}">${coupon.active ? 'Ativo' : 'Inativo'}</span>
               </div>
               <p class="text-xs font-semibold text-brand-primary">${discountStr}</p>
@@ -1746,11 +1755,13 @@
           document.getElementById('coupon-form-value').value = itemObj.value;
           document.getElementById('coupon-form-expiry').value = itemObj.expiry;
           document.getElementById('coupon-form-active').checked = !!itemObj.active;
+          document.getElementById('coupon-form-first-order').checked = !!itemObj.firstOrderOnly;
         } else {
           document.getElementById('coupon-modal-title').textContent = "Criar Cupom";
           document.getElementById('coupon-modal-form').reset();
           document.getElementById('coupon-form-id').value = '';
           document.getElementById('coupon-form-active').checked = true;
+          document.getElementById('coupon-form-first-order').checked = false;
         }
 
         modal.classList.remove('hidden');
@@ -1779,6 +1790,7 @@
       const value = parseFloat(document.getElementById('coupon-form-value').value || 0);
       const expiry = document.getElementById('coupon-form-expiry').value;
       const active = document.getElementById('coupon-form-active').checked;
+      const firstOrderOnly = document.getElementById('coupon-form-first-order').checked;
 
       const couponDocument = {
         id: cId,
@@ -1787,6 +1799,7 @@
         value: value,
         expiry: expiry,
         active: active,
+        firstOrderOnly: firstOrderOnly,
         storeId: window.currentStoreId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
