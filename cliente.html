@@ -2086,6 +2086,10 @@
           const el = document.getElementById(id);
           if (el) {
             el.addEventListener("input", () => {
+              if (["cust-street", "cust-number"].includes(id)) {
+                clientLatitude = null;
+                clientLongitude = null;
+              }
               if (typeof window.checkAndShowSavedDataBanner === "function") {
                 window.checkAndShowSavedDataBanner();
               }
@@ -2097,6 +2101,8 @@
         const cepInputEl = document.getElementById("cust-cep");
         if (cepInputEl) {
           cepInputEl.addEventListener("input", (e) => {
+            clientLatitude = null;
+            clientLongitude = null;
             const digits = e.target.value.replace(/\D/g, "");
             if (digits.length > 8) {
               e.target.value = digits.substring(0, 8);
@@ -2108,6 +2114,18 @@
             }
           });
         }
+
+        // Add blur listeners to trigger calculation when user manually types street address
+        ["cust-street", "cust-number"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.addEventListener("blur", () => {
+              if (el.value.trim().length > 3 && typeof window.calculateDistanceAndFee === "function") {
+                window.calculateDistanceAndFee();
+              }
+            });
+          }
+        });
 
         // Load cached delivery fee and distance if they exist
         const cachedCEP = localStorage.getItem("popfood_cust_cep");
@@ -4657,9 +4675,10 @@
         const alertDiv = document.getElementById("delivery-failed-alert");
 
         const hasPreciseCoordinates = (clientLatitude !== null && clientLongitude !== null);
+        const streetValue = document.getElementById("cust-street")?.value || "";
 
-        if (!hasPreciseCoordinates && (!cepValue || cepValue.length !== 8)) {
-          showToast("Preencha o CEP primeiro ou use a opção 'Minha Localização'!", true);
+        if (!hasPreciseCoordinates && (!cepValue || cepValue.length !== 8) && streetValue.length < 5) {
+          showToast("Preencha o CEP ou Endereço primeiro, ou use a opção 'Minha Localização'!", true);
           return;
         }
 
@@ -4739,10 +4758,15 @@
             if (!data || data.length === 0) {
               const streetValue =
                 document.getElementById("cust-street")?.value || "";
+              const numberValue = document.getElementById("cust-number")?.value || "";
               if (streetValue) {
                 try {
                   const cleanStreet = streetValue.split("-")[0].trim();
-                  const queryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
+                  let addressQuery = cleanStreet;
+                  if (numberValue && numberValue.toLowerCase() !== "s/n" && numberValue.toLowerCase() !== "sn") {
+                    addressQuery += ", " + numberValue;
+                  }
+                  const queryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressQuery + ", Brazil")}&limit=1`;
                   const response = await fetch(queryUrl, {
                     headers: { "User-Agent": "PopFood-App-Customer" },
                   });
@@ -4838,7 +4862,7 @@
               "Could not find coords via Nominatim. Fallback configuration.",
             );
             alertDiv.classList.remove("hidden");
-            alertDiv.innerHTML = `⚠️ Não conseguimos obter as coordenadas do CEP via GPS. Por favor digite o número e ponto de referência corretamente.`;
+            alertDiv.innerHTML = `⚠️ Não conseguimos calcular a distância exata. Aplicando taxa padrão da região. Confira seu endereço!`;
 
             calculatedDistance = 2.0; // Fallback estimate
 

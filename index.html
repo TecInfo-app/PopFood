@@ -870,15 +870,21 @@ storeId: window.currentStoreId
       const mail = document.getElementById('login-email').value.trim();
       const pass = document.getElementById('login-password').value.trim();
       try {
-        // First try to check custom credentials from registered restaurant profiles
+        // First, authenticate with Firebase Auth to get permission to query Firestore
+        const userCredential = await signInWithEmailAndPassword(auth, mail, pass);
+        const loggedUser = userCredential.user;
+
+        // Now we can securely query restaurantProfile because we are authenticated
         const profilesRef = collection(db, COLLECTIONS.restaurantProfile);
-        const q = query(profilesRef, where("adminEmail", "==", mail.toLowerCase()), where("adminPassword", "==", pass));
+        const q = query(profilesRef, where("adminEmail", "==", mail.toLowerCase()));
         const qSnap = await getDocs(q);
+        
         if (!qSnap.empty) {
           const matchedStoreDoc = qSnap.docs[0];
           const storeData = matchedStoreDoc.data();
           
           if (storeData.isStoreOwner === false || storeData.isStoreOwner === "false") {
+            await signOut(auth);
             alert("Acesso Negado: Você não tem permissão de 'Dono de Loja'. Entre em contato com o administrador.");
             return;
           }
@@ -886,26 +892,14 @@ storeId: window.currentStoreId
           const matchedStoreId = matchedStoreDoc.id;
           localStorage.setItem('popfood_custom_store_id', matchedStoreId);
           localStorage.setItem('popfood_custom_store_email', mail);
-          
-          // Sync standard Firebase Auth session
-          try {
-            await signInWithEmailAndPassword(auth, mail, pass);
-          } catch (authErr) {
-            console.log("Standard API session mismatch, bootstrapping Firebase Auth credentials...");
-            try {
-              await createUserWithEmailAndPassword(auth, mail, pass);
-            } catch (createErr) {
-              console.error("Bootstrap Firebase Auth record failed:", createErr);
-            }
-          }
-
-          // Reload page to apply login
-          window.location.reload();
-          return;
+        } else {
+          // If no custom profile is found, default custom store ID to user's UID
+          localStorage.setItem('popfood_custom_store_id', loggedUser.uid);
+          localStorage.setItem('popfood_custom_store_email', mail);
         }
 
-        // Fallback to standard Firebase Auth
-        await signInWithEmailAndPassword(auth, mail, pass);
+        // Reload page to apply login
+        window.location.reload();
       } catch (err) {
         console.error("Login Admin fail: ", err);
         alert("Falha ao entrar: " + err.message);
