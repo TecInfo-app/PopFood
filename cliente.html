@@ -4721,35 +4721,50 @@
           if (!hasCoords) {
             let data = [];
 
-            // Attempt 1: Search by Postal Code
-            try {
-              const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
-              const response = await fetch(nominatimUrl, {
-                headers: { "User-Agent": "PopFood-App-Customer" },
-              });
-              data = await response.json();
-            } catch (e) {
-              console.warn(
-                "Nominatim ZIP geocoding failed, trying street address:",
-                e,
-              );
+            const streetValue = document.getElementById("cust-street")?.value?.trim() || "";
+            const numberValue = document.getElementById("cust-number")?.value?.trim() || "";
+
+            // Attempt 1: Endereço completo (rua + número + CEP + Brasil) — mais preciso
+            if (streetValue) {
+              try {
+                const fullAddress = [streetValue, numberValue, cepValue, "Brasil"].filter(Boolean).join(", ");
+                const queryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}&limit=1&countrycodes=br`;
+                const response = await fetch(queryUrl, {
+                  headers: { "User-Agent": "PopFood-App-Customer" },
+                });
+                data = await response.json();
+                console.log("[GEO] Tentativa 1 (endereço completo):", fullAddress, "→", data?.[0]);
+              } catch (e) {
+                console.warn("Geocoding endereço completo falhou:", e);
+              }
             }
 
-            // Attempt 2: Search by Street Address (if postalcode was not found)
+            // Attempt 2: Apenas rua + número + Brasil (sem CEP)
+            if ((!data || data.length === 0) && streetValue) {
+              try {
+                const streetQuery = [streetValue, numberValue, "Brasil"].filter(Boolean).join(", ");
+                const queryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(streetQuery)}&limit=1&countrycodes=br`;
+                const response = await fetch(queryUrl, {
+                  headers: { "User-Agent": "PopFood-App-Customer" },
+                });
+                data = await response.json();
+                console.log("[GEO] Tentativa 2 (rua + número):", streetQuery, "→", data?.[0]);
+              } catch (e) {
+                console.warn("Geocoding rua+número falhou:", e);
+              }
+            }
+
+            // Attempt 3: Apenas CEP como fallback final
             if (!data || data.length === 0) {
-              const streetValue =
-                document.getElementById("cust-street")?.value || "";
-              if (streetValue) {
-                try {
-                  const cleanStreet = streetValue.split("-")[0].trim();
-                  const queryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
-                  const response = await fetch(queryUrl, {
-                    headers: { "User-Agent": "PopFood-App-Customer" },
-                  });
-                  data = await response.json();
-                } catch (e) {
-                  console.warn("Nominatim Street geocoding failed too:", e);
-                }
+              try {
+                const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
+                const response = await fetch(nominatimUrl, {
+                  headers: { "User-Agent": "PopFood-App-Customer" },
+                });
+                data = await response.json();
+                console.log("[GEO] Tentativa 3 (CEP fallback):", cepValue, "→", data?.[0]);
+              } catch (e) {
+                console.warn("Geocoding por CEP falhou:", e);
               }
             }
 
@@ -4759,6 +4774,7 @@
               clientLatitude = clientLat;
               clientLongitude = clientLon;
               hasCoords = true;
+              console.log("[GEO] Coordenadas obtidas:", clientLat, clientLon);
             }
           }
 
