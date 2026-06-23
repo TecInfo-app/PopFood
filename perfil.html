@@ -1333,7 +1333,8 @@
           document.getElementById('logo-placeholder').classList.add('hidden');
 
           await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_logo"), {
-            logo: base64
+            logo: base64,
+            adminEmail: (auth.currentUser && auth.currentUser.email) ? auth.currentUser.email.toLowerCase() : ""
           }, { merge: true });
           alert("Logomarca updated!");
         } catch (err) {
@@ -1402,7 +1403,10 @@
       for (let i = 0; i < 3; i++) {
         const docRef = doc(db, COLLECTIONS.restaurantProfile, `${window.currentStoreId}_banner${i}`);
         if (i < bannersList.length) {
-          await setDoc(docRef, { banner: bannersList[i] });
+          await setDoc(docRef, { 
+            banner: bannersList[i],
+            adminEmail: (auth.currentUser && auth.currentUser.email) ? auth.currentUser.email.toLowerCase() : ""
+          });
         } else {
           await deleteDoc(docRef);
         }
@@ -1471,8 +1475,24 @@
 
       try {
         const nominatimUrl = `/api/proxy/nominatim-search?format=json&q=${encodeURIComponent(address)}&limit=1`;
-        const response = await fetch(nominatimUrl);
-        const data = await response.json();
+        let data;
+        try {
+          const response = await fetch(nominatimUrl);
+          if (response.ok) {
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+              data = await response.json();
+            }
+          }
+          if (!data) {
+            throw new Error("Proxy response not valid JSON");
+          }
+        } catch (proxyError) {
+          console.warn("Proxy Nominatim search failed, trying openstreetmap directly:", proxyError);
+          const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+          const response = await fetch(fallbackUrl);
+          data = await response.json();
+        }
 
         if (data && data.length > 0) {
           currentStoreLatitude = parseFloat(data[0].lat);

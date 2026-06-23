@@ -61,9 +61,22 @@ service cloud.firestore {
     // Restaurant Profiles Rules
     match /restaurantProfile/{profileId} {
       allow read: if (profileId == 'GLOBAL_SETTINGS') ? isSignedIn() : true;
+      
+      function isProfileOwner(profId) {
+        return isSignedIn() && (
+          profId == request.auth.uid || 
+          profId.matches('^' + request.auth.uid + '(_logo|_banner[0-2])?$') ||
+          isAdmin() ||
+          (resource != null && resource.data.keys().hasAll(['adminEmail']) && 
+           resource.data.adminEmail.lower() == request.auth.token.email.lower()) ||
+          (request.resource != null && request.resource.data.keys().hasAll(['adminEmail']) && 
+           request.resource.data.adminEmail.lower() == request.auth.token.email.lower())
+        );
+      }
+
       allow write: if (profileId == 'GLOBAL_SETTINGS') 
         ? isAdmin() 
-        : (isSignedIn() && (request.auth.uid == profileId || isAdmin()));
+        : isProfileOwner(profileId);
     }
 
     // Orders Rules - Multi-level authorization

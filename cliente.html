@@ -4551,10 +4551,25 @@
 
             try {
               // Call Nominatim Reverse Geocoding to get CEP & Street
-              const response = await fetch(
-                `/api/proxy/nominatim-reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`
-              );
-              const data = await response.json();
+              const nominatimUrl = `/api/proxy/nominatim-reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+              let data;
+              try {
+                const response = await fetch(nominatimUrl);
+                if (response.ok) {
+                  const contentType = response.headers.get("content-type");
+                  if (contentType && contentType.includes("application/json")) {
+                    data = await response.json();
+                  }
+                }
+                if (!data) {
+                  throw new Error("Proxy response not valid JSON");
+                }
+              } catch (proxyError) {
+                console.warn("Proxy Nominatim reverse geocode failed, trying openstreetmap directly:", proxyError);
+                const fallbackUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+                const response = await fetch(fallbackUrl);
+                data = await response.json();
+              }
 
               if (data && data.address) {
                 const addr = data.address;
@@ -4718,8 +4733,23 @@
             // Attempt 1: Search by Postal Code
             try {
               const nominatimUrl = `/api/proxy/nominatim-search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
-              const response = await fetch(nominatimUrl);
-              data = await response.json();
+              try {
+                const response = await fetch(nominatimUrl);
+                if (response.ok) {
+                  const contentType = response.headers.get("content-type");
+                  if (contentType && contentType.includes("application/json")) {
+                    data = await response.json();
+                  }
+                }
+                if (!data) {
+                  throw new Error("Proxy response not valid JSON");
+                }
+              } catch (proxyError) {
+                console.warn("Proxy Postal Code search failed, trying openstreetmap directly:", proxyError);
+                const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
+                const response = await fetch(fallbackUrl);
+                data = await response.json();
+              }
             } catch (e) {
               console.warn(
                 "Nominatim ZIP geocoding failed, trying street address:",
@@ -4735,8 +4765,23 @@
                 try {
                   const cleanStreet = streetValue.split("-")[0].trim();
                   const queryUrl = `/api/proxy/nominatim-search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
-                  const response = await fetch(queryUrl);
-                  data = await response.json();
+                  try {
+                    const response = await fetch(queryUrl);
+                    if (response.ok) {
+                      const contentType = response.headers.get("content-type");
+                      if (contentType && contentType.includes("application/json")) {
+                        data = await response.json();
+                      }
+                    }
+                    if (!data) {
+                      throw new Error("Proxy response not valid JSON");
+                    }
+                  } catch (proxyError) {
+                    console.warn("Proxy Street search failed, trying openstreetmap directly:", proxyError);
+                    const fallbackUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
+                    const response = await fetch(fallbackUrl);
+                    data = await response.json();
+                  }
                 } catch (e) {
                   console.warn("Nominatim Street geocoding failed too:", e);
                 }
