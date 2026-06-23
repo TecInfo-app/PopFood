@@ -4551,7 +4551,7 @@
 
             try {
               // Call Nominatim Reverse Geocoding to get CEP & Street
-              const nominatimUrl = `/api/proxy/nominatim-reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
+              const nominatimUrl = `${backendHost}/api/proxy/nominatim-reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
               let data;
               try {
                 const response = await fetch(nominatimUrl);
@@ -4732,7 +4732,7 @@
 
             // Attempt 1: Search by Postal Code
             try {
-              const nominatimUrl = `/api/proxy/nominatim-search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
+              const nominatimUrl = `${backendHost}/api/proxy/nominatim-search?format=json&postalcode=${cepValue}&country=Brazil&limit=1`;
               try {
                 const response = await fetch(nominatimUrl);
                 if (response.ok) {
@@ -4764,7 +4764,7 @@
               if (streetValue) {
                 try {
                   const cleanStreet = streetValue.split("-")[0].trim();
-                  const queryUrl = `/api/proxy/nominatim-search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
+                  const queryUrl = `${backendHost}/api/proxy/nominatim-search?format=json&q=${encodeURIComponent(cleanStreet + ", Brazil")}&limit=1`;
                   try {
                     const response = await fetch(queryUrl);
                     if (response.ok) {
