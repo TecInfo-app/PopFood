@@ -149,31 +149,39 @@
           </div>
         </div>
 
-        <button
-          onclick="toggleCartModal(true)"
-          id="cart-trigger-btn"
-          class="relative text-brand-primary p-2 hover:bg-orange-50 rounded-xl transition-all flex items-center justify-center cursor-pointer"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="2.3"
-            stroke="currentColor"
-            class="w-6 h-6"
+        <div class="flex items-center gap-3">
+          <!-- WELCOME GREETING IF LOGGED IN -->
+          <div id="header-welcome-greeting" class="hidden flex-col text-right">
+            <span class="text-[9px] text-gray-400 font-bold block leading-none uppercase tracking-wider">Olá, bem-vindo!</span>
+            <span id="header-welcome-name" class="text-xs font-black text-brand-primary block max-w-[90px] sm:max-w-[150px] truncate leading-tight">Cliente</span>
+          </div>
+
+          <button
+            onclick="toggleCartModal(true)"
+            id="cart-trigger-btn"
+            class="relative text-brand-primary p-2 hover:bg-orange-50 rounded-xl transition-all flex items-center justify-center cursor-pointer"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-            />
-          </svg>
-          <span
-            id="cart-badge"
-            class="absolute top-[3px] right-[2px] bg-[#16a34a] text-white font-extrabold text-[9px] w-5 h-5 rounded-full border border-white flex items-center justify-center shadow-3xs"
-            >0</span
-          >
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2.3"
+              stroke="currentColor"
+              class="w-6 h-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+              />
+            </svg>
+            <span
+              id="cart-badge"
+              class="absolute top-[3px] right-[2px] bg-[#16a34a] text-white font-extrabold text-[9px] w-5 h-5 rounded-full border border-white flex items-center justify-center shadow-3xs"
+              >0</span
+            >
+          </button>
+        </div>
       </div>
     </header>
 
@@ -1426,6 +1434,30 @@
             <div id="pre-gps-address-feedback" class="p-3 bg-green-50 border border-green-100 rounded-xl hidden text-[11px] leading-relaxed text-green-700">
               <span class="font-bold">Endereço localizado:</span> <span id="pre-gps-address-text"></span>
             </div>
+
+            <!-- GPS Address fields, shown after geolocation is resolved -->
+            <div id="pre-gps-address-fields" class="space-y-3 hidden transition-all">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="block text-[10px] font-bold text-gray-500 uppercase">Número *</label>
+                  <input
+                    type="text"
+                    id="pre-cust-number"
+                    placeholder="Ex: 123"
+                    class="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:outline-none transition-all placeholder:text-gray-400 font-semibold text-gray-800"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label class="block text-[10px] font-bold text-gray-500 uppercase">Complemento (Opcional)</label>
+                  <input
+                    type="text"
+                    id="pre-cust-comp"
+                    placeholder="Apto, bloco..."
+                    class="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:outline-none transition-all placeholder:text-gray-400 font-semibold text-gray-800"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
           
           <div class="pt-2 flex gap-3">
@@ -1707,6 +1739,25 @@
             if (toast.parentElement) toast.parentElement.removeChild(toast);
           }, 300);
         }, 3000);
+      };
+
+      window.updateHeaderWelcomeGreeting = function () {
+        const phone = localStorage.getItem("popfood_last_phone") || "";
+        const name = localStorage.getItem("popfood_cust_name") || "";
+
+        const greetingDiv = document.getElementById("header-welcome-greeting");
+        const greetingNameSpan = document.getElementById("header-welcome-name");
+
+        if (greetingDiv && greetingNameSpan) {
+          if (phone && name) {
+            greetingNameSpan.textContent = name;
+            greetingDiv.classList.remove("hidden");
+            greetingDiv.classList.add("flex");
+          } else {
+            greetingDiv.classList.add("hidden");
+            greetingDiv.classList.remove("flex");
+          }
+        }
       };
 
       // Application State Variables
@@ -2375,6 +2426,10 @@
             window.checkFirstOrderCoupon();
           }
         }, 3000);
+
+        if (typeof window.updateHeaderWelcomeGreeting === "function") {
+          window.updateHeaderWelcomeGreeting();
+        }
       };
 
       let needsChange = false;
@@ -5260,6 +5315,8 @@
         const phone = document.getElementById("pre-cust-phone").value.trim();
         const street = document.getElementById("cust-street").value.trim();
         const cep = document.getElementById("cust-cep").value.trim();
+        const number = document.getElementById("pre-cust-number") ? document.getElementById("pre-cust-number").value.trim() : "";
+        const comp = document.getElementById("pre-cust-comp") ? document.getElementById("pre-cust-comp").value.trim() : "";
 
         if (!name || !phone) {
           window.customAlert("Por favor, preencha seu Nome e WhatsApp de contato para salvar seu cadastro.");
@@ -5271,9 +5328,21 @@
           return;
         }
 
+        // If street is found/filled, we require the number
+        if (street && !number) {
+          window.customAlert("Por favor, informe o Número do seu endereço.");
+          return;
+        }
+
         // Fill main checkout form fields so everything is perfectly synced
         document.getElementById("cust-name").value = name;
         document.getElementById("cust-phone").value = phone;
+        if (number) {
+          document.getElementById("cust-number").value = number;
+        }
+        if (comp) {
+          document.getElementById("cust-comp").value = comp;
+        }
 
         // Save to localStorage
         localStorage.setItem("popfood_cust_name", name);
@@ -5284,6 +5353,12 @@
         if (cep) {
           localStorage.setItem("popfood_cust_cep", cep);
         }
+        if (number) {
+          localStorage.setItem("popfood_cust_number", number);
+        }
+        if (comp) {
+          localStorage.setItem("popfood_cust_comp", comp);
+        }
 
         // Trigger dynamic updates
         if (typeof window.checkAndShowSavedDataBanner === "function") {
@@ -5291,6 +5366,9 @@
         }
         if (typeof window.checkLoyaltyEligibility === "function") {
           window.checkLoyaltyEligibility();
+        }
+        if (typeof window.updateHeaderWelcomeGreeting === "function") {
+          window.updateHeaderWelcomeGreeting();
         }
 
         showToast("Cadastro realizado com sucesso! 🎉");
@@ -5390,6 +5468,11 @@
                 if (feedbackDiv && feedbackText) {
                   feedbackText.textContent = `${street}${cep ? ' (CEP: ' + cep + ')' : ''}`;
                   feedbackDiv.classList.remove("hidden");
+                }
+
+                const addressFields = document.getElementById("pre-gps-address-fields");
+                if (addressFields) {
+                  addressFields.classList.remove("hidden");
                 }
 
                 showToast("📍 Localização preenchida com sucesso!");
@@ -6018,6 +6101,9 @@
         if (typeof window.setupBackgroundOrderStatusTracker === "function") {
           window.setupBackgroundOrderStatusTracker();
         }
+        if (typeof window.updateHeaderWelcomeGreeting === "function") {
+          window.updateHeaderWelcomeGreeting();
+        }
       };
 
       window.saveProfileChanges = function () {
@@ -6112,6 +6198,10 @@
         refreshCartOverview();
 
         window.renderProfileAndLoyaltyUI();
+
+        if (typeof window.updateHeaderWelcomeGreeting === "function") {
+          window.updateHeaderWelcomeGreeting();
+        }
       };
 
       window.toggleProfileAddressAccordion = function () {
