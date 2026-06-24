@@ -1360,6 +1360,92 @@
       </div>
     </div>
 
+    <!-- PRE-REGISTRATION / GPS MODAL -->
+    <div
+      id="pre-register-gps-modal"
+      class="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4 hidden backdrop-blur-sm transition-opacity duration-300 opacity-0"
+    >
+      <div
+        class="bg-gradient-to-b from-orange-400 to-brand-primary rounded-3xl w-full max-w-sm p-1 shadow-2xl flex flex-col relative transform scale-90 transition-transform duration-300"
+        id="pre-register-gps-modal-inner"
+      >
+        <button
+          onclick="closePreRegisterGpsModal()"
+          class="absolute top-3 right-3 text-white/70 hover:text-white p-2 text-sm font-bold z-10 cursor-pointer bg-black/20 rounded-full w-8 h-8 flex items-center justify-center"
+        >
+          ✕
+        </button>
+        <div class="bg-white rounded-[22px] p-6 text-center space-y-4 pt-8 h-full relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 to-brand-primary"></div>
+          
+          <div class="mx-auto w-16 h-16 bg-orange-100 text-brand-primary rounded-full flex items-center justify-center text-3xl mb-2 animate-bounce shadow-sm">
+            📍
+          </div>
+          
+          <h3 class="font-display font-black text-2xl text-gray-800 leading-tight">
+            Seja bem-vindo(a)!
+          </h3>
+          
+          <p class="text-xs text-gray-500 font-medium pb-2">
+            Configure seu endereço e dados de contato para calcular o tempo e a taxa de entrega exatos!
+          </p>
+          
+          <div class="space-y-3 text-left">
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Seu Nome *</label>
+              <input
+                type="text"
+                id="pre-cust-name"
+                placeholder="Como quer ser chamado?"
+                class="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:outline-none transition-all placeholder:text-gray-400 font-semibold text-gray-800"
+              />
+            </div>
+            
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">WhatsApp para Contato *</label>
+              <input
+                type="tel"
+                id="pre-cust-phone"
+                placeholder="(11) 99999-9999"
+                class="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:outline-none transition-all placeholder:text-gray-400 font-semibold text-gray-800"
+              />
+            </div>
+
+            <div class="pt-2">
+              <button
+                type="button"
+                id="pre-btn-geolocation"
+                onclick="window.fetchUserGeolocationPreRegister()"
+                class="w-full bg-stone-55 border border-stone-200 hover:bg-stone-100 text-stone-700 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-3xs"
+              >
+                <span>📍</span> Usar Localização por GPS
+              </button>
+            </div>
+
+            <!-- Address display inside modal -->
+            <div id="pre-gps-address-feedback" class="p-3 bg-green-50 border border-green-100 rounded-xl hidden text-[11px] leading-relaxed text-green-700">
+              <span class="font-bold">Endereço localizado:</span> <span id="pre-gps-address-text"></span>
+            </div>
+          </div>
+          
+          <div class="pt-2 flex gap-3">
+            <button
+              onclick="closePreRegisterGpsModal()"
+              class="flex-1 border border-gray-200 py-3 rounded-xl text-xs text-gray-500 hover:bg-gray-50 font-semibold cursor-pointer"
+            >
+              Depois
+            </button>
+            <button
+              onclick="savePreRegisterGpsDetails()"
+              class="flex-1 bg-gradient-to-r from-brand-primary to-orange-500 hover:from-orange-600 hover:to-orange-500 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer"
+            >
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- LOYALTY REWARD MODAL -->
     <div
       id="loyalty-reward-modal"
@@ -2279,10 +2365,16 @@
         }
 
         setTimeout(() => {
+          if (typeof window.checkPreRegisterGpsModal === "function") {
+            window.checkPreRegisterGpsModal();
+          }
+        }, 1000);
+
+        setTimeout(() => {
           if (typeof window.checkFirstOrderCoupon === "function") {
             window.checkFirstOrderCoupon();
           }
-        }, 2000);
+        }, 3000);
       };
 
       let needsChange = false;
@@ -5149,6 +5241,222 @@
           }
         } catch (e) {
           console.error("Erro ao carregar cupom de primeiro pedido: ", e);
+        }
+      };
+
+      window.closePreRegisterGpsModal = function() {
+        const modal = document.getElementById("pre-register-gps-modal");
+        const inner = document.getElementById("pre-register-gps-modal-inner");
+        inner.classList.add("scale-90");
+        modal.classList.remove("opacity-100");
+        modal.classList.add("opacity-0");
+        setTimeout(() => {
+          modal.classList.add("hidden");
+        }, 300);
+      };
+
+      window.savePreRegisterGpsDetails = function() {
+        const name = document.getElementById("pre-cust-name").value.trim();
+        const phone = document.getElementById("pre-cust-phone").value.trim();
+        const street = document.getElementById("cust-street").value.trim();
+        const cep = document.getElementById("cust-cep").value.trim();
+
+        if (!name || !phone) {
+          window.customAlert("Por favor, preencha seu Nome e WhatsApp de contato para salvar seu cadastro.");
+          return;
+        }
+
+        if (phone.length < 10) {
+          showToast("Insira seu número de WhatsApp com DDD válido.", true);
+          return;
+        }
+
+        // Fill main checkout form fields so everything is perfectly synced
+        document.getElementById("cust-name").value = name;
+        document.getElementById("cust-phone").value = phone;
+
+        // Save to localStorage
+        localStorage.setItem("popfood_cust_name", name);
+        localStorage.setItem("popfood_last_phone", phone);
+        if (street) {
+          localStorage.setItem("popfood_cust_street", street);
+        }
+        if (cep) {
+          localStorage.setItem("popfood_cust_cep", cep);
+        }
+
+        // Trigger dynamic updates
+        if (typeof window.checkAndShowSavedDataBanner === "function") {
+          window.checkAndShowSavedDataBanner();
+        }
+        if (typeof window.checkLoyaltyEligibility === "function") {
+          window.checkLoyaltyEligibility();
+        }
+
+        showToast("Cadastro realizado com sucesso! 🎉");
+        closePreRegisterGpsModal();
+      };
+
+      window.fetchUserGeolocationPreRegister = async function () {
+        const btnGeo = document.getElementById("pre-btn-geolocation");
+        if (!btnGeo) return;
+        const originalText = btnGeo.innerHTML;
+
+        if (!navigator.geolocation) {
+          showToast("Geolocalização não é suportada por este navegador.", true);
+          return;
+        }
+
+        btnGeo.disabled = true;
+        btnGeo.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-brand-primary inline-block" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Localizando...</span>
+        `;
+
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            clientLatitude = lat;
+            clientLongitude = lon;
+
+            try {
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+                {
+                  headers: {
+                    "User-Agent": "PopFood-App-Customer",
+                    "Accept-Language": "pt-BR"
+                  }
+                }
+              );
+              const data = await response.json();
+
+              if (data && data.address) {
+                const addr = data.address;
+                
+                let cep = addr.postcode || "";
+                cep = cep.replace(/\D/g, "");
+                if (cep.length > 8) cep = cep.substring(0, 8);
+
+                let street = "";
+                if (addr.road) {
+                  street += addr.road;
+                }
+                if (addr.suburb) {
+                  street += street ? `, ${addr.suburb}` : addr.suburb;
+                } else if (addr.neighbourhood) {
+                  street += street ? `, ${addr.neighbourhood}` : addr.neighbourhood;
+                }
+                
+                if (!street && data.display_name) {
+                  street = data.display_name.split(",").slice(0, 2).join(",").trim();
+                }
+
+                let cityState = "";
+                if (addr.city || addr.town || addr.village) {
+                  cityState += (addr.city || addr.town || addr.village);
+                }
+                if (addr.state) {
+                  const stateMap = {
+                    "Acre": "AC", "Alagoas": "AL", "Amapá": "AP", "Amazonas": "AM", "Bahia": "BA", "Ceará": "CE",
+                    "Distrito Federal": "DF", "Espírito Santo": "ES", "Goiás": "GO", "Maranhão": "MA", "Mato Grosso": "MT",
+                    "Mato Grosso do Sul": "MS", "Minas Gerais": "MG", "Pará": "PA", "Paraíba": "PB", "Paraná": "PR",
+                    "Pernambuco": "PE", "Piauí": "PI", "Rio de Janeiro": "RJ", "Rio Grande do Norte": "RN",
+                    "Rio Grande do Sul": "RS", "Rondônia": "RO", "Roraima": "RR", "Santa Catarina": "SC",
+                    "São Paulo": "SP", "Sergipe": "SE", "Tocantins": "TO"
+                  };
+                  const stateInitials = stateMap[addr.state] || addr.state;
+                  cityState += cityState ? ` - ${stateInitials}` : stateInitials;
+                }
+
+                if (cityState) {
+                  street += street ? ` (${cityState})` : cityState;
+                }
+
+                // Update inputs on main UI
+                document.getElementById("cust-street").value = street;
+                if (cep && cep.length === 8) {
+                  document.getElementById("cust-cep").value = cep;
+                }
+
+                // Update preview in the modal
+                const feedbackDiv = document.getElementById("pre-gps-address-feedback");
+                const feedbackText = document.getElementById("pre-gps-address-text");
+                if (feedbackDiv && feedbackText) {
+                  feedbackText.textContent = `${street}${cep ? ' (CEP: ' + cep + ')' : ''}`;
+                  feedbackDiv.classList.remove("hidden");
+                }
+
+                showToast("📍 Localização preenchida com sucesso!");
+                calculateDistanceAndFee();
+              } else {
+                showToast("Não foi possível decodificar o endereço desta localização.", true);
+              }
+            } catch (err) {
+              console.error("Geocoding error: ", err);
+              showToast("Erro ao carregar endereço da sua localização.", true);
+            } finally {
+              btnGeo.disabled = false;
+              btnGeo.innerHTML = originalText;
+            }
+          },
+          (error) => {
+            console.error("GPS Error: ", error);
+            let msg = "Não foi possível obter sua localização por GPS.";
+            if (error.code === error.PERMISSION_DENIED) {
+              msg = "Permissão de localização negada pelo seu dispositivo.";
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+              msg = "Localização indisponível no seu dispositivo.";
+            } else if (error.code === error.TIMEOUT) {
+              msg = "Tempo esgotado ao obter localização.";
+            }
+            showToast(msg, true);
+            btnGeo.disabled = false;
+            btnGeo.innerHTML = originalText;
+          },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      };
+
+      window.checkPreRegisterGpsModal = function() {
+        const cachedPhone = localStorage.getItem("popfood_last_phone") || "";
+        const cachedStreet = localStorage.getItem("popfood_cust_street") || "";
+
+        if (cachedPhone && cachedStreet) return; // Already registered
+
+        if (sessionStorage.getItem("popfood_pre_register_modal_shown")) return;
+
+        const modal = document.getElementById("pre-register-gps-modal");
+        const inner = document.getElementById("pre-register-gps-modal-inner");
+
+        if (modal) {
+          modal.classList.remove("hidden");
+          setTimeout(() => {
+            modal.classList.remove("opacity-0");
+            modal.classList.add("opacity-100");
+            inner.classList.remove("scale-90");
+            inner.classList.add("scale-100");
+          }, 50);
+
+          sessionStorage.setItem("popfood_pre_register_modal_shown", "true");
+
+          // Initialize mask listener for modal phone input
+          const maskEl = document.getElementById("pre-cust-phone");
+          if (maskEl) {
+            maskEl.addEventListener("input", (e) => {
+              let x = e.target.value
+                .replace(/\D/g, "")
+                .match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+              e.target.value = !x[2]
+                ? x[1]
+                : "(" + x[1] + ") " + x[2] + (x[3] ? "-" + x[3] : "");
+            });
+          }
         }
       };
 
