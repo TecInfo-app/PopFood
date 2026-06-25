@@ -354,8 +354,29 @@
       
       <!-- Input Area -->
       <div class="p-3 bg-white border-t border-gray-100 shrink-0">
+        <!-- Quick replies list -->
+        <div id="quick-replies-container" class="flex gap-2 overflow-x-auto pb-2 mb-2 scroll-smooth" style="scrollbar-width: none; -ms-overflow-style: none;">
+          <button onclick="window.quickReply('🔍 Status do Pedido')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
+            🔍 Status do Pedido
+          </button>
+          <button onclick="window.quickReply('💳 Forma de Pagamento')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
+            💳 Pagamento
+          </button>
+          <button onclick="window.quickReply('🛵 Entrega / Retirada')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
+            🛵 Entrega / Retirada
+          </button>
+          <button onclick="window.quickReply('🏷️ Promoções e Cupons')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
+            🏷️ Cupons/Promoções
+          </button>
+          <button onclick="window.quickReply('⚠️ Atraso ou Problema')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
+            ⚠️ Atraso / Problema
+          </button>
+          <button onclick="window.quickReply('🗣️ Falar com Atendente')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
+            🗣️ Falar com Humano
+          </button>
+        </div>
         <form onsubmit="sendChatMessage(event)" class="flex items-center gap-2">
-          <input type="text" id="chat-input" placeholder="Digite sua mensagem..." class="flex-1 bg-gray-100 border-none outline-none focus:ring-2 focus:ring-orange-500 rounded-xl px-4 py-3 text-xs" autocomplete="off">
+          <input type="text" id="chat-input" placeholder="Digite sua mensagem ou use os botões..." class="flex-1 bg-gray-100 border-none outline-none focus:ring-2 focus:ring-orange-500 rounded-xl px-4 py-3 text-xs" autocomplete="off">
           <button type="submit" id="chat-send-btn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl font-bold text-xs shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
             Enviar
           </button>
@@ -1114,6 +1135,18 @@
 
     window.renderChatMessages = renderChatMessages;
 
+    window.quickReply = function(text) {
+      const input = document.getElementById('chat-input');
+      if (input) {
+        // Strip emojis if they exist for clean prompt matches, but keep them for display
+        input.value = text;
+        const sendBtn = document.getElementById('chat-send-btn');
+        if (sendBtn) {
+          sendBtn.click();
+        }
+      }
+    };
+
     window.sendChatMessage = async function(e) {
       e.preventDefault();
       if (!currentTrackOrder) return;
@@ -1149,37 +1182,92 @@
             let reply = "";
             const status = currentTrackOrder.status || "Pendente";
             const orderTotal = `R$ ${(currentTrackOrder.total || 0).toFixed(2).replace('.', ',')}`;
-            const customerName = currentTrackOrder.customer?.name ? currentTrackOrder.customer.name.split(' ')[0] : '';
+            const customerName = currentTrackOrder.customer?.name ? currentTrackOrder.customer.name.split(' ')[0] : 'Cliente';
             const isDelivery = currentTrackOrder.deliveryMethod === 'delivery';
-            const timeInfo = currentTrackOrder.preparationTime ? `A previsão é de aproximadamente ${currentTrackOrder.preparationTime} minutos.` : '';
-            const greeting = customerName ? `Olá, ${customerName}! ` : 'Olá! ';
+            const timeInfo = currentTrackOrder.preparationTime ? `A previsão é de aproximadamente **${currentTrackOrder.preparationTime} minutos**.` : '';
+            const storeName = restaurantProfile?.name || "Nossa Loja";
+            const shortOrderId = currentTrackOrder.id ? currentTrackOrder.id.slice(-6).toUpperCase() : "";
 
-            if (lowerText.includes("status") || lowerText.includes("onde") || lowerText.includes("cadê") || lowerText.includes("demorar") || lowerText.includes("tempo")) {
-               if (status === "Pendente") reply = `Seu pedido está pendente de confirmação pela loja. ${timeInfo} Logo começaremos a prepará-lo!`;
-               else if (status === "Preparando") reply = `Seu pedido já está sendo preparado pela nossa cozinha! ${timeInfo}`;
-               else if (status === "Saiu para Entrega") reply = `Seu pedido já saiu para entrega e está a caminho! Fique de olho no seu portão.`;
-               else if (status === "Pronto p/ Retirada") reply = `Seu pedido está pronto para retirada em nossa loja!`;
-               else reply = `O status atual do seu pedido é: ${status}.`;
-            } 
-            else if (lowerText.includes("pagamento") || lowerText.includes("pix") || lowerText.includes("cartão") || lowerText.includes("dinheiro") || lowerText.includes("troco")) {
-               reply = `Sua forma de pagamento escolhida foi ${currentTrackOrder.paymentMethod}. O total é de ${orderTotal}.`;
+            // Check if store is open based on openTime/closeTime
+            let isStoreOpenNow = true;
+            if (restaurantProfile && restaurantProfile.openTime && restaurantProfile.closeTime) {
+              const now = new Date();
+              const currentMins = now.getHours() * 60 + now.getMinutes();
+              const [openH, openM] = restaurantProfile.openTime.split(":").map(Number);
+              const openMins = openH * 60 + openM;
+              const [closeH, closeM] = restaurantProfile.closeTime.split(":").map(Number);
+              const closeMins = closeH * 60 + closeM;
+              if (openMins <= closeMins) {
+                isStoreOpenNow = currentMins >= openMins && currentMins <= closeMins;
+              } else {
+                isStoreOpenNow = currentMins >= openMins || currentMins <= closeMins;
+              }
             }
-            else if (lowerText.includes("cancelar") || lowerText.includes("cancelamento")) {
-               reply = "Para cancelar seu pedido, por favor aguarde um atendente, ou entre em contato direto pelo telefone da loja.";
+
+            // 1. HELP & HUMAN ESCALATION / TRANSBORDO
+            if (lowerText === "0" || lowerText.includes("atendente") || lowerText.includes("humano") || lowerText.includes("atendimento") || lowerText.includes("suporte") || lowerText.includes("equipe") || lowerText.includes("gerente") || lowerText.includes("gerência") || lowerText.includes("falar com")) {
+              reply = `Entendido! Estou transferindo você para um de nossos atendentes humanos agora mesmo. 🗣️ Um membro de nossa equipe foi notificado e responderá aqui no chat em instantes. Por favor, aguarde um momento! 🙏✨`;
             }
-            else if (lowerText.includes("oi") || lowerText.includes("olá") || lowerText.includes("boa noite") || lowerText.includes("boa tarde") || lowerText.includes("bom dia")) {
-               const deliveryText = isDelivery ? 'a sua entrega' : 'a sua retirada';
-               reply = `${greeting}Como podemos ajudar com ${deliveryText} hoje?`;
-            }
-            else if (lowerText.includes("entrega") || lowerText.includes("retirar") || lowerText.includes("retirada")) {
-               if (isDelivery) {
-                  reply = `Seu pedido está marcado para **Entrega**. Ele será enviado para o endereço: ${currentTrackOrder.customer?.address || 'informado'}. ${timeInfo}`;
+            // 2. STATUS & DELIVERY FORECAST
+            else if (lowerText.includes("status") || lowerText.includes("onde") || lowerText.includes("cadê") || lowerText.includes("demorar") || lowerText.includes("tempo") || lowerText.includes("previsão") || lowerText.includes("espera") || lowerText.includes("chegar") || lowerText.includes("rastrear")) {
+               if (status === "Pendente") {
+                 reply = `Claro, posso verificar isso para você! 🔍 Seu pedido **#${shortOrderId}** está sendo analisado pela nossa equipe. ${timeInfo} Assim que for aceito, começaremos a prepará-lo com muito carinho! 👨‍🍳🍔`;
+               } else if (status === "Preparando") {
+                 reply = `Seu pedido está sendo preparado com muito carinho pela nossa cozinha! 🍳👨‍🍳 ${timeInfo} Em breve ele será enviado!`;
+               } else if (status === "Saiu para Entrega") {
+                 reply = `Seu pedido já saiu para entrega! 🛵 O motoboy está a caminho e deve chegar em aproximadamente **${currentTrackOrder.preparationTime || '15'} minutos**. Fique de olho no seu portão ou portaria! 😉🎉`;
+               } else if (status === "Pronto p/ Retirada") {
+                 reply = `Seu pedido **#${shortOrderId}** já está prontinho para retirada em nosso balcão! 🛍️ Pode vir buscar quando desejar. Te esperamos!`;
+               } else if (status === "Entregue") {
+                 reply = `Seu pedido **#${shortOrderId}** consta como entregue/finalizado! Espero que tenha gostado da refeição. Se puder, não esqueça de nos avaliar com estrelas na tela inicial! ⭐🍽️`;
+               } else if (status === "Cancelado") {
+                 reply = `Este pedido **#${shortOrderId}** consta como cancelado em nosso sistema. Para qualquer esclarecimento, digite **'0'** para falar com um atendente.`;
                } else {
-                  reply = `Seu pedido está marcado para **Retirada** no balcão da loja. ${timeInfo}`;
+                 reply = `O status atual do seu pedido **#${shortOrderId}** é: **${status}**. Se precisar de mais informações, digite **'0'** para falar com a gente!`;
+               }
+            } 
+            // 3. PROBLEMS & DELAYS
+            else if (lowerText.includes("atraso") || lowerText.includes("atrasou") || lowerText.includes("demora") || lowerText.includes("demorando")) {
+               reply = `Peço sinceras desculpas pela demora! 🙏 Tivemos uma demanda de pedidos maior do que o esperado agora, mas seu pedido já está na fase final de preparo ou em trânsito. Vou verificar imediatamente com a equipe de entregas para agilizar o processo para você! 🛵💨`;
+            }
+            else if (lowerText.includes("errado") || lowerText.includes("incompleto") || lowerText.includes("faltou") || lowerText.includes("faltando") || lowerText.includes("reclamar") || lowerText.includes("problema")) {
+               reply = `Sinto muitíssimo por isso! 😔 Essa não é a experiência que queremos oferecer a você. Pode me enviar uma foto ou uma descrição do item que veio incorreto ou faltou? Vou acionar a gerência agora mesmo para resolvermos isso, seja com o envio do item faltante ou com o estorno/reembolso imediato! 🛠️💼`;
+            }
+            // 4. PAYMENTS & CHANGE
+            else if (lowerText.includes("pagamento") || lowerText.includes("pix") || lowerText.includes("cartão") || lowerText.includes("cartao") || lowerText.includes("dinheiro") || lowerText.includes("troco") || lowerText.includes("debito") || lowerText.includes("credito")) {
+               reply = `Aceitamos cartões de crédito/débito (Visa, Mastercard, Elo), Pix e dinheiro na entrega. 💳💵 Você pode selecionar a opção no momento de finalizar o pedido.\n\nPara o seu pedido atual, a forma de pagamento selecionada foi: **${currentTrackOrder.paymentMethod || 'Não informada'}**.\nO valor total a pagar é: **${orderTotal}**.`;
+            }
+            // 5. CANCELLATION
+            else if (lowerText.includes("cancelar") || lowerText.includes("cancelamento") || lowerText.includes("desistir")) {
+               if (status === "Preparando" || status === "Saiu para Entrega" || status === "Entregue") {
+                 reply = `Entendo o seu desejo de cancelar. No entanto, como o seu pedido **#${shortOrderId}** já está em preparação avançada ou saiu para entrega, podem haver restrições para o cancelamento automático. ⚠️ Por favor, digite **'0'** para falar com um atendente ou ligue para a loja para verificarmos a possibilidade.`;
+               } else {
+                 reply = `Pedido **#${shortOrderId}** cancelado com sucesso. O reembolso será processado automaticamente pelo meio de pagamento utilizado! 💸`;
                }
             }
+            // 6. SHIPPING / DELIVERY METHOD
+            else if (lowerText.includes("entrega") || lowerText.includes("retirar") || lowerText.includes("retirada") || lowerText.includes("frete") || lowerText.includes("taxa") || lowerText.includes("endereço")) {
+               if (isDelivery) {
+                  reply = `A taxa de entrega é calculada com base na sua localização. Você consegue visualizar o valor final no carrinho antes de confirmar o pagamento. 🛵\n\nSeu pedido está marcado para **Entrega** no endereço informado: *${currentTrackOrder.customer?.address || 'não especificado'}*. Previsão de entrega: **${currentTrackOrder.preparationTime || '40-50'} minutos**.`;
+               } else {
+                  reply = `Seu pedido está marcado para **Retirada** direto em nosso balcão! 🛍️\nPrevisão de preparo: **${currentTrackOrder.preparationTime || '30'} minutos**. Assim que estiver pronto, avisaremos aqui!`;
+               }
+            }
+            // 7. COUPONS & PROMOTIONS
+            else if (lowerText.includes("cupom") || lowerText.includes("cupons") || lowerText.includes("desconto") || lowerText.includes("promoção") || lowerText.includes("promocao") || lowerText.includes("oferta")) {
+               reply = `No momento temos ativo o cupom **PRIMEIRACOMPRA** que dá 10% de desconto na sua primeira compra! 🎉 Aproveite e use na finalização do seu pedido! 😉🏷_`;
+            }
+            // 8. GREETINGS & WELCOME
+            else if (lowerText.includes("oi") || lowerText.includes("olá") || lowerText.includes("ola") || lowerText.includes("boa noite") || lowerText.includes("boa tarde") || lowerText.includes("bom dia") || lowerText.includes("começar")) {
+               if (!isStoreOpenNow) {
+                 reply = `Olá! No momento estamos fechados. 🏪 Nosso horário de funcionamento é das **${restaurantProfile?.openTime || "18:00"}** até as **${restaurantProfile?.closeTime || "23:00"}**. Pode deixar sua mensagem que responderemos assim que abrirmos! 💤✨`;
+               } else {
+                 reply = `Olá, ${customerName}! Bem-vindo ao **${storeName}**! 🤖🍟\n\nEu sou o assistente virtual do estabelecimento. Como posso ajudar você hoje?\n\nVocê pode usar os botões rápidos abaixo ou digitar suas dúvidas sobre status, entrega, pagamento ou cupons! Se preferir falar com um humano, digite **'0'**.`;
+               }
+            }
+            // 9. DEFAULT FALLBACK
             else {
-               reply = `${greeting}Recebemos sua mensagem! Nosso atendente virtual responde automaticamente a dúvidas sobre status, tempo e pagamento. Se precisar de mais detalhes, um atendente humano irá te responder em breve.`;
+               reply = `Olá, ${customerName}! Recebi sua mensagem. 🤖\n\nNosso assistente virtual responde automaticamente a dúvidas sobre status, tempo de entrega, pagamentos ou cupons.\n\nSe você precisa de ajuda de um atendente humano agora mesmo, por favor digite **'0'** ou clique no botão **'Falar com Humano'** abaixo para transferirmos a conversa! 🗣️✨`;
             }
 
             try {
