@@ -569,26 +569,27 @@
           ✕
         </button>
 
-        <div class="p-6 border-b border-gray-100">
-          <span id="modal-lbl-date" class="text-[10px] text-gray-400 font-mono"
-            >--/--/-- --:--</span
-          >
-          <h2
-            id="modal-lbl-orderid"
-            class="font-display font-bold text-lg text-gray-800 tracking-tight"
-          >
-            Pedido #------
-          </h2>
-          <div
-            id="modal-lbl-status"
-            class="inline-block mt-2 px-2.5 py-0.5 rounded-full text-[10px] font-bold"
-          >
-            Status
+        <div class="p-6 border-b border-gray-100 pb-0">
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <span id="modal-lbl-date" class="text-[10px] text-gray-400 font-mono">--/--/-- --:--</span>
+              <h2 id="modal-lbl-orderid" class="font-display font-bold text-lg text-gray-800 tracking-tight">Pedido #------</h2>
+              <div id="modal-lbl-status" class="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Status</div>
+            </div>
+          </div>
+          
+          <!-- Tabs -->
+          <div class="flex items-center gap-4 border-b border-gray-100 text-xs font-semibold mt-2">
+            <button onclick="switchModalTab('details')" id="modal-tab-details" class="pb-2 border-b-2 border-orange-500 text-orange-600 transition-colors">Detalhes do Pedido</button>
+            <button onclick="switchModalTab('chat')" id="modal-tab-chat" class="pb-2 border-b-2 border-transparent text-gray-400 hover:text-gray-600 transition-colors relative">
+              Chat com Cliente
+              <span id="modal-tab-chat-badge" class="absolute -top-1 -right-2 bg-red-500 text-white w-3 h-3 rounded-full text-[8px] flex items-center justify-center font-bold hidden">!</span>
+            </button>
           </div>
         </div>
 
         <!-- Scrollable segment details -->
-        <div class="p-6 overflow-y-auto max-h-[50vh] space-y-5">
+        <div id="modal-content-details" class="p-6 overflow-y-auto max-h-[50vh] space-y-5">
           <!-- Customer details -->
           <div
             class="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100 text-xs"
@@ -706,6 +707,29 @@
                 >R$ 0,00</span
               >
             </div>
+          </div>
+        </div>
+
+        <!-- Chat segment details -->
+        <div id="modal-content-chat" class="hidden overflow-hidden flex flex-col h-[50vh]">
+          <div id="store-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col">
+            <!-- Store chat messages injected here -->
+          </div>
+          
+          <div class="p-3 bg-white border-t border-gray-100 shrink-0 space-y-2">
+            <!-- Quick Replies -->
+            <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <button onclick="insertQuickReply('Olá! Em que posso ajudar?')" class="whitespace-nowrap bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-[10px] font-bold border border-orange-200 transition-colors">👋 Saudação</button>
+              <button onclick="insertQuickReply('Seu pedido já está quase pronto!')" class="whitespace-nowrap bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-[10px] font-bold border border-orange-200 transition-colors">⏳ Quase pronto</button>
+              <button onclick="insertQuickReply('O motoboy acabou de sair com o seu pedido.')" class="whitespace-nowrap bg-orange-50 hover:bg-orange-100 text-orange-700 px-3 py-1.5 rounded-full text-[10px] font-bold border border-orange-200 transition-colors">🛵 A caminho</button>
+            </div>
+            
+            <form onsubmit="sendStoreChatMessage(event)" class="flex items-center gap-2">
+              <input type="text" id="store-chat-input" placeholder="Responder ao cliente..." class="flex-1 bg-gray-100 border-none outline-none focus:ring-2 focus:ring-orange-500 rounded-xl px-4 py-3 text-xs" autocomplete="off">
+              <button type="submit" id="store-chat-send-btn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl font-bold text-xs shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
+                Enviar
+              </button>
+            </form>
           </div>
         </div>
 
@@ -1570,6 +1594,34 @@
             }
 
             renderVisualOrdersGrid();
+
+            // Refresh modal chat if open
+            if (currentOrderViewedId) {
+              const modal = document.getElementById("details-modal");
+              if (modal && !modal.classList.contains("hidden")) {
+                const order = globalOrdersList.find((o) => o.id === currentOrderViewedId);
+                if (order) {
+                  // Mark unread as read if on chat tab
+                  const contentChat = document.getElementById('modal-content-chat');
+                  if (order.hasUnreadCustomerMessage && !contentChat.classList.contains('hidden')) {
+                    try {
+                      const docRef = doc(db, COLLECTIONS.orders, order.id);
+                      updateDoc(docRef, { hasUnreadCustomerMessage: false });
+                    } catch(e) { console.error(e); }
+                  }
+                  
+                  // Update tab badge
+                  const chatBadge = document.getElementById('modal-tab-chat-badge');
+                  if (order.hasUnreadCustomerMessage && contentChat.classList.contains('hidden')) {
+                    chatBadge.classList.remove('hidden');
+                  } else {
+                    chatBadge.classList.add('hidden');
+                  }
+                  
+                  renderStoreChatMessages();
+                }
+              }
+            }
           },
           (err) => {
             console.error("Listening synchronization orders error: ", err);
@@ -1770,10 +1822,14 @@
 
         const btnFull = currentLayout === "list" ? "" : "flex-1";
 
+        const chatIndicator = order.hasUnreadCustomerMessage 
+          ? `<span class="bg-red-500 text-white rounded-full px-2 py-0.5 text-[9px] font-bold animate-pulse flex items-center gap-1"><span class="text-[10px]">💬</span> Nova Mensagem</span>` 
+          : '';
+
         card.innerHTML = `
         <div class="${headerLayout} cursor-pointer" onclick="showOrderDetailsDrawer('${order.id}')">
-          <div class="flex items-center justify-between sm:justify-start gap-3">
-            <h4 class="font-display font-bold text-sm text-gray-800">Pedido #${order.id}</h4>
+          <div class="flex items-center justify-between sm:justify-start gap-3 flex-wrap">
+            <h4 class="font-display font-bold text-sm text-gray-800 flex items-center gap-2">Pedido #${order.id} ${chatIndicator}</h4>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusColor}">${displayStatus}</span>
           </div>
           <p class="text-[11px] text-gray-400 font-medium">🕒 ${order.date} | 👤 ${order.customer.name}</p>
@@ -1988,6 +2044,7 @@
           }, 50);
           document.body.classList.add("overflow-hidden");
         } else {
+          currentOrderViewedId = null;
           box.classList.add("scale-95");
           setTimeout(() => {
             modal.classList.add("hidden");
@@ -1996,9 +2053,31 @@
         }
       };
 
+      let currentOrderViewedId = null;
+
       window.showOrderDetailsDrawer = function (orderId) {
+        currentOrderViewedId = orderId;
         const order = globalOrdersList.find((o) => o.id === orderId);
         if (!order) return;
+
+        // Reset to details tab
+        switchModalTab('details');
+
+        // Mark unread messages as read
+        if (order.hasUnreadCustomerMessage) {
+          try {
+            const docRef = doc(db, COLLECTIONS.orders, order.id);
+            updateDoc(docRef, { hasUnreadCustomerMessage: false });
+          } catch(e) { console.error("Error marking messages as read:", e); }
+        }
+
+        // Update Chat Badge on tab
+        const chatBadge = document.getElementById('modal-tab-chat-badge');
+        if (order.hasUnreadCustomerMessage) {
+          chatBadge.classList.remove('hidden');
+        } else {
+          chatBadge.classList.add('hidden');
+        }
 
         document.getElementById("modal-lbl-orderid").textContent =
           `Pedido #${order.id}`;
@@ -2810,6 +2889,128 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
 
       // Auto-detect load state
       setTimeout(applySidebarState, 100);
+
+      // Chat Functions
+      window.switchModalTab = function(tab) {
+        const tabDetailsBtn = document.getElementById('modal-tab-details');
+        const tabChatBtn = document.getElementById('modal-tab-chat');
+        const contentDetails = document.getElementById('modal-content-details');
+        const contentChat = document.getElementById('modal-content-chat');
+
+        if (tab === 'details') {
+          tabDetailsBtn.classList.replace('border-transparent', 'border-orange-500');
+          tabDetailsBtn.classList.replace('text-gray-400', 'text-orange-600');
+          tabDetailsBtn.classList.remove('hover:text-gray-600');
+          
+          tabChatBtn.classList.replace('border-orange-500', 'border-transparent');
+          tabChatBtn.classList.replace('text-orange-600', 'text-gray-400');
+          tabChatBtn.classList.add('hover:text-gray-600');
+          
+          contentDetails.classList.remove('hidden');
+          contentChat.classList.add('hidden');
+        } else {
+          tabChatBtn.classList.replace('border-transparent', 'border-orange-500');
+          tabChatBtn.classList.replace('text-gray-400', 'text-orange-600');
+          tabChatBtn.classList.remove('hover:text-gray-600');
+          
+          tabDetailsBtn.classList.replace('border-orange-500', 'border-transparent');
+          tabDetailsBtn.classList.replace('text-orange-600', 'text-gray-400');
+          tabDetailsBtn.classList.add('hover:text-gray-600');
+          
+          contentDetails.classList.add('hidden');
+          contentChat.classList.remove('hidden');
+          
+          renderStoreChatMessages();
+        }
+      }
+
+      window.renderStoreChatMessages = function() {
+        const container = document.getElementById('store-chat-messages');
+        if (!container || !currentOrderViewedId) return;
+        
+        const order = globalOrdersList.find((o) => o.id === currentOrderViewedId);
+        if (!order) return;
+        
+        const messages = order.chatMessages || [];
+        if (messages.length === 0) {
+          container.innerHTML = `<div class="flex-1 flex flex-col items-center justify-center text-gray-400 space-y-2 py-8">
+            <span class="text-3xl">💬</span>
+            <p class="text-xs">Inicie um chat com o cliente.</p>
+          </div>`;
+          return;
+        }
+        
+        container.innerHTML = messages.map(msg => {
+          const isStore = msg.sender === 'store';
+          const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+          
+          if (isStore) {
+            return `
+              <div class="flex flex-col items-end w-full">
+                <div class="bg-orange-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[85%] shadow-sm text-sm">
+                  ${msg.text}
+                </div>
+                <span class="text-[9px] text-gray-400 mt-1">${timeStr}</span>
+              </div>
+            `;
+          } else {
+            return `
+              <div class="flex flex-col items-start w-full">
+                <div class="bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[85%] shadow-sm text-sm">
+                  ${msg.text}
+                </div>
+                <span class="text-[9px] text-gray-400 mt-1">${timeStr}</span>
+              </div>
+            `;
+          }
+        }).join('');
+        
+        // Auto scroll to bottom
+        container.scrollTop = container.scrollHeight;
+      }
+
+      window.insertQuickReply = function(text) {
+        const input = document.getElementById('store-chat-input');
+        input.value = text;
+        input.focus();
+      }
+
+      window.sendStoreChatMessage = async function(e) {
+        e.preventDefault();
+        if (!currentOrderViewedId) return;
+        
+        const input = document.getElementById('store-chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+        
+        const btn = document.getElementById('store-chat-send-btn');
+        btn.disabled = true;
+        
+        try {
+          const newMessage = {
+            sender: 'store',
+            text: text,
+            timestamp: new Date().toISOString()
+          };
+          
+          const order = globalOrdersList.find((o) => o.id === currentOrderViewedId);
+          const docRef = doc(db, COLLECTIONS.orders, currentOrderViewedId);
+          const currentMessages = order.chatMessages || [];
+          
+          await updateDoc(docRef, {
+            chatMessages: [...currentMessages, newMessage],
+            hasUnreadStoreMessage: true
+          });
+          
+          input.value = '';
+        } catch (err) {
+          console.error("Error sending store message:", err);
+          alert("Erro ao enviar mensagem.");
+        } finally {
+          btn.disabled = false;
+          input.focus();
+        }
+      }
     </script>
   </body>
 </html>
