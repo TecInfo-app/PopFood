@@ -279,93 +279,136 @@
             </div>
           </div>
 
-          <!-- Quick Access settings toggles in the header area -->
-          <div
-            class="flex items-center gap-2 flex-wrap justify-center sm:justify-start"
-          >
-            <!-- Thermal Receipt Print -->
+          <!-- Settings Dropdown Menu -->
+          <div class="relative inline-block text-left" id="panel-settings-container">
             <button
-              onclick="toggleAutoPrint()"
-              id="btn-autoprint"
-              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+              id="panel-settings-toggle-btn"
+              onclick="toggleSettingsDropdown(event)"
+              class="bg-orange-500 hover:bg-orange-600 text-white text-[11px] sm:text-[11.5px] font-bold py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 hover:shadow-orange-500/10"
+              title="Configurações e Alertas do Painel"
             >
-              <span id="lbl-auto-indicator">🖨️ Impressão Auto: OFF</span>
+              <span>⚙️ Configurações do Painel</span>
+              <svg class="w-3.5 h-3.5 transition-transform duration-200" id="settings-caret-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
-            <!-- Desktop Notifications -->
-            <button
-              onclick="requestDesktopNotificationPermission()"
-              id="btn-desktop-notifications"
-              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
-              title="Ativar Alertas no Computador"
+
+            <!-- Dropdown list -->
+            <div
+              id="panel-settings-dropdown"
+              class="hidden absolute right-0 mt-2.5 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50 text-left space-y-4"
             >
-              <span id="lbl-notification-indicator"
-                >🔔 Notificações: Inativo</span
-              >
-            </button>
-            <!-- Sound selector for Pedidos -->
-            <div class="relative group" title="Som de Novos Pedidos">
-              <select
-                id="sound-selector"
-                onchange="changeNotificationSound(this.value)"
-                class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6"
-              >
-                <option value="default">🔔 Pedidos: Bell Padrão</option>
-                <option value="modern">🎵 Pedidos: Digital Sip</option>
-                <option value="urgent">📢 Pedidos: Alerta Urgente</option>
-                <option value="old_phone">☎️ Pedidos: Telefone Antigo</option>
-              </select>
-              <div
-                class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]"
-              >
-                ▼
+              <!-- Impressão Auto Toggle Button -->
+              <div class="flex items-center justify-between border-b border-gray-50 pb-3">
+                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  🖨️ Impressão Auto
+                </span>
+                <button
+                  onclick="toggleAutoPrint()"
+                  id="btn-autoprint"
+                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
+                >
+                  <span id="lbl-auto-indicator">🖨️ Impressão Auto: OFF</span>
+                </button>
+              </div>
+
+              <!-- Desktop Notifications Toggle Button -->
+              <div class="flex items-center justify-between border-b border-gray-50 pb-3">
+                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  🔔 Notificações
+                </span>
+                <button
+                  onclick="requestDesktopNotificationPermission()"
+                  id="btn-desktop-notifications"
+                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
+                  title="Ativar Alertas no Computador"
+                >
+                  <span id="lbl-notification-indicator">🔔 Notificações: Inativo</span>
+                </button>
+              </div>
+
+              <!-- Sound Selector for Pedidos -->
+              <div class="space-y-1">
+                <label class="block text-[10px] uppercase font-bold text-gray-400">📢 Som de Novos Pedidos</label>
+                <div class="relative">
+                  <select
+                    id="sound-selector"
+                    onchange="changeNotificationSound(this.value)"
+                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg transition-colors cursor-pointer outline-none border-none appearance-none pr-8"
+                  >
+                    <option value="default">🔔 Pedidos: Bell Padrão</option>
+                    <option value="modern">🎵 Pedidos: Digital Sip</option>
+                    <option value="urgent">📢 Pedidos: Alerta Urgente</option>
+                    <option value="old_phone">☎️ Pedidos: Telefone Antigo</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-[8px] text-gray-400">
+                    ▼
+                  </div>
+                </div>
+              </div>
+
+              <!-- Sound Selector for Messages -->
+              <div class="space-y-1 pb-1">
+                <label class="block text-[10px] uppercase font-bold text-gray-400">💬 Som de Novas Mensagens</label>
+                <div class="relative">
+                  <select
+                    id="message-sound-selector"
+                    onchange="changeMessageSound(this.value)"
+                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg transition-colors cursor-pointer outline-none border-none appearance-none pr-8"
+                  >
+                    <option value="msg_digital">💬 Msg: Digital Beep</option>
+                    <option value="msg_bell">💬 Msg: Sino Suave</option>
+                    <option value="msg_bubble">💬 Msg: Bolha Pop</option>
+                    <option value="msg_chime">💬 Msg: Chime Chord</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-[8px] text-gray-400">
+                    ▼
+                  </div>
+                </div>
+              </div>
+
+              <!-- Continuous Buzzer Toggle Button -->
+              <div class="flex items-center justify-between border-t border-b border-gray-50 py-3">
+                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  🚨 Alerta Contínuo
+                </span>
+                <button
+                  onclick="toggleContinuousBuzzer()"
+                  id="btn-continuous-buzzer"
+                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Repetir som a cada 10 segundos para novos pedidos pendentes"
+                >
+                  <span id="lbl-continuous-buzzer">🚨 Campainha: ON</span>
+                </button>
+              </div>
+
+              <!-- Auto Accept Toggle Button -->
+              <div class="flex items-center justify-between border-b border-gray-50 pb-3">
+                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  ⚡ Auto-Aceitar
+                </span>
+                <button
+                  onclick="toggleAutoAccept()"
+                  id="btn-auto-accept"
+                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Aceitar novos pedidos de forma automática"
+                >
+                  <span id="lbl-auto-accept">⚡ Auto-Aceitar: OFF</span>
+                </button>
+              </div>
+
+              <!-- Printer Config -->
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-xs font-semibold text-gray-700">🖨️ Configuração Térmica</span>
+                <button
+                  onclick="togglePrinterSettingsModal(true); toggleSettingsDropdown(event)"
+                  class="bg-orange-50 hover:bg-orange-100 text-orange-600 text-[11px] font-bold py-1.5 px-3.5 rounded-lg transition-colors cursor-pointer"
+                  title="Configurar Impressora Local"
+                >
+                  Configurar ⚙️
+                </button>
               </div>
             </div>
-
-            <!-- Sound selector for Mensagens -->
-            <div class="relative group" title="Som de Novas Mensagens">
-              <select
-                id="message-sound-selector"
-                onchange="changeMessageSound(this.value)"
-                class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6"
-              >
-                <option value="msg_digital">💬 Msg: Digital Beep</option>
-                <option value="msg_bell">💬 Msg: Sino Suave</option>
-                <option value="msg_bubble">💬 Msg: Bolha Pop</option>
-                <option value="msg_chime">💬 Msg: Chime Chord</option>
-              </select>
-              <div
-                class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]"
-              >
-                ▼
-              </div>
-            </div>
-
-            <!-- Continuous Buzzer -->
-            <button
-              onclick="toggleContinuousBuzzer()"
-              id="btn-continuous-buzzer"
-              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
-              title="Repetir som a cada 10 segundos para novos pedidos pendentes"
-            >
-              <span id="lbl-continuous-buzzer">🚨 Campainha: ON</span>
-            </button>
-            <!-- Auto Accept -->
-            <button
-              onclick="toggleAutoAccept()"
-              id="btn-auto-accept"
-              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
-              title="Aceitar novos pedidos de forma automática"
-            >
-              <span id="lbl-auto-accept">⚡ Auto-Aceitar: OFF</span>
-            </button>
-            <!-- Printer Settings -->
-            <button
-              onclick="togglePrinterSettingsModal(true)"
-              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer"
-              title="Configurar Impressora Local"
-            >
-              ⚙️
-            </button>
           </div>
         </header>
 
@@ -1259,6 +1302,33 @@
           modal.classList.add("hidden");
         }
       };
+
+      // Settings dropdown toggle & click outside logic
+      window.toggleSettingsDropdown = function (event) {
+        if (event) event.stopPropagation();
+        const menu = document.getElementById("panel-settings-dropdown");
+        const caret = document.getElementById("settings-caret-icon");
+        if (menu) {
+          const isHidden = menu.classList.contains("hidden");
+          if (isHidden) {
+            menu.classList.remove("hidden");
+            if (caret) caret.classList.add("rotate-180");
+          } else {
+            menu.classList.add("hidden");
+            if (caret) caret.classList.remove("rotate-180");
+          }
+        }
+      };
+
+      document.addEventListener("click", function (event) {
+        const container = document.getElementById("panel-settings-container");
+        const menu = document.getElementById("panel-settings-dropdown");
+        const caret = document.getElementById("settings-caret-icon");
+        if (container && menu && !container.contains(event.target)) {
+          menu.classList.add("hidden");
+          if (caret) caret.classList.remove("rotate-180");
+        }
+      });
 
       function renderPrintersList() {
         const container = document.getElementById("printers-list-container");
