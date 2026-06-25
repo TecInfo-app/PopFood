@@ -3002,9 +3002,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           await updateDoc(docRef, { aiChatEnabled: isEnabled });
           
           if (!isEnabled) {
-            showToast("Robô de IA desativado. Responda manualmente.");
+            alert("Robô de IA desativado. Responda manualmente.");
           } else {
-            showToast("Robô de IA ativado para este pedido.");
+            alert("Robô de IA ativado para este pedido.");
           }
         } catch (err) {
           console.error("Error toggling AI chat:", err);
