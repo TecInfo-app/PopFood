@@ -864,15 +864,20 @@
           position: absolute;
           left: 0;
           top: 0;
-          width: min-content !important;
+          width: 100% !important;
+          max-width: 100% !important;
           background: white !important;
           color: black !important;
-          font-family:
-            system-ui,
-            -apple-system,
-            sans-serif !important;
+          font-family: monospace, "Courier New", Courier, monospace-bold !important;
           padding: 0 !important;
           margin: 0 !important;
+        }
+        #receipt-print-layout pre,
+        #receipt-print-layout code,
+        #receipt-print-layout div {
+          font-family: monospace, "Courier New", Courier, monospace-bold !important;
+          white-space: pre !important;
+          word-break: break-all !important;
         }
       }
     </style>
@@ -1228,6 +1233,15 @@
               : "";
           document.getElementById("printer-server-url").value = lastUrl;
           if (lastUrl) fetchPrinters(false);
+
+          // Handle default printer width fallback persistence
+          const widthSel = document.getElementById("printer-width");
+          if (widthSel) {
+            widthSel.value = localStorage.getItem("popfood_default_print_width") || "58";
+            widthSel.addEventListener("change", function() {
+              localStorage.setItem("popfood_default_print_width", this.value);
+            });
+          }
 
           // Load restaurant settings realtime
           try {
@@ -2786,12 +2800,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
 
         // Configure text print width
-        let printWidth = "58";
+        let printWidth = localStorage.getItem("popfood_default_print_width") || "58";
         if (typeof localPrinters !== "undefined" && localPrinters.length > 0) {
           const activePrinter = localPrinters.find((p) => p.active !== false);
           if (activePrinter) printWidth = activePrinter.width;
         }
-        const cols = printWidth === "58" ? 30 : 44;
+        const cols = printWidth === "58" ? 32 : 48;
 
         function formatLine(leftText, rightText) {
           let spaceCount = Math.max(
@@ -2806,15 +2820,28 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
         }
 
+        function makeDivider(char) {
+          return char.repeat(cols) + "\n";
+        }
+
+        function centerText(text) {
+          text = text.trim();
+          if (text.length >= cols) {
+            return text.substring(0, cols) + "\n";
+          }
+          const leftPadding = Math.floor((cols - text.length) / 2);
+          return " ".repeat(leftPadding) + text + "\n";
+        }
+
         let textReceipt = "";
-        textReceipt += `================================\n`;
-        textReceipt += `          ${storeName.toUpperCase()}\n`;
-        if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
-        if (storeAddress) textReceipt += `${storeAddress}\n`;
-        textReceipt += `================================\n`;
+        textReceipt += makeDivider("=");
+        textReceipt += centerText(storeName.toUpperCase());
+        if (storePhone) textReceipt += centerText(`FONE: ${storePhone}`);
+        if (storeAddress) textReceipt += centerText(storeAddress);
+        textReceipt += makeDivider("=");
         textReceipt += `PEDIDO: #${order.id.slice(-6).toUpperCase()}\n`;
         textReceipt += `DATA: ${orderDate}\n`;
-        textReceipt += `================================\n`;
+        textReceipt += makeDivider("=");
         if (order.customer) {
           textReceipt += `CLIENTE: ${order.customer.name.toUpperCase()}\n`;
           textReceipt += `FONE: ${order.customer.phone}\n`;
@@ -2827,7 +2854,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             textReceipt += `REF: ${order.customer.reference.toUpperCase()}\n`;
           if (order.customer.cep) textReceipt += `CEP: ${order.customer.cep}\n`;
         }
-        textReceipt += `--------------------------------\n`;
+        textReceipt += makeDivider("-");
         textReceipt += `ITENS DO PEDIDO:\n`;
 
         order.items.forEach((item) => {
@@ -2902,7 +2929,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           }
         });
 
-        textReceipt += `--------------------------------\n`;
+        textReceipt += makeDivider("-");
         textReceipt += formatLine(
           `subtotal`,
           `R$ ${(order.subtotal || 0).toFixed(2).replace(".", ",")}`,
@@ -2924,7 +2951,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           `R$ ${(order.total || 0).toFixed(2).replace(".", ",")}`,
         );
 
-        textReceipt += `================================\n`;
+        textReceipt += makeDivider("=");
         // Montar label correto da forma de pagamento
         let paymentLabel = order.paymentMethod
           ? order.paymentMethod.toUpperCase()
@@ -2949,15 +2976,16 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         if (order.paymentMethod === "Dinheiro" && order.troco) {
           textReceipt += `${order.troco.toUpperCase()}\n`;
         }
-        textReceipt += `================================\n`;
-        textReceipt += `Obrigado pela preferência!\n`;
-        textReceipt += `Powered by PopFood Delivery\n`;
+        textReceipt += makeDivider("=");
+        textReceipt += centerText("Obrigado pela preferência!");
+        textReceipt += centerText("Powered by PopFood Delivery");
 
         // Inject identical <pre> formatted HTML
         const fontSize = printWidth === "58" ? "12px" : "14px";
+        const maxContainerWidth = printWidth === "58" ? "280px" : "420px";
         parent.innerHTML = `
-        <div style="width: 100%; overflow-x: auto; background: white; color: black; font-family: monospace;">
-          <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0; background: white; white-space: pre-wrap;">${textReceipt}</pre>
+        <div style="width: 100%; max-width: ${maxContainerWidth}; overflow-x: auto; background: white; color: black; font-family: monospace, Courier, sans-serif; margin: 0 auto; padding: 0;">
+          <pre style="font-family: monospace, Courier, 'Courier New' !important; font-size: ${fontSize}; font-weight: bold; padding: 10px; margin: 0; background: white; white-space: pre !important; word-wrap: break-word; color: black;">${textReceipt}</pre>
         </div>
       `;
 
