@@ -2833,159 +2833,319 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return " ".repeat(leftPadding) + text + "\n";
         }
 
+        // 1. Calculations & Dynamic Formatting Variables
+        const shortId = order.sequence || order.number || order.id.slice(-4).toUpperCase();
+        
+        let estimatedTimeStr = "";
+        if (order.estimatedDeliveryTime || order.estimatedTime) {
+          estimatedTimeStr = order.estimatedDeliveryTime || order.estimatedTime;
+        } else {
+          let baseDate = new Date();
+          if (order.createdAt) {
+            if (typeof order.createdAt === "object" && typeof order.createdAt.seconds === "number") {
+              baseDate = new Date(order.createdAt.seconds * 1000);
+            } else {
+              const checkD = new Date(order.createdAt);
+              if (!isNaN(checkD.getTime())) baseDate = checkD;
+            }
+          }
+          const addMinutes = order.customer && order.customer.type === "pickup" ? 15 : 45;
+          const estDate = new Date(baseDate.getTime() + addMinutes * 60000);
+          estimatedTimeStr = estDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        const isPickup = order.customer && order.customer.type === "pickup";
+        const predictionLabel = isPickup ? "Retirada prevista:" : "Entrega prevista:";
+
+        // Payment status & modes calculation
+        const isOnlinePaid = order.paymentProvider === "abacatepay" || order.isPaid || false;
+        const paymentStatusLabel = isOnlinePaid ? "Pagamento realizado" : "Pagamento na entrega";
+        
+        let paymentLabel = order.paymentMethod ? order.paymentMethod.toUpperCase() : "N/A";
+        if (isOnlinePaid) {
+          if (order.paymentMethod === "PixOnline" || order.paymentMethod === "Pix Imediato" || order.paymentMethod === "Pix") {
+            paymentLabel = "ONLINE - PIX - PIX";
+          } else if (order.paymentMethod === "Online" || order.paymentMethod === "Cartão de Crédito" || order.paymentMethod === "CartaoOnline") {
+            paymentLabel = "ONLINE - CARTÃO DE CRÉDITO";
+          } else {
+            paymentLabel = `ONLINE - ${paymentLabel}`;
+          }
+        } else {
+          if (order.paymentMethod === "Pix" || order.paymentMethod === "Pix no ato") {
+            paymentLabel = "MAQUININHA - PIX";
+          } else if (order.paymentMethod === "Cartão" || order.paymentMethod === "Cartao") {
+            paymentLabel = "MAQUININHA - CARTÃO";
+          } else if (order.paymentMethod === "Dinheiro") {
+            paymentLabel = "DINHEIRO EM MÃOS";
+          } else {
+            paymentLabel = `COBRAR - ${paymentLabel}`;
+          }
+        }
+
+        const deliveryFee = order.deliveryFee || 0;
+        const subtotal = order.subtotal || 0;
+        const discount = order.desconto || 0;
+        const total = order.total || 0;
+        const toCollect = isOnlinePaid ? 0 : total;
+
+        // 2. Generate RAW Plain Text Version for classic text printers
         let textReceipt = "";
-        textReceipt += makeDivider("=");
+        textReceipt += centerText((order.source || order.canal || order.channel || "POPFOOD SITE").toUpperCase());
         textReceipt += centerText(storeName.toUpperCase());
-        if (storePhone) textReceipt += centerText(`FONE: ${storePhone}`);
-        if (storeAddress) textReceipt += centerText(storeAddress);
-        textReceipt += makeDivider("=");
-        textReceipt += `PEDIDO: #${order.id.slice(-6).toUpperCase()}\n`;
-        textReceipt += `DATA: ${orderDate}\n`;
-        textReceipt += makeDivider("=");
-        if (order.customer) {
-          textReceipt += `CLIENTE: ${order.customer.name.toUpperCase()}\n`;
-          textReceipt += `FONE: ${order.customer.phone}\n`;
-          textReceipt += `ENTREGA: ${order.customer.type === "pickup" ? "RETIRADA NO LOCAL" : "DELIVERY"}\n`;
-          if (order.customer.address)
-            textReceipt += `ENDERECO: ${order.customer.address.toUpperCase()}\n`;
-          if (order.customer.complement)
-            textReceipt += `COMP: ${order.customer.complement.toUpperCase()}\n`;
-          if (order.customer.reference)
-            textReceipt += `REF: ${order.customer.reference.toUpperCase()}\n`;
-          if (order.customer.cep) textReceipt += `CEP: ${order.customer.cep}\n`;
+        textReceipt += centerText("EXPEDICAO");
+        textReceipt += makeDivider("-");
+        textReceipt += centerText(shortId);
+        textReceipt += makeDivider("-");
+        textReceipt += `CODIGO DE COLETA: INDISPONIVEL\n`;
+        textReceipt += makeDivider("-");
+        textReceipt += `Data: ${orderDate}\n`;
+        textReceipt += `${predictionLabel.toUpperCase()} ${estimatedTimeStr}\n`;
+        textReceipt += `Localizador: ${order.id.slice(-8).toUpperCase()}\n`;
+        if (order.isFirstOrder || order.customer?.isFirstOrder) {
+          textReceipt += `Primeiro pedido!\n`;
+        }
+        
+        textReceipt += `\n${order.customer ? order.customer.name.toUpperCase() : "NOME NÃO DEFINIDO"}\n`;
+        textReceipt += `${order.customer ? order.customer.phone : "SEM WHATSAPP"} ${order.customer?.id ? `ID: ${order.customer.id}` : ""}\n`;
+        if (order.customer && order.customer.type !== "pickup" && order.customer.address) {
+          textReceipt += `END: ${order.customer.address.toUpperCase()}\n`;
+          if (order.customer.complement) textReceipt += `COMP: ${order.customer.complement.toUpperCase()}\n`;
+        } else {
+          textReceipt += `*** RETIRADA NO LOCAL ***\n`;
         }
         textReceipt += makeDivider("-");
-        textReceipt += `ITENS DO PEDIDO:\n`;
-
+        textReceipt += `ITENS DO PEDIDO (${order.items.length})\n`;
+        
         order.items.forEach((item) => {
-          const itemVal = item.price || 0;
-          const lineTotal = (item.totalItemPrice || 0) * item.quantity;
-          const lineTotalStr = lineTotal.toFixed(2).replace(".", ",");
-
-          textReceipt += formatLine(
-            `${item.quantity}x ${item.name.toUpperCase()}`,
-            `R$ ${lineTotalStr}`,
-          );
-
+          const qty = item.quantity || 1;
+          const name = item.name.toUpperCase();
+          const itemTotal = (item.totalItemPrice || item.price || 0) * qty;
+          const itemTotalStr = `R$ ${itemTotal.toFixed(2).replace(".", ",")}`;
+          
+          textReceipt += formatLine(`${qty}x ${name}`, itemTotalStr);
+          
           if (item.complements && item.complements.length > 0) {
-            const groupedComps = {};
             item.complements.forEach((c) => {
-              const currentGroup = (
-                c.groupName ||
-                c.group ||
-                c.grupo ||
-                c.group_name ||
-                c.category ||
-                c.gname ||
-                c.nomeGrupo ||
-                ""
-              )
-                .toUpperCase()
-                .trim();
-
-              if (!groupedComps[currentGroup]) {
-                groupedComps[currentGroup] = [];
-              }
-              groupedComps[currentGroup].push(c);
-            });
-
-            const groupKeys = Object.keys(groupedComps);
-            groupKeys.forEach((groupKey, index) => {
-              if (groupKey !== "") {
-                textReceipt += `${groupKey}\n`;
-              }
-
-              groupedComps[groupKey].forEach((c) => {
-                const compPrice = c.price || 0;
-                const optionLabel = (
-                  c.optionName ||
-                  c.option ||
-                  c.opcao ||
-                  c.name ||
-                  ""
-                )
-                  .toUpperCase()
-                  .trim();
-
-                const priceDisplay =
-                  compPrice > 0
-                    ? `R$ ${compPrice.toFixed(2).replace(".", ",")}`
-                    : "";
-
-                if (priceDisplay) {
-                  textReceipt += formatLine(`+1 ${optionLabel}`, priceDisplay);
-                } else {
-                  textReceipt += `+1 ${optionLabel}\n`;
-                }
-              });
-
-              if (index < groupKeys.length - 1) {
-                textReceipt += `\n`;
-              }
+              const compQty = c.quantity || 1;
+              const compName = (c.optionName || c.option || c.opcao || c.name || "").toUpperCase().trim();
+              const compPrice = c.price || 0;
+              const compTotal = compPrice * qty * compQty;
+              const compPriceStr = compPrice > 0 ? `R$ ${compTotal.toFixed(2).replace(".", ",")}` : "";
+              textReceipt += formatLine(`   ${compQty} ${compName}`, compPriceStr);
             });
           }
           if (item.notes) {
-            textReceipt += `Obs: ${item.notes}\n`;
+            textReceipt += `   Obs: ${item.notes.toUpperCase()}\n`;
+          }
+        });
+        
+        textReceipt += makeDivider("-");
+        textReceipt += centerText(`* ${paymentStatusLabel.toUpperCase()} *`);
+        textReceipt += centerText(paymentLabel);
+        textReceipt += makeDivider("-");
+        
+        textReceipt += formatLine("Valor total do pedido:", `R$ ${subtotal.toFixed(2).replace(".", ",")}`);
+        textReceipt += formatLine("Taxa de entrega:", `R$ ${deliveryFee.toFixed(2).replace(".", ",")}`);
+        if (discount > 0) {
+          textReceipt += formatLine("Desconto / Incentivos:", `-R$ ${discount.toFixed(2).replace(".", ",")}`);
+        }
+        textReceipt += formatLine("Valor final do pedido:", `R$ ${total.toFixed(2).replace(".", ",")}`);
+        textReceipt += makeDivider("-");
+        textReceipt += formatLine("Cobrar do cliente:", `R$ ${toCollect.toFixed(2).replace(".", ",")}`);
+        textReceipt += makeDivider("-");
+        textReceipt += `CPF na nota: ${order.cpf || order.customer?.cpf || "NÃO INFORMADO"}\n`;
+        textReceipt += makeDivider("-");
+        textReceipt += centerText("Obrigado pela preferência!");
+        textReceipt += centerText("PopFood Gestor Web v1.0");
+
+        // 3. Generate High-Fidelity Responsive HTML Version
+        const fontStack = "'Courier New', Courier, monospace";
+        const widthPx = printWidth === "58" ? "260px" : "380px";
+        const bodyFontSize = printWidth === "58" ? "11px" : "13px";
+        const headerFontSize = printWidth === "58" ? "12px" : "14px";
+        const titleFontSize = printWidth === "58" ? "16px" : "18px";
+        const orderFontSize = printWidth === "58" ? "36px" : "44px";
+        const collectFontSize = printWidth === "58" ? "14px" : "16px";
+        
+        let htmlItems = "";
+        order.items.forEach((item) => {
+          const qty = item.quantity || 1;
+          const name = item.name.toUpperCase();
+          const itemTotal = (item.totalItemPrice || item.price || 0) * qty;
+          const itemTotalStr = `R$ ${itemTotal.toFixed(2).replace(".", ",")}`;
+          
+          htmlItems += `
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${bodyFontSize}; margin-top: 6px; line-height: 1.2;">
+              <span style="flex-grow: 1; text-align: left;">${qty}x ${name}</span>
+              <span style="flex-shrink: 0; text-align: right; margin-left: 8px;">${itemTotalStr}</span>
+            </div>
+          `;
+          
+          if (item.complements && item.complements.length > 0) {
+            item.complements.forEach((c) => {
+              const compQty = c.quantity || 1;
+              const compName = (c.optionName || c.option || c.opcao || c.name || "").toUpperCase().trim();
+              const compPrice = c.price || 0;
+              const compTotal = compPrice * qty * compQty;
+              const compPriceStr = compPrice > 0 ? `R$ ${compTotal.toFixed(2).replace(".", ",")}` : "";
+              
+              htmlItems += `
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: ${bodyFontSize}; color: #333; padding-left: 14px; margin-top: 2px;">
+                  <span style="flex-grow: 1; text-align: left;">&nbsp;&nbsp;${compQty} ${compName}</span>
+                  <span style="flex-shrink: 0; text-align: right; margin-left: 8px;">${compPriceStr}</span>
+                </div>
+              `;
+            });
+          }
+          
+          if (item.notes) {
+            htmlItems += `
+              <div style="font-size: ${bodyFontSize}; font-weight: normal; font-style: italic; color: #555; padding-left: 14px; margin-top: 2px;">
+                &nbsp;&nbsp;OBS: ${item.notes.toUpperCase()}
+              </div>
+            `;
           }
         });
 
-        textReceipt += makeDivider("-");
-        textReceipt += formatLine(
-          `subtotal`,
-          `R$ ${(order.subtotal || 0).toFixed(2).replace(".", ",")}`,
-        );
+        const discountRowHtml = discount > 0 
+          ? `
+            <div style="display: flex; justify-content: space-between; font-size: ${bodyFontSize}; margin-top: 3px;">
+              <span>Incentivos / Descontos:</span>
+              <span>-R$ ${discount.toFixed(2).replace(".", ",")}</span>
+            </div>
+          `
+          : "";
 
-        if (order.desconto) {
-          textReceipt += formatLine(
-            `desconto`,
-            `- R$ ${order.desconto.toFixed(2).replace(".", ",")}`,
-          );
-        }
-
-        textReceipt += formatLine(
-          `taxa de entrega`,
-          `R$ ${(order.deliveryFee || 0).toFixed(2).replace(".", ",")}`,
-        );
-        textReceipt += formatLine(
-          `total`,
-          `R$ ${(order.total || 0).toFixed(2).replace(".", ",")}`,
-        );
-
-        textReceipt += makeDivider("=");
-        // Montar label correto da forma de pagamento
-        let paymentLabel = order.paymentMethod
-          ? order.paymentMethod.toUpperCase()
-          : "N/A";
-        if (order.paymentProvider === "abacatepay" || order.isPaid) {
-          if (
-            order.paymentMethod === "PixOnline" ||
-            order.paymentMethod === "Pix Imediato"
-          ) {
-            paymentLabel = "PIX ONLINE (PAGO)";
-          } else if (
-            order.paymentMethod === "Online" ||
-            order.paymentMethod === "Cartão de Crédito" ||
-            order.paymentMethod === "CartaoOnline"
-          ) {
-            paymentLabel = "CARTÃO ONLINE (PAGO)";
-          } else if (order.isPaid) {
-            paymentLabel = `${paymentLabel} - PAGO ONLINE`;
-          }
-        }
-        textReceipt += `PAGAMENTO: ${paymentLabel}\n`;
-        if (order.paymentMethod === "Dinheiro" && order.troco) {
-          textReceipt += `${order.troco.toUpperCase()}\n`;
-        }
-        textReceipt += makeDivider("=");
-        textReceipt += centerText("Obrigado pela preferência!");
-        textReceipt += centerText("Powered by PopFood Delivery");
-
-        // Inject identical <pre> formatted HTML
-        const fontSize = printWidth === "58" ? "12px" : "14px";
-        const maxContainerWidth = printWidth === "58" ? "280px" : "420px";
         parent.innerHTML = `
-        <div style="width: 100%; max-width: ${maxContainerWidth}; overflow-x: auto; background: white; color: black; font-family: monospace, Courier, sans-serif; margin: 0 auto; padding: 0;">
-          <pre style="font-family: monospace, Courier, 'Courier New' !important; font-size: ${fontSize}; font-weight: bold; padding: 10px; margin: 0; background: white; white-space: pre !important; word-wrap: break-word; color: black;">${textReceipt}</pre>
+        <div style="width: 100%; max-width: ${widthPx}; background: white; color: black; font-family: ${fontStack}; margin: 0 auto; padding: 10px; box-sizing: border-box; text-align: left; font-weight: bold;">
+          <!-- SYSTEM/STORE SOURCE HEADER -->
+          <div style="text-align: center; font-size: ${headerFontSize}; margin-bottom: 2px; font-weight: normal; letter-spacing: 1px;">
+            ${(order.source || order.canal || order.channel || "POPFOOD SITE").toUpperCase()}
+          </div>
+          <div style="text-align: center; font-size: ${titleFontSize}; font-weight: 900; margin-bottom: 2px; line-height: 1.1;">
+            ${storeName.toUpperCase()}
+          </div>
+          <div style="text-align: center; font-size: ${headerFontSize}; font-weight: bold; letter-spacing: 2px; margin-bottom: 6px;">
+            EXPEDICAO
+          </div>
+          
+          <!-- dashed separator -->
+          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
+          
+          <!-- GIGANTIC HIGH-CONTRAST ORDER BLOCK -->
+          <div style="background: black; color: white; text-align: center; font-size: ${orderFontSize}; font-weight: 900; padding: 12px 0; margin: 6px 0; font-family: ${fontStack}; line-height: 1; letter-spacing: 1px;">
+            ${shortId}
+          </div>
+          
+          <div style="text-align: center; font-size: ${bodyFontSize}; font-weight: bold; margin: 4px 0;">
+            CODIGO DE COLETA: INDISPONIVEL
+          </div>
+          
+          <!-- dashed separator -->
+          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
+          
+          <!-- TIME & ESTIMATES -->
+          <div style="font-size: ${bodyFontSize}; line-height: 1.3;">
+            Data: ${orderDate}
+          </div>
+          <div style="background: black; color: white; padding: 4px; text-align: center; font-size: ${bodyFontSize}; font-weight: 900; margin: 6px 0; letter-spacing: 0.5px;">
+            ${predictionLabel.toUpperCase()} ${estimatedTimeStr}
+          </div>
+          
+          <div style="font-size: ${bodyFontSize}; line-height: 1.3;">
+            Localizador: ${order.id.slice(-8).toUpperCase()}
+          </div>
+          ${order.isFirstOrder || order.customer?.isFirstOrder 
+            ? `<div style="font-size: ${bodyFontSize}; font-weight: 900; background: #eee; padding: 2px 4px; display: inline-block; margin-top: 2px;">PRIMEIRO PEDIDO!</div>` 
+            : ""
+          }
+          
+          <!-- CUSTOMER -->
+          <div style="font-size: ${headerFontSize}; font-weight: 900; margin-top: 8px;">
+            ${order.customer ? order.customer.name.toUpperCase() : "NOME NÃO DEFINIDO"}
+          </div>
+          <div style="font-size: ${bodyFontSize}; font-weight: bold; margin-top: 2px;">
+            ${order.customer ? order.customer.phone : "SEM WHATSAPP"} ${order.customer?.id ? `ID: ${order.customer.id}` : ""}
+          </div>
+          
+          <!-- ADDRESS FOR DELIVERY -->
+          ${order.customer && order.customer.type !== "pickup" && order.customer.address 
+            ? `
+              <div style="font-size: ${bodyFontSize}; font-weight: bold; margin-top: 4px; border: 1px solid black; padding: 4px; line-height: 1.2;">
+                ENDEREÇO: ${order.customer.address.toUpperCase()}
+                ${order.customer.complement ? `<br>COMP: ${order.customer.complement.toUpperCase()}` : ""}
+                ${order.customer.reference ? `<br>REF: ${order.customer.reference.toUpperCase()}` : ""}
+                ${order.customer.cep ? `<br>CEP: ${order.customer.cep}` : ""}
+              </div>
+            `
+            : `
+              <div style="font-size: ${bodyFontSize}; font-weight: 900; margin-top: 4px; border: 1px solid black; padding: 4px; text-align: center;">
+                RETIRADA NO LOCAL
+              </div>
+            `
+          }
+          
+          <!-- dashed separator -->
+          <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
+          
+          <!-- ITEMS -->
+          <div style="font-size: ${headerFontSize}; font-weight: bold; margin-bottom: 4px;">
+            ITENS DO PEDIDO (${order.items.length})
+          </div>
+          ${htmlItems}
+          
+          <!-- dashed separator -->
+          <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
+          
+          <!-- PAYMENT STATUS BANNER -->
+          <div style="text-align: center; font-size: ${bodyFontSize}; font-weight: 900; line-height: 1.3; margin: 6px 0;">
+            * ${paymentStatusLabel.toUpperCase()} *<br>
+            <span style="font-size: ${headerFontSize};">${paymentLabel}</span>
+          </div>
+          
+          <!-- dashed separator -->
+          <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
+          
+          <!-- TOTALS -->
+          <div style="display: flex; justify-content: space-between; font-size: ${bodyFontSize}; margin-top: 3px;">
+            <span>Valor total do pedido:</span>
+            <span>R$ ${subtotal.toFixed(2).replace(".", ",")}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: ${bodyFontSize}; margin-top: 3px;">
+            <span>Taxa de entrega:</span>
+            <span>R$ ${deliveryFee.toFixed(2).replace(".", ",")}</span>
+          </div>
+          ${discountRowHtml}
+          <div style="display: flex; justify-content: space-between; font-size: ${bodyFontSize}; font-weight: bold; margin-top: 3px;">
+            <span>Valor final do pedido:</span>
+            <span>R$ ${total.toFixed(2).replace(".", ",")}</span>
+          </div>
+          
+          <!-- dashed separator -->
+          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
+          
+          <!-- COBRAR DO CLIENTE (CRITICAL HIGHLIGHT) -->
+          <div style="display: flex; justify-content: space-between; font-size: ${collectFontSize}; font-weight: 900; border: 1.5px solid black; padding: 6px; margin: 8px 0; background: #eee;">
+            <span>COBRAR DO CLIENTE:</span>
+            <span>R$ ${toCollect.toFixed(2).replace(".", ",")}</span>
+          </div>
+          
+          <!-- dashed separator -->
+          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
+          
+          <div style="font-size: ${bodyFontSize}; text-align: center; margin: 4px 0;">
+            CPF na nota: ${order.cpf || order.customer?.cpf || "NÃO INFORMADO"}
+          </div>
+          
+          <!-- dashed separator -->
+          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
+          
+          <div style="text-align: center; font-size: ${bodyFontSize}; margin-top: 6px; font-weight: normal;">
+            Obrigado pela preferência!
+          </div>
+          <div style="text-align: center; font-size: 9px; margin-top: 2px; font-weight: normal; color: #555;">
+            PopFood Gestor Web v1.0 - Desktop 8.10.0
+          </div>
         </div>
       `;
 
