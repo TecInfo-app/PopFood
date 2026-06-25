@@ -712,6 +712,21 @@
 
         <!-- Chat segment details -->
         <div id="modal-content-chat" class="hidden overflow-hidden flex flex-col h-[50vh]">
+          <!-- AI Toggle Header -->
+          <div class="bg-indigo-50 border-b border-indigo-100 p-3 flex items-center justify-between shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="text-indigo-600 text-lg">🤖</span>
+              <div>
+                <p class="text-xs font-bold text-indigo-900">Resposta Automática (IA)</p>
+                <p class="text-[9px] text-indigo-700">A IA responderá os clientes automaticamente.</p>
+              </div>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="ai-chat-toggle" class="sr-only peer" onchange="toggleAiChat()">
+              <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-500"></div>
+            </label>
+          </div>
+          
           <div id="store-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col">
             <!-- Store chat messages injected here -->
           </div>
@@ -2931,6 +2946,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         const order = globalOrdersList.find((o) => o.id === currentOrderViewedId);
         if (!order) return;
         
+        // Initialize AI Toggle state
+        const aiToggle = document.getElementById('ai-chat-toggle');
+        if (aiToggle) {
+          aiToggle.checked = order.aiChatEnabled !== false; // defaults to true
+        }
+        
         const messages = order.chatMessages || [];
         if (messages.length === 0) {
           container.innerHTML = `<div class="flex-1 flex flex-col items-center justify-center text-gray-400 space-y-2 py-8">
@@ -2970,6 +2991,27 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
       }
 
       window.renderStoreChatMessages = renderStoreChatMessages;
+
+      window.toggleAiChat = async function() {
+        if (!currentOrderViewedId) return;
+        const aiToggle = document.getElementById('ai-chat-toggle');
+        const isEnabled = aiToggle.checked;
+        
+        try {
+          const docRef = doc(db, COLLECTIONS.orders, currentOrderViewedId);
+          await updateDoc(docRef, { aiChatEnabled: isEnabled });
+          
+          if (!isEnabled) {
+            showToast("Robô de IA desativado. Responda manualmente.");
+          } else {
+            showToast("Robô de IA ativado para este pedido.");
+          }
+        } catch (err) {
+          console.error("Error toggling AI chat:", err);
+          aiToggle.checked = !isEnabled; // revert
+          alert("Erro ao alterar status da IA.");
+        }
+      };
 
       window.insertQuickReply = function(text) {
         const input = document.getElementById('store-chat-input');

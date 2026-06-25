@@ -1141,6 +1141,14 @@
         });
         
         input.value = '';
+
+        // Trigger AI Bot in background
+        fetch('/api/chat-bot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: currentTrackOrder.id })
+        }).catch(err => console.error("Error triggering AI bot:", err));
+
       } catch (err) {
         console.error("Error sending message:", err);
         alert("Erro ao enviar mensagem.");
