@@ -302,17 +302,36 @@
                 >🔔 Notificações: Inativo</span
               >
             </button>
-            <!-- Sound selector -->
-            <div class="relative group">
+            <!-- Sound selector for Pedidos -->
+            <div class="relative group" title="Som de Novos Pedidos">
               <select
                 id="sound-selector"
                 onchange="changeNotificationSound(this.value)"
                 class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6"
               >
-                <option value="default">🔔 Bell Padrão</option>
-                <option value="modern">🎵 Digital Sip</option>
-                <option value="urgent">📢 Alerta Urgente</option>
-                <option value="old_phone">☎️ Telefone Antigo</option>
+                <option value="default">🔔 Pedidos: Bell Padrão</option>
+                <option value="modern">🎵 Pedidos: Digital Sip</option>
+                <option value="urgent">📢 Pedidos: Alerta Urgente</option>
+                <option value="old_phone">☎️ Pedidos: Telefone Antigo</option>
+              </select>
+              <div
+                class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]"
+              >
+                ▼
+              </div>
+            </div>
+
+            <!-- Sound selector for Mensagens -->
+            <div class="relative group" title="Som de Novas Mensagens">
+              <select
+                id="message-sound-selector"
+                onchange="changeMessageSound(this.value)"
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6"
+              >
+                <option value="msg_digital">💬 Msg: Digital Beep</option>
+                <option value="msg_bell">💬 Msg: Sino Suave</option>
+                <option value="msg_bubble">💬 Msg: Bolha Pop</option>
+                <option value="msg_chime">💬 Msg: Chime Chord</option>
               </select>
               <div
                 class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]"
@@ -1079,6 +1098,8 @@
         localStorage.getItem("popfood_orders_layout") || "list";
       let selectedSound =
         localStorage.getItem("popfood_notification_sound") || "default";
+      let selectedMessageSound =
+        localStorage.getItem("popfood_message_sound") || "msg_digital";
       let loadedRestaurantProfile = null;
       let firstLoadDone = false;
 
@@ -1150,6 +1171,10 @@
           document.getElementById("lbl-auto-accept").textContent =
             autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
           document.getElementById("sound-selector").value = selectedSound;
+          const msgSoundSel = document.getElementById("message-sound-selector");
+          if (msgSoundSel) {
+            msgSoundSel.value = selectedMessageSound;
+          }
           updateLayoutUI();
           if (typeof updateNotificationIndicator === "function") {
             updateNotificationIndicator();
@@ -1519,6 +1544,13 @@
         localStorage.setItem("popfood_notification_sound", sound);
         // Play a preview
         triggerNewOrderAlert(true);
+      };
+
+      window.changeMessageSound = function (sound) {
+        selectedMessageSound = sound;
+        localStorage.setItem("popfood_message_sound", sound);
+        // Play a preview
+        triggerNewMessageAlert(true);
       };
 
       // Auto print toggler
@@ -2450,37 +2482,14 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
 
       // Audio Alert Sound Notification Station
 
-      function triggerNewMessageAlert() {
-        if (!notificationsSetting) return;
+      function triggerNewMessageAlert(isPreview = false) {
         try {
-          // Play a simple message beep sound
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          
-          const playNote = (freq, type, duration, startTime) => {
-            const osc = ctx.createOscillator();
-            const gainNode = ctx.createGain();
-            
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
-            
-            // Envelope
-            gainNode.gain.setValueAtTime(0, ctx.currentTime + startTime);
-            gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + startTime + 0.05);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startTime + duration);
-            
-            osc.connect(gainNode);
-            gainNode.connect(ctx.destination);
-            
-            osc.start(ctx.currentTime + startTime);
-            osc.stop(ctx.currentTime + startTime + duration);
-          };
-          
-          // Two quick high pitches for a message
-          playNote(800, 'sine', 0.15, 0);
-          playNote(1000, 'sine', 0.15, 0.2);
+          // Play the selected message sound
+          synthesizeBellRingerBeep(selectedMessageSound);
 
-          // Trigger Web Desktop Notification if allowed
+          // Trigger Web Desktop Notification if allowed and not a preview
           if (
+            !isPreview &&
             "Notification" in window &&
             Notification.permission === "granted"
           ) {
@@ -2587,58 +2596,78 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           if (ctx.state === "suspended") {
             ctx.resume();
           }
-
+ 
           // Multi frequency chime
-          const playTone = (freq, delay, dur, vol = 0.3, waveType = "sine") => {
+          const playTone = (freq, delay, dur, vol = 0.8, waveType = "sine") => {
             setTimeout(() => {
               const osc = ctx.createOscillator();
               const gain = ctx.createGain();
               osc.connect(gain);
               gain.connect(ctx.destination);
-
+ 
               osc.type = waveType;
               osc.frequency.setValueAtTime(freq, ctx.currentTime);
-
+ 
               gain.gain.setValueAtTime(vol, ctx.currentTime);
               gain.gain.exponentialRampToValueAtTime(
                 0.01,
                 ctx.currentTime + dur,
               );
-
+ 
               osc.start();
               osc.stop(ctx.currentTime + dur);
             }, delay);
           };
-
+ 
           if (type === "default") {
-            // Standard sequence chime
-            playTone(587.33, 0, 0.4); // D5
-            playTone(659.25, 200, 0.4); // E5
-            playTone(880.0, 400, 0.6); // A5
+            // Standard sequence chime - amplified and extended for a richer, louder ring
+            playTone(587.33, 0, 0.4, 0.9); // D5
+            playTone(659.25, 180, 0.4, 0.9); // E5
+            playTone(880.0, 360, 0.6, 0.9); // A5
+            playTone(1174.66, 540, 1.0, 0.9); // D6
           } else if (type === "modern") {
-            // Digital Sip (Soft 4 notes)
-            playTone(1200, 0, 0.15, 0.4);
-            playTone(1600, 50, 0.15, 0.4);
-            playTone(1200, 100, 0.15, 0.4);
-            playTone(1600, 150, 0.15, 0.4);
+            // Digital Sip (Loud 4 notes)
+            playTone(1200, 0, 0.15, 0.85);
+            playTone(1600, 60, 0.15, 0.85);
+            playTone(1200, 120, 0.15, 0.85);
+            playTone(1600, 180, 0.15, 0.85);
           } else if (type === "urgent") {
-            // Alerta Urgente (Loud dual-tone)
-            playTone(500, 0, 0.4, 0.5, "square");
-            playTone(400, 400, 0.4, 0.5, "square");
-            playTone(500, 800, 0.4, 0.5, "square");
-            playTone(400, 1200, 0.4, 0.5, "square");
+            // Alerta Urgente (Loud dual-tone square wave)
+            playTone(500, 0, 0.4, 0.8, "square");
+            playTone(400, 300, 0.4, 0.8, "square");
+            playTone(500, 600, 0.4, 0.8, "square");
+            playTone(400, 900, 0.4, 0.8, "square");
           } else if (type === "old_phone") {
             // Trim-Trim-Trim (Classic sharp ringer)
             const playTrim = (startTime) => {
               for (let i = 0; i < 8; i++) {
                 const d = startTime + i * 40;
-                playTone(1800, d, 0.04, 0.4, "sine");
-                playTone(2200, d + 20, 0.04, 0.4, "sine");
+                playTone(1800, d, 0.05, 0.75, "sine");
+                playTone(2200, d + 20, 0.05, 0.75, "sine");
               }
             };
             playTrim(0); // Trim
             playTrim(500); // Trim
             playTrim(1000); // Trim
+          } else if (type === "msg_digital") {
+            // Two quick high pitches for a message
+            playTone(1320, 0, 0.12, 0.8);
+            playTone(1760, 80, 0.18, 0.8);
+          } else if (type === "msg_bell") {
+            // Sweet chime bell
+            playTone(987.77, 0, 0.3, 0.85);
+            playTone(1318.51, 120, 0.6, 0.85);
+          } else if (type === "msg_bubble") {
+            // Bubble popping sounds
+            playTone(700, 0, 0.06, 0.8);
+            playTone(1100, 40, 0.06, 0.8);
+            playTone(1400, 80, 0.08, 0.8);
+          } else if (type === "msg_chime") {
+            // Warm C Major Chord Chime
+            playTone(523.25, 0, 0.4, 0.7); // C5
+            playTone(659.25, 0, 0.4, 0.7); // E5
+            playTone(783.99, 0, 0.4, 0.7); // G5
+            playTone(1046.50, 0, 0.6, 0.85); // C6
           }
         } catch (err) {
           console.warn("Native oscillator compilation fail: ", err);
