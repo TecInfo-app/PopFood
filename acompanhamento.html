@@ -754,11 +754,11 @@
       document.getElementById('track-total').textContent = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
 
       // Update chat unread badge
-      const badge = document.getElementById('chat-unread-badge');
+      const chatBadge = document.getElementById('chat-unread-badge');
       if (order.hasUnreadStoreMessage) {
-        badge.classList.remove('hidden');
+        chatBadge.classList.remove('hidden');
       } else {
-        badge.classList.add('hidden');
+        chatBadge.classList.add('hidden');
       }
       
       // Update chat messages if modal is open
