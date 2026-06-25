@@ -1149,11 +1149,16 @@
             let reply = "";
             const status = currentTrackOrder.status || "Pendente";
             const orderTotal = `R$ ${(currentTrackOrder.total || 0).toFixed(2).replace('.', ',')}`;
+            const customerName = currentTrackOrder.customer?.name ? currentTrackOrder.customer.name.split(' ')[0] : '';
+            const isDelivery = currentTrackOrder.deliveryMethod === 'delivery';
+            const timeInfo = currentTrackOrder.preparationTime ? `A previsão é de aproximadamente ${currentTrackOrder.preparationTime} minutos.` : '';
+            const greeting = customerName ? `Olá, ${customerName}! ` : 'Olá! ';
 
             if (lowerText.includes("status") || lowerText.includes("onde") || lowerText.includes("cadê") || lowerText.includes("demorar") || lowerText.includes("tempo")) {
-               if (status === "Pendente") reply = "Seu pedido está pendente de confirmação pela loja. Logo começaremos a prepará-lo!";
-               else if (status === "Preparando") reply = "Seu pedido já está sendo preparado pela nossa cozinha! Em breve sairá para entrega.";
-               else if (status === "Saiu para Entrega") reply = "Seu pedido já saiu para entrega e está a caminho! Fique de olho no seu portão.";
+               if (status === "Pendente") reply = `Seu pedido está pendente de confirmação pela loja. ${timeInfo} Logo começaremos a prepará-lo!`;
+               else if (status === "Preparando") reply = `Seu pedido já está sendo preparado pela nossa cozinha! ${timeInfo}`;
+               else if (status === "Saiu para Entrega") reply = `Seu pedido já saiu para entrega e está a caminho! Fique de olho no seu portão.`;
+               else if (status === "Pronto p/ Retirada") reply = `Seu pedido está pronto para retirada em nossa loja!`;
                else reply = `O status atual do seu pedido é: ${status}.`;
             } 
             else if (lowerText.includes("pagamento") || lowerText.includes("pix") || lowerText.includes("cartão") || lowerText.includes("dinheiro") || lowerText.includes("troco")) {
@@ -1163,10 +1168,18 @@
                reply = "Para cancelar seu pedido, por favor aguarde um atendente, ou entre em contato direto pelo telefone da loja.";
             }
             else if (lowerText.includes("oi") || lowerText.includes("olá") || lowerText.includes("boa noite") || lowerText.includes("boa tarde") || lowerText.includes("bom dia")) {
-               reply = "Olá! Como podemos ajudar com o seu pedido hoje?";
+               const deliveryText = isDelivery ? 'a sua entrega' : 'a sua retirada';
+               reply = `${greeting}Como podemos ajudar com ${deliveryText} hoje?`;
+            }
+            else if (lowerText.includes("entrega") || lowerText.includes("retirar") || lowerText.includes("retirada")) {
+               if (isDelivery) {
+                  reply = `Seu pedido está marcado para **Entrega**. Ele será enviado para o endereço: ${currentTrackOrder.customer?.address || 'informado'}. ${timeInfo}`;
+               } else {
+                  reply = `Seu pedido está marcado para **Retirada** no balcão da loja. ${timeInfo}`;
+               }
             }
             else {
-               reply = "Recebemos sua mensagem! Nosso atendente virtual responde automaticamente a dúvidas sobre status e pagamento. Se precisar de mais detalhes, um atendente humano irá te responder em breve.";
+               reply = `${greeting}Recebemos sua mensagem! Nosso atendente virtual responde automaticamente a dúvidas sobre status, tempo e pagamento. Se precisar de mais detalhes, um atendente humano irá te responder em breve.`;
             }
 
             try {

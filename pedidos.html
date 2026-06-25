@@ -1555,7 +1555,23 @@
 
             // Detect if there is a new "Pendente" order to play notification sound
             let newlyPendenteOrders = [];
+            let hasNewMessage = false;
+
             if (firstLoadDone) {
+              incomingOrders.forEach((order) => {
+                const oldOrderInfo = globalOrdersList.find((g) => g.id === order.id);
+                if (oldOrderInfo) {
+                  const newMessagesCount = (order.chatMessages || []).length;
+                  const oldMessagesCount = (oldOrderInfo.chatMessages || []).length;
+                  if (newMessagesCount > oldMessagesCount) {
+                    const lastMsg = order.chatMessages[newMessagesCount - 1];
+                    if (lastMsg.sender === 'customer') {
+                      hasNewMessage = true;
+                    }
+                  }
+                }
+              });
+
               // Look if there are document creations or updates where state was introduced as "Pendente"
               newlyPendenteOrders = incomingOrders.filter((order) => {
                 const isPendente = order.status === "Pendente";
@@ -1578,6 +1594,10 @@
 
             if (typeof checkAndTriggerAutoAcceptance === "function") {
               checkAndTriggerAutoAcceptance();
+            }
+
+            if (hasNewMessage) {
+              triggerNewMessageAlert();
             }
 
             if (hasNewPendente) {
@@ -2429,6 +2449,51 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
       };
 
       // Audio Alert Sound Notification Station
+
+      function triggerNewMessageAlert() {
+        if (!notificationsSetting) return;
+        try {
+          // Play a simple message beep sound
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          
+          const playNote = (freq, type, duration, startTime) => {
+            const osc = ctx.createOscillator();
+            const gainNode = ctx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+            
+            // Envelope
+            gainNode.gain.setValueAtTime(0, ctx.currentTime + startTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + startTime + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + startTime + duration);
+            
+            osc.connect(gainNode);
+            gainNode.connect(ctx.destination);
+            
+            osc.start(ctx.currentTime + startTime);
+            osc.stop(ctx.currentTime + startTime + duration);
+          };
+          
+          // Two quick high pitches for a message
+          playNote(800, 'sine', 0.15, 0);
+          playNote(1000, 'sine', 0.15, 0.2);
+
+          // Trigger Web Desktop Notification if allowed
+          if (
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            new Notification("Nova Mensagem no Chat", {
+              body: "Um cliente enviou uma mensagem sobre o pedido.",
+              icon: "/pop-food-logo.png",
+            });
+          }
+        } catch (e) {
+          console.error("Audio playback failed for new message: ", e);
+        }
+      }
+
       function triggerNewOrderAlert(isPreview = false) {
         // Toggle banner display if not a preview
         if (!isPreview) {
