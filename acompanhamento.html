@@ -43,9 +43,9 @@
   <!-- Simple Header -->
   <header class="bg-white border-b border-gray-100 shadow-sm">
     <div class="max-w-4xl mx-auto px-4 py-4.5 flex items-center justify-between">
-      <a href="cliente.html" class="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-brand-primary transition-colors">
+      <button onclick="window.location.href = 'cliente.html?store=' + (window.currentStoreId || new URLSearchParams(window.location.search).get('store') || '')" class="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-brand-primary transition-colors cursor-pointer bg-transparent border-none">
         <span>← Voltar para o Cardápio</span>
-      </a>
+      </button>
       <h1 class="font-display font-bold text-md text-brand-primary tracking-tight">PopFood Tracker</h1>
     </div>
   </header>
@@ -368,7 +368,7 @@
     import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc } from './firebase-config.js';
 
     const urlStoreId = new URLSearchParams(window.location.search).get('store');
-    window.currentStoreId = urlStoreId;
+    window.currentStoreId = urlStoreId ? urlStoreId.trim() : null;
     if (!window.currentStoreId) {
       alert("⚠️ Loja inválida. Por favor, acesse usando o link direto da loja. (Ex: ?store=ID)");
     } else {
@@ -587,6 +587,9 @@
         alert("Insira um número do WhatsApp válido contendo DDD!");
         return;
       }
+      
+      const btn = document.querySelector('button[onclick="startTrackingByPhone()"]');
+      if (btn) btn.innerHTML = 'Buscando...';
 
       localStorage.setItem('popfood_last_phone', phoneInput);
       startOnSnapshotOrderTracker(phoneInput);
@@ -609,8 +612,12 @@
         });
 
         if (orders.length === 0) {
-          alert("Nenhum pedido em andamento ou histórico encontrado para este número!");
-          logoutTracker();
+          document.getElementById('tracker-login-panel').classList.remove('hidden');
+          document.getElementById('tracker-active-panel').classList.add('hidden');
+          const btn = document.querySelector('button[onclick="startTrackingByPhone()"]');
+          if (btn) btn.innerHTML = 'Ver Meu Pedido';
+          alert("Nenhum pedido em andamento ou histórico encontrado para este número. Verifique se o número digitado está correto.");
+          localStorage.removeItem('popfood_last_phone');
           return;
         }
 
@@ -1063,7 +1070,7 @@
       document.body.classList.remove('overflow-hidden');
     }
 
-    window.renderChatMessages = function() {
+    function renderChatMessages() {
       const container = document.getElementById('chat-messages-container');
       if (!container || !currentTrackOrder) return;
       
@@ -1104,6 +1111,8 @@
       // Auto scroll to bottom
       container.scrollTop = container.scrollHeight;
     }
+
+    window.renderChatMessages = renderChatMessages;
 
     window.sendChatMessage = async function(e) {
       e.preventDefault();

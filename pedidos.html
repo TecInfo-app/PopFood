@@ -2924,7 +2924,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
       }
 
-      window.renderStoreChatMessages = function() {
+      function renderStoreChatMessages() {
         const container = document.getElementById('store-chat-messages');
         if (!container || !currentOrderViewedId) return;
         
@@ -2968,6 +2968,8 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         // Auto scroll to bottom
         container.scrollTop = container.scrollHeight;
       }
+
+      window.renderStoreChatMessages = renderStoreChatMessages;
 
       window.insertQuickReply = function(text) {
         const input = document.getElementById('store-chat-input');
