@@ -2798,16 +2798,33 @@
               bannersDiv.classList.add("hidden");
             } else if (activeBanners.length === 1) {
               bannersDiv.classList.remove("hidden");
-              bannersDiv.innerHTML = `<div class="w-full h-full"><img src="${activeBanners[0]}" class="w-full h-full object-cover select-none"></div>`;
+              let item = activeBanners[0];
+              let b64 = typeof item === 'string' ? item : item.banner;
+              let linkUrl = typeof item === 'string' ? '' : (item.linkUrl || '');
+              
+              let imgHtml = `<img src="${b64}" class="w-full h-full object-cover select-none">`;
+              if (linkUrl) {
+                bannersDiv.innerHTML = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-full h-full block cursor-pointer">${imgHtml}</a>`;
+              } else {
+                bannersDiv.innerHTML = `<div class="w-full h-full">${imgHtml}</div>`;
+              }
             } else {
               bannersDiv.classList.remove("hidden");
               let trackHtml = activeBanners
                 .map(
-                  (b64) => `
+                  (item) => {
+                    let b64 = typeof item === 'string' ? item : item.banner;
+                    let linkUrl = typeof item === 'string' ? '' : (item.linkUrl || '');
+                    let imgHtml = `<img src="${b64}" class="w-full h-full object-cover select-none">`;
+                    if (linkUrl) {
+                      imgHtml = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-full h-full block cursor-pointer">${imgHtml}</a>`;
+                    }
+                    return `
               <div class="flex-shrink-0 w-full h-full">
-                <img src="${b64}" class="w-full h-full object-cover select-none">
+                ${imgHtml}
               </div>
-            `,
+            `;
+                  }
                 )
                 .join("");
 
@@ -2910,7 +2927,12 @@
               doc(db, COLLECTIONS.restaurantProfile, docId),
               (bSnap) => {
                 if (bSnap.exists()) {
-                  bannerVals[index] = bSnap.data().banner || null;
+                  const data = bSnap.data();
+                  if (data && data.banner) {
+                    bannerVals[index] = { banner: data.banner, linkUrl: data.linkUrl || "" };
+                  } else {
+                    bannerVals[index] = null;
+                  }
                 } else {
                   bannerVals[index] = null;
                 }
