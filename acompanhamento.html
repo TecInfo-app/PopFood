@@ -1142,12 +1142,55 @@
         
         input.value = '';
 
-        // Trigger AI Bot in background
-        fetch('/api/chat-bot', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ orderId: currentTrackOrder.id })
-        }).catch(err => console.error("Error triggering AI bot:", err));
+        // Rule-based Auto-Responder
+        if (currentTrackOrder.aiChatEnabled !== false) {
+          setTimeout(async () => {
+            const lowerText = text.toLowerCase();
+            let reply = "";
+            const status = currentTrackOrder.status || "Pendente";
+            const orderTotal = `R$ ${(currentTrackOrder.total || 0).toFixed(2).replace('.', ',')}`;
+
+            if (lowerText.includes("status") || lowerText.includes("onde") || lowerText.includes("cadê") || lowerText.includes("demorar") || lowerText.includes("tempo")) {
+               if (status === "Pendente") reply = "Seu pedido está pendente de confirmação pela loja. Logo começaremos a prepará-lo!";
+               else if (status === "Preparando") reply = "Seu pedido já está sendo preparado pela nossa cozinha! Em breve sairá para entrega.";
+               else if (status === "Saiu para Entrega") reply = "Seu pedido já saiu para entrega e está a caminho! Fique de olho no seu portão.";
+               else reply = `O status atual do seu pedido é: ${status}.`;
+            } 
+            else if (lowerText.includes("pagamento") || lowerText.includes("pix") || lowerText.includes("cartão") || lowerText.includes("dinheiro") || lowerText.includes("troco")) {
+               reply = `Sua forma de pagamento escolhida foi ${currentTrackOrder.paymentMethod}. O total é de ${orderTotal}.`;
+            }
+            else if (lowerText.includes("cancelar") || lowerText.includes("cancelamento")) {
+               reply = "Para cancelar seu pedido, por favor aguarde um atendente, ou entre em contato direto pelo telefone da loja.";
+            }
+            else if (lowerText.includes("oi") || lowerText.includes("olá") || lowerText.includes("boa noite") || lowerText.includes("boa tarde") || lowerText.includes("bom dia")) {
+               reply = "Olá! Como podemos ajudar com o seu pedido hoje?";
+            }
+            else {
+               reply = "Recebemos sua mensagem! Nosso atendente virtual responde automaticamente a dúvidas sobre status e pagamento. Se precisar de mais detalhes, um atendente humano irá te responder em breve.";
+            }
+
+            try {
+              const replyMsg = {
+                sender: 'store',
+                text: reply,
+                timestamp: new Date().toISOString(),
+                isAutoReply: true
+              };
+              
+              // Refetch to get latest messages just in case
+              const freshSnap = await getDoc(docRef);
+              if (freshSnap.exists()) {
+                const freshMessages = freshSnap.data().chatMessages || [];
+                await updateDoc(docRef, {
+                  chatMessages: [...freshMessages, replyMsg],
+                  hasUnreadStoreMessage: true
+                });
+              }
+            } catch (autoErr) {
+              console.error("Auto-reply error:", autoErr);
+            }
+          }, 1500); // 1.5s delay to feel natural
+        }
 
       } catch (err) {
         console.error("Error sending message:", err);

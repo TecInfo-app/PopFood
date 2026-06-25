@@ -7,7 +7,6 @@ import Stripe from 'stripe';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
-import { GoogleGenAI } from '@google/genai';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtz-4cniRtbA_rdxAE26-uOA_ji3Xz4RU",
@@ -319,87 +318,6 @@ async function startServer() {
     // Redirect to the new unified endpoint
     req.url = "/api/create-payment";
     return app._router.handle(req, res, () => {});
-  });
-
-  // AI Chat Bot Endpoint
-  app.post("/api/chat-bot", async (req, res) => {
-    const { orderId } = req.body;
-    if (!orderId) return res.status(400).json({ error: "orderId é obrigatório" });
-
-    try {
-      // 1. Fetch order from Firestore
-      const orderRef = doc(db, "orders", orderId);
-      const orderSnap = await getDoc(orderRef);
-      
-      if (!orderSnap.exists()) {
-        return res.status(404).json({ error: "Pedido não encontrado" });
-      }
-      
-      const order = orderSnap.data();
-      
-      // 2. Check if AI is enabled for this order
-      if (order.aiChatEnabled === false) {
-        return res.json({ status: "skipped", reason: "AI auto-reply is disabled for this order" });
-      }
-
-      const messages = order.chatMessages || [];
-      if (messages.length === 0) {
-        return res.json({ status: "skipped", reason: "No messages to reply to" });
-      }
-
-      // Check if last message is from customer
-      const lastMsg = messages[messages.length - 1];
-      if (lastMsg.sender !== 'customer') {
-        return res.json({ status: "skipped", reason: "Last message is not from customer" });
-      }
-
-      // Initialize Gemini AI
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-      // Build context
-      let prompt = `Você é um assistente de atendimento amigável de uma loja de delivery de comida. Seja breve, educado e direto.\n`;
-      prompt += `Detalhes do pedido:\n`;
-      prompt += `- Cliente: ${order.customer?.name}\n`;
-      prompt += `- Status atual: ${order.status}\n`;
-      prompt += `- Total: R$ ${order.total?.toFixed(2)}\n`;
-      prompt += `- Pagamento: ${order.paymentMethod} (${order.paymentStatus || 'Pendente'})\n\n`;
-      prompt += `Histórico da conversa:\n`;
-      
-      // Add last few messages for context (max 5)
-      const recentMessages = messages.slice(-5);
-      for (const m of recentMessages) {
-        const role = m.sender === 'customer' ? 'Cliente' : 'Loja (Você)';
-        prompt += `${role}: ${m.text}\n`;
-      }
-      prompt += `Loja (Você):`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-           temperature: 0.7,
-           maxOutputTokens: 150
-        }
-      });
-
-      const aiReplyText = response.text?.trim() || "Olá, recebemos sua mensagem e já vamos te atender!";
-
-      const newMsg = {
-        sender: 'store',
-        text: aiReplyText,
-        timestamp: new Date().toISOString()
-      };
-
-      await updateDoc(orderRef, {
-        chatMessages: [...messages, newMsg],
-        hasUnreadStoreMessage: true
-      });
-
-      return res.json({ status: "success", reply: aiReplyText });
-    } catch (err: any) {
-      console.error("AI Bot Error:", err);
-      return res.status(500).json({ error: "Erro interno ao processar a resposta da IA" });
-    }
   });
 
   // Vite middleware for development

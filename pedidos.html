@@ -717,8 +717,8 @@
             <div class="flex items-center gap-2">
               <span class="text-indigo-600 text-lg">🤖</span>
               <div>
-                <p class="text-xs font-bold text-indigo-900">Resposta Automática (IA)</p>
-                <p class="text-[9px] text-indigo-700">A IA responderá os clientes automaticamente.</p>
+                <p class="text-xs font-bold text-indigo-900">Resposta Automática</p>
+                <p class="text-[9px] text-indigo-700">O robô responderá dúvidas comuns automaticamente.</p>
               </div>
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
@@ -3002,9 +3002,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           await updateDoc(docRef, { aiChatEnabled: isEnabled });
           
           if (!isEnabled) {
-            alert("Robô de IA desativado. Responda manualmente.");
+            alert("Robô automático desativado. Responda manualmente.");
           } else {
-            alert("Robô de IA ativado para este pedido.");
+            alert("Robô automático ativado para este pedido.");
           }
         } catch (err) {
           console.error("Error toggling AI chat:", err);
