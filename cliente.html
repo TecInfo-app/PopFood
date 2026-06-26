@@ -243,7 +243,7 @@
       </section>
 
       <!-- Menu horizontal list by Categories -->
-      <div id="menu-sections" class="space-y-8 pb-32">
+      <div id="menu-sections" class="space-y-8 pb-48">
         <!-- Skeleton template -->
         <div class="space-y-4">
           <div class="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
@@ -268,6 +268,34 @@
         </div>
       </div>
     </main>
+
+    <!-- Floating Bottom Cart Bar -->
+    <div
+      id="floating-cart-bar"
+      class="hidden fixed bottom-[68px] left-4 right-4 bg-white border border-stone-150 rounded-2xl p-3.5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] z-40 max-w-md mx-auto transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-auto"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <!-- Left: Totals and item count -->
+        <div class="flex flex-col">
+          <span id="floating-cart-label" class="text-[10px] text-stone-500 font-bold leading-none mb-1">Total (sem entrega)</span>
+          <div class="flex items-baseline gap-1.5">
+            <span id="floating-cart-price" class="text-[15px] font-black text-stone-850">R$ 0,00</span>
+            <span id="floating-cart-qty" class="text-[10px] text-stone-400 font-semibold">/ 0 itens</span>
+          </div>
+        </div>
+
+        <!-- Right: Action button to open cart -->
+        <button
+          onclick="toggleCartModal(true)"
+          class="bg-[#803805] hover:bg-[#6c2e04] text-white font-extrabold text-xs px-5 py-3 rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center gap-1.5 cursor-pointer border-none outline-none select-none"
+        >
+          <span>Ir para a sacola</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
 
     <!-- Fixed Bottom Navigation Bar -->
     <nav
@@ -4634,6 +4662,7 @@
           footerSec.classList.add("hidden");
           if (clearBtn) clearBtn.classList.add("hidden");
           updateIFoodPanels();
+          updateFloatingCartBar();
           return;
         }
 
@@ -4766,6 +4795,106 @@
         updateIFoodPanels();
         calculateReceiptTotals();
         refreshSubmitBtnWidget();
+        updateFloatingCartBar();
+      }
+
+      // Update the Floating Bottom Cart Bar UI
+      function updateFloatingCartBar() {
+        const bar = document.getElementById("floating-cart-bar");
+        if (!bar) return;
+
+        const totalQty = shoppingCart.reduce(
+          (acc, current) => acc + current.quantity,
+          0,
+        );
+
+        if (totalQty === 0) {
+          bar.classList.remove("translate-y-0", "opacity-100");
+          bar.classList.add("translate-y-10", "opacity-0");
+          setTimeout(() => {
+            const currentQty = shoppingCart.reduce((acc, curr) => acc + curr.quantity, 0);
+            if (currentQty === 0) {
+              bar.classList.add("hidden");
+            }
+          }, 300);
+          return;
+        }
+
+        // Show the bar with fancy transition
+        bar.classList.remove("hidden");
+        setTimeout(() => {
+          bar.classList.remove("translate-y-10", "opacity-0");
+          bar.classList.add("translate-y-0", "opacity-100");
+        }, 10);
+
+        // Calculate Subtotal
+        const subtotal = shoppingCart.reduce((sum, item) => {
+          return sum + item.totalItemPrice * item.quantity;
+        }, 0);
+
+        // Recalculate manual coupon discount
+        let discount = 0;
+        if (typeof appliedDiscountCoupon !== "undefined" && appliedDiscountCoupon) {
+          if (appliedDiscountCoupon.type === "percentual") {
+            discount = subtotal * (appliedDiscountCoupon.value / 100);
+          } else {
+            discount = appliedDiscountCoupon.value;
+          }
+          discount = Math.min(subtotal, discount);
+        }
+
+        // Recalculate automatic loyalty discount
+        let loyaltyDisc = 0;
+        if (
+          typeof hasLoyaltyDiscount !== "undefined" &&
+          hasLoyaltyDiscount &&
+          typeof restaurantProfile !== "undefined" &&
+          restaurantProfile &&
+          restaurantProfile.loyaltyActive
+        ) {
+          const val = parseFloat(restaurantProfile.loyaltyValue || 0);
+          if (restaurantProfile.loyaltyType === "percentual") {
+            loyaltyDisc = subtotal * (val / 100);
+          } else {
+            loyaltyDisc = val;
+          }
+          loyaltyDisc = Math.min(Math.max(0, subtotal - discount), loyaltyDisc);
+        }
+
+        // Add delivery fee
+        const displayDeliveryFee =
+          typeof selectedDeliveryOption !== "undefined" && selectedDeliveryOption === "pickup" ? 0.0 : (typeof calculatedDeliveryFee !== "undefined" ? calculatedDeliveryFee : 0.0);
+
+        const total = Math.max(
+          0,
+          subtotal - discount - loyaltyDisc + displayDeliveryFee,
+        );
+
+        // Update labels dynamically matching the app colors and values
+        const priceEl = document.getElementById("floating-cart-price");
+        if (priceEl) {
+          priceEl.textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+        }
+
+        const qtyEl = document.getElementById("floating-cart-qty");
+        if (qtyEl) {
+          qtyEl.textContent = `/ ${totalQty} ${totalQty === 1 ? 'item' : 'itens'}`;
+        }
+
+        const labelEl = document.getElementById("floating-cart-label");
+        if (labelEl) {
+          let labelText = "Total";
+          if (typeof selectedDeliveryOption !== "undefined" && selectedDeliveryOption === "pickup") {
+            labelText = "Total com retirada grátis";
+          } else if (typeof calculatedDeliveryFee !== 'undefined' && calculatedDeliveryFee === 0) {
+            labelText = "Total com entrega grátis";
+          } else if (typeof calculatedDeliveryFee !== 'undefined' && calculatedDeliveryFee > 0) {
+            labelText = "Total com taxa";
+          } else {
+            labelText = "Total (sem entrega)";
+          }
+          labelEl.textContent = labelText;
+        }
       }
 
       // Incr dec qty
@@ -6420,6 +6549,7 @@
         );
         document.getElementById("lbl-total").textContent =
           `R$ ${total.toFixed(2).replace(".", ",")}`;
+        updateFloatingCartBar();
       }
 
       // Modal Confirmation layout and validation
