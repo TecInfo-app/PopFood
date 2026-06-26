@@ -2649,6 +2649,13 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return;
         }
 
+        if (window.self !== window.top) {
+          alert(
+            "⚠️ RECURSO BLOQUEADO PELO NAVEGADOR (SANDBOX DO IFRAME)\n\nVocê está visualizando este painel de pedidos dentro do visualizador do AI Studio (iframe).\n\nNenhum navegador permite solicitar ou disparar notificações de desktop dentro de um frame de terceiros (iframe) por motivos de privacidade e segurança.\n\nPara ativar as notificações e receber alertas perfeitamente:\n1. Clique no botão de 'Abrir em nova aba' (ícone com seta saindo do quadrado) no canto superior direito da tela de visualização do AI Studio.\n2. Na nova aba independente, clique novamente aqui no botão '🔔 Notificações: Clique para Ativar' para conceder a permissão!"
+          );
+          return;
+        }
+
         const currentPermission = Notification.permission;
 
         if (currentPermission === "denied") {
@@ -2703,6 +2710,11 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
 
         if (!("Notification" in window)) {
           el.textContent = "🔕 Não suportado";
+          return;
+        }
+
+        if (window.self !== window.top) {
+          el.textContent = "🔗 Ativar na Nova Aba ⚠️";
           return;
         }
 
