@@ -74,8 +74,7 @@ service cloud.firestore {
         || (!isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly([
             'rating', 'deliveryPin', 'motoboyLatitude', 'motoboyLongitude', 
             'status', 'deliveryProgress', 'deliveryMilestone', 
-            'paymentApproved', 'isPaid', 'paymentStatus',
-            'chatMessages', 'hasUnreadCustomerMessage', 'hasUnreadStoreMessage'
+            'paymentApproved', 'isPaid', 'paymentStatus'
           ]));
       allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
     }

@@ -1299,7 +1299,7 @@
             if (bSnap.exists()) {
               const bData = bSnap.data();
               if (bData && bData.banner) {
-                bannersList.push({ banner: bData.banner, linkUrl: bData.linkUrl || "" });
+                bannersList.push(bData.banner);
               }
             }
           });
@@ -1383,21 +1383,12 @@
         return;
       }
 
-      bannersList.forEach((item, idx) => {
-        let b64 = typeof item === 'string' ? item : item.banner;
-        let linkUrl = typeof item === 'string' ? '' : (item.linkUrl || '');
-
+      bannersList.forEach((b64, idx) => {
         const row = document.createElement('div');
-        row.className = "flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-150";
+        row.className = "relative rounded-xl overflow-hidden border shadow-sm aspect-video group";
         row.innerHTML = `
-          <div class="relative rounded-xl overflow-hidden border shadow-sm aspect-video group">
-            <img src="${b64}" class="w-full h-full object-cover">
-            <button onclick="removeBannerByIndex(${idx})" class="absolute bottom-2 right-2 bg-black/60 hover:bg-brand-danger text-white p-1 rounded-md text-[10px] font-bold cursor-pointer transition-colors">Remover banner</button>
-          </div>
-          <div class="flex items-center gap-2">
-            <label class="text-[10px] font-bold text-gray-500 uppercase whitespace-nowrap">Link:</label>
-            <input type="url" id="banner-link-${idx}" value="${linkUrl}" placeholder="Ex: https://instagram.com/..." class="w-full text-xs p-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-brand-primary" onchange="updateBannerLink(${idx}, this.value)">
-          </div>
+          <img src="${b64}" class="w-full h-full object-cover">
+          <button onclick="removeBannerByIndex(${idx})" class="absolute bottom-2 right-2 bg-black/60 hover:bg-brand-danger text-white p-1 rounded-md text-[10px] font-bold cursor-pointer transition-colors">Remover banner</button>
         `;
         parent.appendChild(row);
       });
@@ -1416,30 +1407,12 @@
       for (let i = 0; i < 3; i++) {
         const docRef = doc(db, COLLECTIONS.restaurantProfile, `${window.currentStoreId}_banner${i}`);
         if (i < bannersList.length) {
-          let item = bannersList[i];
-          if (typeof item === 'string') {
-            await setDoc(docRef, { banner: item, linkUrl: "" });
-          } else {
-            await setDoc(docRef, { banner: item.banner, linkUrl: item.linkUrl || "" });
-          }
+          await setDoc(docRef, { banner: bannersList[i] });
         } else {
           await deleteDoc(docRef);
         }
       }
     }
-
-    window.updateBannerLink = async function(index, value) {
-      if (typeof bannersList[index] === 'string') {
-        bannersList[index] = { banner: bannersList[index], linkUrl: value };
-      } else {
-        bannersList[index].linkUrl = value;
-      }
-      try {
-        await saveAllBannersToDb();
-      } catch (err) {
-        console.error("Error saving banner link: ", err);
-      }
-    };
 
     window.convertBannerToBase64AndAdd = function() {
       const fileInput = document.getElementById('banner-file-input');
@@ -1458,7 +1431,7 @@
         const base64 = reader.result;
 
         try {
-          bannersList.push({ banner: base64, linkUrl: "" });
+          bannersList.push(base64);
           await saveAllBannersToDb();
           renderStoreBannersList();
           alert("Banner adicionado com sucesso!");

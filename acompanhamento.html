@@ -43,9 +43,9 @@
   <!-- Simple Header -->
   <header class="bg-white border-b border-gray-100 shadow-sm">
     <div class="max-w-4xl mx-auto px-4 py-4.5 flex items-center justify-between">
-      <button onclick="window.location.href = 'cliente.html?store=' + (window.currentStoreId || new URLSearchParams(window.location.search).get('store') || '')" class="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-brand-primary transition-colors cursor-pointer bg-transparent border-none">
+      <a href="cliente.html" class="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-brand-primary transition-colors">
         <span>← Voltar para o Cardápio</span>
-      </button>
+      </a>
       <h1 class="font-display font-bold text-md text-brand-primary tracking-tight">PopFood Tracker</h1>
     </div>
   </header>
@@ -236,11 +236,10 @@
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-2">
-          <!-- Chat with Store Button -->
-          <button id="wa-chat-link" onclick="openChatModal()" class="bg-brand-primary hover:bg-orange-600 text-white font-semibold py-3 rounded-xl text-center text-xs flex items-center justify-center gap-2 shadow-md shadow-brand-primary/10 transition-all cursor-pointer relative">
-            <span>💬 Falar com a Loja</span>
-            <span id="chat-unread-badge" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold hidden border border-white">!</span>
-          </button>
+          <!-- WhatsApp Link -->
+          <a id="wa-chat-link" href="#" target="_blank" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-xl text-center text-xs flex items-center justify-center gap-2 shadow-md shadow-green-500/10 transition-all">
+            <span>📞 Falar com a Loja</span>
+          </a>
           <button onclick="logoutTracker()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-3 rounded-xl text-xs transition-all cursor-pointer">
             Sair/Mudar Conta
           </button>
@@ -330,66 +329,11 @@
     </div>
   </div>
 
-  <!-- CHAT POPUP OVERLAY -->
-  <div id="chat-modal" class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 hidden backdrop-blur-sm">
-    <div class="bg-white rounded-2xl w-full max-w-md h-[80vh] flex flex-col shadow-2xl relative overflow-hidden">
-      <!-- Header -->
-      <div class="bg-orange-500 text-white p-4 flex items-center justify-between shadow-sm z-10 shrink-0">
-        <div class="flex items-center gap-3">
-          <span class="text-xl">💬</span>
-          <div>
-            <h3 class="font-display font-bold text-sm">Chat com a Loja</h3>
-            <p class="text-[10px] text-orange-100 font-medium">Tire dúvidas sobre seu pedido</p>
-          </div>
-        </div>
-        <button onclick="closeChatModal()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-orange-600 transition-colors text-white">
-          <span class="font-bold">✕</span>
-        </button>
-      </div>
-      
-      <!-- Messages Area -->
-      <div id="chat-messages-container" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 flex flex-col">
-        <!-- Messages injected here -->
-      </div>
-      
-      <!-- Input Area -->
-      <div class="p-3 bg-white border-t border-gray-100 shrink-0">
-        <!-- Quick replies list -->
-        <div id="quick-replies-container" class="flex gap-2 overflow-x-auto pb-2 mb-2 scroll-smooth" style="scrollbar-width: none; -ms-overflow-style: none;">
-          <button onclick="window.quickReply('🔍 Status do Pedido')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
-            🔍 Status do Pedido
-          </button>
-          <button onclick="window.quickReply('💳 Forma de Pagamento')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
-            💳 Pagamento
-          </button>
-          <button onclick="window.quickReply('🛵 Entrega / Retirada')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
-            🛵 Entrega / Retirada
-          </button>
-          <button onclick="window.quickReply('🏷️ Promoções e Cupons')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
-            🏷️ Cupons/Promoções
-          </button>
-          <button onclick="window.quickReply('⚠️ Atraso ou Problema')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
-            ⚠️ Atraso / Problema
-          </button>
-          <button onclick="window.quickReply('🗣️ Falar com Atendente')" class="bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-100 rounded-full px-3 py-1.5 text-[10px] font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0">
-            🗣️ Falar com Humano
-          </button>
-        </div>
-        <form onsubmit="sendChatMessage(event)" class="flex items-center gap-2">
-          <input type="text" id="chat-input" placeholder="Digite sua mensagem ou use os botões..." class="flex-1 bg-gray-100 border-none outline-none focus:ring-2 focus:ring-orange-500 rounded-xl px-4 py-3 text-xs" autocomplete="off">
-          <button type="submit" id="chat-send-btn" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl font-bold text-xs shadow-md transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
-            Enviar
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-
   <script type="module">
     import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc } from './firebase-config.js';
 
     const urlStoreId = new URLSearchParams(window.location.search).get('store');
-    window.currentStoreId = urlStoreId ? urlStoreId.trim() : null;
+    window.currentStoreId = urlStoreId;
     if (!window.currentStoreId) {
       alert("⚠️ Loja inválida. Por favor, acesse usando o link direto da loja. (Ex: ?store=ID)");
     } else {
@@ -608,9 +552,6 @@
         alert("Insira um número do WhatsApp válido contendo DDD!");
         return;
       }
-      
-      const btn = document.querySelector('button[onclick="startTrackingByPhone()"]');
-      if (btn) btn.innerHTML = 'Buscando...';
 
       localStorage.setItem('popfood_last_phone', phoneInput);
       startOnSnapshotOrderTracker(phoneInput);
@@ -633,12 +574,8 @@
         });
 
         if (orders.length === 0) {
-          document.getElementById('tracker-login-panel').classList.remove('hidden');
-          document.getElementById('tracker-active-panel').classList.add('hidden');
-          const btn = document.querySelector('button[onclick="startTrackingByPhone()"]');
-          if (btn) btn.innerHTML = 'Ver Meu Pedido';
-          alert("Nenhum pedido em andamento ou histórico encontrado para este número. Verifique se o número digitado está correto.");
-          localStorage.removeItem('popfood_last_phone');
+          alert("Nenhum pedido em andamento ou histórico encontrado para este número!");
+          logoutTracker();
           return;
         }
 
@@ -774,19 +711,10 @@
       document.getElementById('track-taxa').textContent = `R$ ${order.deliveryFee.toFixed(2).replace('.', ',')}`;
       document.getElementById('track-total').textContent = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
 
-      // Update chat unread badge
-      const chatBadge = document.getElementById('chat-unread-badge');
-      if (order.hasUnreadStoreMessage) {
-        chatBadge.classList.remove('hidden');
-      } else {
-        chatBadge.classList.add('hidden');
-      }
-      
-      // Update chat messages if modal is open
-      const chatModal = document.getElementById('chat-modal');
-      if (!chatModal.classList.contains('hidden')) {
-        renderChatMessages();
-      }
+      // WhatsApp Chat dynamic query setup
+      const waBtn = document.getElementById('wa-chat-link');
+      const textMessage = encodeURIComponent(`Olá, gostaria de acompanhar meu pedido #${order.id} em nome de ${order.customer.name}!`);
+      waBtn.href = `https://wa.me/${restaurantPhone}?text=${textMessage}`;
 
       // Toggle Confirm Reception trigger button (Only when active status is "Saiu para entrega")
       const rcvArea = document.getElementById('btn-received-area');
@@ -1066,240 +994,6 @@
       localStorage.removeItem('popfood_last_phone');
       localStorage.removeItem('popfood_last_order_id');
       window.location.reload();
-    }
-
-    // Chat functionality
-    window.openChatModal = async function() {
-      const chatModal = document.getElementById('chat-modal');
-      chatModal.classList.remove('hidden');
-      document.body.classList.add('overflow-hidden');
-      
-      // Mark messages as read by customer
-      if (currentTrackOrder && currentTrackOrder.hasUnreadStoreMessage) {
-        try {
-          const docRef = doc(db, COLLECTIONS.orders, currentTrackOrder.id);
-          await updateDoc(docRef, { hasUnreadStoreMessage: false });
-        } catch(e) { console.error("Error marking messages as read:", e); }
-      }
-      
-      renderChatMessages();
-    }
-
-    window.closeChatModal = function() {
-      const chatModal = document.getElementById('chat-modal');
-      chatModal.classList.add('hidden');
-      document.body.classList.remove('overflow-hidden');
-    }
-
-    function renderChatMessages() {
-      const container = document.getElementById('chat-messages-container');
-      if (!container || !currentTrackOrder) return;
-      
-      const messages = currentTrackOrder.chatMessages || [];
-      if (messages.length === 0) {
-        container.innerHTML = `<div class="flex-1 flex flex-col items-center justify-center text-gray-400 space-y-2 py-8">
-          <span class="text-3xl">👋</span>
-          <p class="text-xs">Envie uma mensagem para a loja.</p>
-        </div>`;
-        return;
-      }
-      
-      container.innerHTML = messages.map(msg => {
-        const isCustomer = msg.sender === 'customer';
-        const timeStr = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
-        
-        if (isCustomer) {
-          return `
-            <div class="flex flex-col items-end w-full">
-              <div class="bg-orange-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[85%] shadow-sm text-sm">
-                ${msg.text}
-              </div>
-              <span class="text-[9px] text-gray-400 mt-1">${timeStr}</span>
-            </div>
-          `;
-        } else {
-          return `
-            <div class="flex flex-col items-start w-full">
-              <div class="bg-white border border-gray-200 text-gray-800 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[85%] shadow-sm text-sm">
-                ${msg.text}
-              </div>
-              <span class="text-[9px] text-gray-400 mt-1">${timeStr}</span>
-            </div>
-          `;
-        }
-      }).join('');
-      
-      // Auto scroll to bottom
-      container.scrollTop = container.scrollHeight;
-    }
-
-    window.renderChatMessages = renderChatMessages;
-
-    window.quickReply = function(text) {
-      const input = document.getElementById('chat-input');
-      if (input) {
-        // Strip emojis if they exist for clean prompt matches, but keep them for display
-        input.value = text;
-        const sendBtn = document.getElementById('chat-send-btn');
-        if (sendBtn) {
-          sendBtn.click();
-        }
-      }
-    };
-
-    window.sendChatMessage = async function(e) {
-      e.preventDefault();
-      if (!currentTrackOrder) return;
-      
-      const input = document.getElementById('chat-input');
-      const text = input.value.trim();
-      if (!text) return;
-      
-      const btn = document.getElementById('chat-send-btn');
-      btn.disabled = true;
-      
-      try {
-        const newMessage = {
-          sender: 'customer',
-          text: text,
-          timestamp: new Date().toISOString()
-        };
-        
-        const docRef = doc(db, COLLECTIONS.orders, currentTrackOrder.id);
-        const currentMessages = currentTrackOrder.chatMessages || [];
-        
-        await updateDoc(docRef, {
-          chatMessages: [...currentMessages, newMessage],
-          hasUnreadCustomerMessage: true
-        });
-        
-        input.value = '';
-
-        // Rule-based Auto-Responder
-        if (currentTrackOrder.aiChatEnabled !== false) {
-          setTimeout(async () => {
-            const lowerText = text.toLowerCase();
-            let reply = "";
-            const status = currentTrackOrder.status || "Pendente";
-            const orderTotal = `R$ ${(currentTrackOrder.total || 0).toFixed(2).replace('.', ',')}`;
-            const customerName = currentTrackOrder.customer?.name ? currentTrackOrder.customer.name.split(' ')[0] : 'Cliente';
-            const isDelivery = currentTrackOrder.deliveryMethod === 'delivery';
-            const timeInfo = currentTrackOrder.preparationTime ? `A previsão é de aproximadamente **${currentTrackOrder.preparationTime} minutos**.` : '';
-            const storeName = restaurantProfile?.name || "Nossa Loja";
-            const shortOrderId = currentTrackOrder.id ? currentTrackOrder.id.slice(-6).toUpperCase() : "";
-
-            // Check if store is open based on openTime/closeTime
-            let isStoreOpenNow = true;
-            if (restaurantProfile && restaurantProfile.openTime && restaurantProfile.closeTime) {
-              const now = new Date();
-              const currentMins = now.getHours() * 60 + now.getMinutes();
-              const [openH, openM] = restaurantProfile.openTime.split(":").map(Number);
-              const openMins = openH * 60 + openM;
-              const [closeH, closeM] = restaurantProfile.closeTime.split(":").map(Number);
-              const closeMins = closeH * 60 + closeM;
-              if (openMins <= closeMins) {
-                isStoreOpenNow = currentMins >= openMins && currentMins <= closeMins;
-              } else {
-                isStoreOpenNow = currentMins >= openMins || currentMins <= closeMins;
-              }
-            }
-
-            // 1. HELP & HUMAN ESCALATION / TRANSBORDO
-            if (lowerText === "0" || lowerText.includes("atendente") || lowerText.includes("humano") || lowerText.includes("atendimento") || lowerText.includes("suporte") || lowerText.includes("equipe") || lowerText.includes("gerente") || lowerText.includes("gerência") || lowerText.includes("falar com")) {
-              reply = `Entendido! Estou transferindo você para um de nossos atendentes humanos agora mesmo. 🗣️ Um membro de nossa equipe foi notificado e responderá aqui no chat em instantes. Por favor, aguarde um momento! 🙏✨`;
-            }
-            // 2. STATUS & DELIVERY FORECAST
-            else if (lowerText.includes("status") || lowerText.includes("onde") || lowerText.includes("cadê") || lowerText.includes("demorar") || lowerText.includes("tempo") || lowerText.includes("previsão") || lowerText.includes("espera") || lowerText.includes("chegar") || lowerText.includes("rastrear")) {
-               if (status === "Pendente") {
-                 reply = `Claro, posso verificar isso para você! 🔍 Seu pedido **#${shortOrderId}** está sendo analisado pela nossa equipe. ${timeInfo} Assim que for aceito, começaremos a prepará-lo com muito carinho! 👨‍🍳🍔`;
-               } else if (status === "Preparando") {
-                 reply = `Seu pedido está sendo preparado com muito carinho pela nossa cozinha! 🍳👨‍🍳 ${timeInfo} Em breve ele será enviado!`;
-               } else if (status === "Saiu para Entrega") {
-                 reply = `Seu pedido já saiu para entrega! 🛵 O motoboy está a caminho e deve chegar em aproximadamente **${currentTrackOrder.preparationTime || '15'} minutos**. Fique de olho no seu portão ou portaria! 😉🎉`;
-               } else if (status === "Pronto p/ Retirada") {
-                 reply = `Seu pedido **#${shortOrderId}** já está prontinho para retirada em nosso balcão! 🛍️ Pode vir buscar quando desejar. Te esperamos!`;
-               } else if (status === "Entregue") {
-                 reply = `Seu pedido **#${shortOrderId}** consta como entregue/finalizado! Espero que tenha gostado da refeição. Se puder, não esqueça de nos avaliar com estrelas na tela inicial! ⭐🍽️`;
-               } else if (status === "Cancelado") {
-                 reply = `Este pedido **#${shortOrderId}** consta como cancelado em nosso sistema. Para qualquer esclarecimento, digite **'0'** para falar com um atendente.`;
-               } else {
-                 reply = `O status atual do seu pedido **#${shortOrderId}** é: **${status}**. Se precisar de mais informações, digite **'0'** para falar com a gente!`;
-               }
-            } 
-            // 3. PROBLEMS & DELAYS
-            else if (lowerText.includes("atraso") || lowerText.includes("atrasou") || lowerText.includes("demora") || lowerText.includes("demorando")) {
-               reply = `Peço sinceras desculpas pela demora! 🙏 Tivemos uma demanda de pedidos maior do que o esperado agora, mas seu pedido já está na fase final de preparo ou em trânsito. Vou verificar imediatamente com a equipe de entregas para agilizar o processo para você! 🛵💨`;
-            }
-            else if (lowerText.includes("errado") || lowerText.includes("incompleto") || lowerText.includes("faltou") || lowerText.includes("faltando") || lowerText.includes("reclamar") || lowerText.includes("problema")) {
-               reply = `Sinto muitíssimo por isso! 😔 Essa não é a experiência que queremos oferecer a você. Pode me enviar uma foto ou uma descrição do item que veio incorreto ou faltou? Vou acionar a gerência agora mesmo para resolvermos isso, seja com o envio do item faltante ou com o estorno/reembolso imediato! 🛠️💼`;
-            }
-            // 4. PAYMENTS & CHANGE
-            else if (lowerText.includes("pagamento") || lowerText.includes("pix") || lowerText.includes("cartão") || lowerText.includes("cartao") || lowerText.includes("dinheiro") || lowerText.includes("troco") || lowerText.includes("debito") || lowerText.includes("credito")) {
-               reply = `Aceitamos cartões de crédito/débito (Visa, Mastercard, Elo), Pix e dinheiro na entrega. 💳💵 Você pode selecionar a opção no momento de finalizar o pedido.\n\nPara o seu pedido atual, a forma de pagamento selecionada foi: **${currentTrackOrder.paymentMethod || 'Não informada'}**.\nO valor total a pagar é: **${orderTotal}**.`;
-            }
-            // 5. CANCELLATION
-            else if (lowerText.includes("cancelar") || lowerText.includes("cancelamento") || lowerText.includes("desistir")) {
-               if (status === "Preparando" || status === "Saiu para Entrega" || status === "Entregue") {
-                 reply = `Entendo o seu desejo de cancelar. No entanto, como o seu pedido **#${shortOrderId}** já está em preparação avançada ou saiu para entrega, podem haver restrições para o cancelamento automático. ⚠️ Por favor, digite **'0'** para falar com um atendente ou ligue para a loja para verificarmos a possibilidade.`;
-               } else {
-                 reply = `Pedido **#${shortOrderId}** cancelado com sucesso. O reembolso será processado automaticamente pelo meio de pagamento utilizado! 💸`;
-               }
-            }
-            // 6. SHIPPING / DELIVERY METHOD
-            else if (lowerText.includes("entrega") || lowerText.includes("retirar") || lowerText.includes("retirada") || lowerText.includes("frete") || lowerText.includes("taxa") || lowerText.includes("endereço")) {
-               if (isDelivery) {
-                  reply = `A taxa de entrega é calculada com base na sua localização. Você consegue visualizar o valor final no carrinho antes de confirmar o pagamento. 🛵\n\nSeu pedido está marcado para **Entrega** no endereço informado: *${currentTrackOrder.customer?.address || 'não especificado'}*. Previsão de entrega: **${currentTrackOrder.preparationTime || '40-50'} minutos**.`;
-               } else {
-                  reply = `Seu pedido está marcado para **Retirada** direto em nosso balcão! 🛍️\nPrevisão de preparo: **${currentTrackOrder.preparationTime || '30'} minutos**. Assim que estiver pronto, avisaremos aqui!`;
-               }
-            }
-            // 7. COUPONS & PROMOTIONS
-            else if (lowerText.includes("cupom") || lowerText.includes("cupons") || lowerText.includes("desconto") || lowerText.includes("promoção") || lowerText.includes("promocao") || lowerText.includes("oferta")) {
-               reply = `No momento temos ativo o cupom **PRIMEIRACOMPRA** que dá 10% de desconto na sua primeira compra! 🎉 Aproveite e use na finalização do seu pedido! 😉🏷_`;
-            }
-            // 8. GREETINGS & WELCOME
-            else if (lowerText.includes("oi") || lowerText.includes("olá") || lowerText.includes("ola") || lowerText.includes("boa noite") || lowerText.includes("boa tarde") || lowerText.includes("bom dia") || lowerText.includes("começar")) {
-               if (!isStoreOpenNow) {
-                 reply = `Olá! No momento estamos fechados. 🏪 Nosso horário de funcionamento é das **${restaurantProfile?.openTime || "18:00"}** até as **${restaurantProfile?.closeTime || "23:00"}**. Pode deixar sua mensagem que responderemos assim que abrirmos! 💤✨`;
-               } else {
-                 reply = `Olá, ${customerName}! Bem-vindo ao **${storeName}**! 🤖🍟\n\nEu sou o assistente virtual do estabelecimento. Como posso ajudar você hoje?\n\nVocê pode usar os botões rápidos abaixo ou digitar suas dúvidas sobre status, entrega, pagamento ou cupons! Se preferir falar com um humano, digite **'0'**.`;
-               }
-            }
-            // 9. DEFAULT FALLBACK
-            else {
-               reply = `Olá, ${customerName}! Recebi sua mensagem. 🤖\n\nNosso assistente virtual responde automaticamente a dúvidas sobre status, tempo de entrega, pagamentos ou cupons.\n\nSe você precisa de ajuda de um atendente humano agora mesmo, por favor digite **'0'** ou clique no botão **'Falar com Humano'** abaixo para transferirmos a conversa! 🗣️✨`;
-            }
-
-            try {
-              const replyMsg = {
-                sender: 'store',
-                text: reply,
-                timestamp: new Date().toISOString(),
-                isAutoReply: true
-              };
-              
-              // Refetch to get latest messages just in case
-              const freshSnap = await getDoc(docRef);
-              if (freshSnap.exists()) {
-                const freshMessages = freshSnap.data().chatMessages || [];
-                await updateDoc(docRef, {
-                  chatMessages: [...freshMessages, replyMsg],
-                  hasUnreadStoreMessage: true
-                });
-              }
-            } catch (autoErr) {
-              console.error("Auto-reply error:", autoErr);
-            }
-          }, 1500); // 1.5s delay to feel natural
-        }
-
-      } catch (err) {
-        console.error("Error sending message:", err);
-        alert("Erro ao enviar mensagem.");
-      } finally {
-        btn.disabled = false;
-        input.focus();
-      }
     }
   </script>
 </body>
