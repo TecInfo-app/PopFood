@@ -2,7 +2,7 @@
   "name": "PopFood",
   "short_name": "PopFood",
   "description": "Aplicativo de Pedidos PopFood",
-  "start_url": "/index.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#FF4500",

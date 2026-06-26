@@ -44,7 +44,7 @@ self.addEventListener('notificationclick', (event) => {
       }
       // Se não, abre a tela de pedidos ou home
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow('./');
       }
     })
   );
