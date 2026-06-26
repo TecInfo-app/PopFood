@@ -2573,15 +2573,14 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
 
       function triggerNewMessageAlert(isPreview = false) {
         try {
-          const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-          if (!isPreview && !enabled) return; // Muted by user toggling it OFF
-
           // Play the selected message sound
           synthesizeBellRingerBeep(selectedMessageSound);
 
           // Trigger Web Desktop Notification if allowed and not a preview
+          const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
           if (
             !isPreview &&
+            enabled &&
             "Notification" in window &&
             Notification.permission === "granted"
           ) {
@@ -2596,9 +2595,6 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
       }
 
       function triggerNewOrderAlert(isPreview = false) {
-        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-        if (!isPreview && !enabled) return; // Muted by user toggling it OFF
-
         // Toggle banner display if not a preview
         if (!isPreview) {
           const banner = document.getElementById("new-order-banner");
@@ -2622,8 +2618,10 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
 
         // Trigger Web Desktop Notification if allowed and not a preview
+        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
         if (
           !isPreview &&
+          enabled &&
           "Notification" in window &&
           Notification.permission === "granted"
         ) {
@@ -2649,14 +2647,28 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return;
         }
 
-        if (window.self !== window.top) {
-          alert(
-            "⚠️ RECURSO BLOQUEADO PELO NAVEGADOR (SANDBOX DO IFRAME)\n\nVocê está visualizando este painel de pedidos dentro do visualizador do AI Studio (iframe).\n\nNenhum navegador permite solicitar ou disparar notificações de desktop dentro de um frame de terceiros (iframe) por motivos de privacidade e segurança.\n\nPara ativar as notificações e receber alertas perfeitamente:\n1. Clique no botão de 'Abrir em nova aba' (ícone com seta saindo do quadrado) no canto superior direito da tela de visualização do AI Studio.\n2. Na nova aba independente, clique novamente aqui no botão '🔔 Notificações: Clique para Ativar' para conceder a permissão!"
-          );
+        const currentPermission = Notification.permission;
+
+        if (currentPermission === "granted") {
+          // Toggle ON/OFF state in local storage
+          const isCurrentlyEnabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
+          if (isCurrentlyEnabled) {
+            localStorage.setItem("popfood_notifications_enabled", "false");
+            alert("Notificações desativadas temporariamente neste painel.");
+          } else {
+            localStorage.setItem("popfood_notifications_enabled", "true");
+            try {
+              new Notification("Notificações Reativadas! 🔔", {
+                body: "Você voltará a receber alertas visuais na sua tela.",
+                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+              });
+            } catch (e) {
+              console.warn("Could not fire notification:", e);
+            }
+          }
+          updateNotificationIndicator();
           return;
         }
-
-        const currentPermission = Notification.permission;
 
         if (currentPermission === "denied") {
           alert(
@@ -2665,41 +2677,27 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return;
         }
 
-        if (currentPermission === "default") {
-          try {
-            const permission = await Notification.requestPermission();
-            if (permission === "granted") {
-              localStorage.setItem("popfood_notifications_enabled", "true");
-              updateNotificationIndicator();
-              new Notification("Notificações Ativas! 🔔", {
-                body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
-                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
-              });
-            } else {
-              localStorage.setItem("popfood_notifications_enabled", "false");
-              updateNotificationIndicator();
-            }
-          } catch (e) {
-            console.error("Error requesting notification permission:", e);
-          }
-          return;
-        }
+        // It is "default", let's ask for permission
+        try {
+          const permission = await Notification.requestPermission();
+          updateNotificationIndicator(permission);
 
-        // If permission is already granted, toggle custom mute state ON/OFF
-        if (currentPermission === "granted") {
-          const isCurrentlyEnabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-          if (isCurrentlyEnabled) {
-            // Toggle OFF
-            localStorage.setItem("popfood_notifications_enabled", "false");
-            updateNotificationIndicator();
-          } else {
-            // Toggle ON
+          if (permission === "granted") {
             localStorage.setItem("popfood_notifications_enabled", "true");
             updateNotificationIndicator();
-            new Notification("Notificações Reativadas! 🔔", {
-              body: "Você voltará a receber alertas de novos pedidos.",
+            new Notification("Notificações Ativas! 🔔", {
+              body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
               icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
             });
+          }
+        } catch (e) {
+          console.error("Error requesting notification permission:", e);
+          if (window.self !== window.top) {
+            alert(
+              "Não foi possível solicitar permissão de notificação dentro deste frame (iframe).\n\nPor favor, abra a aplicação em uma nova aba usando o ícone com seta no canto superior direito para ativar as notificações!"
+            );
+          } else {
+            alert("Não foi possível solicitar permissão de notificação: " + e.message);
           }
         }
       };
@@ -2710,11 +2708,6 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
 
         if (!("Notification" in window)) {
           el.textContent = "🔕 Não suportado";
-          return;
-        }
-
-        if (window.self !== window.top) {
-          el.textContent = "🔗 Ativar na Nova Aba ⚠️";
           return;
         }
 
