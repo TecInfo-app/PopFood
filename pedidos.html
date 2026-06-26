@@ -2573,6 +2573,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
 
       function triggerNewMessageAlert(isPreview = false) {
         try {
+          const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
+          if (!isPreview && !enabled) return; // Muted by user toggling it OFF
+
           // Play the selected message sound
           synthesizeBellRingerBeep(selectedMessageSound);
 
@@ -2593,6 +2596,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
       }
 
       function triggerNewOrderAlert(isPreview = false) {
+        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
+        if (!isPreview && !enabled) return; // Muted by user toggling it OFF
+
         // Toggle banner display if not a preview
         if (!isPreview) {
           const banner = document.getElementById("new-order-banner");
@@ -2643,31 +2649,53 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return;
         }
 
-        try {
-          const permission = await Notification.requestPermission();
-          updateNotificationIndicator(permission);
+        const isCurrentlyEnabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
 
-          if (permission === "granted") {
-            new Notification("Notificações Ativas! 🔔", {
-              body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
-              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
-            });
+        if (isCurrentlyEnabled) {
+          // Toggle OFF
+          localStorage.setItem("popfood_notifications_enabled", "false");
+          updateNotificationIndicator();
+        } else {
+          // Toggle ON
+          localStorage.setItem("popfood_notifications_enabled", "true");
+          try {
+            const permission = await Notification.requestPermission();
+            updateNotificationIndicator();
+
+            if (permission === "granted") {
+              new Notification("Notificações Ativas! 🔔", {
+                body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
+                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+              });
+            } else if (permission === "denied") {
+              alert("As notificações estão bloqueadas no seu navegador. Ative-as nas configurações do site para receber alertas.");
+            }
+          } catch (e) {
+            console.error("Error requesting notification permission:", e);
+            updateNotificationIndicator();
           }
-        } catch (e) {
-          console.error("Error requesting notification permission:", e);
         }
       };
 
       function updateNotificationIndicator(state = null) {
         const el = document.getElementById("lbl-notification-indicator");
         if (!el) return;
+
+        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
+
+        if (!enabled) {
+          el.textContent = "🔕 Notificações: Desativadas ❌";
+          return;
+        }
+
         const current =
           state ||
           ("Notification" in window ? Notification.permission : "unsupported");
+
         if (current === "granted") {
           el.textContent = "🔔 Notificações: Ativas ✅";
         } else if (current === "denied") {
-          el.textContent = "🔕 Notificações: Bloqueadas ❌";
+          el.textContent = "🔕 Notificações: Bloqueadas no Navegador ❌";
         } else {
           el.textContent = "🔔 Notificações: Desativadas ⚠️";
         }
