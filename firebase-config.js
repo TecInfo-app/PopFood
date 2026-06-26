@@ -22,6 +22,7 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail
 } from 'firebase/auth';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtz-4cniRtbA_rdxAE26-uOA_ji3Xz4RU",
@@ -35,6 +36,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+let messaging = null;
+if (typeof window !== 'undefined') {
+  try {
+    messaging = getMessaging(app);
+  } catch (e) {
+    console.error("Failed to initialize Firebase Messaging", e);
+  }
+}
 
 const COLLECTIONS = {
   products: "products",
@@ -181,8 +190,10 @@ if (typeof window !== 'undefined') {
 
 // --- EXPORTS ---
 export {
+  app,
   db,
   auth,
+  messaging,
   COLLECTIONS,
   Timestamp,
   
@@ -204,5 +215,10 @@ export {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+
+  // Messaging APIs
+  getMessaging,
+  getToken,
+  onMessage
 };

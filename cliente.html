@@ -9,10 +9,12 @@
         "imports": {
           "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
           "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+          "firebase/messaging": "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js"
         }
       }
     </script>
+    <link rel="manifest" href="manifest.json" />
     <!-- Google Fonts & Tailwind CSS CDN -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -149,31 +151,39 @@
           </div>
         </div>
 
-        <button
-          onclick="toggleCartModal(true)"
-          id="cart-trigger-btn"
-          class="relative text-brand-primary p-2 hover:bg-orange-50 rounded-xl transition-all flex items-center justify-center cursor-pointer"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke-width="2.3"
-            stroke="currentColor"
-            class="w-6 h-6"
+        <div class="flex items-center gap-3">
+          <!-- WELCOME GREETING IF LOGGED IN -->
+          <div id="header-welcome-greeting" class="hidden flex-col text-right">
+            <span class="text-[9px] text-gray-400 font-bold block leading-none uppercase tracking-wider">Olá, bem-vindo!</span>
+            <span id="header-welcome-name" class="text-xs font-black text-brand-primary block max-w-[90px] sm:max-w-[150px] truncate leading-tight">Cliente</span>
+          </div>
+
+          <button
+            onclick="toggleCartModal(true)"
+            id="cart-trigger-btn"
+            class="relative text-brand-primary p-2 hover:bg-orange-50 rounded-xl transition-all flex items-center justify-center cursor-pointer"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
-            />
-          </svg>
-          <span
-            id="cart-badge"
-            class="absolute top-[3px] right-[2px] bg-[#16a34a] text-white font-extrabold text-[9px] w-5 h-5 rounded-full border border-white flex items-center justify-center shadow-3xs"
-            >0</span
-          >
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2.3"
+              stroke="currentColor"
+              class="w-6 h-6"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z"
+              />
+            </svg>
+            <span
+              id="cart-badge"
+              class="absolute top-[3px] right-[2px] bg-[#16a34a] text-white font-extrabold text-[9px] w-5 h-5 rounded-full border border-white flex items-center justify-center shadow-3xs"
+              >0</span
+            >
+          </button>
+        </div>
       </div>
     </header>
 
@@ -235,7 +245,7 @@
       </section>
 
       <!-- Menu horizontal list by Categories -->
-      <div id="menu-sections" class="space-y-8 pb-32">
+      <div id="menu-sections" class="space-y-8 pb-48">
         <!-- Skeleton template -->
         <div class="space-y-4">
           <div class="h-6 w-48 bg-gray-200 rounded animate-pulse"></div>
@@ -260,6 +270,34 @@
         </div>
       </div>
     </main>
+
+    <!-- Floating Bottom Cart Bar -->
+    <div
+      id="floating-cart-bar"
+      class="hidden fixed bottom-[68px] left-4 right-4 bg-white border border-stone-150 rounded-2xl p-3.5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] z-40 max-w-md mx-auto transition-all duration-300 transform translate-y-10 opacity-0 pointer-events-auto"
+    >
+      <div class="flex items-center justify-between gap-3">
+        <!-- Left: Totals and item count -->
+        <div class="flex flex-col">
+          <span id="floating-cart-label" class="text-[10px] text-stone-500 font-bold leading-none mb-1">Total (sem entrega)</span>
+          <div class="flex items-baseline gap-1.5">
+            <span id="floating-cart-price" class="text-[15px] font-black text-stone-850">R$ 0,00</span>
+            <span id="floating-cart-qty" class="text-[10px] text-stone-400 font-semibold">/ 0 itens</span>
+          </div>
+        </div>
+
+        <!-- Right: Action button to open cart -->
+        <button
+          onclick="toggleCartModal(true)"
+          class="bg-[#803805] hover:bg-[#6c2e04] text-white font-extrabold text-xs px-5 py-3 rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center gap-1.5 cursor-pointer border-none outline-none select-none"
+        >
+          <span>Ir para a sacola</span>
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
 
     <!-- Fixed Bottom Navigation Bar -->
     <nav
@@ -1360,6 +1398,157 @@
       </div>
     </div>
 
+    <!-- PRE-REGISTRATION / GPS MODAL -->
+    <div
+      id="pre-register-gps-modal"
+      class="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4 hidden backdrop-blur-sm transition-opacity duration-300 opacity-0"
+    >
+      <div
+        class="bg-gradient-to-b from-orange-400 to-brand-primary rounded-3xl w-full max-w-sm p-1 shadow-2xl flex flex-col relative transform scale-90 transition-transform duration-300"
+        id="pre-register-gps-modal-inner"
+      >
+        <button
+          onclick="closePreRegisterGpsModal()"
+          class="absolute top-3 right-3 text-white/70 hover:text-white p-2 text-sm font-bold z-10 cursor-pointer bg-black/20 rounded-full w-8 h-8 flex items-center justify-center"
+        >
+          ✕
+        </button>
+        <div class="bg-white rounded-[22px] p-6 text-center space-y-4 pt-8 h-full relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-orange-400 to-brand-primary"></div>
+          
+          <div class="mx-auto w-16 h-16 bg-orange-100 text-brand-primary rounded-full flex items-center justify-center text-3xl mb-2 animate-bounce shadow-sm">
+            📍
+          </div>
+          
+          <h3 class="font-display font-black text-2xl text-gray-800 leading-tight">
+            Seja bem-vindo(a)!
+          </h3>
+          
+          <p class="text-xs text-gray-500 font-medium pb-2">
+            Configure seu endereço e dados de contato para calcular o tempo e a taxa de entrega exatos!
+          </p>
+          
+          <div class="space-y-3 text-left">
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Seu Nome *</label>
+              <input
+                type="text"
+                id="pre-cust-name"
+                placeholder="Como quer ser chamado?"
+                class="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:outline-none transition-all placeholder:text-gray-400 font-semibold text-gray-800"
+              />
+            </div>
+            
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">WhatsApp para Contato *</label>
+              <input
+                type="tel"
+                id="pre-cust-phone"
+                placeholder="(11) 99999-9999"
+                class="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:outline-none transition-all placeholder:text-gray-400 font-semibold text-gray-800"
+              />
+            </div>
+
+            <div class="pt-2">
+              <button
+                type="button"
+                id="pre-btn-geolocation"
+                onclick="window.fetchUserGeolocationPreRegister()"
+                class="w-full bg-stone-55 border border-stone-200 hover:bg-stone-100 text-stone-700 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-3xs"
+              >
+                <span>📍</span> Usar Localização por GPS
+              </button>
+            </div>
+
+            <!-- Address display inside modal -->
+            <div id="pre-gps-address-feedback" class="p-3 bg-green-50 border border-green-100 rounded-xl hidden text-[11px] leading-relaxed text-green-700">
+              <span class="font-bold">Endereço localizado:</span> <span id="pre-gps-address-text"></span>
+            </div>
+
+            <!-- GPS Address fields, shown after geolocation is resolved -->
+            <div id="pre-gps-address-fields" class="space-y-3 hidden transition-all">
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="block text-[10px] font-bold text-gray-500 uppercase">Número *</label>
+                  <input
+                    type="text"
+                    id="pre-cust-number"
+                    placeholder="Ex: 123"
+                    class="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:outline-none transition-all placeholder:text-gray-400 font-semibold text-gray-800"
+                  />
+                </div>
+                <div class="space-y-1">
+                  <label class="block text-[10px] font-bold text-gray-500 uppercase">Complemento (Opcional)</label>
+                  <input
+                    type="text"
+                    id="pre-cust-comp"
+                    placeholder="Apto, bloco..."
+                    class="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-brand-primary focus:outline-none transition-all placeholder:text-gray-400 font-semibold text-gray-800"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="pt-2 flex gap-3">
+            <button
+              onclick="closePreRegisterGpsModal()"
+              class="flex-1 border border-gray-200 py-3 rounded-xl text-xs text-gray-500 hover:bg-gray-50 font-semibold cursor-pointer"
+            >
+              Depois
+            </button>
+            <button
+              onclick="savePreRegisterGpsDetails()"
+              class="flex-1 bg-gradient-to-r from-brand-primary to-orange-500 hover:from-orange-600 hover:to-orange-500 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer"
+            >
+              Salvar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOYALTY REWARD MODAL -->
+    <div
+      id="loyalty-reward-modal"
+      class="fixed inset-0 bg-black/60 z-[80] flex items-center justify-center p-4 hidden backdrop-blur-sm transition-opacity duration-300 opacity-0"
+    >
+      <div
+        class="bg-gradient-to-b from-orange-400 to-red-500 rounded-3xl w-full max-w-sm p-1 shadow-2xl flex flex-col relative transform scale-90 transition-transform duration-300"
+        id="loyalty-reward-modal-inner"
+      >
+        <button
+          onclick="closeLoyaltyRewardModal()"
+          class="absolute top-3 right-3 text-white/70 hover:text-white p-2 text-sm font-bold z-10 cursor-pointer bg-black/20 rounded-full w-8 h-8 flex items-center justify-center"
+        >
+          ✕
+        </button>
+        <div class="bg-white rounded-[22px] p-6 text-center space-y-4 pt-8 h-full relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 to-orange-500"></div>
+          
+          <div class="mx-auto w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-3xl mb-2 animate-bounce shadow-sm">
+            ⭐
+          </div>
+          
+          <h3 class="font-display font-black text-2xl text-gray-800 leading-tight">
+            Você Ganhou <br>
+            <span class="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500" id="loyalty-reward-modal-discount-text">um Desconto!</span>
+          </h3>
+          
+          <p class="text-sm text-gray-600 font-medium pb-2" id="loyalty-reward-modal-subtitle">
+            Parabéns! Você atingiu o limite de pedidos e desbloqueou seu prêmio de fidelidade.
+          </p>
+          
+          <button
+            onclick="closeLoyaltyRewardModal()"
+            class="w-full bg-gradient-to-r from-brand-primary to-orange-500 hover:from-orange-600 hover:to-orange-500 text-white font-black py-4 px-6 rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 text-sm uppercase tracking-wide mt-4 cursor-pointer"
+          >
+            Aproveitar Agora
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- SUCCESS POPUP -->
     <div
       id="success-modal"
@@ -1546,6 +1735,15 @@
         where,
       } from "./firebase-config.js";
 
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/firebase-messaging-sw.js')
+          .then(function(registration) {
+            console.log('Cliente Registration successful, scope is:', registration.scope);
+          }).catch(function(err) {
+            console.log('Cliente Service worker registration failed, error:', err);
+          });
+      }
+
       const urlStoreId = new URLSearchParams(window.location.search).get(
         "store",
       );
@@ -1580,6 +1778,25 @@
             if (toast.parentElement) toast.parentElement.removeChild(toast);
           }, 300);
         }, 3000);
+      };
+
+      window.updateHeaderWelcomeGreeting = function () {
+        const phone = localStorage.getItem("popfood_last_phone") || "";
+        const name = localStorage.getItem("popfood_cust_name") || "";
+
+        const greetingDiv = document.getElementById("header-welcome-greeting");
+        const greetingNameSpan = document.getElementById("header-welcome-name");
+
+        if (greetingDiv && greetingNameSpan) {
+          if (phone && name) {
+            greetingNameSpan.textContent = name;
+            greetingDiv.classList.remove("hidden");
+            greetingDiv.classList.add("flex");
+          } else {
+            greetingDiv.classList.add("hidden");
+            greetingDiv.classList.remove("flex");
+          }
+        }
       };
 
       // Application State Variables
@@ -2135,6 +2352,19 @@
           }
         });
 
+        // Initialize phone mask for the main checkout phone input
+        const mainPhoneEl = document.getElementById("cust-phone");
+        if (mainPhoneEl) {
+          mainPhoneEl.addEventListener("input", (e) => {
+            let x = e.target.value
+              .replace(/\D/g, "")
+              .match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+            e.target.value = !x[2]
+              ? x[1]
+              : "(" + x[1] + ") " + x[2] + (x[3] ? "-" + x[3] : "");
+          });
+        }
+
         // Dynamic change listeners for the Saved Data Banner
         [
           "cust-name",
@@ -2238,10 +2468,20 @@
         }
 
         setTimeout(() => {
+          if (typeof window.checkPreRegisterGpsModal === "function") {
+            window.checkPreRegisterGpsModal();
+          }
+        }, 1000);
+
+        setTimeout(() => {
           if (typeof window.checkFirstOrderCoupon === "function") {
             window.checkFirstOrderCoupon();
           }
-        }, 2000);
+        }, 3000);
+
+        if (typeof window.updateHeaderWelcomeGreeting === "function") {
+          window.updateHeaderWelcomeGreeting();
+        }
       };
 
       let needsChange = false;
@@ -2610,16 +2850,33 @@
               bannersDiv.classList.add("hidden");
             } else if (activeBanners.length === 1) {
               bannersDiv.classList.remove("hidden");
-              bannersDiv.innerHTML = `<div class="w-full h-full"><img src="${activeBanners[0]}" class="w-full h-full object-cover select-none"></div>`;
+              let item = activeBanners[0];
+              let b64 = typeof item === 'string' ? item : item.banner;
+              let linkUrl = typeof item === 'string' ? '' : (item.linkUrl || '');
+              
+              let imgHtml = `<img src="${b64}" class="w-full h-full object-cover select-none">`;
+              if (linkUrl) {
+                bannersDiv.innerHTML = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-full h-full block cursor-pointer">${imgHtml}</a>`;
+              } else {
+                bannersDiv.innerHTML = `<div class="w-full h-full">${imgHtml}</div>`;
+              }
             } else {
               bannersDiv.classList.remove("hidden");
               let trackHtml = activeBanners
                 .map(
-                  (b64) => `
+                  (item) => {
+                    let b64 = typeof item === 'string' ? item : item.banner;
+                    let linkUrl = typeof item === 'string' ? '' : (item.linkUrl || '');
+                    let imgHtml = `<img src="${b64}" class="w-full h-full object-cover select-none">`;
+                    if (linkUrl) {
+                      imgHtml = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-full h-full block cursor-pointer">${imgHtml}</a>`;
+                    }
+                    return `
               <div class="flex-shrink-0 w-full h-full">
-                <img src="${b64}" class="w-full h-full object-cover select-none">
+                ${imgHtml}
               </div>
-            `,
+            `;
+                  }
                 )
                 .join("");
 
@@ -2722,7 +2979,12 @@
               doc(db, COLLECTIONS.restaurantProfile, docId),
               (bSnap) => {
                 if (bSnap.exists()) {
-                  bannerVals[index] = bSnap.data().banner || null;
+                  const data = bSnap.data();
+                  if (data && data.banner) {
+                    bannerVals[index] = { banner: data.banner, linkUrl: data.linkUrl || "" };
+                  } else {
+                    bannerVals[index] = null;
+                  }
                 } else {
                   bannerVals[index] = null;
                 }
@@ -3943,6 +4205,26 @@
           if (submitBtn) {
             submitBtn.onclick = goToNextCartStep;
           }
+
+          // Populate/sync checkout fields from localStorage to ensure everything is perfectly loaded
+          const cachedFields = [
+            { id: "cust-name", key: "popfood_cust_name" },
+            { id: "cust-phone", key: "popfood_last_phone" },
+            { id: "cust-cep", key: "popfood_cust_cep" },
+            { id: "cust-street", key: "popfood_cust_street" },
+            { id: "cust-number", key: "popfood_cust_number" },
+            { id: "cust-comp", key: "popfood_cust_comp" },
+            { id: "cust-ref", key: "popfood_cust_ref" },
+            { id: "cust-email", key: "popfood_cust_email" },
+          ];
+          cachedFields.forEach((f) => {
+            const cachedVal = localStorage.getItem(f.key);
+            if (cachedVal) {
+              const el = document.getElementById(f.id);
+              if (el) el.value = cachedVal;
+            }
+          });
+
           if (typeof window.checkAndShowSavedDataBanner === "function") {
             window.checkAndShowSavedDataBanner();
           }
@@ -4391,6 +4673,7 @@
           footerSec.classList.add("hidden");
           if (clearBtn) clearBtn.classList.add("hidden");
           updateIFoodPanels();
+          updateFloatingCartBar();
           return;
         }
 
@@ -4523,6 +4806,106 @@
         updateIFoodPanels();
         calculateReceiptTotals();
         refreshSubmitBtnWidget();
+        updateFloatingCartBar();
+      }
+
+      // Update the Floating Bottom Cart Bar UI
+      function updateFloatingCartBar() {
+        const bar = document.getElementById("floating-cart-bar");
+        if (!bar) return;
+
+        const totalQty = shoppingCart.reduce(
+          (acc, current) => acc + current.quantity,
+          0,
+        );
+
+        if (totalQty === 0) {
+          bar.classList.remove("translate-y-0", "opacity-100");
+          bar.classList.add("translate-y-10", "opacity-0");
+          setTimeout(() => {
+            const currentQty = shoppingCart.reduce((acc, curr) => acc + curr.quantity, 0);
+            if (currentQty === 0) {
+              bar.classList.add("hidden");
+            }
+          }, 300);
+          return;
+        }
+
+        // Show the bar with fancy transition
+        bar.classList.remove("hidden");
+        setTimeout(() => {
+          bar.classList.remove("translate-y-10", "opacity-0");
+          bar.classList.add("translate-y-0", "opacity-100");
+        }, 10);
+
+        // Calculate Subtotal
+        const subtotal = shoppingCart.reduce((sum, item) => {
+          return sum + item.totalItemPrice * item.quantity;
+        }, 0);
+
+        // Recalculate manual coupon discount
+        let discount = 0;
+        if (typeof appliedDiscountCoupon !== "undefined" && appliedDiscountCoupon) {
+          if (appliedDiscountCoupon.type === "percentual") {
+            discount = subtotal * (appliedDiscountCoupon.value / 100);
+          } else {
+            discount = appliedDiscountCoupon.value;
+          }
+          discount = Math.min(subtotal, discount);
+        }
+
+        // Recalculate automatic loyalty discount
+        let loyaltyDisc = 0;
+        if (
+          typeof hasLoyaltyDiscount !== "undefined" &&
+          hasLoyaltyDiscount &&
+          typeof restaurantProfile !== "undefined" &&
+          restaurantProfile &&
+          restaurantProfile.loyaltyActive
+        ) {
+          const val = parseFloat(restaurantProfile.loyaltyValue || 0);
+          if (restaurantProfile.loyaltyType === "percentual") {
+            loyaltyDisc = subtotal * (val / 100);
+          } else {
+            loyaltyDisc = val;
+          }
+          loyaltyDisc = Math.min(Math.max(0, subtotal - discount), loyaltyDisc);
+        }
+
+        // Add delivery fee
+        const displayDeliveryFee =
+          typeof selectedDeliveryOption !== "undefined" && selectedDeliveryOption === "pickup" ? 0.0 : (typeof calculatedDeliveryFee !== "undefined" ? calculatedDeliveryFee : 0.0);
+
+        const total = Math.max(
+          0,
+          subtotal - discount - loyaltyDisc + displayDeliveryFee,
+        );
+
+        // Update labels dynamically matching the app colors and values
+        const priceEl = document.getElementById("floating-cart-price");
+        if (priceEl) {
+          priceEl.textContent = `R$ ${total.toFixed(2).replace(".", ",")}`;
+        }
+
+        const qtyEl = document.getElementById("floating-cart-qty");
+        if (qtyEl) {
+          qtyEl.textContent = `/ ${totalQty} ${totalQty === 1 ? 'item' : 'itens'}`;
+        }
+
+        const labelEl = document.getElementById("floating-cart-label");
+        if (labelEl) {
+          let labelText = "Total";
+          if (typeof selectedDeliveryOption !== "undefined" && selectedDeliveryOption === "pickup") {
+            labelText = "Total com retirada grátis";
+          } else if (typeof calculatedDeliveryFee !== 'undefined' && calculatedDeliveryFee === 0) {
+            labelText = "Total com entrega grátis";
+          } else if (typeof calculatedDeliveryFee !== 'undefined' && calculatedDeliveryFee > 0) {
+            labelText = "Total com taxa";
+          } else {
+            labelText = "Total (sem entrega)";
+          }
+          labelEl.textContent = labelText;
+        }
       }
 
       // Incr dec qty
@@ -5010,6 +5393,37 @@
         }, 300);
       };
 
+      window.closeLoyaltyRewardModal = function() {
+        const modal = document.getElementById("loyalty-reward-modal");
+        const inner = document.getElementById("loyalty-reward-modal-inner");
+        inner.classList.add("scale-90");
+        modal.classList.remove("opacity-100");
+        modal.classList.add("opacity-0");
+        setTimeout(() => {
+          modal.classList.add("hidden");
+        }, 300);
+      };
+
+      window.checkLoyaltyRewardModal = function(discountValue, requiredOrders) {
+        if (sessionStorage.getItem("popfood_loyalty_reward_modal_shown")) return;
+        
+        const modal = document.getElementById("loyalty-reward-modal");
+        const inner = document.getElementById("loyalty-reward-modal-inner");
+        
+        document.getElementById("loyalty-reward-modal-discount-text").textContent = `${discountValue} de Desconto!`;
+        document.getElementById("loyalty-reward-modal-subtitle").textContent = `Parabéns! Você completou ${requiredOrders} pedidos e desbloqueou seu prêmio de fidelidade para usar na próxima compra.`;
+
+        modal.classList.remove("hidden");
+        setTimeout(() => {
+          modal.classList.remove("opacity-0");
+          modal.classList.add("opacity-100");
+          inner.classList.remove("scale-90");
+          inner.classList.add("scale-100");
+        }, 50);
+        
+        sessionStorage.setItem("popfood_loyalty_reward_modal_shown", "true");
+      };
+
       window.copyFirstOrderCoupon = function() {
         const code = document.getElementById("first-order-coupon-code").textContent.trim();
         if (code && code !== "---") {
@@ -5077,6 +5491,267 @@
           }
         } catch (e) {
           console.error("Erro ao carregar cupom de primeiro pedido: ", e);
+        }
+      };
+
+      window.closePreRegisterGpsModal = function() {
+        const modal = document.getElementById("pre-register-gps-modal");
+        const inner = document.getElementById("pre-register-gps-modal-inner");
+        inner.classList.add("scale-90");
+        modal.classList.remove("opacity-100");
+        modal.classList.add("opacity-0");
+        setTimeout(() => {
+          modal.classList.add("hidden");
+        }, 300);
+      };
+
+      window.savePreRegisterGpsDetails = function() {
+        const name = document.getElementById("pre-cust-name").value.trim();
+        const phone = document.getElementById("pre-cust-phone").value.trim();
+        const street = document.getElementById("cust-street").value.trim();
+        const cep = document.getElementById("cust-cep").value.trim();
+        const number = document.getElementById("pre-cust-number") ? document.getElementById("pre-cust-number").value.trim() : "";
+        const comp = document.getElementById("pre-cust-comp") ? document.getElementById("pre-cust-comp").value.trim() : "";
+
+        if (!name || !phone) {
+          window.customAlert("Por favor, preencha seu Nome e WhatsApp de contato para salvar seu cadastro.");
+          return;
+        }
+
+        if (phone.length < 10) {
+          showToast("Insira seu número de WhatsApp com DDD válido.", true);
+          return;
+        }
+
+        // If street is found/filled, we require the number
+        if (street && !number) {
+          window.customAlert("Por favor, informe o Número do seu endereço.");
+          return;
+        }
+
+        // Fill main checkout form fields so everything is perfectly synced
+        document.getElementById("cust-name").value = name;
+        document.getElementById("cust-phone").value = phone;
+        if (street) {
+          document.getElementById("cust-street").value = street;
+        }
+        if (cep) {
+          document.getElementById("cust-cep").value = cep;
+        }
+        if (number) {
+          document.getElementById("cust-number").value = number;
+        }
+        if (comp) {
+          document.getElementById("cust-comp").value = comp;
+        }
+
+        // Save to localStorage
+        localStorage.setItem("popfood_cust_name", name);
+        localStorage.setItem("popfood_last_phone", phone);
+        if (street) {
+          localStorage.setItem("popfood_cust_street", street);
+        }
+        if (cep) {
+          localStorage.setItem("popfood_cust_cep", cep);
+        }
+        if (number) {
+          localStorage.setItem("popfood_cust_number", number);
+        }
+        if (comp) {
+          localStorage.setItem("popfood_cust_comp", comp);
+        }
+
+        // Trigger dynamic updates
+        if (typeof window.checkAndShowSavedDataBanner === "function") {
+          window.checkAndShowSavedDataBanner();
+        }
+        if (typeof window.checkLoyaltyEligibility === "function") {
+          window.checkLoyaltyEligibility();
+        }
+        if (typeof window.updateHeaderWelcomeGreeting === "function") {
+          window.updateHeaderWelcomeGreeting();
+        }
+
+        showToast("Cadastro realizado com sucesso! 🎉");
+        closePreRegisterGpsModal();
+      };
+
+      window.fetchUserGeolocationPreRegister = async function () {
+        const btnGeo = document.getElementById("pre-btn-geolocation");
+        if (!btnGeo) return;
+        const originalText = btnGeo.innerHTML;
+
+        if (!navigator.geolocation) {
+          showToast("Geolocalização não é suportada por este navegador.", true);
+          return;
+        }
+
+        btnGeo.disabled = true;
+        btnGeo.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-brand-primary inline-block" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Localizando...</span>
+        `;
+
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            clientLatitude = lat;
+            clientLongitude = lon;
+
+            try {
+              const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+                {
+                  headers: {
+                    "User-Agent": "PopFood-App-Customer",
+                    "Accept-Language": "pt-BR"
+                  }
+                }
+              );
+              const data = await response.json();
+
+              if (data && data.address) {
+                const addr = data.address;
+                
+                let cep = addr.postcode || "";
+                cep = cep.replace(/\D/g, "");
+                if (cep.length > 8) cep = cep.substring(0, 8);
+
+                let street = "";
+                if (addr.road) {
+                  street += addr.road;
+                }
+                if (addr.suburb) {
+                  street += street ? `, ${addr.suburb}` : addr.suburb;
+                } else if (addr.neighbourhood) {
+                  street += street ? `, ${addr.neighbourhood}` : addr.neighbourhood;
+                }
+                
+                if (!street && data.display_name) {
+                  street = data.display_name.split(",").slice(0, 2).join(",").trim();
+                }
+
+                let cityState = "";
+                if (addr.city || addr.town || addr.village) {
+                  cityState += (addr.city || addr.town || addr.village);
+                }
+                if (addr.state) {
+                  const stateMap = {
+                    "Acre": "AC", "Alagoas": "AL", "Amapá": "AP", "Amazonas": "AM", "Bahia": "BA", "Ceará": "CE",
+                    "Distrito Federal": "DF", "Espírito Santo": "ES", "Goiás": "GO", "Maranhão": "MA", "Mato Grosso": "MT",
+                    "Mato Grosso do Sul": "MS", "Minas Gerais": "MG", "Pará": "PA", "Paraíba": "PB", "Paraná": "PR",
+                    "Pernambuco": "PE", "Piauí": "PI", "Rio de Janeiro": "RJ", "Rio Grande do Norte": "RN",
+                    "Rio Grande do Sul": "RS", "Rondônia": "RO", "Roraima": "RR", "Santa Catarina": "SC",
+                    "São Paulo": "SP", "Sergipe": "SE", "Tocantins": "TO"
+                  };
+                  const stateInitials = stateMap[addr.state] || addr.state;
+                  cityState += cityState ? ` - ${stateInitials}` : stateInitials;
+                }
+
+                if (cityState) {
+                  street += street ? ` (${cityState})` : cityState;
+                }
+
+                // Update inputs on main UI
+                document.getElementById("cust-street").value = street;
+                if (cep && cep.length === 8) {
+                  document.getElementById("cust-cep").value = cep;
+                }
+
+                // Update preview in the modal
+                const feedbackDiv = document.getElementById("pre-gps-address-feedback");
+                const feedbackText = document.getElementById("pre-gps-address-text");
+                if (feedbackDiv && feedbackText) {
+                  feedbackText.textContent = `${street}${cep ? ' (CEP: ' + cep + ')' : ''}`;
+                  feedbackDiv.classList.remove("hidden");
+                }
+
+                const addressFields = document.getElementById("pre-gps-address-fields");
+                if (addressFields) {
+                  addressFields.classList.remove("hidden");
+                }
+
+                showToast("📍 Localização preenchida com sucesso!");
+                calculateDistanceAndFee();
+              } else {
+                showToast("Não foi possível decodificar o endereço desta localização.", true);
+              }
+            } catch (err) {
+              console.error("Geocoding error: ", err);
+              showToast("Erro ao carregar endereço da sua localização.", true);
+            } finally {
+              btnGeo.disabled = false;
+              btnGeo.innerHTML = originalText;
+            }
+          },
+          (error) => {
+            console.error("GPS Error: ", error);
+            let msg = "Não foi possível obter sua localização por GPS.";
+            if (error.code === error.PERMISSION_DENIED) {
+              msg = "Permissão de localização negada pelo seu dispositivo.";
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+              msg = "Localização indisponível no seu dispositivo.";
+            } else if (error.code === error.TIMEOUT) {
+              msg = "Tempo esgotado ao obter localização.";
+            }
+            showToast(msg, true);
+            btnGeo.disabled = false;
+            btnGeo.innerHTML = originalText;
+          },
+          { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        );
+      };
+
+      window.checkPreRegisterGpsModal = function() {
+        const cachedPhone = localStorage.getItem("popfood_last_phone") || "";
+        const cachedStreet = localStorage.getItem("popfood_cust_street") || "";
+
+        if (cachedPhone && cachedStreet) return; // Already registered
+
+        if (sessionStorage.getItem("popfood_pre_register_modal_shown")) return;
+
+        const modal = document.getElementById("pre-register-gps-modal");
+        const inner = document.getElementById("pre-register-gps-modal-inner");
+
+        if (modal) {
+          modal.classList.remove("hidden");
+          setTimeout(() => {
+            modal.classList.remove("opacity-0");
+            modal.classList.add("opacity-100");
+            inner.classList.remove("scale-90");
+            inner.classList.add("scale-100");
+          }, 50);
+
+          sessionStorage.setItem("popfood_pre_register_modal_shown", "true");
+
+          // Pre-fill fields if they exist in localStorage (e.g. only name exists or phone exists)
+          const cachedName = localStorage.getItem("popfood_cust_name") || "";
+          if (cachedName) {
+            const nameEl = document.getElementById("pre-cust-name");
+            if (nameEl) nameEl.value = cachedName;
+          }
+          if (cachedPhone) {
+            const phoneEl = document.getElementById("pre-cust-phone");
+            if (phoneEl) phoneEl.value = cachedPhone;
+          }
+
+          // Initialize mask listener for modal phone input
+          const maskEl = document.getElementById("pre-cust-phone");
+          if (maskEl) {
+            maskEl.addEventListener("input", (e) => {
+              let x = e.target.value
+                .replace(/\D/g, "")
+                .match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+              e.target.value = !x[2]
+                ? x[1]
+                : "(" + x[1] + ") " + x[2] + (x[3] ? "-" + x[3] : "");
+            });
+          }
         }
       };
 
@@ -5259,6 +5934,10 @@
                     .replace(".", ",")}`;
 
             loyaltyFeedback.innerHTML = `🌟 <b>Desconto Fidelidade Desbloqueado!</b> Você atingiu a meta de <b>${loyaltyMinNeeded} pedidos</b> e garantiu seu desconto de <b>${discText}</b> automático neste carrinho! <span class="font-normal text-xs text-gray-550 block mt-1">(Progresso atual para o próximo ciclo: ${userOrdersCount}/${loyaltyMinNeeded} pedidos. O pedido que ganha o desconto não soma na contagem para o próximo desconto.)</span>`;
+            
+            if (typeof window.checkLoyaltyRewardModal === "function") {
+              window.checkLoyaltyRewardModal(discText, loyaltyMinNeeded);
+            }
           } else {
             hasLoyaltyDiscount = false;
             loyaltyFeedback.classList.remove("hidden", "text-brand-secondary");
@@ -5634,6 +6313,9 @@
         if (typeof window.setupBackgroundOrderStatusTracker === "function") {
           window.setupBackgroundOrderStatusTracker();
         }
+        if (typeof window.updateHeaderWelcomeGreeting === "function") {
+          window.updateHeaderWelcomeGreeting();
+        }
       };
 
       window.saveProfileChanges = function () {
@@ -5728,6 +6410,10 @@
         refreshCartOverview();
 
         window.renderProfileAndLoyaltyUI();
+
+        if (typeof window.updateHeaderWelcomeGreeting === "function") {
+          window.updateHeaderWelcomeGreeting();
+        }
       };
 
       window.toggleProfileAddressAccordion = function () {
@@ -5874,6 +6560,7 @@
         );
         document.getElementById("lbl-total").textContent =
           `R$ ${total.toFixed(2).replace(".", ",")}`;
+        updateFloatingCartBar();
       }
 
       // Modal Confirmation layout and validation
@@ -6537,6 +7224,7 @@
             status:
               rawMethod === "PixOnline" ? "AguardandoPagamento" : "Pendente",
             storeId: window.currentStoreId,
+            aiChatEnabled: true,
           };
 
           // Write Order directly into Firestore collections
