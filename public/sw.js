@@ -18,6 +18,10 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+self.addEventListener('fetch', (event) => {
+  // Dummy fetch handler to satisfy PWA installability requirements
+});
+
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.notification?.title || 'Novo Pedido! 🔔';

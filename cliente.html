@@ -203,6 +203,20 @@
 
     <!-- Navigation Banners and Category Navigation -->
     <main class="flex-grow max-w-5xl w-full mx-auto px-4 pt-6 pb-24">
+      <!-- PWA Install Booster Card -->
+      <div id="pwa-promoter-card" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 border border-blue-100 shadow-3xs flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+        <div class="flex items-start gap-3">
+          <span class="text-3xl">📱</span>
+          <div class="space-y-1">
+            <h4 class="font-display font-extrabold text-sm text-gray-800">Instale o PopFood!</h4>
+            <p class="text-[11px] text-gray-500 leading-relaxed">Instale na tela inicial do celular para pedir mais rápido, como um aplicativo de verdade.</p>
+          </div>
+        </div>
+        <button onclick="installPWA()" id="btn-pwa-install" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-97">
+          Instalar App
+        </button>
+      </div>
+
       <!-- Active Banners Container -->
       <div
         id="banners-container"
@@ -7470,5 +7484,37 @@
         💳 Pagar Pix
       </button>
     </div>
+
+    <!-- PWA Installation Script -->
+    <script>
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('beforeinstallprompt event fired in cliente');
+        e.preventDefault();
+        deferredPrompt = e;
+        const installContainer = document.getElementById('pwa-promoter-card');
+        if (installContainer) {
+          installContainer.classList.remove('hidden');
+          installContainer.classList.add('flex');
+        }
+      });
+
+      window.installPWA = async function() {
+        if (!deferredPrompt) return;
+        const installContainer = document.getElementById('pwa-promoter-card');
+        if (installContainer) installContainer.classList.add('hidden');
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        deferredPrompt = null;
+      };
+      
+      window.addEventListener('appinstalled', () => {
+        console.log('PWA was installed');
+        const installContainer = document.getElementById('pwa-promoter-card');
+        if (installContainer) installContainer.classList.add('hidden');
+      });
+    </script>
   </body>
 </html>

@@ -27,6 +27,10 @@ messaging.onBackgroundMessage(function(payload) {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
+self.addEventListener('fetch', (event) => {
+  // Dummy fetch handler to satisfy PWA installability requirements
+});
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(

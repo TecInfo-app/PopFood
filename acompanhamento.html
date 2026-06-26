@@ -250,7 +250,7 @@
       </div>
 
       <!-- Notification Booster Card -->
-      <div id="notification-promoter-card" class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-5 border border-orange-100 shadow-3xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div id="notification-promoter-card" class="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-5 border border-orange-100 shadow-3xs flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
         <div class="flex items-start gap-3">
           <span class="text-3xl">🔔</span>
           <div class="space-y-1">
@@ -260,6 +260,20 @@
         </div>
         <button onclick="requestCustomerNotificationPermission()" id="btn-customer-notification" class="w-full sm:w-auto bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-97">
           🔔 Ativar Notificações
+        </button>
+      </div>
+
+      <!-- PWA Install Booster Card -->
+      <div id="pwa-promoter-card" class="hidden bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100 shadow-3xs flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-start gap-3">
+          <span class="text-3xl">📱</span>
+          <div class="space-y-1">
+            <h4 class="font-display font-extrabold text-sm text-gray-800">Instale o PopFood no seu celular!</h4>
+            <p class="text-xs text-gray-500 leading-relaxed">Tenha o PopFood diretamente na tela inicial do seu celular para acompanhar seu pedido mais facilmente, como um aplicativo de verdade.</p>
+          </div>
+        </div>
+        <button onclick="installPWA()" id="btn-pwa-install" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-xs transition-all cursor-pointer whitespace-nowrap shrink-0 active:scale-97">
+          📱 Instalar App
         </button>
       </div>
 
@@ -1329,6 +1343,37 @@
         input.focus();
       }
     }
+
+    // PWA Installation Logic
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      console.log('beforeinstallprompt event fired in acompanhamento');
+      e.preventDefault();
+      deferredPrompt = e;
+      const installContainer = document.getElementById('pwa-promoter-card');
+      if (installContainer) {
+        installContainer.classList.remove('hidden');
+        installContainer.classList.add('flex');
+      }
+    });
+
+    window.installPWA = async function() {
+      if (!deferredPrompt) return;
+      const installContainer = document.getElementById('pwa-promoter-card');
+      if (installContainer) installContainer.classList.add('hidden');
+      
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`User response to the install prompt: ${outcome}`);
+      deferredPrompt = null;
+    };
+    
+    window.addEventListener('appinstalled', () => {
+      console.log('PWA was installed');
+      const installContainer = document.getElementById('pwa-promoter-card');
+      if (installContainer) installContainer.classList.add('hidden');
+    });
+
   </script>
 </body>
 </html>

@@ -329,6 +329,21 @@
                 </button>
               </div>
 
+              <!-- Install PWA Button (Hidden by default) -->
+              <div id="pwa-install-container" class="hidden flex items-center justify-between border-b border-gray-50 pb-3">
+                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  📱 Instalar App
+                </span>
+                <button
+                  onclick="installPWA()"
+                  id="btn-pwa-install"
+                  class="bg-brand-primary hover:bg-orange-600 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg shadow-sm transition-colors cursor-pointer"
+                  title="Instalar na Tela Inicial"
+                >
+                  Instalar PopFood
+                </button>
+              </div>
+
               <!-- Sound Selector for Pedidos -->
               <div class="space-y-1">
                 <label class="block text-[10px] uppercase font-bold text-gray-400">📢 Som de Novos Pedidos</label>
@@ -3591,6 +3606,36 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           input.focus();
         }
       }
+      
+      // PWA Installation Logic
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        console.log('beforeinstallprompt event fired');
+        e.preventDefault();
+        deferredPrompt = e;
+        const installContainer = document.getElementById('pwa-install-container');
+        if (installContainer) {
+          installContainer.classList.remove('hidden');
+          installContainer.classList.add('flex');
+        }
+      });
+
+      window.installPWA = async function() {
+        if (!deferredPrompt) return;
+        const installContainer = document.getElementById('pwa-install-container');
+        if (installContainer) installContainer.classList.add('hidden');
+        
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`User response to the install prompt: ${outcome}`);
+        deferredPrompt = null;
+      };
+      
+      window.addEventListener('appinstalled', () => {
+        console.log('PWA was installed');
+        const installContainer = document.getElementById('pwa-install-container');
+        if (installContainer) installContainer.classList.add('hidden');
+      });
     </script>
   </body>
 </html>
