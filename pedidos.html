@@ -2649,30 +2649,50 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return;
         }
 
-        const isCurrentlyEnabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
+        const currentPermission = Notification.permission;
 
-        if (isCurrentlyEnabled) {
-          // Toggle OFF
-          localStorage.setItem("popfood_notifications_enabled", "false");
-          updateNotificationIndicator();
-        } else {
-          // Toggle ON
-          localStorage.setItem("popfood_notifications_enabled", "true");
+        if (currentPermission === "denied") {
+          alert(
+            "As notificações estão bloqueadas no seu navegador. ❌\n\nPara ativá-las:\n1. Clique no ícone de cadeado ou configurações ao lado da URL na barra de endereços.\n2. Altere a permissão de Notificações para 'Permitir'.\n3. Recarregue a página."
+          );
+          return;
+        }
+
+        if (currentPermission === "default") {
           try {
             const permission = await Notification.requestPermission();
-            updateNotificationIndicator();
-
             if (permission === "granted") {
+              localStorage.setItem("popfood_notifications_enabled", "true");
+              updateNotificationIndicator();
               new Notification("Notificações Ativas! 🔔", {
                 body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
                 icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
               });
-            } else if (permission === "denied") {
-              alert("As notificações estão bloqueadas no seu navegador. Ative-as nas configurações do site para receber alertas.");
+            } else {
+              localStorage.setItem("popfood_notifications_enabled", "false");
+              updateNotificationIndicator();
             }
           } catch (e) {
             console.error("Error requesting notification permission:", e);
+          }
+          return;
+        }
+
+        // If permission is already granted, toggle custom mute state ON/OFF
+        if (currentPermission === "granted") {
+          const isCurrentlyEnabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
+          if (isCurrentlyEnabled) {
+            // Toggle OFF
+            localStorage.setItem("popfood_notifications_enabled", "false");
             updateNotificationIndicator();
+          } else {
+            // Toggle ON
+            localStorage.setItem("popfood_notifications_enabled", "true");
+            updateNotificationIndicator();
+            new Notification("Notificações Reativadas! 🔔", {
+              body: "Você voltará a receber alertas de novos pedidos.",
+              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+            });
           }
         }
       };
@@ -2681,23 +2701,30 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         const el = document.getElementById("lbl-notification-indicator");
         if (!el) return;
 
-        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-
-        if (!enabled) {
-          el.textContent = "🔕 Notificações: Desativadas ❌";
+        if (!("Notification" in window)) {
+          el.textContent = "🔕 Não suportado";
           return;
         }
 
-        const current =
-          state ||
-          ("Notification" in window ? Notification.permission : "unsupported");
+        const currentPermission = state || Notification.permission;
 
-        if (current === "granted") {
+        if (currentPermission === "denied") {
+          el.textContent = "🔕 Notificações: Bloqueadas ❌";
+          return;
+        }
+
+        if (currentPermission === "default") {
+          el.textContent = "🔔 Notificações: Clique para Ativar ⚠️";
+          return;
+        }
+
+        // If permission is granted, reflect the custom local storage toggle
+        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
+
+        if (enabled) {
           el.textContent = "🔔 Notificações: Ativas ✅";
-        } else if (current === "denied") {
-          el.textContent = "🔕 Notificações: Bloqueadas no Navegador ❌";
         } else {
-          el.textContent = "🔔 Notificações: Desativadas ⚠️";
+          el.textContent = "🔕 Notificações: Inativas ❌";
         }
       }
       window.updateNotificationIndicator = updateNotificationIndicator;
