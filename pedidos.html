@@ -14,7 +14,41 @@
         }
       }
     </script>
-    <link rel="manifest" href="manifest.json" />
+    <script>
+      // Generate dynamic manifest based on URL parameters
+      (function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const storeId = urlParams.get("store");
+        if (storeId) {
+          const manifest = {
+            name: "PopFood Lojista",
+            short_name: "PopFood Lojista",
+            description: "Painel de Pedidos PopFood",
+            start_url: window.location.href, // This includes ?store=loja
+            display: "standalone",
+            background_color: "#ffffff",
+            theme_color: "#FF4500",
+            icons: [
+              {
+                src: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+                sizes: "192x192",
+                type: "image/png"
+              },
+              {
+                src: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+                sizes: "512x512",
+                type: "image/png"
+              }
+            ]
+          };
+          const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+          const manifestURL = URL.createObjectURL(blob);
+          document.write(`<link rel="manifest" href="${manifestURL}" />`);
+        } else {
+          document.write('<link rel="manifest" href="manifest.json" />');
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
