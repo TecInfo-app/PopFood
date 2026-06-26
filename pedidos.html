@@ -2574,77 +2574,46 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
       function triggerNewMessageAlert(isPreview = false) {
         try {
           const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-          if (!isPreview && !enabled) return;
+          if (!isPreview && !enabled) return; // Muted by user toggling it OFF
 
+          // Play the selected message sound
           synthesizeBellRingerBeep(selectedMessageSound);
 
-          if (!isPreview) {
-            dispararNotificacaoDesktop(
-              "💬 Nova Mensagem no Chat",
-              "Um cliente enviou uma mensagem em um dos seus pedidos!",
-              "new-message"
-            );
+          // Trigger Web Desktop Notification if allowed and not a preview
+          if (
+            !isPreview &&
+            "Notification" in window &&
+            Notification.permission === "granted"
+          ) {
+            new Notification("Nova Mensagem no Chat", {
+              body: "Um cliente enviou uma mensagem sobre o pedido.",
+              icon: "/pop-food-logo.png",
+            });
           }
         } catch (e) {
           console.error("Audio playback failed for new message: ", e);
         }
       }
 
-      function dispararNotificacaoDesktop(titulo, corpo, tag) {
-        if (!("Notification" in window)) return;
-        if (Notification.permission !== "granted") return;
-        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-        if (!enabled) return;
-        try {
-          // Tenta via ServiceWorker primeiro (mais confiável no Chrome/Edge)
-          if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.ready.then(reg => {
-              reg.showNotification(titulo, {
-                body: corpo,
-                tag: tag,
-                renotify: true,
-                requireInteraction: true,
-                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
-                badge: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
-                vibrate: [200, 100, 200]
-              });
-            }).catch(() => {
-              // Fallback para Notification direta
-              new Notification(titulo, {
-                body: corpo,
-                tag: tag,
-                renotify: true,
-                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
-              });
-            });
-          } else {
-            // Fallback direto
-            new Notification(titulo, {
-              body: corpo,
-              tag: tag,
-              renotify: true,
-              requireInteraction: true,
-              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
-            });
-          }
-        } catch (e) {
-          console.warn("[Notificação] Erro ao disparar:", e);
-        }
-      }
-
       function triggerNewOrderAlert(isPreview = false) {
         const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-        if (!isPreview && !enabled) return;
+        if (!isPreview && !enabled) return; // Muted by user toggling it OFF
 
+        // Toggle banner display if not a preview
         if (!isPreview) {
           const banner = document.getElementById("new-order-banner");
           if (banner) banner.classList.remove("hidden");
         }
 
+        // play Audio beep synthesized or standard player in cascade fallback
         const audio = document.getElementById("bell-beep-player");
+
+        // If we have custom sounds or if it's the default, we can use synthesized versions to ensure diversity
         if (selectedSound === "default") {
           if (audio && !isPreview) {
-            audio.play().catch(() => synthesizeBellRingerBeep("default"));
+            audio.play().catch((err) => {
+              synthesizeBellRingerBeep("default");
+            });
           } else {
             synthesizeBellRingerBeep("default");
           }
@@ -2652,12 +2621,23 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           synthesizeBellRingerBeep(selectedSound);
         }
 
-        if (!isPreview) {
-          dispararNotificacaoDesktop(
-            "🚨 Novo Pedido Recebido!",
-            "Um novo pedido pendente acaba de chegar no PopFood!",
-            "new-order"
-          );
+        // Trigger Web Desktop Notification if allowed and not a preview
+        if (
+          !isPreview &&
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          try {
+            new Notification("🚨 Novo Pedido Recebido!", {
+              body: "Um novo pedido pendente acaba de ser recebido pelo sistema PopFood!",
+              tag: "new-order",
+              renotify: true,
+              requireInteraction: true,
+              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+            });
+          } catch (e) {
+            console.warn("Failed to summon Notification constructor:", e);
+          }
         }
       }
 
@@ -2691,24 +2671,13 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             if (permission === "granted") {
               localStorage.setItem("popfood_notifications_enabled", "true");
               updateNotificationIndicator();
-              // Registrar Service Worker para notificações mais confiáveis
-              if ("serviceWorker" in navigator) {
-                try {
-                  await navigator.serviceWorker.register("/PopFood/sw-notifications.js");
-                  console.log("[SW] Service Worker de notificações registrado.");
-                } catch(swErr) {
-                  console.warn("[SW] Falha ao registrar SW:", swErr);
-                }
-              }
-              dispararNotificacaoDesktop(
-                "🔔 Notificações Ativas!",
-                "Você receberá alertas sempre que novos pedidos e mensagens chegarem!",
-                "notif-test"
-              );
+              new Notification("Notificações Ativas! 🔔", {
+                body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
+                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+              });
             } else {
               localStorage.setItem("popfood_notifications_enabled", "false");
               updateNotificationIndicator();
-              alert("Permissão negada. Para ativar, clique no cadeado na barra de endereços e permita notificações.");
             }
           } catch (e) {
             console.error("Error requesting notification permission:", e);
