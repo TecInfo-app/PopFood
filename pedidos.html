@@ -9,10 +9,12 @@
         "imports": {
           "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
           "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+          "firebase/messaging": "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js"
         }
       }
     </script>
+    <link rel="manifest" href="manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -1096,7 +1098,19 @@
         onAuthStateChanged,
         where,
         signOut,
+        messaging,
       } from "./firebase-config.js";
+
+      window.fcmMessaging = messaging;
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/firebase-messaging-sw.js')
+          .then(function(registration) {
+            console.log('Registration successful, scope is:', registration.scope);
+          }).catch(function(err) {
+            console.log('Service worker registration failed, error:', err);
+          });
+      }
 
       window.logoutAdmin = async function () {
         localStorage.removeItem("popfood_custom_store_id");
@@ -2685,6 +2699,27 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           if (permission === "granted") {
             localStorage.setItem("popfood_notifications_enabled", "true");
             updateNotificationIndicator();
+
+            try {
+              if (window.fcmMessaging) {
+                console.log("Requesting FCM token...");
+                const { getToken } = await import('firebase/messaging');
+                const currentToken = await getToken(window.fcmMessaging, {
+                   vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y"
+                });
+                if (currentToken) {
+                   console.log("FCM Token:", currentToken);
+                   // In a real app, save currentToken to the user's profile in Firestore
+                   const { doc, setDoc } = await import('firebase/firestore');
+                   if (auth.currentUser) {
+                      await setDoc(doc(db, "users_tokens", auth.currentUser.uid), { token: currentToken, role: "admin" }, { merge: true });
+                   }
+                }
+              }
+            } catch(e) {
+              console.error("FCM Token generation failed", e);
+            }
+
             try {
               new Notification("Notificações Ativas! 🔔", {
                 body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
