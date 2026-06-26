@@ -9,12 +9,10 @@
       "imports": {
         "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
         "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
-        "firebase/messaging": "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js"
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
       }
     }
   </script>
-  <link rel="manifest" href="manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
@@ -390,15 +388,6 @@
   <script type="module">
     import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, getDocs, collection, query, where, onSnapshot, setDoc, updateDoc } from './firebase-config.js';
 
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
-        .then(function(registration) {
-          console.log('Acompanhamento Registration successful, scope is:', registration.scope);
-        }).catch(function(err) {
-          console.log('Acompanhamento Service worker registration failed, error:', err);
-        });
-    }
-
     const urlStoreId = new URLSearchParams(window.location.search).get('store');
     window.currentStoreId = urlStoreId ? urlStoreId.trim() : null;
     if (!window.currentStoreId) {
@@ -522,23 +511,6 @@
         updateCustomerNotificationUI(permission);
 
         if (permission === 'granted') {
-          try {
-            const { getMessaging, getToken } = await import('firebase/messaging');
-            const { app, db, doc, updateDoc } = await import('./firebase-config.js');
-            const messaging = getMessaging(app);
-            const currentToken = await getToken(messaging, {
-              vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y"
-            });
-            if (currentToken && window.currentTrackOrder && window.currentTrackOrder.id) {
-               console.log("Customer FCM Token:", currentToken);
-               await updateDoc(doc(db, "orders", window.currentTrackOrder.id), {
-                 fcmToken: currentToken
-               });
-            }
-          } catch(e) {
-            console.error("Failed to setup FCM Token for customer:", e);
-          }
-
           new Notification("Notificações Prontas! 🎉", {
             body: "Excelente! Agora você será avisado aqui na tela do seu dispositivo sempre que seu pedido avançar de etapa.",
             icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"

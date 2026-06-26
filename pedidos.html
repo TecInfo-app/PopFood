@@ -9,12 +9,10 @@
         "imports": {
           "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
           "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
-          "firebase/messaging": "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js"
+          "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js"
         }
       }
     </script>
-    <link rel="manifest" href="manifest.json" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -281,136 +279,93 @@
             </div>
           </div>
 
-          <!-- Settings Dropdown Menu -->
-          <div class="relative inline-block text-left" id="panel-settings-container">
+          <!-- Quick Access settings toggles in the header area -->
+          <div
+            class="flex items-center gap-2 flex-wrap justify-center sm:justify-start"
+          >
+            <!-- Thermal Receipt Print -->
             <button
-              id="panel-settings-toggle-btn"
-              onclick="toggleSettingsDropdown(event)"
-              class="bg-orange-500 hover:bg-orange-600 text-white text-[11px] sm:text-[11.5px] font-bold py-2 px-3.5 sm:py-2.5 sm:px-4 rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 hover:shadow-orange-500/10"
-              title="Configurações e Alertas do Painel"
+              onclick="toggleAutoPrint()"
+              id="btn-autoprint"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <span>⚙️ Configurações do Painel</span>
-              <svg class="w-3.5 h-3.5 transition-transform duration-200" id="settings-caret-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
-              </svg>
+              <span id="lbl-auto-indicator">🖨️ Impressão Auto: OFF</span>
             </button>
-
-            <!-- Dropdown list -->
-            <div
-              id="panel-settings-dropdown"
-              class="hidden absolute right-0 mt-2.5 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 z-50 text-left space-y-4"
+            <!-- Desktop Notifications -->
+            <button
+              onclick="requestDesktopNotificationPermission()"
+              id="btn-desktop-notifications"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+              title="Ativar Alertas no Computador"
             >
-              <!-- Impressão Auto Toggle Button -->
-              <div class="flex items-center justify-between border-b border-gray-50 pb-3">
-                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                  🖨️ Impressão Auto
-                </span>
-                <button
-                  onclick="toggleAutoPrint()"
-                  id="btn-autoprint"
-                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
-                >
-                  <span id="lbl-auto-indicator">🖨️ Impressão Auto: OFF</span>
-                </button>
-              </div>
-
-              <!-- Desktop Notifications Toggle Button -->
-              <div class="flex items-center justify-between border-b border-gray-50 pb-3">
-                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                  🔔 Notificações
-                </span>
-                <button
-                  onclick="requestDesktopNotificationPermission()"
-                  id="btn-desktop-notifications"
-                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
-                  title="Ativar Alertas no Computador"
-                >
-                  <span id="lbl-notification-indicator">🔔 Notificações: Inativo</span>
-                </button>
-              </div>
-
-              <!-- Sound Selector for Pedidos -->
-              <div class="space-y-1">
-                <label class="block text-[10px] uppercase font-bold text-gray-400">📢 Som de Novos Pedidos</label>
-                <div class="relative">
-                  <select
-                    id="sound-selector"
-                    onchange="changeNotificationSound(this.value)"
-                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg transition-colors cursor-pointer outline-none border-none appearance-none pr-8"
-                  >
-                    <option value="default">🔔 Pedidos: Bell Padrão</option>
-                    <option value="modern">🎵 Pedidos: Digital Sip</option>
-                    <option value="urgent">📢 Pedidos: Alerta Urgente</option>
-                    <option value="old_phone">☎️ Pedidos: Telefone Antigo</option>
-                  </select>
-                  <div class="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-[8px] text-gray-400">
-                    ▼
-                  </div>
-                </div>
-              </div>
-
-              <!-- Sound Selector for Messages -->
-              <div class="space-y-1 pb-1">
-                <label class="block text-[10px] uppercase font-bold text-gray-400">💬 Som de Novas Mensagens</label>
-                <div class="relative">
-                  <select
-                    id="message-sound-selector"
-                    onchange="changeMessageSound(this.value)"
-                    class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg transition-colors cursor-pointer outline-none border-none appearance-none pr-8"
-                  >
-                    <option value="msg_digital">💬 Msg: Digital Beep</option>
-                    <option value="msg_bell">💬 Msg: Sino Suave</option>
-                    <option value="msg_bubble">💬 Msg: Bolha Pop</option>
-                    <option value="msg_chime">💬 Msg: Chime Chord</option>
-                  </select>
-                  <div class="absolute inset-y-0 right-2.5 flex items-center pointer-events-none text-[8px] text-gray-400">
-                    ▼
-                  </div>
-                </div>
-              </div>
-
-              <!-- Continuous Buzzer Toggle Button -->
-              <div class="flex items-center justify-between border-t border-b border-gray-50 py-3">
-                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                  🚨 Alerta Contínuo
-                </span>
-                <button
-                  onclick="toggleContinuousBuzzer()"
-                  id="btn-continuous-buzzer"
-                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                  title="Repetir som a cada 10 segundos para novos pedidos pendentes"
-                >
-                  <span id="lbl-continuous-buzzer">🚨 Campainha: ON</span>
-                </button>
-              </div>
-
-              <!-- Auto Accept Toggle Button -->
-              <div class="flex items-center justify-between border-b border-gray-50 pb-3">
-                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
-                  ⚡ Auto-Aceitar
-                </span>
-                <button
-                  onclick="toggleAutoAccept()"
-                  id="btn-auto-accept"
-                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                  title="Aceitar novos pedidos de forma automática"
-                >
-                  <span id="lbl-auto-accept">⚡ Auto-Aceitar: OFF</span>
-                </button>
-              </div>
-
-              <!-- Printer Config -->
-              <div class="flex items-center justify-between pt-1">
-                <span class="text-xs font-semibold text-gray-700">🖨️ Configuração Térmica</span>
-                <button
-                  onclick="togglePrinterSettingsModal(true); toggleSettingsDropdown(event)"
-                  class="bg-orange-50 hover:bg-orange-100 text-orange-600 text-[11px] font-bold py-1.5 px-3.5 rounded-lg transition-colors cursor-pointer"
-                  title="Configurar Impressora Local"
-                >
-                  Configurar ⚙️
-                </button>
+              <span id="lbl-notification-indicator"
+                >🔔 Notificações: Inativo</span
+              >
+            </button>
+            <!-- Sound selector for Pedidos -->
+            <div class="relative group" title="Som de Novos Pedidos">
+              <select
+                id="sound-selector"
+                onchange="changeNotificationSound(this.value)"
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6"
+              >
+                <option value="default">🔔 Pedidos: Bell Padrão</option>
+                <option value="modern">🎵 Pedidos: Digital Sip</option>
+                <option value="urgent">📢 Pedidos: Alerta Urgente</option>
+                <option value="old_phone">☎️ Pedidos: Telefone Antigo</option>
+              </select>
+              <div
+                class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]"
+              >
+                ▼
               </div>
             </div>
+
+            <!-- Sound selector for Mensagens -->
+            <div class="relative group" title="Som de Novas Mensagens">
+              <select
+                id="message-sound-selector"
+                onchange="changeMessageSound(this.value)"
+                class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer outline-none border-none appearance-none pr-6"
+              >
+                <option value="msg_digital">💬 Msg: Digital Beep</option>
+                <option value="msg_bell">💬 Msg: Sino Suave</option>
+                <option value="msg_bubble">💬 Msg: Bolha Pop</option>
+                <option value="msg_chime">💬 Msg: Chime Chord</option>
+              </select>
+              <div
+                class="absolute inset-y-0 right-2 flex items-center pointer-events-none text-[8px]"
+              >
+                ▼
+              </div>
+            </div>
+
+            <!-- Continuous Buzzer -->
+            <button
+              onclick="toggleContinuousBuzzer()"
+              id="btn-continuous-buzzer"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+              title="Repetir som a cada 10 segundos para novos pedidos pendentes"
+            >
+              <span id="lbl-continuous-buzzer">🚨 Campainha: ON</span>
+            </button>
+            <!-- Auto Accept -->
+            <button
+              onclick="toggleAutoAccept()"
+              id="btn-auto-accept"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-3 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer"
+              title="Aceitar novos pedidos de forma automática"
+            >
+              <span id="lbl-auto-accept">⚡ Auto-Aceitar: OFF</span>
+            </button>
+            <!-- Printer Settings -->
+            <button
+              onclick="togglePrinterSettingsModal(true)"
+              class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-[11px] font-semibold py-2 px-2.5 rounded-lg shadow-xs transition-colors cursor-pointer"
+              title="Configurar Impressora Local"
+            >
+              ⚙️
+            </button>
           </div>
         </header>
 
@@ -866,25 +821,15 @@
           position: absolute;
           left: 0;
           top: 0;
-          width: 100% !important;
-          max-width: 100% !important;
+          width: min-content !important;
           background: white !important;
           color: black !important;
-          font-family: monospace, "Courier New", Courier, monospace-bold !important;
+          font-family:
+            system-ui,
+            -apple-system,
+            sans-serif !important;
           padding: 0 !important;
           margin: 0 !important;
-        }
-        #receipt-print-layout pre,
-        #receipt-print-layout code {
-          font-family: monospace, "Courier New", Courier, monospace-bold !important;
-          white-space: pre !important;
-          word-break: break-all !important;
-        }
-        #receipt-print-layout div,
-        #receipt-print-layout span,
-        #receipt-print-layout p {
-          font-family: monospace, "Courier New", Courier, monospace-bold !important;
-          white-space: normal !important;
         }
       }
     </style>
@@ -1098,19 +1043,7 @@
         onAuthStateChanged,
         where,
         signOut,
-        messaging,
       } from "./firebase-config.js";
-
-      window.fcmMessaging = messaging;
-
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/firebase-messaging-sw.js')
-          .then(function(registration) {
-            console.log('Registration successful, scope is:', registration.scope);
-          }).catch(function(err) {
-            console.log('Service worker registration failed, error:', err);
-          });
-      }
 
       window.logoutAdmin = async function () {
         localStorage.removeItem("popfood_custom_store_id");
@@ -1253,15 +1186,6 @@
           document.getElementById("printer-server-url").value = lastUrl;
           if (lastUrl) fetchPrinters(false);
 
-          // Handle default printer width fallback persistence
-          const widthSel = document.getElementById("printer-width");
-          if (widthSel) {
-            widthSel.value = localStorage.getItem("popfood_default_print_width") || "58";
-            widthSel.addEventListener("change", function() {
-              localStorage.setItem("popfood_default_print_width", this.value);
-            });
-          }
-
           // Load restaurant settings realtime
           try {
             const profileRef = doc(
@@ -1335,33 +1259,6 @@
           modal.classList.add("hidden");
         }
       };
-
-      // Settings dropdown toggle & click outside logic
-      window.toggleSettingsDropdown = function (event) {
-        if (event) event.stopPropagation();
-        const menu = document.getElementById("panel-settings-dropdown");
-        const caret = document.getElementById("settings-caret-icon");
-        if (menu) {
-          const isHidden = menu.classList.contains("hidden");
-          if (isHidden) {
-            menu.classList.remove("hidden");
-            if (caret) caret.classList.add("rotate-180");
-          } else {
-            menu.classList.add("hidden");
-            if (caret) caret.classList.remove("rotate-180");
-          }
-        }
-      };
-
-      document.addEventListener("click", function (event) {
-        const container = document.getElementById("panel-settings-container");
-        const menu = document.getElementById("panel-settings-dropdown");
-        const caret = document.getElementById("settings-caret-icon");
-        if (container && menu && !container.contains(event.target)) {
-          menu.classList.add("hidden");
-          if (caret) caret.classList.remove("rotate-180");
-        }
-      });
 
       function renderPrintersList() {
         const container = document.getElementById("printers-list-container");
@@ -2591,10 +2488,8 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           synthesizeBellRingerBeep(selectedMessageSound);
 
           // Trigger Web Desktop Notification if allowed and not a preview
-          const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
           if (
             !isPreview &&
-            enabled &&
             "Notification" in window &&
             Notification.permission === "granted"
           ) {
@@ -2632,10 +2527,8 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
 
         // Trigger Web Desktop Notification if allowed and not a preview
-        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
         if (
           !isPreview &&
-          enabled &&
           "Notification" in window &&
           Notification.permission === "granted"
         ) {
@@ -2661,127 +2554,33 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return;
         }
 
-        const currentPermission = Notification.permission;
-
-        if (currentPermission === "granted") {
-          // Toggle ON/OFF state in local storage
-          const isCurrentlyEnabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-          if (isCurrentlyEnabled) {
-            localStorage.setItem("popfood_notifications_enabled", "false");
-            alert("Notificações desativadas temporariamente neste painel.");
-          } else {
-            localStorage.setItem("popfood_notifications_enabled", "true");
-            try {
-              new Notification("Notificações Reativadas! 🔔", {
-                body: "Você voltará a receber alertas visuais na sua tela.",
-                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
-              });
-            } catch (e) {
-              console.warn("Could not fire notification:", e);
-            }
-          }
-          updateNotificationIndicator();
-          return;
-        }
-
-        if (currentPermission === "denied") {
-          alert(
-            "As notificações estão bloqueadas no seu navegador. ❌\n\nPara ativá-las:\n1. Clique no ícone de cadeado ou configurações ao lado da URL na barra de endereços.\n2. Altere a permissão de Notificações para 'Permitir'.\n3. Recarregue a página."
-          );
-          return;
-        }
-
-        // It is "default", let's ask for permission directly!
         try {
           const permission = await Notification.requestPermission();
           updateNotificationIndicator(permission);
 
           if (permission === "granted") {
-            localStorage.setItem("popfood_notifications_enabled", "true");
-            updateNotificationIndicator();
-
-            try {
-              if (window.fcmMessaging) {
-                console.log("Requesting FCM token...");
-                const { getToken } = await import('firebase/messaging');
-                const currentToken = await getToken(window.fcmMessaging, {
-                   vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y"
-                });
-                if (currentToken) {
-                   console.log("FCM Token:", currentToken);
-                   // In a real app, save currentToken to the user's profile in Firestore
-                   const { doc, setDoc } = await import('firebase/firestore');
-                   if (auth.currentUser) {
-                      await setDoc(doc(db, "users_tokens", auth.currentUser.uid), { token: currentToken, role: "admin" }, { merge: true });
-                   }
-                }
-              }
-            } catch(e) {
-              console.error("FCM Token generation failed", e);
-            }
-
-            try {
-              new Notification("Notificações Ativas! 🔔", {
-                body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
-                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
-              });
-            } catch (err) {
-              console.warn("Could not fire test notification:", err);
-            }
+            new Notification("Notificações Ativas! 🔔", {
+              body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
+              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+            });
           }
         } catch (e) {
           console.error("Error requesting notification permission:", e);
-          // Fallback callback syntax for older browsers
-          try {
-            Notification.requestPermission((permission) => {
-              updateNotificationIndicator(permission);
-              if (permission === "granted") {
-                localStorage.setItem("popfood_notifications_enabled", "true");
-                updateNotificationIndicator();
-                try {
-                  new Notification("Notificações Ativas! 🔔", {
-                    body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
-                    icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
-                  });
-                } catch (err) {
-                  console.warn("Could not fire test notification:", err);
-                }
-              }
-            });
-          } catch (err) {
-            console.error("Fallback permission request failed too:", err);
-          }
         }
       };
 
       function updateNotificationIndicator(state = null) {
         const el = document.getElementById("lbl-notification-indicator");
         if (!el) return;
-
-        if (!("Notification" in window)) {
-          el.textContent = "🔕 Não suportado";
-          return;
-        }
-
-        const currentPermission = state || Notification.permission;
-
-        if (currentPermission === "denied") {
-          el.textContent = "🔕 Notificações: Bloqueadas ❌";
-          return;
-        }
-
-        if (currentPermission === "default") {
-          el.textContent = "🔔 Notificações: Ativar ⚠️";
-          return;
-        }
-
-        // If permission is granted, reflect the custom local storage toggle
-        const enabled = localStorage.getItem("popfood_notifications_enabled") !== "false";
-
-        if (enabled) {
+        const current =
+          state ||
+          ("Notification" in window ? Notification.permission : "unsupported");
+        if (current === "granted") {
           el.textContent = "🔔 Notificações: Ativas ✅";
+        } else if (current === "denied") {
+          el.textContent = "🔕 Notificações: Bloqueadas ❌";
         } else {
-          el.textContent = "🔕 Notificações: Inativas ❌";
+          el.textContent = "🔔 Notificações: Desativadas ⚠️";
         }
       }
       window.updateNotificationIndicator = updateNotificationIndicator;
@@ -2917,12 +2716,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
 
         // Configure text print width
-        let printWidth = localStorage.getItem("popfood_default_print_width") || "58";
+        let printWidth = "58";
         if (typeof localPrinters !== "undefined" && localPrinters.length > 0) {
           const activePrinter = localPrinters.find((p) => p.active !== false);
           if (activePrinter) printWidth = activePrinter.width;
         }
-        const cols = printWidth === "58" ? 32 : 48;
+        const cols = printWidth === "58" ? 30 : 44;
 
         function formatLine(leftText, rightText) {
           let spaceCount = Math.max(
@@ -2937,116 +2736,41 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           return `${leftText}${" ".repeat(spaceCount)}${rightText}\n`;
         }
 
-        function makeDivider(char) {
-          return char.repeat(cols) + "\n";
-        }
-
-        function centerText(text) {
-          text = text.trim();
-          if (text.length >= cols) {
-            return text.substring(0, cols) + "\n";
-          }
-          const leftPadding = Math.floor((cols - text.length) / 2);
-          return " ".repeat(leftPadding) + text + "\n";
-        }
-
-        // 1. Calculations & Dynamic Formatting Variables
-        const shortId = order.sequence || order.number || order.id.slice(-4).toUpperCase();
-        
-        let estimatedTimeStr = "";
-        if (order.estimatedDeliveryTime || order.estimatedTime) {
-          estimatedTimeStr = order.estimatedDeliveryTime || order.estimatedTime;
-        } else {
-          let baseDate = new Date();
-          if (order.createdAt) {
-            if (typeof order.createdAt === "object" && typeof order.createdAt.seconds === "number") {
-              baseDate = new Date(order.createdAt.seconds * 1000);
-            } else {
-              const checkD = new Date(order.createdAt);
-              if (!isNaN(checkD.getTime())) baseDate = checkD;
-            }
-          }
-          const addMinutes = order.customer && order.customer.type === "pickup" ? 15 : 45;
-          const estDate = new Date(baseDate.getTime() + addMinutes * 60000);
-          estimatedTimeStr = estDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
-        }
-        
-        const isPickup = order.customer && order.customer.type === "pickup";
-        const predictionLabel = isPickup ? "Retirada prevista:" : "Entrega prevista:";
-
-        // Payment status & modes calculation
-        const isOnlinePaid = order.paymentProvider === "abacatepay" || order.isPaid || false;
-        const paymentStatusLabel = isOnlinePaid ? "Pagamento realizado" : "Pagamento na entrega";
-        
-        let paymentLabel = order.paymentMethod ? order.paymentMethod.toUpperCase() : "N/A";
-        if (isOnlinePaid) {
-          if (order.paymentMethod === "PixOnline" || order.paymentMethod === "Pix Imediato" || order.paymentMethod === "Pix") {
-            paymentLabel = "ONLINE - PIX - PIX";
-          } else if (order.paymentMethod === "Online" || order.paymentMethod === "Cartão de Crédito" || order.paymentMethod === "CartaoOnline") {
-            paymentLabel = "ONLINE - CARTÃO DE CRÉDITO";
-          } else {
-            paymentLabel = `ONLINE - ${paymentLabel}`;
-          }
-        } else {
-          if (order.paymentMethod === "Pix" || order.paymentMethod === "Pix no ato") {
-            paymentLabel = "MAQUININHA - PIX";
-          } else if (order.paymentMethod === "Cartão" || order.paymentMethod === "Cartao") {
-            paymentLabel = "MAQUININHA - CARTÃO";
-          } else if (order.paymentMethod === "Dinheiro") {
-            paymentLabel = "DINHEIRO EM MÃOS";
-          } else {
-            paymentLabel = `COBRAR - ${paymentLabel}`;
-          }
-        }
-
-        const deliveryFee = order.deliveryFee || 0;
-        const subtotal = order.subtotal || 0;
-        const discount = order.desconto || 0;
-        const total = order.total || 0;
-        const toCollect = isOnlinePaid ? 0 : total;
-
-        // 2. Generate RAW Plain Text Version for classic text printers
         let textReceipt = "";
-        textReceipt += centerText((order.source || order.canal || order.channel || "POPFOOD SITE").toUpperCase());
-        textReceipt += centerText(storeName.toUpperCase());
-        textReceipt += centerText("EXPEDICAO");
-        textReceipt += makeDivider("-");
-        textReceipt += centerText(shortId);
-        textReceipt += makeDivider("-");
+        textReceipt += `================================\n`;
+        textReceipt += `          ${storeName.toUpperCase()}\n`;
+        if (storePhone) textReceipt += `FONE: ${storePhone}\n`;
+        if (storeAddress) textReceipt += `${storeAddress}\n`;
+        textReceipt += `================================\n`;
+        textReceipt += `PEDIDO: #${order.id.slice(-6).toUpperCase()}\n`;
+        textReceipt += `DATA: ${orderDate}\n`;
+        textReceipt += `================================\n`;
+        if (order.customer) {
+          textReceipt += `CLIENTE: ${order.customer.name.toUpperCase()}\n`;
+          textReceipt += `FONE: ${order.customer.phone}\n`;
+          textReceipt += `ENTREGA: ${order.customer.type === "pickup" ? "RETIRADA NO LOCAL" : "DELIVERY"}\n`;
+          if (order.customer.address)
+            textReceipt += `ENDERECO: ${order.customer.address.toUpperCase()}\n`;
+          if (order.customer.complement)
+            textReceipt += `COMP: ${order.customer.complement.toUpperCase()}\n`;
+          if (order.customer.reference)
+            textReceipt += `REF: ${order.customer.reference.toUpperCase()}\n`;
+          if (order.customer.cep) textReceipt += `CEP: ${order.customer.cep}\n`;
+        }
+        textReceipt += `--------------------------------\n`;
+        textReceipt += `ITENS DO PEDIDO:\n`;
 
-        let detailsText = "";
-        detailsText += `CODIGO DE COLETA: INDISPONIVEL\n`;
-        detailsText += makeDivider("-");
-        detailsText += `Data: ${orderDate}\n`;
-        detailsText += `${predictionLabel.toUpperCase()} ${estimatedTimeStr}\n`;
-        detailsText += `Localizador: ${order.id.slice(-8).toUpperCase()}\n`;
-        if (order.isFirstOrder || order.customer?.isFirstOrder) {
-          detailsText += `Primeiro pedido!\n`;
-        }
-        
-        detailsText += `\n${order.customer ? order.customer.name.toUpperCase() : "NOME NÃO DEFINIDO"}\n`;
-        detailsText += `${order.customer ? order.customer.phone : "SEM WHATSAPP"} ${order.customer?.id ? `ID: ${order.customer.id}` : ""}\n`;
-        if (order.customer && order.customer.type !== "pickup" && order.customer.address) {
-          detailsText += `END: ${order.customer.address.toUpperCase()}\n`;
-          if (order.customer.complement) detailsText += `COMP: ${order.customer.complement.toUpperCase()}\n`;
-          if (order.customer.reference) detailsText += `REF: ${order.customer.reference.toUpperCase()}\n`;
-          if (order.customer.cep) detailsText += `CEP: ${order.customer.cep}\n`;
-        } else {
-          detailsText += `*** RETIRADA NO LOCAL ***\n`;
-        }
-        detailsText += makeDivider("-");
-        detailsText += `ITENS DO PEDIDO (${order.items.length})\n`;
-        
         order.items.forEach((item) => {
-          const qty = item.quantity || 1;
-          const name = item.name.toUpperCase();
-          const itemTotal = (item.totalItemPrice || item.price || 0) * qty;
-          const itemTotalStr = `R$ ${itemTotal.toFixed(2).replace(".", ",")}`;
-          
-          detailsText += formatLine(`${qty}x ${name}`, itemTotalStr);
-          
+          const itemVal = item.price || 0;
+          const lineTotal = (item.totalItemPrice || 0) * item.quantity;
+          const lineTotalStr = lineTotal.toFixed(2).replace(".", ",");
+
+          textReceipt += formatLine(
+            `${item.quantity}x ${item.name.toUpperCase()}`,
+            `R$ ${lineTotalStr}`,
+          );
+
           if (item.complements && item.complements.length > 0) {
-            // Group complements by category/group name
             const groupedComps = {};
             item.complements.forEach((c) => {
               const currentGroup = (
@@ -3069,267 +2793,101 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             });
 
             const groupKeys = Object.keys(groupedComps);
-            groupKeys.forEach((groupKey) => {
+            groupKeys.forEach((groupKey, index) => {
               if (groupKey !== "") {
-                detailsText += `  ${groupKey}:\n`;
+                textReceipt += `${groupKey}\n`;
               }
 
               groupedComps[groupKey].forEach((c) => {
-                const compQty = c.quantity || 1;
-                const compName = (c.optionName || c.option || c.opcao || c.name || "").toUpperCase().trim();
                 const compPrice = c.price || 0;
-                const compTotal = compPrice * qty * compQty;
-                const compPriceStr = compPrice > 0 ? `R$ ${compTotal.toFixed(2).replace(".", ",")}` : "";
-                
-                detailsText += formatLine(`   ${compQty} ${compName}`, compPriceStr);
+                const optionLabel = (
+                  c.optionName ||
+                  c.option ||
+                  c.opcao ||
+                  c.name ||
+                  ""
+                )
+                  .toUpperCase()
+                  .trim();
+
+                const priceDisplay =
+                  compPrice > 0
+                    ? `R$ ${compPrice.toFixed(2).replace(".", ",")}`
+                    : "";
+
+                if (priceDisplay) {
+                  textReceipt += formatLine(`+1 ${optionLabel}`, priceDisplay);
+                } else {
+                  textReceipt += `+1 ${optionLabel}\n`;
+                }
               });
+
+              if (index < groupKeys.length - 1) {
+                textReceipt += `\n`;
+              }
             });
           }
           if (item.notes) {
-            detailsText += `   Obs: ${item.notes.toUpperCase()}\n`;
+            textReceipt += `Obs: ${item.notes}\n`;
           }
         });
-        
-        detailsText += makeDivider("-");
-        detailsText += centerText(`* ${paymentStatusLabel.toUpperCase()} *`);
-        detailsText += centerText(paymentLabel);
-        detailsText += makeDivider("-");
-        
-        detailsText += formatLine("Valor total do pedido:", `R$ ${subtotal.toFixed(2).replace(".", ",")}`);
-        detailsText += formatLine("Taxa de entrega:", `R$ ${deliveryFee.toFixed(2).replace(".", ",")}`);
-        if (discount > 0) {
-          detailsText += formatLine("Desconto / Incentivos:", `-R$ ${discount.toFixed(2).replace(".", ",")}`);
+
+        textReceipt += `--------------------------------\n`;
+        textReceipt += formatLine(
+          `subtotal`,
+          `R$ ${(order.subtotal || 0).toFixed(2).replace(".", ",")}`,
+        );
+
+        if (order.desconto) {
+          textReceipt += formatLine(
+            `desconto`,
+            `- R$ ${order.desconto.toFixed(2).replace(".", ",")}`,
+          );
         }
-        detailsText += formatLine("Valor final do pedido:", `R$ ${total.toFixed(2).replace(".", ",")}`);
-        detailsText += makeDivider("-");
-        detailsText += formatLine("Cobrar do cliente:", `R$ ${toCollect.toFixed(2).replace(".", ",")}`);
-        detailsText += makeDivider("-");
-        detailsText += `CPF na nota: ${order.cpf || order.customer?.cpf || "NÃO INFORMADO"}\n`;
-        detailsText += makeDivider("-");
-        detailsText += centerText("Obrigado pela preferência!");
-        detailsText += centerText("PopFood Gestor Web v1.0");
 
-        textReceipt += detailsText;
+        textReceipt += formatLine(
+          `taxa de entrega`,
+          `R$ ${(order.deliveryFee || 0).toFixed(2).replace(".", ",")}`,
+        );
+        textReceipt += formatLine(
+          `total`,
+          `R$ ${(order.total || 0).toFixed(2).replace(".", ",")}`,
+        );
 
-        // 3. Generate High-Fidelity Responsive HTML Version
-        const fontStack = "'Courier New', Courier, monospace";
-        const widthPx = printWidth === "58" ? "260px" : "380px";
+        textReceipt += `================================\n`;
+        // Montar label correto da forma de pagamento
+        let paymentLabel = order.paymentMethod
+          ? order.paymentMethod.toUpperCase()
+          : "N/A";
+        if (order.paymentProvider === "abacatepay" || order.isPaid) {
+          if (
+            order.paymentMethod === "PixOnline" ||
+            order.paymentMethod === "Pix Imediato"
+          ) {
+            paymentLabel = "PIX ONLINE (PAGO)";
+          } else if (
+            order.paymentMethod === "Online" ||
+            order.paymentMethod === "Cartão de Crédito" ||
+            order.paymentMethod === "CartaoOnline"
+          ) {
+            paymentLabel = "CARTÃO ONLINE (PAGO)";
+          } else if (order.isPaid) {
+            paymentLabel = `${paymentLabel} - PAGO ONLINE`;
+          }
+        }
+        textReceipt += `PAGAMENTO: ${paymentLabel}\n`;
+        if (order.paymentMethod === "Dinheiro" && order.troco) {
+          textReceipt += `${order.troco.toUpperCase()}\n`;
+        }
+        textReceipt += `================================\n`;
+        textReceipt += `Obrigado pela preferência!\n`;
+        textReceipt += `Powered by PopFood Delivery\n`;
+
+        // Inject identical <pre> formatted HTML
         const fontSize = printWidth === "58" ? "12px" : "14px";
-        const headerFontSize = printWidth === "58" ? "12px" : "14px";
-        const titleFontSize = printWidth === "58" ? "16px" : "18px";
-        const orderFontSize = printWidth === "58" ? "36px" : "44px";
-        
-        let itemsHtml = "";
-        order.items.forEach((item) => {
-          const qty = item.quantity || 1;
-          const name = item.name.toUpperCase();
-          const itemTotal = (item.totalItemPrice || item.price || 0) * qty;
-          const itemTotalStr = `R$ ${itemTotal.toFixed(2).replace(".", ",")}`;
-          
-          itemsHtml += `
-            <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 6px; line-height: 1.2;">
-              <span style="text-align: left; flex-grow: 1;">${qty}x ${name}</span>
-              <span style="text-align: right; white-space: nowrap; margin-left: 8px; flex-shrink: 0;">${itemTotalStr}</span>
-            </div>
-          `;
-          
-          if (item.complements && item.complements.length > 0) {
-            // Group complements by category/group name
-            const groupedComps = {};
-            item.complements.forEach((c) => {
-              const currentGroup = (
-                c.groupName ||
-                c.group ||
-                c.grupo ||
-                c.group_name ||
-                c.category ||
-                c.gname ||
-                c.nomeGrupo ||
-                ""
-              )
-                .toUpperCase()
-                .trim();
-
-              if (!groupedComps[currentGroup]) {
-                groupedComps[currentGroup] = [];
-              }
-              groupedComps[currentGroup].push(c);
-            });
-
-            const groupKeys = Object.keys(groupedComps);
-            groupKeys.forEach((groupKey) => {
-              if (groupKey !== "") {
-                itemsHtml += `
-                  <div style="font-weight: bold; margin-top: 4px; padding-left: 10px; color: black; text-align: left;">
-                    ${groupKey}:
-                  </div>
-                `;
-              }
-
-              groupedComps[groupKey].forEach((c) => {
-                const compQty = c.quantity || 1;
-                const compName = (c.optionName || c.option || c.opcao || c.name || "").toUpperCase().trim();
-                const compPrice = c.price || 0;
-                const compTotal = compPrice * qty * compQty;
-                const compPriceStr = compPrice > 0 ? `R$ ${compTotal.toFixed(2).replace(".", ",")}` : "";
-                
-                itemsHtml += `
-                  <div style="display: flex; justify-content: space-between; font-weight: bold; padding-left: 15px; margin-top: 2px; color: black; line-height: 1.2;">
-                    <span style="text-align: left; flex-grow: 1;">${compQty} ${compName}</span>
-                    <span style="text-align: right; white-space: nowrap; margin-left: 8px; flex-shrink: 0;">${compPriceStr}</span>
-                  </div>
-                `;
-              });
-            });
-          }
-          if (item.notes) {
-            itemsHtml += `
-              <div style="font-weight: normal; font-style: italic; color: black; padding-left: 15px; margin-top: 2px; text-align: left;">
-                OBS: ${item.notes.toUpperCase()}
-              </div>
-            `;
-          }
-        });
-
-        let discountHtml = "";
-        if (discount > 0) {
-          discountHtml = `
-            <div style="display: flex; justify-content: space-between; margin-top: 3px;">
-              <span>DESCONTO / INCENTIVOS:</span>
-              <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">-R$ ${discount.toFixed(2).replace(".", ",")}</span>
-            </div>
-          `;
-        }
-        
         parent.innerHTML = `
-        <div style="width: 100%; max-width: ${widthPx}; background: white; color: black; font-family: ${fontStack}; margin: 0 auto; padding: 10px; box-sizing: border-box; text-align: left; font-weight: bold; overflow: hidden; font-size: ${fontSize}; line-height: 1.35;">
-          <!-- SYSTEM/STORE SOURCE HEADER -->
-          <div style="text-align: center; font-size: ${headerFontSize}; margin-bottom: 2px; font-weight: normal; letter-spacing: 1px;">
-            ${(order.source || order.canal || order.channel || "POPFOOD SITE").toUpperCase()}
-          </div>
-          <div style="text-align: center; font-size: ${titleFontSize}; font-weight: 900; margin-bottom: 2px; line-height: 1.1;">
-            ${storeName.toUpperCase()}
-          </div>
-          <div style="text-align: center; font-size: ${headerFontSize}; font-weight: bold; letter-spacing: 2px; margin-bottom: 6px;">
-            EXPEDICAO
-          </div>
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
-          
-          <!-- GIGANTIC HIGH-CONTRAST ORDER BLOCK -->
-          <div style="background: black; color: white; text-align: center; font-size: ${orderFontSize}; font-weight: 900; padding: 12px 0; margin: 6px 0; font-family: ${fontStack}; line-height: 1; letter-spacing: 1px;">
-            ${shortId}
-          </div>
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
-          
-          <div style="text-align: center; margin: 4px 0;">
-            CODIGO DE COLETA: INDISPONIVEL
-          </div>
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
-          
-          <div>Data: ${orderDate}</div>
-          
-          <div style="background: black; color: white; padding: 4px; text-align: center; font-weight: 900; margin: 6px 0; letter-spacing: 0.5px;">
-            ${predictionLabel.toUpperCase()} ${estimatedTimeStr}
-          </div>
-          
-          <div>Localizador: ${order.id.slice(-8).toUpperCase()}</div>
-          ${order.isFirstOrder || order.customer?.isFirstOrder 
-            ? `<div style="font-weight: 900; background: #eee; padding: 2px 4px; display: inline-block; margin-top: 2px;">PRIMEIRO PEDIDO!</div>` 
-            : ""
-          }
-          
-          <!-- CUSTOMER -->
-          <div style="font-weight: 900; margin-top: 8px; font-size: ${headerFontSize};">
-            ${order.customer ? order.customer.name.toUpperCase() : "NOME NÃO DEFINIDO"}
-          </div>
-          <div style="margin-top: 2px;">
-            ${order.customer ? order.customer.phone : "SEM WHATSAPP"} ${order.customer?.id ? `ID: ${order.customer.id}` : ""}
-          </div>
-          
-          <!-- ADDRESS FOR DELIVERY -->
-          ${order.customer && order.customer.type !== "pickup" && order.customer.address 
-            ? `
-              <div style="margin-top: 4px; border: 1px solid black; padding: 4px; line-height: 1.2;">
-                ENDEREÇO: ${order.customer.address.toUpperCase()}
-                ${order.customer.complement ? `<br>COMP: ${order.customer.complement.toUpperCase()}` : ""}
-                ${order.customer.reference ? `<br>REF: ${order.customer.reference.toUpperCase()}` : ""}
-                ${order.customer.cep ? `<br>CEP: ${order.customer.cep}` : ""}
-              </div>
-            `
-            : `
-              <div style="margin-top: 4px; border: 1px solid black; padding: 4px; text-align: center;">
-                RETIRADA NO LOCAL
-              </div>
-            `
-          }
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
-          
-          <!-- ITEMS -->
-          <div style="font-size: ${headerFontSize}; font-weight: bold; margin-bottom: 4px;">
-            ITENS DO PEDIDO (${order.items.length})
-          </div>
-          ${itemsHtml}
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
-          
-          <!-- PAYMENT STATUS BANNER -->
-          <div style="text-align: center; font-weight: 900; line-height: 1.3; margin: 6px 0;">
-            * ${paymentStatusLabel.toUpperCase()} *<br>
-            <span style="font-size: ${headerFontSize};">${paymentLabel}</span>
-          </div>
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
-          
-          <!-- TOTALS -->
-          <div style="display: flex; justify-content: space-between; margin-top: 3px;">
-            <span>Valor total do pedido:</span>
-            <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${subtotal.toFixed(2).replace(".", ",")}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; margin-top: 3px;">
-            <span>Taxa de entrega:</span>
-            <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${deliveryFee.toFixed(2).replace(".", ",")}</span>
-          </div>
-          ${discountHtml}
-          <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 3px;">
-            <span>Valor final do pedido:</span>
-            <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${total.toFixed(2).replace(".", ",")}</span>
-          </div>
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
-          
-          <!-- COBRAR DO CLIENTE (CRITICAL HIGHLIGHT) -->
-          <div style="display: flex; justify-content: space-between; font-weight: 900; border: 1.5px solid black; padding: 6px; margin: 8px 0; background: #eee;">
-            <span>COBRAR DO CLIENTE:</span>
-            <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${toCollect.toFixed(2).replace(".", ",")}</span>
-          </div>
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
-          
-          <div style="text-align: center; margin: 4px 0;">
-            CPF na nota: ${order.cpf || order.customer?.cpf || "NÃO INFORMADO"}
-          </div>
-          
-          <!-- dashed separator -->
-          <div style="border-top: 1px dashed black; margin: 6px 0;"></div>
-          
-          <div style="text-align: center; margin-top: 6px; font-weight: normal;">
-            Obrigado pela preferência!
-          </div>
-          <div style="text-align: center; font-size: 10px; margin-top: 2px; font-weight: normal; color: #555;">
-            PopFood Gestor Web v1.0
-          </div>
+        <div style="width: 100%; overflow-x: auto; background: white; color: black; font-family: monospace;">
+          <pre style="font-family: monospace; font-size: ${fontSize}; padding: 10px; margin: 0; background: white; white-space: pre-wrap;">${textReceipt}</pre>
         </div>
       `;
 
