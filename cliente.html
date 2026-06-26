@@ -2313,6 +2313,19 @@
           }
         });
 
+        // Initialize phone mask for the main checkout phone input
+        const mainPhoneEl = document.getElementById("cust-phone");
+        if (mainPhoneEl) {
+          mainPhoneEl.addEventListener("input", (e) => {
+            let x = e.target.value
+              .replace(/\D/g, "")
+              .match(/(\d{0,2})(\d{0,5})(\d{0,4})/);
+            e.target.value = !x[2]
+              ? x[1]
+              : "(" + x[1] + ") " + x[2] + (x[3] ? "-" + x[3] : "");
+          });
+        }
+
         // Dynamic change listeners for the Saved Data Banner
         [
           "cust-name",
@@ -4153,6 +4166,26 @@
           if (submitBtn) {
             submitBtn.onclick = goToNextCartStep;
           }
+
+          // Populate/sync checkout fields from localStorage to ensure everything is perfectly loaded
+          const cachedFields = [
+            { id: "cust-name", key: "popfood_cust_name" },
+            { id: "cust-phone", key: "popfood_last_phone" },
+            { id: "cust-cep", key: "popfood_cust_cep" },
+            { id: "cust-street", key: "popfood_cust_street" },
+            { id: "cust-number", key: "popfood_cust_number" },
+            { id: "cust-comp", key: "popfood_cust_comp" },
+            { id: "cust-ref", key: "popfood_cust_ref" },
+            { id: "cust-email", key: "popfood_cust_email" },
+          ];
+          cachedFields.forEach((f) => {
+            const cachedVal = localStorage.getItem(f.key);
+            if (cachedVal) {
+              const el = document.getElementById(f.id);
+              if (el) el.value = cachedVal;
+            }
+          });
+
           if (typeof window.checkAndShowSavedDataBanner === "function") {
             window.checkAndShowSavedDataBanner();
           }
@@ -5359,6 +5392,12 @@
         // Fill main checkout form fields so everything is perfectly synced
         document.getElementById("cust-name").value = name;
         document.getElementById("cust-phone").value = phone;
+        if (street) {
+          document.getElementById("cust-street").value = street;
+        }
+        if (cep) {
+          document.getElementById("cust-cep").value = cep;
+        }
         if (number) {
           document.getElementById("cust-number").value = number;
         }
@@ -5549,6 +5588,17 @@
           }, 50);
 
           sessionStorage.setItem("popfood_pre_register_modal_shown", "true");
+
+          // Pre-fill fields if they exist in localStorage (e.g. only name exists or phone exists)
+          const cachedName = localStorage.getItem("popfood_cust_name") || "";
+          if (cachedName) {
+            const nameEl = document.getElementById("pre-cust-name");
+            if (nameEl) nameEl.value = cachedName;
+          }
+          if (cachedPhone) {
+            const phoneEl = document.getElementById("pre-cust-phone");
+            if (phoneEl) phoneEl.value = cachedPhone;
+          }
 
           // Initialize mask listener for modal phone input
           const maskEl = document.getElementById("pre-cust-phone");
