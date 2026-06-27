@@ -53,6 +53,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.9.0/jsrsasign-all-min.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -1329,6 +1330,36 @@
           chatMessages: [...currentMessages, newMessage],
           hasUnreadCustomerMessage: true
         });
+
+        // Notify the merchant about the new chat message
+        try {
+          const storeIdToUse = window.currentStoreId || currentTrackOrder.storeId;
+          if (storeIdToUse) {
+            const profileSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, storeIdToUse));
+            if (profileSnap.exists()) {
+              const profileData = profileSnap.data();
+              const merchantTokens = profileData.merchantTokens || [];
+              if (merchantTokens.length > 0) {
+                const { sendPushNotification } = await import('./fcm-sender.js');
+                const title = `💬 Mensagem do Cliente - #${currentTrackOrder.id.substring(0, 5).toUpperCase()}`;
+                const body = `${currentTrackOrder.customer?.name || "Cliente"}: ${text}`;
+                
+                for (const mToken of merchantTokens) {
+                  try {
+                    await sendPushNotification(mToken, title, body, {
+                      orderId: currentTrackOrder.id,
+                      type: "chat"
+                    });
+                  } catch (pushErr) {
+                    console.error("Error sending chat push to merchant token:", pushErr);
+                  }
+                }
+              }
+            }
+          }
+        } catch (fcmErr) {
+          console.error("Error sending chat push notification:", fcmErr);
+        }
         
         input.value = '';
 

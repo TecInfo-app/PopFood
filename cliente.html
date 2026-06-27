@@ -58,6 +58,7 @@
     />
     <script src="https://js.stripe.com/v3/"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.9.0/jsrsasign-all-min.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -7421,6 +7422,34 @@
           // Write Order directly into Firestore collections
           const orderRef = doc(db, COLLECTIONS.orders, orderId);
           await setDoc(orderRef, orderDocument);
+
+          // Trigger push notification to the merchant
+          try {
+            const profileSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId));
+            if (profileSnap.exists()) {
+              const profileData = profileSnap.data();
+              const merchantTokens = profileData.merchantTokens || [];
+              if (merchantTokens.length > 0) {
+                const { sendPushNotification } = await import('./fcm-sender.js');
+                const title = "🚨 Novo Pedido Recebido!";
+                const formattedTotal = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                const body = `Pedido #${orderId.substring(0, 5).toUpperCase()} no valor de ${formattedTotal} foi recebido!`;
+                
+                for (const mToken of merchantTokens) {
+                  try {
+                    await sendPushNotification(mToken, title, body, {
+                      orderId: orderId,
+                      type: "new_order"
+                    });
+                  } catch (pushErr) {
+                    console.error("Error sending push to merchant token:", pushErr);
+                  }
+                }
+              }
+            }
+          } catch (fcmErr) {
+            console.error("Error triggering new order push:", fcmErr);
+          }
 
           // Salva referência do pedido no localStorage
           localStorage.setItem("popfood_last_order_id", orderId);
