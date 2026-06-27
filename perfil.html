@@ -276,6 +276,17 @@
           </div>
           <span class="font-bold text-amber-500">➔</span>
         </button>
+
+        <button type="button" onclick="switchTab('notificacoes')" id="menu-btn-notificacoes" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-orange-50/40">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">🔔</span>
+            <div>
+              <p class="font-bold text-slate-800">Notificações Push</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Campanhas, cupons e promoções</p>
+            </div>
+          </div>
+          <span class="font-bold text-orange-500">➔</span>
+        </button>
       </div>
     </aside>
 
@@ -666,6 +677,56 @@
         </div>
       </div>
 
+      <!-- TAB: NOTIFICAÇÕES PUSH -->
+      <div id="tab-notificacoes" class="space-y-6 hidden">
+        <!-- HEADER CARD -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 text-left">
+          <div class="flex items-center justify-between flex-wrap gap-4 border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl animate-bounce">🔔</span>
+              <div>
+                <h3 class="font-display font-bold text-sm text-gray-800">Notificações Push / Campanhas</h3>
+                <p class="text-[10px] text-gray-400 font-medium">Dispare anúncios e promoções em tempo real direto na tela dos seus clientes</p>
+              </div>
+            </div>
+            <button onclick="toggleNotificationModal(true)" class="bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 px-4 text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-95 flex items-center gap-1.5">
+              <span>➕ Criar Campanha</span>
+            </button>
+          </div>
+
+          <!-- SUMMARY CARD -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-4 bg-orange-50/50 rounded-2xl border border-orange-100/60 flex items-center gap-3 shadow-inner shadow-orange-100/20">
+              <span class="text-3xl">👥</span>
+              <div>
+                <p class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Clientes Disponíveis</p>
+                <p id="notification-subscriber-count" class="text-sm font-black text-brand-primary">Carregando...</p>
+                <p class="text-[9px] text-gray-400 font-semibold mt-0.5">Com notificações ativadas no dispositivo</p>
+              </div>
+            </div>
+
+            <div class="p-4 bg-slate-900 text-slate-300 rounded-2xl border border-slate-800 flex items-center gap-3">
+              <span class="text-3xl">💡</span>
+              <div class="text-[10px] leading-relaxed">
+                <p class="font-bold text-white font-display">Dica de Sucesso:</p>
+                <p class="font-medium">Use mensagens curtas, instigantes e com emojis (como 🍕, 🍔, 🤑) para aumentar as vendas em feriados ou horários de pico!</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- HISTORY TITLE -->
+          <div class="pt-2">
+            <h4 class="font-display font-bold text-xs text-gray-700">Histórico de Campanhas Enviadas</h4>
+            <p class="text-[9px] text-gray-400">Suas últimas mensagens enviadas para os clientes</p>
+          </div>
+
+          <!-- CARDS PARENT -->
+          <div id="notifications-card-parent" class="grid grid-cols-1 gap-3 pt-1">
+            <div class="text-center py-6 text-xs text-gray-400">Carregando histórico...</div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </main>
@@ -727,6 +788,41 @@
     </div>
   </div>
 
+  <!-- MODAL: ENVIAR CAMPANHA DE NOTIFICAÇÃO PUSH -->
+  <div id="notification-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden backdrop-blur-xs">
+    <div class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col relative transform scale-95 duration-200 transition-transform">
+      <button onclick="toggleNotificationModal(false)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 p-2 text-sm font-bold z-10 cursor-pointer">✕</button>
+
+      <div class="p-6 border-b border-gray-100">
+        <h2 class="font-display font-bold text-md text-gray-800 leading-tight">Disparar Nova Campanha</h2>
+        <p class="text-[10px] text-gray-400 mt-0.5">Sua mensagem aparecerá em tempo real na tela do celular ou computador dos seus clientes.</p>
+      </div>
+
+      <form id="notification-modal-form" class="p-6 space-y-4 flex-grow">
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Título da Notificação *</label>
+          <input type="text" id="notification-form-title" required placeholder="Ex: Pizza em Dobro hoje! 🍕" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none">
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Mensagem / Texto *</label>
+          <textarea id="notification-form-body" required rows="3" placeholder="Ex: Compre qualquer Pizza Grande hoje e ganhe uma mini pizza doce totalmente grátis! Aproveite..." class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-none"></textarea>
+        </div>
+
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Link de Destino (Opcional)</label>
+          <input type="url" id="notification-form-link" placeholder="Ex: https://seusite.com.br/promo" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none">
+          <p class="text-[9px] text-gray-400">Por padrão, clicar na notificação abrirá o seu cardápio.</p>
+        </div>
+
+        <div class="pt-2 flex gap-3">
+          <button type="button" onclick="toggleNotificationModal(false)" class="flex-1 border border-gray-200 py-3 rounded-xl text-xs text-gray-500 hover:bg-gray-50 font-semibold cursor-pointer">Cancelar</button>
+          <button type="submit" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer">Disparar Agora 🚀</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script type="module">
     import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query, onSnapshot, signOut } from './firebase-config.js';
 
@@ -753,7 +849,7 @@
 
     // Switch tab handler
     window.switchTab = function(tabId) {
-      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'pagamentos', 'assinatura', 'motoboy'];
+      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'pagamentos', 'assinatura', 'motoboy', 'notificacoes'];
       tabs.forEach(id => {
         const tabEl = document.getElementById(`tab-${id}`);
         if (tabEl) tabEl.classList.add('hidden');
@@ -852,11 +948,14 @@
         loadRestaurantProfileData();
         // Fetch Coupons
         loadPromotionalCouponsList();
+        // Fetch Campaign History
+        loadNotificationCampaigns();
       });
 
       document.getElementById('profile-meta-form').onsubmit = saveRestaurantProfileDetails;
       document.getElementById('profile-payments-form').onsubmit = saveRestaurantProfileDetails;
       document.getElementById('coupon-modal-form').onsubmit = saveOrUpdateCouponDetails;
+      document.getElementById('notification-modal-form').onsubmit = sendNotificationCampaign;
 
       const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
       window.switchTab(lastTab);
@@ -1851,6 +1950,204 @@
         loadPromotionalCouponsList();
       } catch (err) {
         console.error("Deleting coupon exception error: ", err);
+      }
+    }
+
+    // Notificações Push logic
+    window.loadNotificationCampaigns = async function() {
+      const parent = document.getElementById('notifications-card-parent');
+      if (!parent) return;
+      parent.innerHTML = '';
+
+      const activeCountEl = document.getElementById('notification-subscriber-count');
+      if (activeCountEl) {
+        activeCountEl.textContent = "Carregando...";
+      }
+
+      try {
+        // 1. Calculate active subscribers from unique fcmTokens in orders
+        const ordersSnap = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
+        const uniqueTokens = new Set();
+        ordersSnap.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.fcmToken && data.fcmToken.trim() !== "") {
+            uniqueTokens.add(data.fcmToken.trim());
+          }
+        });
+        
+        const count = uniqueTokens.size;
+        if (activeCountEl) {
+          activeCountEl.textContent = `${count} cliente(s) ativo(s)`;
+        }
+        
+        window.currentStoreFcmTokens = Array.from(uniqueTokens);
+
+        // 2. Fetch campaign history
+        const qSnap = await getDocs(query(collection(db, "campaigns"), where("storeId", "==", window.currentStoreId)));
+        const campaignsList = [];
+        qSnap.forEach(snap => {
+          campaignsList.push({ id: snap.id, ...snap.data() });
+        });
+
+        // Sort campaigns by date (descending)
+        campaignsList.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+
+        if (campaignsList.length === 0) {
+          parent.innerHTML = `<div class="text-center py-6 text-xs text-gray-400">Nenhuma campanha de notificação push disparada ainda.</div>`;
+          return;
+        }
+
+        campaignsList.forEach(camp => {
+          const card = document.createElement('div');
+          card.className = "bg-gray-50 p-4 border border-gray-150 rounded-2xl flex flex-col justify-between items-start gap-2 shadow-xs";
+          
+          const sentDate = new Date(camp.sentAt).toLocaleString('pt-BR');
+          
+          card.innerHTML = `
+            <div class="w-full space-y-1.5 text-left">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-gray-800">📣 ${camp.title}</span>
+                <span class="text-[9px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 font-bold">${camp.targetCount || 0} envios</span>
+              </div>
+              <p class="text-xs text-gray-650 leading-relaxed font-medium">${camp.body}</p>
+              <div class="flex items-center justify-between text-[10px] text-gray-400 pt-1">
+                <span>Disparado em: ${sentDate}</span>
+                ${camp.link ? `<a href="${camp.link}" target="_blank" class="text-orange-500 hover:underline font-bold">Ver Link ↗</a>` : ''}
+              </div>
+            </div>
+          `;
+          parent.appendChild(card);
+        });
+      } catch(e) {
+        console.error("Error loading notification campaigns:", e);
+        parent.innerHTML = `<div class="text-center py-6 text-xs text-red-500">Erro ao carregar campanhas: ${e.message}</div>`;
+      }
+    };
+
+    window.toggleNotificationModal = function(show) {
+      const modal = document.getElementById('notification-modal');
+      if (modal) {
+        if (show) {
+          modal.classList.remove('hidden');
+          setTimeout(() => {
+            modal.querySelector('div').classList.remove('scale-95');
+          }, 10);
+          
+          // Autofill the default link
+          const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+          const storeUrl = window.location.origin + basePath + "/cliente.html?store=" + window.currentStoreId;
+          const linkInput = document.getElementById('notification-form-link');
+          if (linkInput && !linkInput.value) {
+            linkInput.value = storeUrl;
+          }
+        } else {
+          modal.querySelector('div').classList.add('scale-95');
+          setTimeout(() => {
+            modal.classList.add('hidden');
+          }, 150);
+        }
+      }
+    };
+
+    async function sendNotificationCampaign(e) {
+      e.preventDefault();
+      
+      const title = document.getElementById('notification-form-title').value.trim();
+      const body = document.getElementById('notification-form-body').value.trim();
+      const customLink = document.getElementById('notification-form-link').value.trim();
+
+      if (!title || !body) {
+        alert("Por favor preencha o título e a mensagem.");
+        return;
+      }
+
+      const tokens = window.currentStoreFcmTokens || [];
+      if (tokens.length === 0) {
+        alert("Nenhum cliente ativo possui notificações ativas para disparar no momento.");
+        return;
+      }
+
+      const confirmSend = await window.customConfirm(`Deseja disparar essa notificação push para ${tokens.length} cliente(s)?`);
+      if (!confirmSend) return;
+
+      let successCount = 0;
+      let failCount = 0;
+
+      // Disable button
+      const submitBtn = document.querySelector('#notification-modal-form button[type="submit"]');
+      let origText = "Disparar Agora 🚀";
+      if (submitBtn) {
+        origText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Disparando...";
+      }
+
+      // Dynamic import of fcm-sender.js
+      let sendPushNotificationHelper;
+      try {
+        const module = await import("./fcm-sender.js");
+        sendPushNotificationHelper = module.sendPushNotification;
+      } catch(err) {
+        console.error("Error importing fcm-sender module:", err);
+      }
+
+      if (!sendPushNotificationHelper) {
+        alert("Erro técnico: não foi possível carregar o módulo de envio de push.");
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = origText;
+        }
+        return;
+      }
+
+      for (const token of tokens) {
+        try {
+          const res = await sendPushNotificationHelper(token, title, body, { 
+            type: "campaign",
+            link: customLink || ""
+          });
+          if (res && !res.error) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } catch(err) {
+          console.error("Error sending notification in campaign loop:", err);
+          failCount++;
+        }
+      }
+
+      // Save campaign history to firestore
+      try {
+        const campaignData = {
+          storeId: window.currentStoreId,
+          title: title,
+          body: body,
+          link: customLink || "",
+          sentAt: new Date().toISOString(),
+          targetCount: tokens.length,
+          successCount: successCount,
+          failCount: failCount
+        };
+        
+        const newCampRef = doc(collection(db, "campaigns"));
+        await setDoc(newCampRef, campaignData);
+      } catch(e) {
+        console.error("Failed to log campaign:", e);
+      }
+
+      alert(`Campanha concluída!\nDisparos bem sucedidos: ${successCount}\nFalhas: ${failCount}`);
+      
+      // Close modal and reset form
+      window.toggleNotificationModal(false);
+      document.getElementById('notification-modal-form').reset();
+      
+      // Reload campaigns list
+      window.loadNotificationCampaigns();
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = origText;
       }
     }
 
