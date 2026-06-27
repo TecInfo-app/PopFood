@@ -7,6 +7,26 @@ import Stripe from 'stripe';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
+import admin from 'firebase-admin';
+
+// Initialize Firebase Admin for Push Notifications
+try {
+  let adminConfig = {};
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    adminConfig = {
+      credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON))
+    };
+  } else {
+    // Attempt fallback to application default credentials
+    adminConfig = {
+      credential: admin.credential.applicationDefault()
+    };
+  }
+  admin.initializeApp(adminConfig);
+  console.log("Firebase Admin initialized for Push Notifications.");
+} catch (error) {
+  console.warn("Could not initialize Firebase Admin. Push notifications via server won't work until FIREBASE_SERVICE_ACCOUNT_JSON is set.", error);
+}
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtz-4cniRtbA_rdxAE26-uOA_ji3Xz4RU",
@@ -34,6 +54,33 @@ async function startServer() {
   }));
 
   app.use(express.json());
+
+  // API route for pushing notifications
+  app.post("/api/send-notification", async (req, res) => {
+    const { token, title, body, data } = req.body;
+    
+    if (!token || !title || !body) {
+      return res.status(400).json({ error: "Faltam parâmetros obrigatórios (token, title, body)." });
+    }
+
+    try {
+      const message = {
+        notification: {
+          title: title,
+          body: body,
+          image: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png'
+        },
+        data: data || {},
+        token: token,
+      };
+
+      const response = await admin.messaging().send(message);
+      res.json({ success: true, messageId: response });
+    } catch (error: any) {
+      console.error("Erro ao enviar notificação push:", error);
+      res.status(500).json({ error: error.message || "Falha ao enviar notificação." });
+    }
+  });
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {

@@ -1131,7 +1131,10 @@
       </div>
     </div>
 
+    <!-- Required for Client-Side FCM Sender OAuth generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.9.0/jsrsasign-all-min.js"></script>
     <script type="module">
+      import { sendPushNotification } from "./fcm-sender.js";
       import {
         db,
         auth,
@@ -2101,6 +2104,17 @@
 
         try {
           const orderRef = doc(db, COLLECTIONS.orders, orderId);
+          
+          // Get the current order to check for fcmToken
+          const orderSnap = await getDoc(orderRef);
+          let fcmToken = null;
+          let orderNumber = orderId.substring(0, 5).toUpperCase();
+          if (orderSnap.exists()) {
+             const data = orderSnap.data();
+             fcmToken = data.fcmToken;
+             if (data.shortId) orderNumber = data.shortId;
+          }
+
           const updatePayload = {
             status: nextState,
           };
@@ -2112,6 +2126,19 @@
           }
 
           await updateDoc(orderRef, updatePayload);
+          
+          // Send Push Notification if FCM token exists
+          if (fcmToken) {
+            let title = "Seu pedido atualizou!";
+            let body = `O status do pedido #${orderNumber} mudou para ${nextState}.`;
+            if (nextState === "Preparando") body = `Seu pedido #${orderNumber} está sendo preparado.`;
+            if (nextState === "Pronto") body = `Seu pedido #${orderNumber} está pronto para retirada.`;
+            if (nextState === "Saiu para Entrega") body = `Seu pedido #${orderNumber} saiu para entrega!`;
+            
+            sendPushNotification(fcmToken, title, body, { orderId: orderId })
+              .then(res => console.log("Push enviado:", res))
+              .catch(e => console.error("Erro ao enviar push via cliente:", e));
+          }
 
           // Dynamic drawer updater
           const modal = document.getElementById("details-modal");
