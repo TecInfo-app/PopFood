@@ -16,10 +16,16 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification?.title || 'Novo Pedido! 🔔';
+  
+  // Se o Firebase SDK já processou a notificação automaticamente, evitamos duplicidade
+  if (payload.notification) {
+    return;
+  }
+
+  const notificationTitle = 'Novo Pedido! 🔔';
   const notificationOptions = {
-    body: payload.notification?.body || 'Você tem uma nova atualização no PopFood.',
-    icon: payload.notification?.image || 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
+    body: 'Você tem uma nova atualização no PopFood.',
+    icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
     badge: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
     data: payload.data
   };
