@@ -2090,6 +2090,28 @@
         return card;
       }
 
+      // Global Push Notification Sender helper
+      window.notifyOrderUpdate = async function(orderId, nextState, fcmToken, shortId, isPickup) {
+        if (!fcmToken) return;
+        let orderNumber = shortId || orderId.substring(0, 5).toUpperCase();
+        let title = "Seu pedido atualizou!";
+        let body = `O status do pedido #${orderNumber} mudou para ${nextState}.`;
+        
+        if (nextState === "Preparando") body = `Seu pedido #${orderNumber} está sendo preparado.`;
+        if (nextState === "Saiu para entrega" || nextState === "Saiu para Entrega" || nextState === "Pronto") {
+          if (isPickup) body = `Seu pedido #${orderNumber} está pronto para retirada!`;
+          else body = `Seu pedido #${orderNumber} saiu para entrega!`;
+        }
+        if (nextState === "Cancelado") body = `Seu pedido #${orderNumber} foi cancelado.`;
+
+        try {
+          const res = await sendPushNotification(fcmToken, title, body, { orderId: orderId });
+          console.log("Push enviado:", res);
+        } catch(e) {
+          console.error("Erro ao enviar push via cliente:", e);
+        }
+      };
+
       // Status transitions
       window.changeOrderStatus = async function (
         orderId,
@@ -2109,9 +2131,11 @@
           const orderSnap = await getDoc(orderRef);
           let fcmToken = null;
           let orderNumber = orderId.substring(0, 5).toUpperCase();
+          let isPickup = false;
           if (orderSnap.exists()) {
              const data = orderSnap.data();
              fcmToken = data.fcmToken;
+             isPickup = data.isPickup || false;
              if (data.shortId) orderNumber = data.shortId;
           }
 
@@ -2128,17 +2152,7 @@
           await updateDoc(orderRef, updatePayload);
           
           // Send Push Notification if FCM token exists
-          if (fcmToken) {
-            let title = "Seu pedido atualizou!";
-            let body = `O status do pedido #${orderNumber} mudou para ${nextState}.`;
-            if (nextState === "Preparando") body = `Seu pedido #${orderNumber} está sendo preparado.`;
-            if (nextState === "Pronto") body = `Seu pedido #${orderNumber} está pronto para retirada.`;
-            if (nextState === "Saiu para Entrega") body = `Seu pedido #${orderNumber} saiu para entrega!`;
-            
-            sendPushNotification(fcmToken, title, body, { orderId: orderId })
-              .then(res => console.log("Push enviado:", res))
-              .catch(e => console.error("Erro ao enviar push via cliente:", e));
-          }
+          await window.notifyOrderUpdate(orderId, nextState, fcmToken, orderNumber, isPickup);
 
           // Dynamic drawer updater
           const modal = document.getElementById("details-modal");
@@ -2595,15 +2609,14 @@
                       refundedAt: new Date().toISOString(),
                       refundId: refundData.data?.id || "",
                     });
+                    if (window.notifyOrderUpdate) await window.notifyOrderUpdate(order.id, "Cancelado", order.fcmToken, order.shortId, order.isPickup);
                     alert(
                       "✅ Pedido cancelado e reembolso enviado ao cliente com sucesso!",
                     );
                   } else {
                     const errMsg = refundData.error || "Erro desconhecido";
                     const forceCancel = await window.customConfirm(
-                      `⚠️ Não foi possível processar o reembolso automático: ${errMsg}.
-
-Deseja cancelar o pedido mesmo assim e fazer o reembolso manualmente pelo painel do AbacatePay?`,
+                      `⚠️ Não foi possível processar o reembolso automático: ${errMsg}.\n\nDeseja cancelar o pedido mesmo assim e fazer o reembolso manualmente pelo painel do AbacatePay?`,
                     );
                     if (forceCancel) {
                       await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
@@ -2612,6 +2625,7 @@ Deseja cancelar o pedido mesmo assim e fazer o reembolso manualmente pelo painel
                           "Cancelado pelo restaurante — reembolso manual pendente",
                         refunded: false,
                       });
+                      if (window.notifyOrderUpdate) await window.notifyOrderUpdate(order.id, "Cancelado", order.fcmToken, order.shortId, order.isPickup);
                     }
                   }
                 } catch (err) {
@@ -2632,6 +2646,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                   cancelReason: "Cancelado pelo restaurante — sem reembolso",
                   refunded: false,
                 });
+                if (window.notifyOrderUpdate) await window.notifyOrderUpdate(order.id, "Cancelado", order.fcmToken, order.shortId, order.isPickup);
               }
             } else {
               // Pedido sem pagamento online — cancelar normalmente
