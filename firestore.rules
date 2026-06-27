@@ -1,97 +1,60 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global Safety Net (Zero-Trust entry point)
+    
+    // Regra de segurança global: por padrão bloqueia tudo que não estiver mapeado abaixo
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Reusable, hardened helpers
+    // Helper para verificar se temos um usuário autenticado no sistema
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return isSignedIn() && (
-        request.auth.token.email == "iranildo@popfood.com" || 
-        request.auth.token.email == "ciachopp2016@gmail.com"
-      );
-    }
-
-    function incoming() {
-      return request.resource.data;
-    }
-
-    function existing() {
-      return resource.data;
-    }
-
-    // Categories Rules
-    match /categories/{categoryId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
-    }
-
-    // Products Rules
-    match /products/{productId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
-    }
-
-    // Complements Rules
-    match /complements/{productId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
-    }
-
-    // Coupons Rules
-    match /coupons/{couponId} {
-      allow read: if true;
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin()) && (incoming().storeId == request.auth.uid || isAdmin());
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
-    }
-
-    // Restaurant Profiles Rules
+    // Perfis dos Restaurantes (Permite que o painel gerencie a lista de lojas)
     match /restaurantProfile/{profileId} {
-      allow read: if (profileId == 'GLOBAL_SETTINGS') ? isSignedIn() : true;
-      allow write: if (profileId == 'GLOBAL_SETTINGS') 
-        ? isAdmin() 
-        : (isSignedIn() && (request.auth.uid == profileId || isAdmin()));
+      allow read, write: if true;
     }
 
-    // Orders Rules - Multi-level authorization
+    // Categorias de Cardápio
+    match /categories/{categoryId} {
+      allow read, write: if true;
+    }
+
+    // Produtos
+    match /products/{productId} {
+      allow read, write: if true;
+    }
+
+    // Complementos/Adicionais dos itens
+    match /complements/{productId} {
+      allow read, write: if true;
+    }
+
+    // Cupons ativos
+    match /coupons/{couponId} {
+      allow read, write: if true;
+    }
+
+    // Pedidos (Clientes e Restaurantes gravam e leem, estatísticas gerais)
     match /orders/{orderId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if (isSignedIn() && (request.auth.uid == existing().storeId || isAdmin()))
-        || (!isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly([
-            'rating', 'deliveryPin', 'motoboyLatitude', 'motoboyLongitude', 
-            'status', 'deliveryProgress', 'deliveryMilestone', 
-            'paymentApproved', 'isPaid', 'paymentStatus',
-            'chatMessages', 'hasUnreadCustomerMessage', 'hasUnreadStoreMessage'
-          ]));
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow read, write: if true;
     }
 
-    // Clients Rules - Restrict public lists
+    // Clientes cadastrados para histórico
     match /clients/{phone} {
-      allow read: if isSignedIn() && (request.auth.uid == resource.data.storeId || isAdmin());
-      allow create, update: if true;
-      allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow read, write: if true;
     }
 
-    // Campaigns Rules
+    // Permite salvar a chave API do sistema
+    match /appSettings/{settingId} {
+      allow read, write: if true;
+    }
+
+    // Campanhas de push / notificações
     match /campaigns/{campaignId} {
-      allow read: if isSignedIn() && (resource.data.storeId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
-      allow update, delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+      allow read, write: if true;
     }
   }
 }
