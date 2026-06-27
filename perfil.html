@@ -816,7 +816,8 @@
   </div>
 
   <script type="module">
-    import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query, onSnapshot, signOut } from './firebase-config.js';
+    import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query, onSnapshot, signOut, app } from './firebase-config.js';
+    import { getMessaging, getToken, onMessage } from './firebase-config.js';
 
     window.logoutAdmin = async function() {
       localStorage.removeItem('popfood_custom_store_id');
@@ -879,6 +880,19 @@
 
     window.onload = async () => {
       window.currentStoreId = null;
+      
+      try {
+        const messaging = getMessaging(app);
+        onMessage(messaging, (payload) => {
+          console.log("Foreground notification received in perfil.html:", payload);
+          const title = payload.notification?.title || "Nova Notificação! 🔔";
+          const body = payload.notification?.body || "";
+          alert(`🔔 Nova Notificação!\n${title}\n${body}`);
+        });
+      } catch (e) {
+        console.error("Could not init FCM foreground listener in perfil.html", e);
+      }
+
       onAuthStateChanged(auth, async (user) => {
         const urlParams = new URLSearchParams(window.location.search);
         const urlStoreId = urlParams.get('store');
@@ -1994,6 +2008,13 @@
           const pData = profileSnap.data();
           if (pData.clientTokens && Array.isArray(pData.clientTokens)) {
             pData.clientTokens.forEach(tok => {
+              if (tok && tok.trim() !== "") {
+                uniqueTokens.add(tok.trim());
+              }
+            });
+          }
+          if (pData.merchantTokens && Array.isArray(pData.merchantTokens)) {
+            pData.merchantTokens.forEach(tok => {
               if (tok && tok.trim() !== "") {
                 uniqueTokens.add(tok.trim());
               }
