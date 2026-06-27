@@ -16,21 +16,19 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
-  
-  // Se o Firebase SDK já processou a notificação automaticamente, evitamos duplicidade
-  if (payload.notification) {
-    return;
-  }
 
-  const notificationTitle = 'Novo Pedido! 🔔';
+  const title = payload.notification?.title || payload.data?.title || 'PopFood 🔔';
+  const body = payload.notification?.body || payload.data?.body || 'Você tem uma nova atualização no PopFood.';
+  const icon = payload.notification?.image || payload.data?.icon || 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png';
+
   const notificationOptions = {
-    body: 'Você tem uma nova atualização no PopFood.',
-    icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
+    body: body,
+    icon: icon,
     badge: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
     data: payload.data
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  self.registration.showNotification(title, notificationOptions);
 });
 
 self.addEventListener('install', (event) => {
