@@ -696,16 +696,7 @@
           </div>
 
           <!-- SUMMARY CARD -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="p-4 bg-orange-50/50 rounded-2xl border border-orange-100/60 flex items-center gap-3 shadow-inner shadow-orange-100/20">
-              <span class="text-3xl">👥</span>
-              <div>
-                <p class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">Clientes Disponíveis</p>
-                <p id="notification-subscriber-count" class="text-sm font-black text-brand-primary">Carregando...</p>
-                <p class="text-[9px] text-gray-400 font-semibold mt-0.5">Com notificações ativadas no dispositivo</p>
-              </div>
-            </div>
-
+          <div class="grid grid-cols-1 gap-4">
             <div class="p-4 bg-slate-900 text-slate-300 rounded-2xl border border-slate-800 flex items-center gap-3">
               <span class="text-3xl">💡</span>
               <div class="text-[10px] leading-relaxed">
@@ -2095,12 +2086,8 @@
       }
 
       const tokens = window.currentStoreFcmTokens || [];
-      if (tokens.length === 0) {
-        alert("Nenhum cliente com notificações ativadas encontrado no momento para receber este disparo.");
-        return;
-      }
 
-      const confirmSend = await window.customConfirm(`Deseja disparar essa notificação push para ${tokens.length} cliente(s)?`);
+      const confirmSend = await window.customConfirm(`Deseja disparar essa notificação promocional para seus clientes?`);
       if (!confirmSend) return;
 
       let successCount = 0;
