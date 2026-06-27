@@ -1850,17 +1850,6 @@
               const body = payload.notification?.body || "";
               const icon = payload.notification?.image || "https://cdn-icons-png.flaticon.com/512/3119/3119338.png";
 
-              if (Notification.permission === 'granted') {
-                try {
-                  new Notification(title, {
-                    body: body,
-                    icon: icon
-                  });
-                } catch (err) {
-                  console.error("Failed to show foreground desktop notification:", err);
-                }
-              }
-
               if (window.showToast) {
                 window.showToast(`📢 ${title}: ${body}`);
               }
