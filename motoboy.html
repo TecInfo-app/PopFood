@@ -527,10 +527,12 @@
 
       try {
         const orderSnap = await getDoc(doc(db, COLLECTIONS.orders, selectedOrder.id));
+        let clientFcmToken = null;
         if (orderSnap.exists()) {
           const freshData = orderSnap.data();
           activeOrderPin = freshData.deliveryPin;
           selectedOrder.deliveryPin = activeOrderPin; // synchronize
+          clientFcmToken = freshData.fcmToken;
         }
 
         if (!activeOrderPin) {
@@ -553,6 +555,19 @@
           status: "Entregue",
           deliveryProgress: 100
         });
+
+        // Send FCM Push notification to client
+        if (clientFcmToken) {
+          try {
+            const { sendPushNotification } = await import('./fcm-sender.js');
+            const title = "💖 Entregue! Bom apetite!";
+            const body = "Seu pedido foi finalizado. Não esqueça de deixar sua avaliação para nos ajudar a melhorar!";
+            await sendPushNotification(clientFcmToken, title, body, { orderId: selectedOrder.id });
+            console.log("FCM delivery push notification sent successfully.");
+          } catch (pushErr) {
+            console.error("Error sending delivery FCM push:", pushErr);
+          }
+        }
 
         // Open completion visual layer modal
         document.getElementById('completion-overlay').classList.remove('hidden');

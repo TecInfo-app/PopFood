@@ -2183,15 +2183,28 @@
       window.notifyOrderUpdate = async function(orderId, nextState, fcmToken, shortId, isPickup) {
         if (!fcmToken) return;
         let orderNumber = shortId || orderId.substring(0, 5).toUpperCase();
-        let title = "Seu pedido atualizou!";
-        let body = `O status do pedido #${orderNumber} mudou para ${nextState}.`;
         
-        if (nextState === "Preparando") body = `Seu pedido #${orderNumber} está sendo preparado.`;
-        if (nextState === "Saiu para entrega" || nextState === "Saiu para Entrega" || nextState === "Pronto") {
-          if (isPickup) body = `Seu pedido #${orderNumber} está pronto para retirada!`;
-          else body = `Seu pedido #${orderNumber} saiu para entrega!`;
+        let title = "Atualização do seu Pedido! 🍕";
+        let body = `Seu pedido #${orderNumber} mudou para o status: ${nextState}`;
+
+        if (nextState === "Preparando") {
+          title = "🧑‍🍳 Pedido na Cozinha!";
+          body = "O restaurante confirmou seu pedido e o preparo já começou.";
+        } else if (nextState === "Saiu para entrega" || nextState === "Saiu para Entrega" || nextState === "Pronto") {
+          if (isPickup) {
+            title = "🛍️ Pronto para retirada!";
+            body = "Seu pedido já está esperando por você! Dirija-se ao caixa/balcão do restaurante para retirar.";
+          } else {
+            title = "🛵 Saiu para entrega!";
+            body = "O entregador já está a caminho do seu endereço com a refeição quentinha!";
+          }
+        } else if (nextState === "Entregue") {
+          title = "💖 Entregue! Bom apetite!";
+          body = "Seu pedido foi finalizado. Não esqueça de deixar sua avaliação para nos ajudar a melhorar!";
+        } else if (nextState === "Cancelado") {
+          title = "❌ Pedido Cancelado";
+          body = "Infelizmente o estabelecimento precisou cancelar o seu pedido. Acesse o chat se precisar falar com o suporte.";
         }
-        if (nextState === "Cancelado") body = `Seu pedido #${orderNumber} foi cancelado.`;
 
         try {
           const res = await sendPushNotification(fcmToken, title, body, { orderId: orderId });
