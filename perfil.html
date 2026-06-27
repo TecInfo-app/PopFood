@@ -824,7 +824,7 @@
   </div>
 
   <script type="module">
-    import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query, onSnapshot, signOut, arrayUnion } from './firebase-config.js';
+    import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query, onSnapshot, signOut } from './firebase-config.js';
 
     window.logoutAdmin = async function() {
       localStorage.removeItem('popfood_custom_store_id');
@@ -2135,8 +2135,17 @@
         };
         
         const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+        const profileSnap = await getDoc(ref);
+        let campaignsList = [];
+        if (profileSnap.exists()) {
+          const pData = profileSnap.data();
+          if (pData.campaigns && Array.isArray(pData.campaigns)) {
+            campaignsList = [...pData.campaigns];
+          }
+        }
+        campaignsList.push(campaignData);
         await updateDoc(ref, {
-          campaigns: arrayUnion(campaignData)
+          campaigns: campaignsList
         });
       } catch(e) {
         console.error("Failed to log campaign:", e);
