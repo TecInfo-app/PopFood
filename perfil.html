@@ -2133,13 +2133,8 @@
         return;
       }
 
-      const tokens = window.currentStoreFcmTokens || [];
-
       const confirmSend = await window.customConfirm(`Deseja disparar essa notificação promocional para seus clientes?`);
       if (!confirmSend) return;
-
-      let successCount = 0;
-      let failCount = 0;
 
       // Disable button
       const submitBtn = document.querySelector('#notification-modal-form button[type="submit"]');
@@ -2147,8 +2142,70 @@
       if (submitBtn) {
         origText = submitBtn.textContent;
         submitBtn.disabled = true;
-        submitBtn.textContent = "Disparando...";
+        submitBtn.textContent = "Coletando clientes...";
       }
+
+      // Fetch tokens on demand to ensure we get the latest
+      const uniqueTokens = new Set();
+      
+      try {
+        // Fetch all client tokens (broadcasting to all app installs as requested for promotions)
+        const clientsSnap = await getDocs(collection(db, COLLECTIONS.clients));
+        clientsSnap.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.fcmToken && data.fcmToken.trim() !== "") {
+            uniqueTokens.add(data.fcmToken.trim());
+          }
+        });
+      } catch (err) {
+        console.error("Failed to load global clients", err);
+      }
+
+      try {
+        // Also fetch from orders for this specific store to be 100% sure
+        const ordersSnap = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
+        ordersSnap.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.fcmToken && data.fcmToken.trim() !== "") {
+            uniqueTokens.add(data.fcmToken.trim());
+          }
+        });
+      } catch (err) {
+        console.error("Failed to load orders tokens", err);
+      }
+
+      try {
+        const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+        const profileSnap = await getDoc(ref);
+        if (profileSnap.exists()) {
+          const pData = profileSnap.data();
+          if (pData.clientTokens && Array.isArray(pData.clientTokens)) {
+            pData.clientTokens.forEach(tok => {
+              if (tok && tok.trim() !== "") {
+                uniqueTokens.add(tok.trim());
+              }
+            });
+          }
+          if (pData.merchantTokens && Array.isArray(pData.merchantTokens)) {
+            pData.merchantTokens.forEach(tok => {
+              if (tok && tok.trim() !== "") {
+                uniqueTokens.add(tok.trim());
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load profile tokens", err);
+      }
+
+      const tokens = Array.from(uniqueTokens);
+
+      if (submitBtn) {
+        submitBtn.textContent = `Disparando para ${tokens.length} cliente(s)...`;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
 
       // Dynamic import of fcm-sender.js
       let sendPushNotificationHelper;
