@@ -1778,6 +1778,8 @@
         getDoc,
         getDocs,
         setDoc,
+        updateDoc,
+        arrayUnion,
         query,
         orderBy,
         onSnapshot,
@@ -1892,6 +1894,19 @@
               isSubscriber: true,
               lastSeen: new Date().toISOString()
             }, { merge: true });
+
+            // Also register directly inside restaurantProfile clientTokens for campaign dispatch
+            if (window.currentStoreId) {
+              try {
+                const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+                await updateDoc(profileRef, {
+                  clientTokens: arrayUnion(currentToken)
+                });
+                console.log("FCM Token successfully registered in restaurant profile clientTokens.");
+              } catch (profileErr) {
+                console.error("Failed to append FCM token to restaurantProfile clientTokens:", profileErr);
+              }
+            }
           }
         } catch (e) {
           console.error("Failed to register FCM token:", e);

@@ -634,6 +634,21 @@
                } catch (err) {
                  console.error("Failed to register customer to clients collection:", err);
                }
+
+               // Register directly inside restaurantProfile clientTokens array
+               try {
+                 const storeIdToUse = window.currentStoreId || (window.currentTrackOrder && window.currentTrackOrder.storeId);
+                 if (storeIdToUse) {
+                   const { doc, updateDoc, arrayUnion, COLLECTIONS } = await import('./firebase-config.js');
+                   const profileRef = doc(db, COLLECTIONS.restaurantProfile, storeIdToUse);
+                   await updateDoc(profileRef, {
+                     clientTokens: arrayUnion(currentToken)
+                   });
+                   console.log("FCM Token successfully registered in restaurant profile clientTokens via acompanhamento.");
+                 }
+               } catch (profileErr) {
+                 console.error("Failed to append FCM token to restaurantProfile clientTokens from acompanhamento:", profileErr);
+               }
             }
           } catch(e) {
             console.error("Failed to setup FCM Token for customer:", e);

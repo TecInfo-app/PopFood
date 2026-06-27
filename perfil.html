@@ -1966,7 +1966,7 @@
       }
 
       try {
-        // 1. Calculate active subscribers from unique fcmTokens in clients and orders
+        // 1. Calculate active subscribers from unique fcmTokens in clients, orders, and restaurant profile
         const uniqueTokens = new Set();
 
         // A. Load from clients
@@ -1994,24 +1994,33 @@
         } catch (e) {
           console.error("Failed to load subscriber orders:", e);
         }
-        
-        const count = uniqueTokens.size;
-        if (activeCountEl) {
-          activeCountEl.textContent = `${count} cliente(s) ativo(s)`;
-        }
-        
-        window.currentStoreFcmTokens = Array.from(uniqueTokens);
 
-        // 2. Fetch campaign history from the store profile document to avoid permission errors
+        // C. Load from the restaurant profile direct clientTokens list for complete reliability
         const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
         const profileSnap = await getDoc(ref);
         let campaignsList = [];
         if (profileSnap.exists()) {
           const pData = profileSnap.data();
+          if (pData.clientTokens && Array.isArray(pData.clientTokens)) {
+            pData.clientTokens.forEach(tok => {
+              if (tok && tok.trim() !== "") {
+                uniqueTokens.add(tok.trim());
+              }
+            });
+          }
           if (pData.campaigns && Array.isArray(pData.campaigns)) {
             campaignsList = [...pData.campaigns];
           }
         }
+        
+        const count = uniqueTokens.size;
+        if (activeCountEl) {
+          activeCountEl.textContent = `${count} cliente(s) com notificações habilitadas`;
+        }
+        
+        window.currentStoreFcmTokens = Array.from(uniqueTokens);
+
+        // 2. Fetch campaign history (already sorted out from profileSnap above)
 
         // Sort campaigns by date (descending)
         campaignsList.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
@@ -2087,7 +2096,7 @@
 
       const tokens = window.currentStoreFcmTokens || [];
       if (tokens.length === 0) {
-        alert("Nenhum cliente ativo possui notificações ativas para disparar no momento.");
+        alert("Nenhum cliente com notificações ativadas encontrado no momento para receber este disparo.");
         return;
       }
 
