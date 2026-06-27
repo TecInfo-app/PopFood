@@ -41,18 +41,22 @@ self.addEventListener('fetch', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  
+  let linkToOpen = './';
+  if (event.notification.data && event.notification.data.link) {
+    linkToOpen = event.notification.data.link;
+  }
+  
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Tenta focar em alguma janela que já esteja aberta
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
         if ('focus' in client) {
           return client.focus();
         }
       }
-      // Se não, abre a tela de pedidos ou home
       if (clients.openWindow) {
-        return clients.openWindow('./');
+        return clients.openWindow(linkToOpen);
       }
     })
   );

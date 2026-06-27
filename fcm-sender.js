@@ -77,7 +77,7 @@ export async function sendPushNotification(fcmToken, title, body, dataPayload = 
             badge: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
           },
           fcm_options: {
-            link: "https://tecinfo-app.github.io/PopFood/acompanhamento.html"
+            link: dataPayload.link || "https://tecinfo-app.github.io/PopFood/acompanhamento.html"
           }
         }
       }

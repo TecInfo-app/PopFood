@@ -2036,7 +2036,12 @@
               <p class="text-xs text-gray-650 leading-relaxed font-medium">${camp.body}</p>
               <div class="flex items-center justify-between text-[10px] text-gray-400 pt-1">
                 <span>Disparado em: ${sentDate}</span>
-                ${camp.link ? `<a href="${camp.link}" target="_blank" class="text-orange-500 hover:underline font-bold">Ver Link ↗</a>` : ''}
+                <div class="flex items-center gap-2">
+                  ${camp.link ? `<a href="${camp.link}" target="_blank" class="text-orange-500 hover:underline font-bold">Ver Link ↗</a>` : ''}
+                  <button onclick="deleteCampaign('${camp.sentAt}')" class="text-red-500 hover:text-red-700 transition-colors ml-2 font-bold cursor-pointer" title="Excluir Histórico">
+                    Excluir 🗑️
+                  </button>
+                </div>
               </div>
             </div>
           `;
@@ -2046,6 +2051,28 @@
         console.error("Error loading notification campaigns:", e);
         parent.innerHTML = `<div class="text-center py-6 text-xs text-red-500">Erro ao carregar campanhas: ${e.message}</div>`;
       }
+    };
+
+    window.deleteCampaign = async function(sentAt) {
+        const confirmDel = await window.customConfirm("Tem certeza que deseja excluir este registro de disparo do histórico?");
+        if (!confirmDel) return;
+
+        try {
+            const { doc, getDoc, updateDoc, COLLECTIONS } = await import('./firebase-config.js');
+            const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+            const profileSnap = await getDoc(ref);
+            if (profileSnap.exists()) {
+                const pData = profileSnap.data();
+                if (pData.campaigns && Array.isArray(pData.campaigns)) {
+                    const newCampaigns = pData.campaigns.filter(c => c.sentAt !== sentAt);
+                    await updateDoc(ref, { campaigns: newCampaigns });
+                    window.loadNotificationCampaigns();
+                }
+            }
+        } catch (e) {
+            console.error("Failed to delete campaign", e);
+            alert("Erro ao excluir histórico de campanha.");
+        }
     };
 
     window.toggleNotificationModal = function(show) {
