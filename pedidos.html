@@ -2780,8 +2780,10 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
               if (window.fcmMessaging) {
                 console.log("Requesting FCM token...");
                 const { getToken } = await import('firebase/messaging');
+                const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
                 const currentToken = await getToken(window.fcmMessaging, {
-                   vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y"
+                   vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y",
+                   serviceWorkerRegistration: registration
                 });
                 if (currentToken) {
                    console.log("FCM Token:", currentToken);

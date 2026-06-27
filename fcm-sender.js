@@ -67,10 +67,15 @@ export async function sendPushNotification(fcmToken, title, body, dataPayload = 
         token: fcmToken,
         notification: {
           title: title,
-          body: body
+          body: body,
+          image: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
         },
         data: dataPayload,
         webpush: {
+          notification: {
+            icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+            badge: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
+          },
           fcm_options: {
             link: "https://tecinfo-app.github.io/PopFood/acompanhamento.html"
           }

@@ -574,8 +574,10 @@
             const { getMessaging, getToken } = await import('firebase/messaging');
             const { app, db, doc, updateDoc } = await import('./firebase-config.js');
             const messaging = getMessaging(app);
+            const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
             const currentToken = await getToken(messaging, {
-              vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y"
+              vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y",
+              serviceWorkerRegistration: registration
             });
             if (currentToken && window.currentTrackOrder && window.currentTrackOrder.id) {
                console.log("Customer FCM Token:", currentToken);
@@ -587,10 +589,24 @@
             console.error("Failed to setup FCM Token for customer:", e);
           }
 
-          new Notification("Notificações Prontas! 🎉", {
-            body: "Excelente! Agora você será avisado aqui na tela do seu dispositivo sempre que seu pedido avançar de etapa.",
-            icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
-          });
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready.then(function(registration) {
+              registration.showNotification("Notificações Prontas! 🎉", {
+                body: "Excelente! Agora você será avisado aqui na tela do seu dispositivo sempre que seu pedido avançar de etapa.",
+                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
+              });
+            }).catch(e => {
+              new Notification("Notificações Prontas! 🎉", {
+                body: "Excelente! Agora você será avisado aqui na tela do seu dispositivo sempre que seu pedido avançar de etapa.",
+                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
+              });
+            });
+          } else {
+            new Notification("Notificações Prontas! 🎉", {
+              body: "Excelente! Agora você será avisado aqui na tela do seu dispositivo sempre que seu pedido avançar de etapa.",
+              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
+            });
+          }
         }
       } catch (e) {
         console.error("Error setting up customer notification:", e);
@@ -640,11 +656,27 @@
       }
 
       try {
-        new Notification(title, {
-          body: message,
-          icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
-          requireInteraction: true
-        });
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then(function(registration) {
+            registration.showNotification(title, {
+              body: message,
+              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+              requireInteraction: true
+            });
+          }).catch(e => {
+            new Notification(title, {
+              body: message,
+              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+              requireInteraction: true
+            });
+          });
+        } else {
+          new Notification(title, {
+            body: message,
+            icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+            requireInteraction: true
+          });
+        }
       } catch (e) {
         console.warn("Could not fire standard browser notification flow:", e);
       }
