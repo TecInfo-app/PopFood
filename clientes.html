@@ -431,9 +431,10 @@
 
         // Perform programmatic cross check validation to structure actual spending and counters (LTV calculation)
         globalClientsList = clientsArr.map(client => {
-          const clientPhone = client.phone.replace(/\D/g, '');
+          const clientPhone = (client.phone || "").replace(/\D/g, '');
+          if (!clientPhone) return null;
           const matchingOrders = ordersArr.filter(o => {
-            const orderPhone = o.customer.phone.replace(/\D/g, '');
+            const orderPhone = (o.customer && o.customer.phone || "").replace(/\D/g, '');
             return orderPhone === clientPhone && o.status !== "Cancelado";
           });
 
@@ -446,7 +447,7 @@
             totalOrders: parsedCount,
             totalSpent: parsedSpent
           };
-        });
+        }).filter(c => c !== null);
 
         // Render analytics metrics stats strips
         calculateCrmStripSummaryMetrics();

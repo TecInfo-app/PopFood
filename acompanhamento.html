@@ -579,11 +579,32 @@
               vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y",
               serviceWorkerRegistration: registration
             });
-            if (currentToken && window.currentTrackOrder && window.currentTrackOrder.id) {
+            if (currentToken) {
                console.log("Customer FCM Token:", currentToken);
-               await updateDoc(doc(db, "orders", window.currentTrackOrder.id), {
-                 fcmToken: currentToken
-               });
+               if (window.currentTrackOrder && window.currentTrackOrder.id) {
+                 await updateDoc(doc(db, "orders", window.currentTrackOrder.id), {
+                   fcmToken: currentToken
+                 });
+               }
+
+               // Also register/update in clients collection for full promotional push notification reach
+               try {
+                 const { setDoc, COLLECTIONS } = await import('./firebase-config.js');
+                 const phone = localStorage.getItem("popfood_last_phone") || (window.currentTrackOrder && window.currentTrackOrder.customer && window.currentTrackOrder.customer.phone) || "";
+                 const name = localStorage.getItem("popfood_cust_name") || (window.currentTrackOrder && window.currentTrackOrder.customer && window.currentTrackOrder.customer.name) || "";
+                 const docId = phone ? phone : "fcm_" + currentToken;
+                 await setDoc(doc(db, COLLECTIONS.clients, docId), {
+                   id: docId,
+                   phone: phone || "",
+                   name: name || "Cliente do App",
+                   fcmToken: currentToken,
+                   storeId: window.currentStoreId || "",
+                   isSubscriber: true,
+                   lastSeen: new Date().toISOString()
+                 }, { merge: true });
+               } catch (err) {
+                 console.error("Failed to register customer to clients collection:", err);
+               }
             }
           } catch(e) {
             console.error("Failed to setup FCM Token for customer:", e);

@@ -1806,6 +1806,119 @@
         if (oBtn) {
           oBtn.href = "acompanhamento.html?store=" + window.currentStoreId;
         }
+
+        // Initialize FCM Client to capture active subscription token without active orders
+        setupFCMClient();
+      }
+
+      // FCM Implementation
+      window.currentFcmToken = null;
+
+      async function setupFCMClient() {
+        if (!('Notification' in window)) {
+          console.log("No notification support in this browser.");
+          return;
+        }
+
+        try {
+          // Check permission state
+          if (Notification.permission === 'granted') {
+            await retrieveAndRegisterFCMToken();
+          } else if (Notification.permission === 'default') {
+            // Show a visual prompt to request notifications
+            showNotificationPrompt();
+          }
+        } catch (err) {
+          console.error("Error setting up FCM client:", err);
+        }
+      }
+
+      async function retrieveAndRegisterFCMToken() {
+        try {
+          const { getMessaging, getToken } = await import('./firebase-config.js');
+          const { app, db } = await import('./firebase-config.js');
+          const messaging = getMessaging(app);
+          const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+          const currentToken = await getToken(messaging, {
+            vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y",
+            serviceWorkerRegistration: registration
+          });
+
+          if (currentToken) {
+            window.currentFcmToken = currentToken;
+            console.log("Client FCM Token:", currentToken);
+
+            // Register in database under clients collection to make sure this client is searchable for push notification campaigns
+            const phone = localStorage.getItem("popfood_last_phone") || "";
+            const name = localStorage.getItem("popfood_cust_name") || "";
+            const docId = phone ? phone : "fcm_" + currentToken;
+
+            const clientRef = doc(db, COLLECTIONS.clients, docId);
+            await setDoc(clientRef, {
+              id: docId,
+              phone: phone || "",
+              name: name || "Cliente do App",
+              fcmToken: currentToken,
+              storeId: window.currentStoreId || "",
+              isSubscriber: true,
+              lastSeen: new Date().toISOString()
+            }, { merge: true });
+          }
+        } catch (e) {
+          console.error("Failed to register FCM token:", e);
+        }
+      }
+
+      function showNotificationPrompt() {
+        // Create an elegant, modern, high-contrast banner/toast at the top or bottom of the screen
+        const banner = document.createElement("div");
+        banner.id = "notification-permission-prompt";
+        banner.className = "fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:max-w-sm bg-slate-900 border border-slate-800 text-white p-4 rounded-xl shadow-2xl flex flex-col gap-3 z-[9999] transition-all duration-300 transform translate-y-20 opacity-0";
+        banner.innerHTML = `
+          <div class="flex items-start gap-3">
+            <span class="text-2xl mt-0.5">🔔</span>
+            <div class="flex-1">
+              <h4 class="font-bold text-sm text-slate-100">Ative as Notificações!</h4>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">Receba avisos do seu pedido em tempo real, cupons de desconto exclusivos e promoções da nossa loja diretamente no seu celular.</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2.5 mt-1">
+            <button id="btn-decline-notif" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 transition-all">Agora não</button>
+            <button id="btn-accept-notif" class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-md">Ativar Notificações</button>
+          </div>
+        `;
+        document.body.appendChild(banner);
+
+        // Animate in
+        requestAnimationFrame(() => {
+          banner.classList.remove("translate-y-20", "opacity-0");
+        });
+
+        document.getElementById("btn-decline-notif").onclick = function() {
+          banner.classList.add("translate-y-20", "opacity-0");
+          setTimeout(() => banner.remove(), 300);
+        };
+
+        document.getElementById("btn-accept-notif").onclick = async function() {
+          const btn = this;
+          btn.disabled = true;
+          btn.textContent = "Ativando...";
+          try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+              await retrieveAndRegisterFCMToken();
+              window.showToast("Notificações ativadas com sucesso! 🎉");
+            } else {
+              window.showToast("Permissão negada. Você pode ativar nas configurações do seu navegador.", true);
+            }
+          } catch (e) {
+            console.error(e);
+            window.showToast("Erro ao ativar notificações.", true);
+          } finally {
+            banner.classList.add("translate-y-20", "opacity-0");
+            setTimeout(() => banner.remove(), 300);
+          }
+        };
       }
 
       window.showToast = function (message, isError = false) {
@@ -7207,6 +7320,7 @@
               cep: finalCep,
               lastOrder: new Date().toISOString(),
               storeId: window.currentStoreId,
+              ...(window.currentFcmToken ? { fcmToken: window.currentFcmToken } : {}),
             },
             { merge: true },
           );
@@ -7273,6 +7387,7 @@
               rawMethod === "PixOnline" ? "AguardandoPagamento" : "Pendente",
             storeId: window.currentStoreId,
             aiChatEnabled: true,
+            ...(window.currentFcmToken ? { fcmToken: window.currentFcmToken } : {}),
           };
 
           // Write Order directly into Firestore collections

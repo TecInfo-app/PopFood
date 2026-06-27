@@ -1965,15 +1965,34 @@
       }
 
       try {
-        // 1. Calculate active subscribers from unique fcmTokens in orders
-        const ordersSnap = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
+        // 1. Calculate active subscribers from unique fcmTokens in clients and orders
         const uniqueTokens = new Set();
-        ordersSnap.forEach(docSnap => {
-          const data = docSnap.data();
-          if (data.fcmToken && data.fcmToken.trim() !== "") {
-            uniqueTokens.add(data.fcmToken.trim());
-          }
-        });
+
+        // A. Load from clients
+        try {
+          const clientsSnap = await getDocs(query(collection(db, COLLECTIONS.clients), where("storeId", "==", window.currentStoreId)));
+          clientsSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.fcmToken && data.fcmToken.trim() !== "") {
+              uniqueTokens.add(data.fcmToken.trim());
+            }
+          });
+        } catch (e) {
+          console.error("Failed to load subscriber clients:", e);
+        }
+
+        // B. Load from orders for maximum compatibility
+        try {
+          const ordersSnap = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
+          ordersSnap.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.fcmToken && data.fcmToken.trim() !== "") {
+              uniqueTokens.add(data.fcmToken.trim());
+            }
+          });
+        } catch (e) {
+          console.error("Failed to load subscriber orders:", e);
+        }
         
         const count = uniqueTokens.size;
         if (activeCountEl) {
