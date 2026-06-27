@@ -86,5 +86,12 @@ service cloud.firestore {
       allow create, update: if true;
       allow delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
     }
+
+    // Campaigns Rules
+    match /campaigns/{campaignId} {
+      allow read: if isSignedIn() && (resource.data.storeId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (incoming().storeId == request.auth.uid || isAdmin());
+      allow update, delete: if isSignedIn() && (existing().storeId == request.auth.uid || isAdmin());
+    }
   }
 }

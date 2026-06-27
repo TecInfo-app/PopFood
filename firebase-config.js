@@ -12,7 +12,8 @@ import {
   where, 
   orderBy, 
   onSnapshot,
-  Timestamp 
+  Timestamp,
+  arrayUnion 
 } from 'firebase/firestore';
 import { 
   getAuth,
@@ -209,6 +210,7 @@ export {
   where,
   orderBy,
   onSnapshot,
+  arrayUnion,
 
   // Auth APIs
   signInWithEmailAndPassword,
