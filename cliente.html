@@ -1790,6 +1790,7 @@
         navigator.serviceWorker.register('./firebase-messaging-sw.js')
           .then(function(registration) {
             console.log('Cliente Registration successful, scope is:', registration.scope);
+            registration.update().catch(err => console.log('Error updating registration:', err));
           }).catch(function(err) {
             console.log('Cliente Service worker registration failed, error:', err);
           });
@@ -1859,6 +1860,11 @@
           }
 
           const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+          try {
+            await registration.update();
+          } catch (err) {
+            console.log("Failed to update SW registration:", err);
+          }
           let currentToken = null;
           try {
             currentToken = await getToken(messaging, {
