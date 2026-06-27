@@ -17,9 +17,18 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-  const title = payload.notification?.title || payload.data?.title || 'PopFood 🔔';
-  const body = payload.notification?.body || payload.data?.body || 'Você tem uma nova atualização no PopFood.';
-  const icon = payload.notification?.image || payload.data?.icon || 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png';
+  // If the payload already contains a notification object, the browser/FCM SDK
+  // will automatically show it when in the background. Showing it again here
+  // results in double/duplicate notifications on the device.
+  if (payload.notification) {
+    console.log('[firebase-messaging-sw.js] Notification object present, letting browser handle it to avoid duplicates.');
+    return;
+  }
+
+  // Otherwise, if it is a data-only payload, we construct and show the notification ourselves.
+  const title = payload.data?.title || 'PopFood 🔔';
+  const body = payload.data?.body || 'Você tem uma nova atualização no PopFood.';
+  const icon = payload.data?.icon || 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png';
 
   const notificationOptions = {
     body: body,
