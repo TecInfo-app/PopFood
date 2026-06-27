@@ -191,6 +191,22 @@
         "failCount": { "type": "integer" }
       },
       "required": ["storeId", "title", "body", "sentAt"]
+    },
+    "scheduled_notification": {
+      "title": "ScheduledNotification",
+      "description": "A campaign scheduled to be sent in the future",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "storeId": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "link": { "type": "string" },
+        "scheduledFor": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "sending", "sent", "failed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "storeId", "title", "body", "scheduledFor", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -225,6 +241,10 @@
     "/campaigns/{campaignId}": {
       "schema": "campaign",
       "description": "Push notification campaigns triggered by the store administrator"
+    },
+    "/scheduled_notifications/{notificationId}": {
+      "schema": "scheduled_notification",
+      "description": "Scheduled campaigns processed server-side"
     }
   }
 }

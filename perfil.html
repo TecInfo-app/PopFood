@@ -2056,6 +2056,7 @@
         const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
         const profileSnap = await getDoc(ref);
         let campaignsList = [];
+        let scheduledList = [];
         if (profileSnap.exists()) {
           const pData = profileSnap.data();
           if (pData.clientTokens && Array.isArray(pData.clientTokens)) {
@@ -2075,6 +2076,9 @@
           if (pData.campaigns && Array.isArray(pData.campaigns)) {
             campaignsList = [...pData.campaigns];
           }
+          if (pData.scheduledNotifications && Array.isArray(pData.scheduledNotifications)) {
+            scheduledList = [...pData.scheduledNotifications];
+          }
         }
         
         const count = uniqueTokens.size;
@@ -2090,26 +2094,15 @@
         if (scheduledParent && scheduledSection) {
           scheduledParent.innerHTML = '';
           try {
-            const schedSnap = await getDocs(query(
-              collection(db, "scheduled_notifications"),
-              where("storeId", "==", window.currentStoreId),
-              where("status", "==", "pending")
-            ));
-            
-            const scheduledList = [];
-            schedSnap.forEach(docSnap => {
-              scheduledList.push(docSnap.data());
-            });
-
             if (scheduledList.length > 0) {
               scheduledSection.classList.remove('hidden');
-              scheduledList.sort((a, b) => a.scheduledFor.toDate() - b.scheduledFor.toDate());
+              scheduledList.sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor));
               
               scheduledList.forEach(sched => {
                 const card = document.createElement('div');
                 card.className = "bg-orange-50/40 p-4 border border-orange-100 rounded-2xl flex flex-col justify-between items-start gap-2 shadow-xs";
                 
-                const runDate = sched.scheduledFor.toDate().toLocaleString('pt-BR');
+                const runDate = new Date(sched.scheduledFor).toLocaleString('pt-BR');
                 
                 card.innerHTML = `
                   <div class="w-full space-y-1.5 text-left">
@@ -2183,7 +2176,16 @@
       if (!confirmCancel) return;
       
       try {
-        await deleteDoc(doc(db, "scheduled_notifications", id));
+        const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+        const profileSnap = await getDoc(ref);
+        if (profileSnap.exists()) {
+          const pData = profileSnap.data();
+          let scheduledList = Array.isArray(pData.scheduledNotifications) ? pData.scheduledNotifications : [];
+          scheduledList = scheduledList.filter(item => item.id !== id);
+          await updateDoc(ref, {
+            scheduledNotifications: scheduledList
+          });
+        }
         window.loadNotificationCampaigns();
       } catch (err) {
         console.error("Error deleting scheduled notification:", err);
@@ -2294,17 +2296,30 @@
         }
 
         try {
-          // Generate a new document reference with automatic ID in the root "scheduled_notifications" collection
-          const newSchedRef = doc(collection(db, "scheduled_notifications"));
-          await setDoc(newSchedRef, {
-            id: newSchedRef.id,
+          const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+          const profileSnap = await getDoc(profileRef);
+          let scheduledList = [];
+          if (profileSnap.exists()) {
+            const pData = profileSnap.data();
+            if (pData.scheduledNotifications && Array.isArray(pData.scheduledNotifications)) {
+              scheduledList = [...pData.scheduledNotifications];
+            }
+          }
+
+          const newSchedId = "sched_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+          scheduledList.push({
+            id: newSchedId,
             storeId: window.currentStoreId,
             title: title,
             body: body,
             link: customLink || "",
-            scheduledFor: Timestamp.fromDate(scheduledTime),
+            scheduledFor: scheduledTime.toISOString(),
             status: "pending",
-            createdAt: Timestamp.now()
+            createdAt: new Date().toISOString()
+          });
+
+          await updateDoc(profileRef, {
+            scheduledNotifications: scheduledList
           });
 
           alert(`Notificação agendada com sucesso! 📅\nEla será enviada de forma automatizada em: ${scheduledTime.toLocaleString('pt-BR')}`);

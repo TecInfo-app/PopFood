@@ -56,5 +56,10 @@ service cloud.firestore {
     match /campaigns/{campaignId} {
       allow read, write: if true;
     }
+
+    // Campanhas agendadas
+    match /scheduled_notifications/{notificationId} {
+      allow read, write: if true;
+    }
   }
 }

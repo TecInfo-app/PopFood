@@ -378,149 +378,136 @@ async function startServer() {
       const now = new Date();
       const dbAdmin = admin.firestore();
       
-      // Query pending scheduled notifications
-      const snapshot = await dbAdmin.collection("scheduled_notifications")
-        .where("status", "==", "pending")
-        .where("scheduledFor", "<=", now)
-        .get();
+      // Query all restaurant profiles to check for scheduled notifications
+      const profilesSnap = await dbAdmin.collection("restaurantProfile").get();
+      if (profilesSnap.empty) return;
 
-      if (snapshot.empty) return;
-
-      console.log(`[Scheduler] Encontradas ${snapshot.size} notificações agendadas para disparo.`);
-
-      for (const docSnap of snapshot.docs) {
-        const schedId = docSnap.id;
-        const schedData = docSnap.data();
-        const { storeId, title, body, link } = schedData;
-
-        console.log(`[Scheduler] Processando disparo agendado ${schedId}: "${title}" da loja ${storeId}`);
-
-        // Mark as sending to avoid race conditions
-        await dbAdmin.collection("scheduled_notifications").doc(schedId).update({
-          status: "sending",
-          processedAt: admin.firestore.Timestamp.now()
-        });
-
-        // Collect all target FCM tokens for this store
-        const uniqueTokens = new Set<string>();
-
-        // 1. Fetch from clients collection where storeId == storeId
-        try {
-          const clientsSnap = await dbAdmin.collection("clients")
-            .where("storeId", "==", storeId)
-            .get();
-          clientsSnap.forEach(clientDoc => {
-            const data = clientDoc.data();
-            if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim() !== "") {
-              uniqueTokens.add(data.fcmToken.trim());
-            }
-          });
-        } catch (err) {
-          console.error(`[Scheduler] Erro ao carregar clients da loja ${storeId}:`, err);
+      for (const profileDoc of profilesSnap.docs) {
+        const storeId = profileDoc.id;
+        const pData = profileDoc.data();
+        if (!pData || !Array.isArray(pData.scheduledNotifications) || pData.scheduledNotifications.length === 0) {
+          continue;
         }
 
-        // 2. Fetch from orders collection where storeId == storeId
-        try {
-          const ordersSnap = await dbAdmin.collection("orders")
-            .where("storeId", "==", storeId)
-            .get();
-          ordersSnap.forEach(orderDoc => {
-            const data = orderDoc.data();
-            if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim() !== "") {
-              uniqueTokens.add(data.fcmToken.trim());
-            }
-          });
-        } catch (err) {
-          console.error(`[Scheduler] Erro ao carregar orders da loja ${storeId}:`, err);
-        }
+        let scheduledNotifications = [...pData.scheduledNotifications];
+        let campaignsList = Array.isArray(pData.campaigns) ? [...pData.campaigns] : [];
+        let updated = false;
 
-        // 3. Fetch from restaurantProfile
-        try {
-          const profileDoc = await dbAdmin.collection("restaurantProfile").doc(storeId).get();
-          if (profileDoc.exists) {
-            const pData = profileDoc.data();
-            if (pData && Array.isArray(pData.clientTokens)) {
+        for (let i = 0; i < scheduledNotifications.length; i++) {
+          const sched = scheduledNotifications[i];
+          
+          // Check if it is pending and due
+          if (sched.status === "pending" && new Date(sched.scheduledFor) <= now) {
+            console.log(`[Scheduler] Processando disparo agendado ${sched.id}: "${sched.title}" da loja ${storeId}`);
+            
+            // Mark as sending to avoid race conditions
+            sched.status = "sending";
+            sched.processedAt = new Date().toISOString();
+            updated = true;
+            
+            // Update immediately on DB
+            await dbAdmin.collection("restaurantProfile").doc(storeId).update({
+              scheduledNotifications: scheduledNotifications
+            });
+
+            // Collect all target FCM tokens for this store
+            const uniqueTokens = new Set<string>();
+
+            // 1. Fetch from clients collection where storeId == storeId
+            try {
+              const clientsSnap = await dbAdmin.collection("clients")
+                .where("storeId", "==", storeId)
+                .get();
+              clientsSnap.forEach(clientDoc => {
+                const data = clientDoc.data();
+                if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim() !== "") {
+                  uniqueTokens.add(data.fcmToken.trim());
+                }
+              });
+            } catch (err) {
+              console.error(`[Scheduler] Erro ao carregar clients da loja ${storeId}:`, err);
+            }
+
+            // 2. Fetch from orders collection where storeId == storeId
+            try {
+              const ordersSnap = await dbAdmin.collection("orders")
+                .where("storeId", "==", storeId)
+                .get();
+              ordersSnap.forEach(orderDoc => {
+                const data = orderDoc.data();
+                if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim() !== "") {
+                  uniqueTokens.add(data.fcmToken.trim());
+                }
+              });
+            } catch (err) {
+              console.error(`[Scheduler] Erro ao carregar orders da loja ${storeId}:`, err);
+            }
+
+            // 3. Fetch from profile tokens
+            if (Array.isArray(pData.clientTokens)) {
               pData.clientTokens.forEach((tok: any) => {
                 if (tok && typeof tok === 'string' && tok.trim() !== "") {
                   uniqueTokens.add(tok.trim());
                 }
               });
             }
-            if (pData && Array.isArray(pData.merchantTokens)) {
+            if (Array.isArray(pData.merchantTokens)) {
               pData.merchantTokens.forEach((tok: any) => {
                 if (tok && typeof tok === 'string' && tok.trim() !== "") {
                   uniqueTokens.add(tok.trim());
                 }
               });
             }
-          }
-        } catch (err) {
-          console.error(`[Scheduler] Erro ao carregar profile da loja ${storeId}:`, err);
-        }
 
-        const tokens = Array.from(uniqueTokens);
-        console.log(`[Scheduler] Encontrados ${tokens.length} tokens únicos de destino para a campanha.`);
+            const tokens = Array.from(uniqueTokens);
+            console.log(`[Scheduler] Encontrados ${tokens.length} tokens únicos de destino para a campanha.`);
 
-        let successCount = 0;
-        let failCount = 0;
+            let successCount = 0;
+            let failCount = 0;
 
-        if (tokens.length > 0) {
-          for (const token of tokens) {
-            try {
-              const message = {
-                notification: {
-                  title: title,
-                  body: body,
-                  image: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png'
-                },
-                data: {
-                  type: "campaign",
-                  link: link || ""
-                },
-                token: token,
-              };
-              await admin.messaging().send(message);
-              successCount++;
-            } catch (err) {
-              console.error(`[Scheduler] Erro ao enviar para token:`, err);
-              failCount++;
+            if (tokens.length > 0) {
+              for (const token of tokens) {
+                try {
+                  const message = {
+                    notification: {
+                      title: sched.title,
+                      body: sched.body,
+                      image: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png'
+                    },
+                    data: {
+                      type: "campaign",
+                      link: sched.link || ""
+                    },
+                    token: token,
+                  };
+                  await admin.messaging().send(message);
+                  successCount++;
+                } catch (err) {
+                  console.error(`[Scheduler] Erro ao enviar para token:`, err);
+                  failCount++;
+                }
+              }
             }
-          }
-        }
 
-        // Update status to sent
-        await dbAdmin.collection("scheduled_notifications").doc(schedId).update({
-          status: "sent",
-          sentAt: admin.firestore.Timestamp.now(),
-          targetCount: tokens.length,
-          successCount,
-          failCount
-        });
+            // Remove from scheduled array and push to campaigns list
+            scheduledNotifications = scheduledNotifications.filter(item => item.id !== sched.id);
+            campaignsList.push({
+              title: sched.title,
+              body: sched.body,
+              link: sched.link || "",
+              sentAt: new Date().toISOString(),
+              targetCount: tokens.length
+            });
 
-        // Save into restaurantProfile campaigns history
-        try {
-          const profileRef = dbAdmin.collection("restaurantProfile").doc(storeId);
-          const profileSnap = await profileRef.get();
-          let campaignsList = [];
-          if (profileSnap.exists) {
-            const pData = profileSnap.data();
-            if (pData && Array.isArray(pData.campaigns)) {
-              campaignsList = [...pData.campaigns];
-            }
+            // Update profile
+            await dbAdmin.collection("restaurantProfile").doc(storeId).update({
+              scheduledNotifications: scheduledNotifications,
+              campaigns: campaignsList
+            });
+
+            console.log(`[Scheduler] Campanha agendada ${sched.id} enviada e movida para histórico da loja ${storeId}.`);
+            i--; // adjust index
           }
-          campaignsList.push({
-            title,
-            body,
-            link: link || "",
-            sentAt: new Date().toISOString(),
-            targetCount: tokens.length
-          });
-          await profileRef.update({
-            campaigns: campaignsList
-          });
-          console.log(`[Scheduler] Registro de campanha agendada adicionada ao histórico da loja ${storeId}`);
-        } catch (err) {
-          console.error(`[Scheduler] Erro ao gravar histórico no perfil do restaurante:`, err);
         }
       }
     } catch (err) {
