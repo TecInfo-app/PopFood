@@ -706,6 +706,15 @@
             </div>
           </div>
 
+          <!-- SCHEDULED CAMPAIGNS -->
+          <div id="scheduled-notifications-section" class="pt-2 hidden border-b border-gray-100 pb-4 mb-4">
+            <h4 class="font-display font-bold text-xs text-gray-700">Campanhas Agendadas 📅</h4>
+            <p class="text-[9px] text-gray-400 mb-2">Mensagens programadas para disparo automático no futuro</p>
+            <div id="scheduled-notifications-parent" class="grid grid-cols-1 gap-3 pt-1">
+              <!-- Scheduled cards will be appended here -->
+            </div>
+          </div>
+
           <!-- HISTORY TITLE -->
           <div class="pt-2">
             <h4 class="font-display font-bold text-xs text-gray-700">Histórico de Campanhas Enviadas</h4>
@@ -807,9 +816,29 @@
           <p class="text-[9px] text-gray-400">Por padrão, clicar na notificação abrirá o seu cardápio.</p>
         </div>
 
+        <div class="space-y-1.5 pt-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Quando enviar? *</label>
+          <div class="flex items-center gap-4 bg-gray-50 p-2.5 rounded-xl border border-gray-150">
+            <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer font-semibold select-none">
+              <input type="radio" name="send_time_type" value="now" checked class="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500 accent-orange-600">
+              <span>Enviar Agora 🚀</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer font-semibold select-none">
+              <input type="radio" name="send_time_type" value="scheduled" class="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500 accent-orange-600">
+              <span>Agendar Envio 📅</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="schedule-datetime-container" class="space-y-1 hidden">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Data e Hora do Envio *</label>
+          <input type="datetime-local" id="notification-form-datetime" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+          <p class="text-[9px] text-gray-400">Selecione uma data e horário futuro para o disparo.</p>
+        </div>
+
         <div class="pt-2 flex gap-3">
           <button type="button" onclick="toggleNotificationModal(false)" class="flex-1 border border-gray-200 py-3 rounded-xl text-xs text-gray-500 hover:bg-gray-50 font-semibold cursor-pointer">Cancelar</button>
-          <button type="submit" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer">Disparar Agora 🚀</button>
+          <button type="submit" id="notification-submit-btn" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer">Disparar Agora 🚀</button>
         </div>
       </form>
     </div>
@@ -962,6 +991,29 @@
       document.getElementById('profile-payments-form').onsubmit = saveRestaurantProfileDetails;
       document.getElementById('coupon-modal-form').onsubmit = saveOrUpdateCouponDetails;
       document.getElementById('notification-modal-form').onsubmit = sendNotificationCampaign;
+
+      // Event listeners for push campaigns scheduling
+      document.querySelectorAll('input[name="send_time_type"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          const container = document.getElementById('schedule-datetime-container');
+          const submitBtn = document.getElementById('notification-submit-btn');
+          if (e.target.value === 'scheduled') {
+            if (container) container.classList.remove('hidden');
+            if (submitBtn) submitBtn.textContent = 'Agendar Envio 📅';
+            
+            // Set min attribute of datetime-local to current local time
+            const datetimeInput = document.getElementById('notification-form-datetime');
+            if (datetimeInput) {
+              const now = new Date();
+              now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+              datetimeInput.min = now.toISOString().slice(0, 16);
+            }
+          } else {
+            if (container) container.classList.add('hidden');
+            if (submitBtn) submitBtn.textContent = 'Disparar Agora 🚀';
+          }
+        });
+      });
 
       const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
       window.switchTab(lastTab);
@@ -2032,6 +2084,58 @@
         
         window.currentStoreFcmTokens = Array.from(uniqueTokens);
 
+        // Fetch Scheduled Campaigns for this store
+        const scheduledParent = document.getElementById('scheduled-notifications-parent');
+        const scheduledSection = document.getElementById('scheduled-notifications-section');
+        if (scheduledParent && scheduledSection) {
+          scheduledParent.innerHTML = '';
+          try {
+            const schedSnap = await getDocs(query(
+              collection(db, "scheduled_notifications"),
+              where("storeId", "==", window.currentStoreId),
+              where("status", "==", "pending")
+            ));
+            
+            const scheduledList = [];
+            schedSnap.forEach(docSnap => {
+              scheduledList.push(docSnap.data());
+            });
+
+            if (scheduledList.length > 0) {
+              scheduledSection.classList.remove('hidden');
+              scheduledList.sort((a, b) => a.scheduledFor.toDate() - b.scheduledFor.toDate());
+              
+              scheduledList.forEach(sched => {
+                const card = document.createElement('div');
+                card.className = "bg-orange-50/40 p-4 border border-orange-100 rounded-2xl flex flex-col justify-between items-start gap-2 shadow-xs";
+                
+                const runDate = sched.scheduledFor.toDate().toLocaleString('pt-BR');
+                
+                card.innerHTML = `
+                  <div class="w-full space-y-1.5 text-left">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs font-bold text-gray-800">📅 ${sched.title}</span>
+                      <span class="text-[9px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 font-bold">Agendado</span>
+                    </div>
+                    <p class="text-xs text-gray-650 leading-relaxed font-medium">${sched.body}</p>
+                    <div class="flex items-center justify-between text-[10px] text-gray-400 pt-1">
+                      <span class="text-orange-600 font-semibold">Enviar em: ${runDate}</span>
+                      <button onclick="cancelScheduledNotification('${sched.id}')" class="text-red-500 hover:text-red-700 transition-colors font-bold cursor-pointer ml-2" title="Cancelar Agendamento">
+                        Cancelar ❌
+                      </button>
+                    </div>
+                  </div>
+                `;
+                scheduledParent.appendChild(card);
+              });
+            } else {
+              scheduledSection.classList.add('hidden');
+            }
+          } catch (schedErr) {
+            console.error("Failed to load scheduled notifications:", schedErr);
+          }
+        }
+
         // 2. Fetch campaign history (already sorted out from profileSnap above)
 
         // Sort campaigns by date (descending)
@@ -2074,6 +2178,19 @@
       }
     };
 
+    window.cancelScheduledNotification = async function(id) {
+      const confirmCancel = await window.customConfirm("Deseja realmente cancelar e excluir este agendamento?");
+      if (!confirmCancel) return;
+      
+      try {
+        await deleteDoc(doc(db, "scheduled_notifications", id));
+        window.loadNotificationCampaigns();
+      } catch (err) {
+        console.error("Error deleting scheduled notification:", err);
+        alert("Erro ao excluir agendamento.");
+      }
+    };
+
     window.deleteCampaign = async function(sentAt) {
         const confirmDel = await window.customConfirm("Tem certeza que deseja excluir este registro de disparo do histórico?");
         if (!confirmDel) return;
@@ -2105,6 +2222,19 @@
             modal.querySelector('div').classList.remove('scale-95');
           }, 10);
           
+          // Reset default scheduling state to 'now'
+          const nowRadio = document.querySelector('input[name="send_time_type"][value="now"]');
+          if (nowRadio) nowRadio.checked = true;
+          
+          const container = document.getElementById('schedule-datetime-container');
+          if (container) container.classList.add('hidden');
+          
+          const submitBtn = document.getElementById('notification-submit-btn');
+          if (submitBtn) submitBtn.textContent = 'Disparar Agora 🚀';
+          
+          const datetimeInput = document.getElementById('notification-form-datetime');
+          if (datetimeInput) datetimeInput.value = '';
+
           // Autofill the default link
           const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
           const storeUrl = window.location.origin + basePath + "/cliente.html?store=" + window.currentStoreId;
@@ -2127,13 +2257,83 @@
       const title = document.getElementById('notification-form-title').value.trim();
       const body = document.getElementById('notification-form-body').value.trim();
       const customLink = document.getElementById('notification-form-link').value.trim();
+      
+      // Get selected send time option
+      const sendTimeType = document.querySelector('input[name="send_time_type"]:checked').value;
 
       if (!title || !body) {
         alert("Por favor preencha o título e a mensagem.");
         return;
       }
 
-      const confirmSend = await window.customConfirm(`Deseja disparar essa notificação promocional para seus clientes?`);
+      // -------------------------------------------------------------
+      // SCHEDULED FLOW
+      // -------------------------------------------------------------
+      if (sendTimeType === 'scheduled') {
+        const datetimeStr = document.getElementById('notification-form-datetime').value;
+        if (!datetimeStr) {
+          alert("Por favor selecione a data e hora do agendamento.");
+          return;
+        }
+
+        const scheduledTime = new Date(datetimeStr);
+        if (scheduledTime <= new Date()) {
+          alert("A data e hora do agendamento devem ser no futuro.");
+          return;
+        }
+
+        const confirmSchedule = await window.customConfirm(`Deseja agendar essa notificação promocional para: ${scheduledTime.toLocaleString('pt-BR')}?`);
+        if (!confirmSchedule) return;
+
+        const submitBtn = document.getElementById('notification-submit-btn');
+        let origText = "Agendar Envio 📅";
+        if (submitBtn) {
+          origText = submitBtn.textContent;
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Agendando...";
+        }
+
+        try {
+          // Generate a new document reference with automatic ID in the root "scheduled_notifications" collection
+          const newSchedRef = doc(collection(db, "scheduled_notifications"));
+          await setDoc(newSchedRef, {
+            id: newSchedRef.id,
+            storeId: window.currentStoreId,
+            title: title,
+            body: body,
+            link: customLink || "",
+            scheduledFor: Timestamp.fromDate(scheduledTime),
+            status: "pending",
+            createdAt: Timestamp.now()
+          });
+
+          alert(`Notificação agendada com sucesso! 📅\nEla será enviada de forma automatizada em: ${scheduledTime.toLocaleString('pt-BR')}`);
+          
+          // Close modal and reset form
+          window.toggleNotificationModal(false);
+          document.getElementById('notification-modal-form').reset();
+          
+          // Hide schedule datetime container
+          document.getElementById('schedule-datetime-container').classList.add('hidden');
+          
+          // Reload campaigns list (which will show the scheduled card)
+          window.loadNotificationCampaigns();
+        } catch (err) {
+          console.error("Failed to schedule notification:", err);
+          alert(`Erro ao agendar notificação: ${err.message}`);
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Disparar Agora 🚀";
+          }
+        }
+        return;
+      }
+
+      // -------------------------------------------------------------
+      // IMMEDIATE FLOW
+      // -------------------------------------------------------------
+      const confirmSend = await window.customConfirm(`Deseja disparar essa notificação promocional para seus clientes IMEDIATAMENTE?`);
       if (!confirmSend) return;
 
       // Disable button
