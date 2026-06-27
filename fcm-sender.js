@@ -73,6 +73,8 @@ export async function sendPushNotification(fcmToken, title, body, dataPayload = 
         data: dataPayload,
         webpush: {
           notification: {
+            title: title,
+            body: body,
             icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
             badge: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
           },
