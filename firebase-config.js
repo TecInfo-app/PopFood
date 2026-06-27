@@ -189,6 +189,8 @@ if (typeof window !== 'undefined') {
   };
 }
 
+const VAPID_KEY = "BByzNfdQrieI860-qtvGduAjNaxUtPzTwxI-E2q7xTqBmIPFn1xwtebBxfJ1mY07ZqRHstSyIwGooNNQeu3uPdA";
+
 // --- EXPORTS ---
 export {
   app,
@@ -222,5 +224,6 @@ export {
   // Messaging APIs
   getMessaging,
   getToken,
-  onMessage
+  onMessage,
+  VAPID_KEY
 };

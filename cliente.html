@@ -1838,7 +1838,7 @@
 
       async function retrieveAndRegisterFCMToken() {
         try {
-          const { getMessaging, getToken, onMessage } = await import('./firebase-config.js');
+          const { getMessaging, getToken, onMessage, VAPID_KEY } = await import('./firebase-config.js');
           const { app, db } = await import('./firebase-config.js');
           const messaging = getMessaging(app);
 
@@ -1862,7 +1862,7 @@
           let currentToken = null;
           try {
             currentToken = await getToken(messaging, {
-              vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y",
+              vapidKey: VAPID_KEY,
               serviceWorkerRegistration: registration
             });
           } catch (e) {

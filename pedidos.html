@@ -1154,6 +1154,7 @@
         arrayUnion,
         getToken,
         onMessage,
+        VAPID_KEY,
       } from "./firebase-config.js";
 
       window.fcmMessaging = messaging;
@@ -1315,10 +1316,15 @@
           if ("Notification" in window && Notification.permission === "granted") {
             try {
               const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-              const currentToken = await getToken(messaging, {
-                 vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y",
-                 serviceWorkerRegistration: registration
-              });
+              let currentToken = null;
+              try {
+                currentToken = await getToken(messaging, {
+                   vapidKey: VAPID_KEY,
+                   serviceWorkerRegistration: registration
+                });
+              } catch (e) {
+                console.warn("FCM auto-register token failed:", e);
+              }
               if (currentToken && window.currentStoreId) {
                 console.log("Auto-registering merchant FCM Token:", currentToken);
                 const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
@@ -2871,10 +2877,16 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             try {
               console.log("Requesting FCM token manually...");
               const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-              const currentToken = await getToken(messaging, {
-                 vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y",
-                 serviceWorkerRegistration: registration
-              });
+              let currentToken = null;
+              try {
+                currentToken = await getToken(messaging, {
+                   vapidKey: VAPID_KEY,
+                   serviceWorkerRegistration: registration
+                });
+              } catch (e) {
+                console.warn("FCM manual request token failed:", e);
+                window.showToast("Falha ao obter token push. Verifique permissões.", true);
+              }
               if (currentToken) {
                  console.log("FCM Token manually requested:", currentToken);
                  if (window.currentStoreId) {
@@ -2912,10 +2924,15 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 (async () => {
                   try {
                     const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
-                    const currentToken = await getToken(messaging, {
-                       vapidKey: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDyeuqjCGGf0lOta51lsSy-6ZfP0V233xQpU7zPzKq1Y",
-                       serviceWorkerRegistration: registration
-                    });
+                    let currentToken = null;
+                    try {
+                      currentToken = await getToken(messaging, {
+                         vapidKey: VAPID_KEY,
+                         serviceWorkerRegistration: registration
+                      });
+                    } catch (e) {
+                      console.warn("FCM callback request token failed:", e);
+                    }
                     if (currentToken && window.currentStoreId) {
                       const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
                       await updateDoc(profileRef, {
