@@ -16,28 +16,10 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
-
-  // If the payload already contains a notification object, the browser/FCM SDK
-  // will automatically show it when in the background. Showing it again here
-  // results in double/duplicate notifications on the device.
-  if (payload.notification) {
-    console.log('[firebase-messaging-sw.js] Notification object present, letting browser handle it to avoid duplicates.');
-    return;
-  }
-
-  // Otherwise, if it is a data-only payload, we construct and show the notification ourselves.
-  const title = payload.data?.title || 'PopFood 🔔';
-  const body = payload.data?.body || 'Você tem uma nova atualização no PopFood.';
-  const icon = payload.data?.icon || 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png';
-
-  const notificationOptions = {
-    body: body,
-    icon: icon,
-    badge: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
-    data: payload.data
-  };
-
-  self.registration.showNotification(title, notificationOptions);
+  // We do not show manual notifications in onBackgroundMessage because all notifications
+  // sent by our app (orders, promotions, chat) already contain a 'notification' block.
+  // The Firebase/FCM SDK automatically displays them when in the background.
+  // Displaying them manually here would cause duplicate notifications on the device.
 });
 
 self.addEventListener('install', (event) => {
