@@ -62,13 +62,15 @@ export async function sendPushNotification(fcmToken, title, body, dataPayload = 
     const accessToken = await getAccessToken();
     const projectId = SERVICE_ACCOUNT.project_id;
     
+    const logoUrl = typeof window !== 'undefined' ? (window.location.origin + "/logo.png") : "https://cdn-icons-png.flaticon.com/512/3119/3119338.png";
+
     const message = {
       message: {
         token: fcmToken,
         notification: {
           title: title,
           body: body,
-          image: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
+          image: logoUrl
         },
         data: dataPayload,
         webpush: {
