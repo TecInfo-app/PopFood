@@ -73,7 +73,7 @@ async function startServer() {
         notification: {
           title: title,
           body: body,
-          image: '/logo.png'
+          image: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png'
         },
         data: data || {},
         token: token,
@@ -472,7 +472,7 @@ async function startServer() {
                     notification: {
                       title: sched.title,
                       body: sched.body,
-                      image: '/logo.png'
+                      image: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png'
                     },
                     data: {
                       type: "campaign",

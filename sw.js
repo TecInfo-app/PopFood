@@ -27,8 +27,8 @@ self.addEventListener('push', (event) => {
   const title = data.notification?.title || 'Novo Pedido! 🔔';
   const options = {
     body: data.notification?.body || 'Você tem uma nova atualização no PopFood.',
-    icon: data.notification?.image || '/logo.png',
-    badge: '/logo.png',
+    icon: data.notification?.image || 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
+    badge: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
     data: data.data || {}
   };
 
