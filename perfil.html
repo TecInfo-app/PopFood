@@ -218,8 +218,8 @@
           <div class="flex items-center gap-3">
             <span class="text-lg">📢</span>
             <div>
-              <p class="font-bold text-gray-850">Banners Promocionais</p>
-              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Carrossel do cardápio</p>
+              <p class="font-bold text-gray-850">Aparência do Cardápio</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Banners e Exibição</p>
             </div>
           </div>
           <span class="font-bold">➔</span>
@@ -373,8 +373,59 @@
         </form>
       </div>
 
-      <!-- TAB: BANNERS PROMOCIONAIS -->
+      <!-- TAB: APARÊNCIA E BANNERS -->
       <div id="tab-banners" class="space-y-6 hidden">
+        <!-- EXIBIÇÃO DO CARDÁPIO BOX -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <div>
+            <h3 class="font-display font-bold text-sm text-gray-800">📱 Exibição do Cardápio</h3>
+            <p class="text-[10px] text-gray-400">Configure como os produtos aparecem para o cliente</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs font-bold text-gray-800">Mostrar Produtos em Destaque</p>
+                <p class="text-[10px] text-gray-500">Exibe uma seção especial no topo do cardápio</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="profile-destaques-ativo" class="sr-only peer" onchange="toggleDestaquesOptions()">
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+              </label>
+            </div>
+
+            <div id="destaques-options-row" class="pl-4 border-l-2 border-gray-100 hidden space-y-2">
+              <label class="block text-[10px] font-bold text-gray-700 uppercase tracking-wide">O que exibir nos destaques?</label>
+              <div class="flex gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="profile-destaques-tipo" value="mais_pedidos" class="text-brand-primary focus:ring-brand-primary" checked>
+                  <span class="text-xs text-gray-700 font-medium">Os Mais Pedidos (Top 5)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="profile-destaques-tipo" value="promocionais" class="text-brand-primary focus:ring-brand-primary">
+                  <span class="text-xs text-gray-700 font-medium">Maior Desconto (Top 5)</span>
+                </label>
+              </div>
+            </div>
+
+            <hr class="border-gray-100">
+
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs font-bold text-gray-800">Mostrar Produtos Indisponíveis</p>
+                <p class="text-[10px] text-gray-500">Se desativado, eles somem completamente do cardápio</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="profile-mostrar-indisponiveis" class="sr-only peer" checked>
+                <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+              </label>
+            </div>
+            
+            <button type="button" onclick="saveCardapioConfig()" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 text-xs rounded-xl shadow-md transition-transform hover:scale-101 cursor-pointer mt-2">Salvar Exibição</button>
+          </div>
+        </div>
+
+        <!-- BANNERS BOX -->
         <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
           <div>
             <h3 class="font-display font-bold text-sm text-gray-800">📢 Banners Promocionais (Máx 3)</h3>
@@ -1151,6 +1202,16 @@
           document.getElementById('store-open').value = profileData.openTime || '';
           document.getElementById('store-close').value = profileData.closeTime || '';
           document.getElementById('abacatepay-token').value = profileData.abacatePayToken || '';
+          
+          // Cardapio display settings
+          document.getElementById('profile-destaques-ativo').checked = profileData.destaquesAtivo === true;
+          document.getElementById('profile-mostrar-indisponiveis').checked = profileData.mostrarIndisponiveis !== false; // Default to true
+          
+          const destaquesTipo = profileData.destaquesTipo || 'mais_pedidos';
+          const radioToSelect = document.querySelector(`input[name="profile-destaques-tipo"][value="${destaquesTipo}"]`);
+          if(radioToSelect) radioToSelect.checked = true;
+          
+          if (typeof toggleDestaquesOptions === 'function') toggleDestaquesOptions();
 
           // Global Admin Config
           let adminWhatsAppNumber = null;
@@ -1587,6 +1648,48 @@
         }
       }
     }
+
+    window.toggleDestaquesOptions = function() {
+      const isChecked = document.getElementById('profile-destaques-ativo').checked;
+      const optsRow = document.getElementById('destaques-options-row');
+      if (isChecked) {
+        optsRow.classList.remove('hidden');
+      } else {
+        optsRow.classList.add('hidden');
+      }
+    };
+
+    window.saveCardapioConfig = async function() {
+      const isDestaquesAtivo = document.getElementById('profile-destaques-ativo').checked;
+      const destaquesTipoElem = document.querySelector('input[name="profile-destaques-tipo"]:checked');
+      const destaquesTipo = destaquesTipoElem ? destaquesTipoElem.value : 'mais_pedidos';
+      const isMostrarIndisponiveis = document.getElementById('profile-mostrar-indisponiveis').checked;
+
+      const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+      
+      const btn = event.target;
+      const originalText = btn.textContent;
+      btn.textContent = 'Salvando...';
+      btn.disabled = true;
+
+      try {
+        await updateDoc(profileRef, {
+          destaquesAtivo: isDestaquesAtivo,
+          destaquesTipo: destaquesTipo,
+          mostrarIndisponiveis: isMostrarIndisponiveis
+        });
+        btn.textContent = 'Salvo!';
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 2000);
+      } catch (err) {
+        console.error("Error saving cardapio config:", err);
+        alert("Erro ao salvar configuração de exibição.");
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    };
 
     window.updateBannerLink = async function(index, value) {
       if (typeof bannersList[index] === 'string') {

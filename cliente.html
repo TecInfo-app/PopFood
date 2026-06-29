@@ -3560,6 +3560,91 @@
         return `${daysStr}${timeStr}`;
       }
 
+      function createProductCardElement(prod, pIdx) {
+        const isAvailable = isProductCurrentlyAvailable(prod);
+        const card = document.createElement("div");
+        
+        if (isAvailable) {
+          card.onclick = () => {
+            openProductModal(prod);
+          };
+          card.className =
+            "bg-white p-4 rounded-[24px] flex gap-4 items-center border border-stone-200/50 shadow-[0_4px_16px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_28px_rgba(154,68,7,0.06)] hover:-translate-y-0.5 cursor-pointer transition-all duration-300 relative overflow-hidden group animate-card-fade";
+        } else {
+          card.onclick = () => {
+            showToast(`Este produto está indisponível no momento. Disponível apenas: ${getProductAvailabilityText(prod)}`, true);
+          };
+          card.className =
+            "bg-white/80 p-4 rounded-[24px] flex gap-4 items-center border border-stone-200 opacity-60 saturate-50 cursor-pointer transition-all duration-300 relative overflow-hidden group animate-card-fade";
+        }
+        card.style.animationDelay = `${pIdx * 45}ms`;
+
+        // Left Image element
+        const defaultSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fed7aa'/><text x='50' y='55' font-family='sans-serif' font-size='24' fill='%23ea580c' text-anchor='middle'>🍔</text></svg>`;
+        const imgUrl = prod.image || defaultSvg;
+
+        const imgDiv = document.createElement("div");
+        imgDiv.className =
+          "w-28 h-28 rounded-[20px] bg-orange-50/50 flex-shrink-0 relative overflow-hidden flex items-center justify-center border border-stone-100 shadow-3xs";
+        
+        let badgeHtml = "";
+        if (!isAvailable) {
+          badgeHtml = `
+            <div class="absolute inset-0 bg-black/45 flex items-center justify-center p-1 text-center">
+              <span class="text-[9px] font-black tracking-wider uppercase text-white leading-tight">Fora de Horário</span>
+            </div>
+          `;
+        }
+        imgDiv.innerHTML = `
+          <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out">
+          ${badgeHtml}
+        `;
+        card.appendChild(imgDiv);
+
+        // Full Meta attributes
+        const descStr = prod.description || "Deliciosa receita do PopFood.";
+        const formattedOriginalPrice = prod.originalPrice
+          ? `R$ ${prod.originalPrice.toFixed(2).replace(".", ",")}`
+          : "";
+        const formattedPrice = `R$ ${(prod.price || 0).toFixed(2).replace(".", ",")}`;
+
+        const metaDiv = document.createElement("div");
+        metaDiv.className =
+          "flex-grow flex flex-col justify-center py-1 pr-12 relative";
+        metaDiv.innerHTML = `
+        <div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <h4 class="font-display font-black text-[13.5px] leading-tight text-stone-900 group-hover:text-brand-primary transition-colors duration-200">${prod.name}</h4>
+            ${prod.exclusivo ? `<span class="bg-orange-50 text-brand-primary border border-orange-100 text-[8.5px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">⭐ Exclusivo</span>` : ""}
+            ${!isAvailable ? `<span class="bg-red-50 text-red-600 border border-red-150 text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Indisponível hoje</span>` : ""}
+          </div>
+          <p class="text-[11px] text-gray-400 font-semibold mt-1 line-clamp-2 leading-relaxed">${descStr}</p>
+          ${!isAvailable ? `<p class="text-[9px] text-orange-700/80 font-black tracking-tight mt-1 leading-snug">⏰ ${getProductAvailabilityText(prod)}</p>` : ""}
+        </div>
+        <div class="flex items-center gap-2 mt-2">
+          <span class="text-sm font-black text-brand-primary leading-none">${formattedPrice}</span>
+          ${formattedOriginalPrice ? `<span class="text-[10px] font-bold text-gray-400 line-through leading-none">${formattedOriginalPrice}</span>` : ""}
+        </div>
+      `;
+        card.appendChild(metaDiv);
+
+        // Plus button trigger element aligned absolute right
+        if (isAvailable) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            openProductModal(prod);
+          };
+          btn.className =
+            "absolute bottom-4 right-4 w-9 h-9 rounded-full bg-brand-primary text-white flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md hover:scale-105 active:scale-95";
+          btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4.5 h-4.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`;
+          card.appendChild(btn);
+        }
+
+        return card;
+      }
+
       // Draw catalog with sorting layout Horizontal (left-aligned photos, right-aligned meta + round plus button)
       function renderCatalogItems() {
         const parent = document.getElementById("menu-sections");
@@ -3576,13 +3661,65 @@
             ? searchInput.value.toLowerCase().trim()
             : "";
 
+        let drawnCount = 0;
+
+        // Render Destaques if enabled and no active category or search
+        if (restaurantProfile && restaurantProfile.destaquesAtivo && activeCategory === "all" && !searchQuery) {
+          let destaques = [];
+          const hideUnavailable = restaurantProfile.mostrarIndisponiveis === false;
+          let availableProds = productsList.filter(p => !p.paused);
+          
+          if (hideUnavailable) {
+            availableProds = availableProds.filter(p => isProductCurrentlyAvailable(p));
+          }
+
+          if (restaurantProfile.destaquesTipo === "promocionais") {
+            // Top 5 highest discounts
+            destaques = availableProds
+              .filter(p => p.originalPrice > p.price)
+              .sort((a, b) => {
+                const discountA = a.originalPrice - a.price;
+                const discountB = b.originalPrice - b.price;
+                return discountB - discountA;
+              })
+              .slice(0, 5);
+          } else {
+            // Top 5 most ordered
+            destaques = availableProds
+              .sort((a, b) => (b.orderCount || 0) - (a.orderCount || 0))
+              .slice(0, 5);
+          }
+
+          if (destaques.length > 0) {
+            drawnCount += destaques.length;
+            const section = document.createElement("div");
+            section.className = "space-y-4 mb-6 bg-gradient-to-br from-orange-50 to-amber-50/30 p-5 rounded-[28px] border border-orange-100";
+            
+            const title = document.createElement("h3");
+            title.className = "font-display font-black text-xl text-brand-primary tracking-tight select-none flex items-center gap-2";
+            title.innerHTML = `🌟 Produtos em Destaque`;
+            section.appendChild(title);
+
+            const grid = document.createElement("div");
+            grid.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
+
+            destaques.forEach((prod, pIdx) => {
+              const card = createProductCardElement(prod, pIdx);
+              grid.appendChild(card);
+            });
+
+            section.appendChild(grid);
+            parent.appendChild(section);
+          }
+        }
+
         // Define visual categories filtering
         let catsToDraw = categoriesList;
         if (activeCategory !== "all" && !searchQuery) {
           catsToDraw = categoriesList.filter((c) => c.id === activeCategory);
         }
 
-        if (catsToDraw.length === 0) {
+        if (catsToDraw.length === 0 && drawnCount === 0) {
           parent.innerHTML = `
           <div class="text-center py-12 text-gray-400">
             <p class="text-sm font-semibold">Nenhuma categoria cadastrada</p>
@@ -3590,13 +3727,16 @@
           return;
         }
 
-        let drawnCount = 0;
-
         catsToDraw.forEach((category) => {
           // Filter elements belonging to category
           let relativeProducts = productsList.filter(
             (p) => p.categoryId === category.id && !p.paused,
           );
+
+          // Apply config to hide unavailable items
+          if (restaurantProfile && restaurantProfile.mostrarIndisponiveis === false) {
+            relativeProducts = relativeProducts.filter(p => isProductCurrentlyAvailable(p));
+          }
 
           // Filter by search query if exists
           if (searchQuery) {
@@ -3627,87 +3767,7 @@
           grid.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
 
           relativeProducts.forEach((prod, pIdx) => {
-            const isAvailable = isProductCurrentlyAvailable(prod);
-            const card = document.createElement("div");
-            
-            if (isAvailable) {
-              card.onclick = () => {
-                openProductModal(prod);
-              };
-              card.className =
-                "bg-white p-4 rounded-[24px] flex gap-4 items-center border border-stone-200/50 shadow-[0_4px_16px_rgba(0,0,0,0.015)] hover:shadow-[0_12px_28px_rgba(154,68,7,0.06)] hover:-translate-y-0.5 cursor-pointer transition-all duration-300 relative overflow-hidden group animate-card-fade";
-            } else {
-              card.onclick = () => {
-                showToast(`Este produto está indisponível no momento. Disponível apenas: ${getProductAvailabilityText(prod)}`, true);
-              };
-              card.className =
-                "bg-white/80 p-4 rounded-[24px] flex gap-4 items-center border border-stone-200 opacity-60 saturate-50 cursor-pointer transition-all duration-300 relative overflow-hidden group animate-card-fade";
-            }
-            card.style.animationDelay = `${pIdx * 45}ms`;
-
-            // Left Image element
-            const defaultSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fed7aa'/><text x='50' y='55' font-family='sans-serif' font-size='24' fill='%23ea580c' text-anchor='middle'>🍔</text></svg>`;
-            const imgUrl = prod.image || defaultSvg;
-
-            const imgDiv = document.createElement("div");
-            imgDiv.className =
-              "w-28 h-28 rounded-[20px] bg-orange-50/50 flex-shrink-0 relative overflow-hidden flex items-center justify-center border border-stone-100 shadow-3xs";
-            
-            let badgeHtml = "";
-            if (!isAvailable) {
-              badgeHtml = `
-                <div class="absolute inset-0 bg-black/45 flex items-center justify-center p-1 text-center">
-                  <span class="text-[9px] font-black tracking-wider uppercase text-white leading-tight">Fora de Horário</span>
-                </div>
-              `;
-            }
-            imgDiv.innerHTML = `
-              <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out">
-              ${badgeHtml}
-            `;
-            card.appendChild(imgDiv);
-
-            // Full Meta attributes
-            const descStr = prod.description || "Deliciosa receita do PopFood.";
-            const formattedOriginalPrice = prod.originalPrice
-              ? `R$ ${prod.originalPrice.toFixed(2).replace(".", ",")}`
-              : "";
-            const formattedPrice = `R$ ${(prod.price || 0).toFixed(2).replace(".", ",")}`;
-
-            const metaDiv = document.createElement("div");
-            metaDiv.className =
-              "flex-grow flex flex-col justify-center py-1 pr-12 relative";
-            metaDiv.innerHTML = `
-            <div>
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <h4 class="font-display font-black text-[13.5px] leading-tight text-stone-900 group-hover:text-brand-primary transition-colors duration-200">${prod.name}</h4>
-                ${prod.exclusivo ? `<span class="bg-orange-50 text-brand-primary border border-orange-100 text-[8.5px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-0.5 shrink-0">⭐ Exclusivo</span>` : ""}
-                ${!isAvailable ? `<span class="bg-red-50 text-red-600 border border-red-150 text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">Indisponível hoje</span>` : ""}
-              </div>
-              <p class="text-[11px] text-gray-400 font-semibold mt-1 line-clamp-2 leading-relaxed">${descStr}</p>
-              ${!isAvailable ? `<p class="text-[9px] text-orange-700/80 font-black tracking-tight mt-1 leading-snug">⏰ ${getProductAvailabilityText(prod)}</p>` : ""}
-            </div>
-            <div class="flex items-center gap-2 mt-2">
-              <span class="text-sm font-black text-brand-primary leading-none">${formattedPrice}</span>
-              ${formattedOriginalPrice ? `<span class="text-[10px] font-bold text-gray-400 line-through leading-none">${formattedOriginalPrice}</span>` : ""}
-            </div>
-          `;
-            card.appendChild(metaDiv);
-
-            // Plus button trigger element aligned absolute right
-            if (isAvailable) {
-              const btn = document.createElement("button");
-              btn.type = "button";
-              btn.onclick = (e) => {
-                e.stopPropagation();
-                openProductModal(prod);
-              };
-              btn.className =
-                "absolute bottom-4 right-4 w-9 h-9 rounded-full bg-brand-primary text-white flex items-center justify-center transition-all duration-200 cursor-pointer shadow-md hover:scale-105 active:scale-95";
-              btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4.5 h-4.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`;
-              card.appendChild(btn);
-            }
-
+            const card = createProductCardElement(prod, pIdx);
             grid.appendChild(card);
           });
 
@@ -7440,6 +7500,20 @@
           // Write Order directly into Firestore collections
           const orderRef = doc(db, COLLECTIONS.orders, orderId);
           await setDoc(orderRef, orderDocument);
+
+          // Increment orderCount for products to power "Os Mais Pedidos" feature
+          try {
+            for (const item of cart) {
+              const prodRef = doc(db, COLLECTIONS.products, item.id);
+              const prodSnap = await getDoc(prodRef);
+              if (prodSnap.exists()) {
+                const pData = prodSnap.data();
+                await updateDoc(prodRef, {
+                  orderCount: (pData.orderCount || 0) + item.quantity
+                });
+              }
+            }
+          } catch(e) { console.error("Error updating orderCount", e); }
 
           // Trigger push notification to the merchant
           try {
