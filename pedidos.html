@@ -30,12 +30,12 @@
             theme_color: "#FF4500",
             icons: [
               {
-                src: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+                src: "/novo-icone.png",
                 sizes: "192x192",
                 type: "image/png"
               },
               {
-                src: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+                src: "/novo-icone.png",
                 sizes: "512x512",
                 type: "image/png"
               }
@@ -1177,7 +1177,7 @@
             console.log("Foreground notification received in pedidos.html:", payload);
             const title = payload.notification?.title || "Nova Notificação! 🔔";
             const body = payload.notification?.body || "";
-            const icon = payload.notification?.image || "https://cdn-icons-png.flaticon.com/512/3119/3119338.png";
+            const icon = payload.notification?.image || "/novo-icone.png";
 
             // Trigger sound and alerts depending on payload type
             const type = payload.data?.type || "";
@@ -2804,6 +2804,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
       }
 
       function triggerNewOrderAlert(isPreview = false) {
+
         // Toggle banner display if not a preview
         if (!isPreview) {
           const banner = document.getElementById("new-order-banner");
@@ -2840,7 +2841,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
               tag: "new-order",
               renotify: true,
               requireInteraction: true,
-              icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+              icon: "/novo-icone.png",
             });
           } catch (e) {
             console.warn("Failed to summon Notification constructor:", e);
@@ -2869,7 +2870,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             try {
               new Notification("Notificações Reativadas! 🔔", {
                 body: "Você voltará a receber alertas visuais na sua tela.",
-                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+                icon: "/novo-icone.png",
               });
             } catch (e) {
               console.warn("Could not fire notification:", e);
@@ -2930,7 +2931,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             try {
               new Notification("Notificações Ativas! 🔔", {
                 body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
-                icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+                icon: "/novo-icone.png",
               });
             } catch (err) {
               console.warn("Could not fire test notification:", err);
@@ -2979,7 +2980,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 try {
                   new Notification("Notificações Ativas! 🔔", {
                     body: "Parabéns! Você receberá alertas na sua tela sempre que novos pedidos chegarem.",
-                    icon: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png",
+                    icon: "/novo-icone.png",
                   });
                 } catch (err) {
                   console.warn("Could not fire test notification:", err);

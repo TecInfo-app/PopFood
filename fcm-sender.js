@@ -68,7 +68,7 @@ export async function sendPushNotification(fcmToken, title, body, dataPayload = 
         notification: {
           title: title,
           body: body,
-          image: "https://cdn-icons-png.flaticon.com/512/3119/3119338.png"
+          image: "/novo-icone.png"
         },
         data: dataPayload,
         webpush: {
