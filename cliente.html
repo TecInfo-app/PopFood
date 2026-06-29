@@ -97,6 +97,14 @@
         background: #cbd5e1;
       }
 
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .hide-scrollbar {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+
       /* Elegant entry animations */
       @keyframes cardFadeIn {
         from {
@@ -3645,6 +3653,59 @@
         return card;
       }
 
+      function createDestaqueCardElement(prod, pIdx) {
+        const isAvailable = isProductCurrentlyAvailable(prod);
+        const card = document.createElement("div");
+        card.className = "flex-shrink-0 w-[140px] cursor-pointer snap-start group relative animate-card-fade";
+        card.style.animationDelay = `${pIdx * 45}ms`;
+
+        if (isAvailable) {
+          card.onclick = () => openProductModal(prod);
+        } else {
+          card.onclick = () => showToast(`Este produto está indisponível no momento. Disponível apenas: ${getProductAvailabilityText(prod)}`, true);
+          card.classList.add("opacity-60", "saturate-50");
+        }
+
+        const defaultSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fed7aa'/><text x='50' y='55' font-family='sans-serif' font-size='24' fill='%23ea580c' text-anchor='middle'>🍔</text></svg>`;
+        const imgUrl = prod.image || defaultSvg;
+
+        let badgeHtml = "";
+        if (!isAvailable) {
+          badgeHtml = `
+            <div class="absolute inset-0 bg-black/45 flex items-center justify-center p-1 text-center">
+              <span class="text-[9px] font-black tracking-wider uppercase text-white leading-tight">Fora de Horário</span>
+            </div>
+          `;
+        } else if (prod.exclusivo) {
+           badgeHtml = `
+            <div class="absolute top-1.5 right-1.5 bg-orange-50 text-brand-primary border border-orange-100 text-[8.5px] font-extrabold px-1.5 py-0.5 rounded-full shadow-xs">
+              ⭐
+            </div>
+          `;
+        }
+
+        const descStr = prod.description || "Deliciosa receita.";
+        const formattedPrice = `R$ ${(prod.price || 0).toFixed(2).replace(".", ",")}`;
+        const formattedOriginalPrice = prod.originalPrice ? `R$ ${prod.originalPrice.toFixed(2).replace(".", ",")}` : "";
+
+        card.innerHTML = `
+          <div class="w-[140px] h-[140px] rounded-2xl bg-orange-50/50 relative overflow-hidden shadow-sm border border-stone-100 mb-2">
+            <img src="${imgUrl}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out">
+            ${badgeHtml}
+            ${isAvailable ? `<div class="absolute bottom-2 right-2 w-7 h-7 rounded-full bg-brand-primary/90 text-white flex items-center justify-center shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg></div>` : ""}
+          </div>
+          <div class="px-0.5">
+            <h4 class="font-display font-black text-xs leading-tight text-stone-900 group-hover:text-brand-primary transition-colors truncate">${prod.name}</h4>
+            <p class="text-[9px] text-gray-400 font-medium mt-0.5 line-clamp-2 leading-[1.2]">${descStr}</p>
+            <div class="flex items-center gap-1 mt-1">
+              <span class="text-xs font-black text-brand-primary leading-none">${formattedPrice}</span>
+              ${formattedOriginalPrice ? `<span class="text-[8px] font-bold text-gray-400 line-through leading-none">${formattedOriginalPrice}</span>` : ""}
+            </div>
+          </div>
+        `;
+        return card;
+      }
+
       // Draw catalog with sorting layout Horizontal (left-aligned photos, right-aligned meta + round plus button)
       function renderCatalogItems() {
         const parent = document.getElementById("menu-sections");
@@ -3693,22 +3754,22 @@
           if (destaques.length > 0) {
             drawnCount += destaques.length;
             const section = document.createElement("div");
-            section.className = "space-y-4 mb-6 bg-gradient-to-br from-orange-50 to-amber-50/30 p-5 rounded-[28px] border border-orange-100";
+            section.className = "mb-8 space-y-3";
             
             const title = document.createElement("h3");
-            title.className = "font-display font-black text-xl text-brand-primary tracking-tight select-none flex items-center gap-2";
+            title.className = "font-display font-black text-lg text-brand-primary tracking-tight select-none flex items-center gap-2 px-1";
             title.innerHTML = `🌟 Produtos em Destaque`;
             section.appendChild(title);
 
-            const grid = document.createElement("div");
-            grid.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
+            const scrollContainer = document.createElement("div");
+            scrollContainer.className = "flex overflow-x-auto gap-4 pb-2 snap-x hide-scrollbar";
 
             destaques.forEach((prod, pIdx) => {
-              const card = createProductCardElement(prod, pIdx);
-              grid.appendChild(card);
+              const card = createDestaqueCardElement(prod, pIdx);
+              scrollContainer.appendChild(card);
             });
 
-            section.appendChild(grid);
+            section.appendChild(scrollContainer);
             parent.appendChild(section);
           }
         }
