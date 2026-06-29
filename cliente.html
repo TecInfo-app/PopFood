@@ -30,12 +30,12 @@
             theme_color: "#FF4500",
             icons: [
               {
-                src: "novo-icone.png",
+                src: "favicon.png",
                 sizes: "192x192",
                 type: "image/png"
               },
               {
-                src: "novo-icone.png",
+                src: "favicon.png",
                 sizes: "512x512",
                 type: "image/png"
               }
@@ -1851,7 +1851,7 @@
               console.log("Foreground notification received in cliente.html:", payload);
               const title = payload.notification?.title || "Nova Notificação! 🔔";
               const body = payload.notification?.body || "";
-              const icon = payload.notification?.image || "novo-icone.png";
+              const icon = payload.notification?.image || "favicon.png";
 
               if (window.showToast) {
                 window.showToast(`📢 ${title}: ${body}`);
@@ -7623,7 +7623,7 @@
         try {
           new Notification(title, {
             body: message,
-            icon: "novo-icone.png",
+            icon: "favicon.png",
             requireInteraction: true,
           });
         } catch (e) {

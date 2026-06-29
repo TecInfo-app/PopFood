@@ -73,7 +73,7 @@ async function startServer() {
         notification: {
           title: title,
           body: body,
-          image: 'novo-icone.png'
+          image: 'favicon.png'
         },
         data: data || {},
         token: token,
@@ -472,7 +472,7 @@ async function startServer() {
                     notification: {
                       title: sched.title,
                       body: sched.body,
-                      image: 'novo-icone.png'
+                      image: 'favicon.png'
                     },
                     data: {
                       type: "campaign",

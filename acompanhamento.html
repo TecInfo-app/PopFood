@@ -30,12 +30,12 @@
           theme_color: "#FF4500",
           icons: [
             {
-              src: "novo-icone.png",
+              src: "favicon.png",
               sizes: "192x192",
               type: "image/png"
             },
             {
-              src: "novo-icone.png",
+              src: "favicon.png",
               sizes: "512x512",
               type: "image/png"
             }
@@ -585,7 +585,7 @@
                 console.log("Foreground notification received in acompanhamento.html:", payload);
                 const title = payload.notification?.title || "Nova Notificação! 🔔";
                 const body = payload.notification?.body || "";
-                const icon = payload.notification?.image || "novo-icone.png";
+                const icon = payload.notification?.image || "favicon.png";
 
                 if (Notification.permission === 'granted') {
                   try {
@@ -666,18 +666,18 @@
             navigator.serviceWorker.ready.then(function(registration) {
               registration.showNotification("Notificações Prontas! 🎉", {
                 body: "Excelente! Agora você será avisado aqui na tela do seu dispositivo sempre que seu pedido avançar de etapa.",
-                icon: "novo-icone.png"
+                icon: "favicon.png"
               });
             }).catch(e => {
               new Notification("Notificações Prontas! 🎉", {
                 body: "Excelente! Agora você será avisado aqui na tela do seu dispositivo sempre que seu pedido avançar de etapa.",
-                icon: "novo-icone.png"
+                icon: "favicon.png"
               });
             });
           } else {
             new Notification("Notificações Prontas! 🎉", {
               body: "Excelente! Agora você será avisado aqui na tela do seu dispositivo sempre que seu pedido avançar de etapa.",
-              icon: "novo-icone.png"
+              icon: "favicon.png"
             });
           }
         }
@@ -733,20 +733,20 @@
           navigator.serviceWorker.ready.then(function(registration) {
             registration.showNotification(title, {
               body: message,
-              icon: "novo-icone.png",
+              icon: "favicon.png",
               requireInteraction: true
             });
           }).catch(e => {
             new Notification(title, {
               body: message,
-              icon: "novo-icone.png",
+              icon: "favicon.png",
               requireInteraction: true
             });
           });
         } else {
           new Notification(title, {
             body: message,
-            icon: "novo-icone.png",
+            icon: "favicon.png",
             requireInteraction: true
           });
         }

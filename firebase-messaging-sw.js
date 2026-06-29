@@ -28,12 +28,12 @@ messaging.onBackgroundMessage(function(payload) {
   // Otherwise, if it is a data-only payload, we construct and show the notification ourselves.
   const title = payload.data?.title || 'PopFood 🔔';
   const body = payload.data?.body || 'Você tem uma nova atualização no PopFood.';
-  const icon = payload.data?.icon || 'novo-icone.png';
+  const icon = payload.data?.icon || 'favicon.png';
 
   const notificationOptions = {
     body: body,
     icon: icon,
-    badge: 'novo-icone.png',
+    badge: 'favicon.png',
     data: payload.data
   };
 
