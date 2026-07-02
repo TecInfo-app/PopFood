@@ -350,6 +350,11 @@
               <label class="block text-[10px] font-bold text-gray-500 uppercase">Endereço Completo *</label>
               <input type="text" id="store-address" required placeholder="Rua, Número, Bairro, Cidade" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
             </div>
+
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Valor Mínimo do Pedido (R$)</label>
+              <input type="number" step="0.01" min="0" id="store-min-order-value" placeholder="0.00 (Opcional)" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
+            </div>
             
             <!-- Legacy Payment Integration Config (Hidden and Cleared) -->
             <input type="hidden" id="mp-access-token" value="">
@@ -1199,6 +1204,7 @@
           document.getElementById('store-phone').value = profileData.phone || '';
           document.getElementById('store-cep').value = profileData.cep || '';
           document.getElementById('store-address').value = profileData.address || '';
+          document.getElementById('store-min-order-value').value = profileData.minOrderValue || '';
           document.getElementById('store-open').value = profileData.openTime || '';
           document.getElementById('store-close').value = profileData.closeTime || '';
           document.getElementById('abacatepay-token').value = profileData.abacatePayToken || '';
@@ -1795,6 +1801,7 @@
       const phone = document.getElementById('store-phone').value.trim();
       const cep = document.getElementById('store-cep').value.trim().replace(/\D/g, '');
       const address = document.getElementById('store-address').value.trim();
+      const minOrderValue = parseFloat(document.getElementById('store-min-order-value').value) || 0;
       const open = document.getElementById('store-open').value;
       const close = document.getElementById('store-close').value;
       const abacatePayToken = document.getElementById('abacatepay-token').value.trim();
@@ -1814,6 +1821,7 @@
         phone: phone,
         cep: cep,
         address: address,
+        minOrderValue: minOrderValue,
         openTime: open,
         closeTime: close,
         abacatePayToken: abacatePayToken,

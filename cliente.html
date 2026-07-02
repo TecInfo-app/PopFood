@@ -3571,6 +3571,10 @@
       };
 
       function isProductCurrentlyAvailable(prod) {
+        if (prod.stock !== undefined && prod.stock !== null && prod.stock <= 0) {
+          return false;
+        }
+
         if (!prod.availableDays) return true;
         if (Array.isArray(prod.availableDays) && prod.availableDays.length === 0) return true;
 
@@ -3596,6 +3600,10 @@
       }
 
       function getProductAvailabilityText(prod) {
+        if (prod.stock !== undefined && prod.stock !== null && prod.stock <= 0) {
+          return "Esgotado";
+        }
+
         if (!prod.availableDays || prod.availableDays.length === 0) return "";
         
         const daysMap = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -3652,9 +3660,11 @@
         
         let badgeHtml = "";
         if (!isAvailable) {
+          const isOutOfStock = (prod.stock !== undefined && prod.stock !== null && prod.stock <= 0);
+          const badgeText = isOutOfStock ? "Esgotado" : "Fora de Horário";
           badgeHtml = `
             <div class="absolute inset-0 bg-black/45 flex items-center justify-center p-1 text-center">
-              <span class="text-[9px] font-black tracking-wider uppercase text-white leading-tight">Fora de Horário</span>
+              <span class="text-[9px] font-black tracking-wider uppercase text-white leading-tight">${badgeText}</span>
             </div>
           `;
         }
@@ -3726,9 +3736,11 @@
 
         let badgeHtml = "";
         if (!isAvailable) {
+          const isOutOfStock = (prod.stock !== undefined && prod.stock !== null && prod.stock <= 0);
+          const badgeText = isOutOfStock ? "Esgotado" : "Fora de Horário";
           badgeHtml = `
             <div class="absolute inset-0 bg-black/45 flex items-center justify-center p-1 text-center">
-              <span class="text-[9px] font-black tracking-wider uppercase text-white leading-tight">Fora de Horário</span>
+              <span class="text-[9px] font-black tracking-wider uppercase text-white leading-tight">${badgeText}</span>
             </div>
           `;
         } else if (prod.exclusivo) {
@@ -4205,6 +4217,10 @@
                   ? group.minSelection || 1
                   : 0;
 
+                const stockAttr = (opt.stock !== undefined && opt.stock !== null) ? `data-stock="${opt.stock}"` : "";
+                const isOutOfStock = (opt.stock !== undefined && opt.stock !== null && opt.stock <= 0);
+                const outOfStockLabel = isOutOfStock ? `<span class="bg-red-100 text-red-600 text-[8px] font-bold px-1.5 py-0.5 rounded ml-2">Esgotado</span>` : "";
+
                 let optQty = 0;
                 let optChecked = false;
                 if (isEditingUniqueId) {
@@ -4218,28 +4234,28 @@
 
                 let optImgHtml = "";
                 if (opt.image) {
-                  optImgHtml = `<img src="${opt.image}" class="w-12 h-12 rounded-xl object-cover mr-2.5 border border-stone-100 flex-shrink-0 animate-card-fade">`;
+                  optImgHtml = `<img src="${opt.image}" class="w-12 h-12 rounded-xl object-cover mr-2.5 border border-stone-100 flex-shrink-0 animate-card-fade ${isOutOfStock ? 'opacity-50 grayscale' : ''}">`;
                 }
 
                 if (isMulti) {
                   optionDiv.className =
-                    "flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs mb-2";
+                    `flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs mb-2 ${isOutOfStock ? 'opacity-60 cursor-not-allowed bg-stone-50' : ''}`;
                   optionDiv.innerHTML = `
                   <div class="flex items-center flex-grow min-w-0 mr-2">
                     ${optImgHtml}
                     <div class="flex flex-col py-0.5">
-                      <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}</span>
+                      <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}${outOfStockLabel}</span>
                       ${optDescHtml}
                     </div>
                   </div>
                   <div class="flex flex-col items-end gap-1.5 shrink-0">
                     <span class="text-[10px] font-bold text-brand-primary">${formattedAddPrice}</span>
                     <div class="flex items-center gap-1.5 bg-gray-50 rounded-lg p-0.5 border border-gray-100">
-                      <button type="button" class="comp-minus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}">
+                      <button type="button" class="comp-minus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}" ${isOutOfStock ? 'disabled' : ''}>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"></path></svg>
                       </button>
-                      <span class="comp-qty text-xs font-bold w-4 text-center text-gray-800" id="qty-${optId}" data-price="${opt.price || 0}" data-name="${opt.name}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}">${optQty}</span>
-                      <button type="button" class="comp-plus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}">
+                      <span class="comp-qty text-xs font-bold w-4 text-center text-gray-800" id="qty-${optId}" data-price="${opt.price || 0}" data-name="${opt.name}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${stockAttr}>${optQty}</span>
+                      <button type="button" class="comp-plus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}" ${isOutOfStock ? 'disabled' : ''}>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                       </button>
                     </div>
@@ -4247,14 +4263,14 @@
                 `;
                 } else {
                   optionDiv.className =
-                    "flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs cursor-pointer select-none active:scale-[0.99] duration-150 mb-2";
+                    `flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs cursor-pointer select-none active:scale-[0.99] duration-150 mb-2 ${isOutOfStock ? 'opacity-60 cursor-not-allowed bg-stone-50' : ''}`;
                   optionDiv.innerHTML = `
-                  <label for="${optId}" class="flex-grow flex items-center gap-3 cursor-pointer py-0.5 min-w-0 font-sans">
-                    <input type="${inputType}" id="${optId}" name="group-${groupIdx}" value="${opt.name}" data-price="${opt.price || 0}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${optChecked ? 'checked' : ''} class="complement-checkbox w-4.5 h-4.5 accent-brand-primary text-brand-primary focus:ring-brand-primary/25 border-stone-300 rounded flex-shrink-0">
+                  <label for="${optId}" class="flex-grow flex items-center gap-3 py-0.5 min-w-0 font-sans ${isOutOfStock ? 'cursor-not-allowed' : 'cursor-pointer'}">
+                    <input type="${inputType}" id="${optId}" name="group-${groupIdx}" value="${opt.name}" data-price="${opt.price || 0}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${stockAttr} ${optChecked ? 'checked' : ''} ${isOutOfStock ? 'disabled' : ''} class="complement-checkbox w-4.5 h-4.5 accent-brand-primary text-brand-primary focus:ring-brand-primary/25 border-stone-300 rounded flex-shrink-0">
                     <div class="flex items-center flex-grow min-w-0">
                       ${optImgHtml}
                       <div class="flex flex-col">
-                        <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}</span>
+                        <span class="text-xs font-bold text-stone-700 capitalize tracking-tight">${opt.name}${outOfStockLabel}</span>
                         ${optDescHtml}
                       </div>
                     </div>
@@ -4295,6 +4311,16 @@
                     true,
                   );
                   return;
+                }
+
+                const stockAttr = qtySpan.getAttribute("data-stock");
+                if (stockAttr) {
+                  const stock = parseInt(stockAttr, 10);
+                  const currentQty = parseInt(qtySpan.textContent) || 0;
+                  if (currentQty >= stock) {
+                    showToast(`Temos apenas ${stock} unidade(s) deste complemento em estoque.`, true);
+                    return;
+                  }
                 }
 
                 qtySpan.textContent = parseInt(qtySpan.textContent) + 1;
@@ -4396,6 +4422,12 @@
 
       // Modal state controllers
       window.changeModalQty = function (val) {
+        if (val > 0 && currentSelectedProduct && currentSelectedProduct.stock !== undefined && currentSelectedProduct.stock !== null) {
+          if (currentModalQty >= currentSelectedProduct.stock) {
+            showToast(`Desculpe, temos apenas ${currentSelectedProduct.stock} unidade(s) deste produto em estoque.`, true);
+            return;
+          }
+        }
         currentModalQty = Math.max(1, currentModalQty + val);
         document.getElementById("modal-qty").textContent = currentModalQty;
         recalculateModalPrice();
@@ -4431,6 +4463,14 @@
           );
           return;
         }
+
+        if (currentSelectedProduct.stock !== undefined && currentSelectedProduct.stock !== null) {
+          if (currentModalQty > currentSelectedProduct.stock) {
+            showToast(`Desculpe, temos apenas ${currentSelectedProduct.stock} unidade(s) deste produto em estoque.`, true);
+            return;
+          }
+        }
+
         // Validate mandatory complement fields!
         const activeGroups = {};
         const inputs = document.querySelectorAll(".complement-checkbox");
@@ -4748,6 +4788,13 @@
         if (window.currentCartStep === 1) {
           if (shoppingCart.length === 0) {
             window.customAlert("Sua sacola está vazia.");
+            return;
+          }
+
+          const subtotal = shoppingCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          const minOrder = parseFloat(restaurantProfile.minOrderValue) || 0;
+          if (minOrder > 0 && subtotal < minOrder) {
+            window.customAlert(`O valor mínimo para pedidos é de R$ ${minOrder.toFixed(2).replace('.', ',')}. Subtotal atual: R$ ${subtotal.toFixed(2).replace('.', ',')}.`);
             return;
           }
 
@@ -5322,6 +5369,18 @@
         const idx = shoppingCart.findIndex((i) => i.uniqueId === uniqueId);
         if (idx !== -1) {
           const newQty = shoppingCart[idx].quantity + val;
+
+          // Check stock before increasing
+          if (val > 0) {
+            const prod = productsList.find((p) => p.id === shoppingCart[idx].productId);
+            if (prod && prod.stock !== undefined && prod.stock !== null) {
+              if (newQty > prod.stock) {
+                showToast(`Temos apenas ${prod.stock} unidade(s) deste produto em estoque.`, true);
+                return;
+              }
+            }
+          }
+
           if (newQty <= 0) {
             shoppingCart = shoppingCart.filter((i) => i.uniqueId !== uniqueId);
           } else {
@@ -7672,19 +7731,53 @@
           const orderRef = doc(db, COLLECTIONS.orders, orderId);
           await setDoc(orderRef, orderDocument);
 
-          // Increment orderCount for products to power "Os Mais Pedidos" feature
+          // Increment orderCount for products to power "Os Mais Pedidos" feature and deduct stock
           try {
             for (const item of cart) {
               const prodRef = doc(db, COLLECTIONS.products, item.id);
               const prodSnap = await getDoc(prodRef);
               if (prodSnap.exists()) {
                 const pData = prodSnap.data();
-                await updateDoc(prodRef, {
+                let updates = {
                   orderCount: (pData.orderCount || 0) + item.quantity
-                });
+                };
+                if (pData.stock !== undefined && pData.stock !== null && pData.stock > 0) {
+                  updates.stock = Math.max(0, pData.stock - item.quantity);
+                }
+                await updateDoc(prodRef, updates);
+              }
+
+              // Deduct complements stock if necessary
+              if (item.complements && item.complements.length > 0) {
+                const compRef = doc(db, COLLECTIONS.complements, item.id);
+                const compSnap = await getDoc(compRef);
+                if (compSnap.exists()) {
+                  const cData = compSnap.data();
+                  let hasChanges = false;
+
+                  item.complements.forEach(cartComp => {
+                    // cartComp: { groupName, optionName }
+                    if (cData.groups) {
+                      cData.groups.forEach(g => {
+                        if (g.name === cartComp.groupName && g.options) {
+                          g.options.forEach(opt => {
+                            if (opt.name === cartComp.optionName && opt.stock !== undefined && opt.stock !== null && opt.stock > 0) {
+                              opt.stock = Math.max(0, opt.stock - item.quantity);
+                              hasChanges = true;
+                            }
+                          });
+                        }
+                      });
+                    }
+                  });
+
+                  if (hasChanges) {
+                    await updateDoc(compRef, { groups: cData.groups });
+                  }
+                }
               }
             }
-          } catch(e) { console.error("Error updating orderCount", e); }
+          } catch(e) { console.error("Error updating orderCount and stock", e); }
 
           // Trigger push notification to the merchant
           try {

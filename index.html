@@ -387,12 +387,18 @@
             <input type="number" step="0.01" id="form-product-origprice" placeholder="Ex: 29.90" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
           </div>
         </div>
-
-        <div class="space-y-1.5">
-          <label class="block text-xs font-semibold text-gray-650">Categoria do Produto *</label>
-          <select id="form-product-category" required class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none bg-white transition-all">
-            <option value="">Selecione a categoria...</option>
-          </select>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label class="block text-xs font-semibold text-gray-650">Estoque (Opcional)</label>
+            <input type="number" step="1" min="0" id="form-product-stock" placeholder="Ex: 50" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
+          </div>
+          <div class="space-y-1.5">
+            <label class="block text-xs font-semibold text-gray-650">Categoria do Produto *</label>
+            <select id="form-product-category" required class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none bg-white transition-all">
+              <option value="">Selecione a categoria...</option>
+            </select>
+          </div>
         </div>
 
         <div class="space-y-1.5">
@@ -1314,6 +1320,7 @@ storeId: window.currentStoreId
           document.getElementById('form-product-name').value = prd.name;
           document.getElementById('form-product-pdv').value = prd.pdvCode || '';
           document.getElementById('form-product-price').value = prd.price;
+          document.getElementById('form-product-stock').value = prd.stock !== null && prd.stock !== undefined ? prd.stock : '';
           document.getElementById('form-product-origprice').value = prd.originalPrice || '';
           document.getElementById('form-product-category').value = prd.categoryId;
           document.getElementById('form-product-desc').value = prd.description || '';
@@ -1398,6 +1405,8 @@ storeId: window.currentStoreId
       const name = document.getElementById('form-product-name').value.trim();
       const pdv = document.getElementById('form-product-pdv').value.trim() || prdId;
       const price = parseFloat(document.getElementById('form-product-price').value || 0);
+      const stockInput = document.getElementById('form-product-stock').value;
+      const stock = stockInput ? parseInt(stockInput, 10) : null;
       const origInput = document.getElementById('form-product-origprice').value;
       const origPrice = origInput ? parseFloat(origInput) : null;
       const cat = document.getElementById('form-product-category').value;
@@ -1422,6 +1431,7 @@ storeId: window.currentStoreId
         name: name,
         pdvCode: pdv,
         price: price,
+        stock: stock,
         originalPrice: origPrice,
         categoryId: cat,
         description: desc,
@@ -1721,7 +1731,8 @@ storeId: window.currentStoreId
               <div class="space-y-2 bg-white p-2 border border-gray-100 rounded-lg">
                 <div class="flex gap-2">
                   <input type="text" id="add-opt-name-${idx}" placeholder="Opcional (Ex: Queijo)" class="flex-grow text-[10px] bg-transparent focus:outline-none min-w-0">
-                  <input type="text" id="add-opt-pdv-${idx}" placeholder="PDV" class="w-14 text-[10px] bg-transparent focus:outline-none text-center border-x border-gray-100 px-1">
+                  <input type="text" id="add-opt-pdv-${idx}" placeholder="PDV" class="w-10 text-[10px] bg-transparent focus:outline-none text-center border-x border-gray-100 px-1">
+                  <input type="number" id="add-opt-stock-${idx}" placeholder="Estoque" class="w-14 text-[10px] bg-transparent focus:outline-none text-center border-r border-gray-100 px-1" title="Estoque">
                   <input type="number" step="0.01" id="add-opt-price-${idx}" placeholder="R$ 0,00" class="w-14 text-[10px] bg-transparent focus:outline-none text-right">
                   <button onclick="addNewOptionToGroupByIndex(${idx})" class="bg-gray-800 hover:bg-gray-950 text-white py-1 px-3 text-[10px] rounded font-semibold transition-colors cursor-pointer flex-shrink-0">+</button>
                 </div>
@@ -1749,7 +1760,8 @@ storeId: window.currentStoreId
               optDiv.className = "flex items-start justify-between text-xs py-2 hover:bg-white px-2 rounded transition-all border-b border-gray-100/50 last:border-0";
               
               const formattedPrice = `R$ ${(opt.price || 0).toFixed(2).replace('.', ',')}`;
-              const pdvLabel = opt.pdvCode ? `<span class="bg-gray-100 text-[8px] text-gray-500 font-mono px-1.5 py-0.5 rounded uppercase font-bold inline-block mt-0.5">PDV: ${opt.pdvCode}</span>` : "";
+              const pdvLabel = opt.pdvCode ? `<span class="bg-gray-100 text-[8px] text-gray-500 font-mono px-1.5 py-0.5 rounded uppercase font-bold inline-block mt-0.5 mr-1">PDV: ${opt.pdvCode}</span>` : "";
+              const stockLabel = (opt.stock !== null && opt.stock !== undefined) ? `<span class="bg-orange-100 text-[8px] text-orange-600 font-mono px-1.5 py-0.5 rounded uppercase font-bold inline-block mt-0.5">Estoque: ${opt.stock}</span>` : "";
               const decorationClass = opt.paused ? "line-through text-gray-400" : "";
 
               const optImgHtml = opt.image 
@@ -1762,7 +1774,7 @@ storeId: window.currentStoreId
                   <div class="flex flex-col min-w-0">
                     <span class="font-medium capitalize ${decorationClass} truncate">${opt.name} (${formattedPrice})</span>
                     ${opt.description ? `<span class="text-[9px] text-gray-400 italic truncate">${opt.description}</span>` : ""}
-                    ${pdvLabel}
+                    <div>${pdvLabel}${stockLabel}</div>
                     <label class="text-[8px] text-brand-primary hover:underline cursor-pointer select-none mt-0.5 inline-block">
                       Alterar Foto
                       <input type="file" accept="image/*" class="hidden" onchange="uploadComplementOptionImageDirectly(${idx}, ${optIdx}, this)">
@@ -1897,12 +1909,14 @@ storeId: window.currentStoreId
       const optNameField = document.getElementById(`add-opt-name-${groupIdx}`);
       const optPDVField = document.getElementById(`add-opt-pdv-${groupIdx}`);
       const optPriceField = document.getElementById(`add-opt-price-${groupIdx}`);
+      const optStockField = document.getElementById(`add-opt-stock-${groupIdx}`);
       const optDescField = document.getElementById(`add-opt-desc-${groupIdx}`);
       const fileInput = document.getElementById(`add-opt-image-${groupIdx}`);
 
       const optName = optNameField.value.trim();
       const optPDV = optPDVField.value.trim();
       const optPrice = parseFloat(optPriceField.value || 0);
+      const optStock = optStockField.value.trim() !== '' ? parseInt(optStockField.value, 10) : null;
       const optDesc = optDescField.value.trim();
 
       if (!optName) {
@@ -1946,6 +1960,7 @@ storeId: window.currentStoreId
             name: optName,
             pdvCode: optPDV,
             price: optPrice,
+            stock: optStock,
             description: optDesc,
             image: optionImage,
             paused: false
@@ -2013,12 +2028,17 @@ storeId: window.currentStoreId
         if (newPriceStr === null) return;
         const newPrice = parseFloat(newPriceStr.replace(',', '.') || 0);
 
+        const newStockStr = prompt("Estoque (vazio para ilimitado):", opt.stock !== null && opt.stock !== undefined ? opt.stock : "");
+        if (newStockStr === null) return;
+        const newStock = newStockStr.trim() !== '' ? parseInt(newStockStr, 10) : null;
+
         const newDesc = prompt("Descrição:", opt.description || "");
         if (newDesc === null) return;
 
         opt.name = newName;
         opt.pdvCode = newPDV;
         opt.price = newPrice;
+        opt.stock = newStock;
         opt.description = newDesc;
 
         await setDoc(docRef, data);
