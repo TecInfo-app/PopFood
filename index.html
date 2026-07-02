@@ -341,6 +341,14 @@
         <div class="relative w-full">
           <input type="text" id="product-search-bar" oninput="triggerProductsSearchFilter()" placeholder="🔍 Buscar por nome ou código PDV..." class="w-full text-xs p-3 pl-9 border border-gray-200 rounded-xl focus:border-orange-400 focus:outline-none transition-all">
         </div>
+        
+        <!-- Filter Menu -->
+        <div class="flex flex-wrap gap-2 text-[10px] my-2">
+          <button onclick="applyCatalogFilter('all')" class="catalog-filter-btn px-3 py-1.5 rounded-full bg-orange-100 text-brand-primary font-bold transition-all" id="filter-all">Todos</button>
+          <button onclick="applyCatalogFilter('paused')" class="catalog-filter-btn px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 font-bold transition-all hover:bg-gray-200" id="filter-paused">Pausados</button>
+          <button onclick="applyCatalogFilter('lowstock')" class="catalog-filter-btn px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 font-bold transition-all hover:bg-gray-200" id="filter-lowstock">Estoque Baixo</button>
+          <button onclick="applyCatalogFilter('exclusive')" class="catalog-filter-btn px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 font-bold transition-all hover:bg-gray-200" id="filter-exclusive">Exclusivos</button>
+        </div>
 
         <!-- List rows products -->
         <div id="products-catalog-list" class="space-y-4 font-sans">
@@ -610,6 +618,7 @@
     let activeProducts = [];
     let activeComplementsMap = {}; 
     let imageBase64Data = "";
+    let activeCatalogFilter = 'all';
     let activeComplementProduct = null;
     let productsFiltered = [];
     let currentImportData = null;
@@ -1531,6 +1540,20 @@ storeId: window.currentStoreId
       drawProductsCatalogViewer(barValue);
     }
 
+    window.applyCatalogFilter = function(filterType) {
+      activeCatalogFilter = filterType;
+      
+      // Update UI buttons
+      document.querySelectorAll('.catalog-filter-btn').forEach(btn => {
+        btn.classList.remove('bg-orange-100', 'text-brand-primary');
+        btn.classList.add('bg-gray-100', 'text-gray-600');
+      });
+      document.getElementById(`filter-${filterType}`).classList.add('bg-orange-100', 'text-brand-primary');
+      document.getElementById(`filter-${filterType}`).classList.remove('bg-gray-100', 'text-gray-600');
+      
+      drawProductsCatalogViewer(complementSearchQuery);
+    }
+
     // No trigger needed here anymore as it syncs with main search
     window.triggerComplementsStructureFilter = function() {}
 
@@ -1539,8 +1562,19 @@ storeId: window.currentStoreId
       parent.innerHTML = '';
 
       let matching = activeProducts;
+      
+      // 1. Apply filter
+      if (activeCatalogFilter === 'paused') {
+        matching = matching.filter(p => p.paused === true);
+      } else if (activeCatalogFilter === 'lowstock') {
+        matching = matching.filter(p => p.stock !== undefined && p.stock !== null && p.stock <= 5);
+      } else if (activeCatalogFilter === 'exclusive') {
+        matching = matching.filter(p => p.exclusivo === true);
+      }
+
+      // 2. Apply search
       if (searchQuery) {
-        matching = activeProducts.filter(p => {
+        matching = matching.filter(p => {
           // 1. Search in Name/PDV
           const basicMatch = p.name.toLowerCase().includes(searchQuery) || 
                              p.pdvCode.toLowerCase().includes(searchQuery);
