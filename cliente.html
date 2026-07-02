@@ -770,6 +770,29 @@
               </div>
             </div>
 
+            <!-- Location Auto-fill button (📍 GPS alternative) -->
+            <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 flex flex-col gap-2.5 shadow-3xs select-none mt-4">
+              <div class="flex items-start gap-2.5">
+                <span class="text-base">📍</span>
+                <div class="flex flex-col">
+                  <span class="text-xs font-black text-stone-855">Preenchimento por GPS</span>
+                  <span class="text-[10px] text-stone-400 font-semibold leading-relaxed">Localize seu endereço atual automaticamente via GPS do seu aparelho.</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                id="btn-geolocation"
+                onclick="fetchUserGeolocation()"
+                class="w-full bg-[#895129] hover:bg-[#724120] text-white py-3 px-4 text-xs font-black rounded-xl transition-all cursor-pointer shadow-sm active:scale-98 flex items-center justify-center gap-2 outline-none border-none select-none"
+              >
+                <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>MINHA LOCALIZAÇÃO</span>
+              </button>
+            </div>
+
             <!-- BANNER DADOS SALVOS (Atalho para ir direto para Pagamento) -->
             <div
               id="saved-data-banner"
@@ -916,28 +939,7 @@
 
               <!-- Specific Delivery Address block -->
               <div id="delivery-address-container" class="space-y-4 pt-1">
-                <!-- Location Auto-fill button (📍 GPS alternative) -->
-                <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 flex flex-col gap-2.5 shadow-3xs select-none">
-                  <div class="flex items-start gap-2.5">
-                    <span class="text-base">📍</span>
-                    <div class="flex flex-col">
-                      <span class="text-xs font-black text-stone-855">Preenchimento por GPS</span>
-                      <span class="text-[10px] text-stone-400 font-semibold leading-relaxed">Localize seu endereço atual automaticamente via GPS do seu aparelho.</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    id="btn-geolocation"
-                    onclick="fetchUserGeolocation()"
-                    class="w-full bg-[#895129] hover:bg-[#724120] text-white py-3 px-4 text-xs font-black rounded-xl transition-all cursor-pointer shadow-sm active:scale-98 flex items-center justify-center gap-2 outline-none border-none select-none"
-                  >
-                    <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    <span>MINHA LOCALIZAÇÃO</span>
-                  </button>
-                </div>
+
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div class="space-y-1.5">
@@ -1059,14 +1061,6 @@
                 id="delivery-failed-alert"
                 class="text-xs text-brand-danger font-semibold bg-red-50 border border-red-100/60 p-2.5 rounded-xl hidden text-center leading-relaxed"
               ></div>
-
-              <button
-                type="button"
-                onclick="calculateDistanceAndFee()"
-                class="mt-1 bg-white hover:bg-gray-100 text-gray-750 py-2.5 text-xs font-bold rounded-xl border border-gray-200 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-3xs active:scale-98"
-              >
-                <span>🔄 Calcular Taxa de Entrega</span>
-              </button>
             </div>
           </div>
 
