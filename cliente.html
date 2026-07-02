@@ -771,7 +771,7 @@
             </div>
 
             <!-- Location Auto-fill button (📍 GPS alternative) -->
-            <div class="bg-stone-50 p-3 rounded-2xl border border-stone-200 flex flex-col gap-2.5 shadow-3xs select-none mt-4">
+            <div id="gps-autofill-container" class="bg-stone-50 p-3 rounded-2xl border border-stone-200 flex flex-col gap-2.5 shadow-3xs select-none mt-4">
               <div class="flex items-start gap-2.5">
                 <span class="text-base">📍</span>
                 <div class="flex flex-col">
@@ -2326,11 +2326,13 @@
         const addrContainer = document.getElementById(
           "delivery-address-container",
         );
+        const gpsContainer = document.getElementById("gps-autofill-container");
         const labelDelivery = document.getElementById("option-delivery-label");
         const labelPickup = document.getElementById("option-pickup-label");
 
         if (option === "pickup") {
           if (addrContainer) addrContainer.classList.add("hidden");
+          if (gpsContainer) gpsContainer.classList.add("hidden");
           if (labelPickup) {
             labelPickup.classList.add(
               "border-brand-primary",
@@ -2349,6 +2351,7 @@
           }
         } else {
           if (addrContainer) addrContainer.classList.remove("hidden");
+          if (gpsContainer) gpsContainer.classList.remove("hidden");
           if (labelDelivery) {
             labelDelivery.classList.add(
               "border-brand-primary",
