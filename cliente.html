@@ -877,6 +877,7 @@
               <div class="flex flex-col gap-1.5 pt-0.5">
                 <button
                   type="button"
+                  id="btn-saved-banner-checkout"
                   onclick="useSavedDataAndGoToPayment()"
                   class="w-full bg-brand-primary hover:bg-brand-primary/95 text-white font-extrabold py-3.5 px-4 rounded-xl text-xs active:scale-98 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer font-display"
                 >
@@ -2349,6 +2350,28 @@
               "text-brand-primary",
             );
           }
+          
+          // Re-enable buttons for pickup
+          const btn = document.getElementById("btn-submit-checkout");
+          if (btn) {
+            btn.disabled = false;
+            btn.classList.remove("bg-gray-300", "cursor-not-allowed", "hover:bg-gray-300");
+            btn.classList.add("bg-brand-primary", "hover:bg-orange-600");
+            btn.textContent = "Continuar para Pagamento";
+          }
+          const bannerBtn = document.getElementById("btn-saved-banner-checkout");
+          if (bannerBtn) {
+            bannerBtn.disabled = false;
+            bannerBtn.classList.remove("bg-gray-300", "cursor-not-allowed", "hover:bg-gray-300");
+            bannerBtn.classList.add("bg-brand-primary", "hover:bg-brand-primary/95");
+            bannerBtn.innerHTML = `Confirmar Dados e Ir Para Pagamento
+              <svg class="w-4 h-4 inline-block ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+              </svg>`;
+          }
+          
+          const alertDiv = document.getElementById("delivery-failed-alert");
+          if (alertDiv) alertDiv.classList.add("hidden");
         } else {
           if (addrContainer) addrContainer.classList.remove("hidden");
           if (gpsContainer) gpsContainer.classList.remove("hidden");
@@ -2367,6 +2390,11 @@
               "bg-orange-50/50",
               "text-brand-primary",
             );
+          }
+          
+          // Re-calculate distance and fee for delivery
+          if (typeof window.calculateDistanceAndFee === "function") {
+            window.calculateDistanceAndFee();
           }
         }
         calculateReceiptTotals();
@@ -4630,6 +4658,11 @@
         }
 
         if (selectedOption === "delivery") {
+          const btn = document.getElementById("btn-submit-checkout");
+          if (btn && btn.disabled && btn.textContent.includes("indisponível")) {
+             window.customAlert("Área de entrega não disponível para o seu endereço atual.");
+             return;
+          }
           const street = document.getElementById("cust-street").value.trim();
           const number = document.getElementById("cust-number").value.trim();
           if (!street || !number) {
@@ -5497,6 +5530,17 @@
           );
           btn.classList.add("bg-brand-primary", "hover:bg-orange-600");
           btn.textContent = "Continuar para Pagamento";
+          
+          const bannerBtn = document.getElementById("btn-saved-banner-checkout");
+          if (bannerBtn) {
+            bannerBtn.disabled = false;
+            bannerBtn.classList.remove("bg-gray-300", "cursor-not-allowed", "hover:bg-gray-300");
+            bannerBtn.classList.add("bg-brand-primary", "hover:bg-brand-primary/95");
+            bannerBtn.innerHTML = `Confirmar Dados e Ir Para Pagamento
+              <svg class="w-4 h-4 inline-block ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+              </svg>`;
+          }
 
           localStorage.setItem("popfood_cust_distance", calculatedDistance);
           localStorage.setItem(
@@ -5593,6 +5637,14 @@
               );
               btn.classList.remove("bg-brand-primary", "hover:bg-orange-600");
               btn.textContent = "Área de entrega indisponível";
+              
+              const bannerBtn = document.getElementById("btn-saved-banner-checkout");
+              if (bannerBtn) {
+                bannerBtn.disabled = true;
+                bannerBtn.classList.add("bg-gray-300", "cursor-not-allowed", "hover:bg-gray-300");
+                bannerBtn.classList.remove("bg-brand-primary", "hover:bg-brand-primary/95");
+                bannerBtn.textContent = "Área de entrega indisponível";
+              }
             } else {
               alertDiv.classList.add("hidden");
               btn.disabled = false;
@@ -5603,6 +5655,17 @@
               );
               btn.classList.add("bg-brand-primary", "hover:bg-orange-600");
               btn.textContent = "Continuar para Pagamento";
+              
+              const bannerBtn = document.getElementById("btn-saved-banner-checkout");
+              if (bannerBtn) {
+                bannerBtn.disabled = false;
+                bannerBtn.classList.remove("bg-gray-300", "cursor-not-allowed", "hover:bg-gray-300");
+                bannerBtn.classList.add("bg-brand-primary", "hover:bg-brand-primary/95");
+                bannerBtn.innerHTML = `Confirmar Dados e Ir Para Pagamento
+                  <svg class="w-4 h-4 inline-block ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                  </svg>`;
+              }
 
               let matchedKM = null;
               // Lookup first ceiling representing distance
