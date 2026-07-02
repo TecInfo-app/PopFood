@@ -482,7 +482,7 @@
             <!-- Filled dynamically from 1km to 10km -->
           </div>
 
-          <button id="save-rates-btn" onclick="saveDeliveryRatesGrid()" class="w-full bg-gray-800 hover:bg-gray-950 text-white font-bold py-3 px-4 text-xs rounded-xl shadow-xs transition-all cursor-pointer">Atualizar Taxas e Tempos</button>
+          <button id="save-rates-btn" onclick="saveDeliveryRatesGrid()" class="w-full bg-gray-800 hover:bg-gray-950 text-white font-bold py-3 px-4 text-xs rounded-xl shadow-xs transition-all cursor-pointer">Atualizar Coordenadas, Taxas e Tempos</button>
         </div>
       </div>
 
@@ -1925,6 +1925,8 @@
         await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
           deliveryRates: rates,
           deliveryTimes: times,
+          latitude: currentStoreLatitude,
+          longitude: currentStoreLongitude,
           storeId: window.currentStoreId
         }, { merge: true });
         
