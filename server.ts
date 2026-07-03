@@ -87,6 +87,134 @@ async function startServer() {
     }
   });
 
+  // API route for Uber Direct Delivery
+  app.post("/api/uber-direct/criar-entrega", async (req, res) => {
+    const { orderDetails, storeId } = req.body;
+    
+    try {
+      if (!storeId) {
+        return res.status(400).json({ error: "Store ID é necessário." });
+      }
+
+      // Fetch Uber Direct config from Firestore
+      const dbAdmin = admin.firestore();
+      const storeDoc = await dbAdmin.collection('restaurantProfile').doc(storeId).get();
+      
+      if (!storeDoc.exists) {
+        return res.status(404).json({ error: "Perfil da loja não encontrado." });
+      }
+
+      const storeData = storeDoc.data();
+      const uberDirectConfig = storeData?.uberDirect;
+
+      const clientId = uberDirectConfig?.clientId;
+      const clientSecret = uberDirectConfig?.clientSecret;
+      const customerId = uberDirectConfig?.customerId;
+
+      if (!clientId || !clientSecret || !customerId) {
+        return res.status(400).json({ error: "As credenciais da Uber Direct não foram configuradas no Painel." });
+      }
+
+      // 1. Obter Access Token da Uber
+      const authResponse = await fetch('https://auth.uber.com/oauth/v2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: 'client_credentials',
+          scope: 'eats.deliveries'
+        })
+      });
+      const authData = await authResponse.json();
+      if (!authResponse.ok) throw new Error(`Erro autenticação Uber: ${authData.error_description || JSON.stringify(authData)}`);
+      const accessToken = authData.access_token;
+
+      // 2. Criar entrega na Uber
+      const uberDeliveryRes = await fetch(`https://api.uber.com/v1/customers/${customerId}/deliveries`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(orderDetails)
+      });
+      const uberDeliveryData = await uberDeliveryRes.json();
+      
+      if (!uberDeliveryRes.ok) throw new Error(`Erro na API Uber: ${JSON.stringify(uberDeliveryData)}`);
+
+      res.json({ success: true, delivery: uberDeliveryData });
+
+    } catch (error: any) {
+      console.error("Erro na integração Uber Direct:", error);
+      res.status(500).json({ error: error.message || "Falha ao solicitar entrega na Uber." });
+    }
+  });
+
+  // API route for Canceling Uber Direct Delivery
+  app.post("/api/uber-direct/cancelar-entrega", async (req, res) => {
+    const { deliveryId, storeId } = req.body;
+    
+    try {
+      if (!storeId || !deliveryId) {
+        return res.status(400).json({ error: "Store ID e Delivery ID são necessários." });
+      }
+
+      // Fetch Uber Direct config from Firestore
+      const dbAdmin = admin.firestore();
+      const storeDoc = await dbAdmin.collection('restaurantProfile').doc(storeId).get();
+      
+      if (!storeDoc.exists) {
+        return res.status(404).json({ error: "Perfil da loja não encontrado." });
+      }
+
+      const storeData = storeDoc.data();
+      const uberDirectConfig = storeData?.uberDirect;
+
+      const clientId = uberDirectConfig?.clientId;
+      const clientSecret = uberDirectConfig?.clientSecret;
+      const customerId = uberDirectConfig?.customerId;
+
+      if (!clientId || !clientSecret || !customerId) {
+        return res.status(400).json({ error: "As credenciais da Uber Direct não foram configuradas." });
+      }
+
+      // 1. Obter Access Token da Uber
+      const authResponse = await fetch('https://auth.uber.com/oauth/v2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: 'client_credentials',
+          scope: 'eats.deliveries'
+        })
+      });
+      const authData = await authResponse.json();
+      if (!authResponse.ok) throw new Error(`Erro autenticação Uber: ${authData.error_description || JSON.stringify(authData)}`);
+      const accessToken = authData.access_token;
+
+      // 2. Cancelar entrega na Uber
+      const uberDeliveryRes = await fetch(`https://api.uber.com/v1/customers/${customerId}/deliveries/${deliveryId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const uberDeliveryData = await uberDeliveryRes.json();
+      
+      if (!uberDeliveryRes.ok) throw new Error(`Erro na API Uber ao cancelar: ${JSON.stringify(uberDeliveryData)}`);
+
+      res.json({ success: true, delivery: uberDeliveryData });
+
+    } catch (error: any) {
+      console.error("Erro na integração Uber Direct (Cancelamento):", error);
+      res.status(500).json({ error: error.message || "Falha ao cancelar entrega na Uber." });
+    }
+  });
+
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
     const { amount, paymentMethodType, cardToken, email, description, storeId, orderId } = req.body;

@@ -207,7 +207,17 @@
         <!-- Texto Descritivo do Status -->
         <div class="space-y-1 bg-white p-3 rounded-xl border border-slate-100 text-center">
           <p id="tracker-status-desc" class="text-xs font-bold text-slate-700">O entregador está preparando os pertences para iniciar a rota...</p>
-          <p id="tracker-subdesc" class="text-[9.5px] text-gray-400 font-semibold">Atualizado em tempo real pelo painel do motoboy</p>
+          <p id="tracker-subdesc" class="text-[9.5px] text-gray-400 font-semibold">Atualizado em tempo real pelo painel</p>
+        </div>
+        
+        <!-- Uber Direct Link Container (hidden by default) -->
+        <div id="uber-tracking-container" class="hidden text-center mt-3">
+          <a id="uber-tracking-link" href="#" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-black hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all cursor-pointer">
+            🚗 Rastrear com Uber
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+            </svg>
+          </a>
         </div>
       </div>
 
@@ -1154,6 +1164,19 @@
               descEl.textContent = "Chegou! O motoboy está no seu portão te aguardando com a entrega.";
             }
           }
+
+          // Show Uber Tracking link if available
+          const uberContainer = document.getElementById('uber-tracking-container');
+          const uberLink = document.getElementById('uber-tracking-link');
+          if (uberContainer && uberLink) {
+            if (order.uberTrackingUrl) {
+              uberContainer.classList.remove('hidden');
+              uberLink.href = order.uberTrackingUrl;
+            } else {
+              uberContainer.classList.add('hidden');
+            }
+          }
+
         } else {
           proximityPanel.classList.add('hidden');
         }

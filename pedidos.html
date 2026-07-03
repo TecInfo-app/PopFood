@@ -450,6 +450,20 @@
                 </button>
               </div>
 
+              <!-- Uber Direct Config Button -->
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+                  🚗 Uber Direct
+                </span>
+                <button
+                  onclick="openUberDirectModal()"
+                  class="bg-black hover:bg-slate-800 text-white text-[11px] font-bold py-1.5 px-3 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                  title="Configurar credenciais da Uber Direct API"
+                >
+                  <span>Configurar</span>
+                </button>
+              </div>
+
               <!-- Printer Config -->
               <div class="flex items-center justify-between pt-1">
                 <span class="text-xs font-semibold text-gray-700">🖨️ Configuração Térmica</span>
@@ -668,6 +682,52 @@
       <!-- Closing content wrapper -->
     </div>
     <!-- Closing layout container -->
+
+    <!-- MODAL: UBER DIRECT SETTINGS -->
+    <div
+      id="uber-direct-modal"
+      class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden backdrop-blur-xs"
+    >
+      <div
+        class="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col relative transform scale-95 duration-200 transition-transform"
+      >
+        <button
+          onclick="closeUberDirectModal()"
+          class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors z-10 cursor-pointer"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+        <div class="p-6 pb-2 border-b border-gray-50 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-black flex items-center justify-center shadow-sm">
+            <span class="text-white text-lg">🚗</span>
+          </div>
+          <div>
+            <h2 class="font-display font-bold text-lg text-gray-800 tracking-tight">Uber Direct API</h2>
+            <div class="text-[10px] text-gray-400 font-mono">Configurações de Integração</div>
+          </div>
+        </div>
+        <div class="p-6 overflow-y-auto space-y-4">
+          <div class="space-y-1">
+            <label class="block text-xs font-bold text-gray-700">ID de cliente do desenvolvedor (Client ID)</label>
+            <input type="text" id="uber-client-id" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:border-black focus:outline-none transition-all" placeholder="Ex: C_TmOb4cwWRXY...">
+          </div>
+          <div class="space-y-1">
+            <label class="block text-xs font-bold text-gray-700">ID do usuário (Customer ID)</label>
+            <input type="text" id="uber-customer-id" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:border-black focus:outline-none transition-all" placeholder="Ex: 2d3bdca3-516f...">
+          </div>
+          <div class="space-y-1">
+            <label class="block text-xs font-bold text-gray-700">Client Secret</label>
+            <input type="password" id="uber-client-secret" class="w-full text-xs p-3 border border-gray-200 rounded-xl focus:border-black focus:outline-none transition-all" placeholder="••••••••••••••••••••••••">
+          </div>
+        </div>
+        <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-2">
+          <button onclick="closeUberDirectModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 bg-gray-200 hover:bg-gray-300 transition-colors cursor-pointer">Cancelar</button>
+          <button onclick="saveUberDirectSettings()" id="btn-save-uber" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-black hover:bg-slate-800 transition-colors cursor-pointer shadow-sm">Salvar Dados</button>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: DETALHES COMPLETOS DO PEDIDO (Drawer popup) -->
     <div
@@ -1479,6 +1539,61 @@
         }
       };
 
+      // Uber Direct settings toggler & logic
+      window.openUberDirectModal = async function() {
+        const modal = document.getElementById("uber-direct-modal");
+        if(modal) modal.classList.remove("hidden");
+        // Load current data from profile if exists
+        try {
+          const profileDoc = await getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId));
+          if(profileDoc.exists()) {
+            const data = profileDoc.data();
+            if(data.uberDirect) {
+              document.getElementById("uber-client-id").value = data.uberDirect.clientId || "";
+              document.getElementById("uber-customer-id").value = data.uberDirect.customerId || "";
+              document.getElementById("uber-client-secret").value = data.uberDirect.clientSecret || "";
+            }
+          }
+        } catch(e) { console.error("Error loading Uber Direct config", e); }
+      };
+
+      window.closeUberDirectModal = function() {
+        const modal = document.getElementById("uber-direct-modal");
+        if(modal) modal.classList.add("hidden");
+      };
+
+      window.saveUberDirectSettings = async function() {
+        const clientId = document.getElementById("uber-client-id").value.trim();
+        const customerId = document.getElementById("uber-customer-id").value.trim();
+        const clientSecret = document.getElementById("uber-client-secret").value.trim();
+        
+        try {
+          const btn = document.getElementById("btn-save-uber");
+          const originalText = btn.innerText;
+          btn.innerText = "Salvando...";
+          btn.disabled = true;
+
+          const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+          await updateDoc(profileRef, {
+            uberDirect: {
+              clientId,
+              customerId,
+              clientSecret
+            }
+          });
+          
+          btn.innerText = "Salvo com sucesso!";
+          setTimeout(() => {
+            btn.innerText = originalText;
+            btn.disabled = false;
+            closeUberDirectModal();
+          }, 1500);
+        } catch (error) {
+          console.error("Erro ao salvar config da Uber", error);
+          alert("Erro ao salvar. Tente novamente.");
+        }
+      };
+
       // Settings dropdown toggle & click outside logic
       window.toggleSettingsDropdown = function (event) {
         if (event) event.stopPropagation();
@@ -2155,6 +2270,21 @@
           <button onclick="triggerThermalComandaPrintById('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Imprimir Comanda">
             🖨️
           </button>
+
+          <!-- Uber Direct -->
+          ${
+            order.uberTrackingUrl
+              ? `
+              <a href="${order.uberTrackingUrl}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull} flex items-center justify-center gap-1" title="Acompanhar Entrega Uber">
+                📍 <span class="font-bold sm:hidden">Rastreio</span>
+              </a>
+              `
+              : `
+              <button onclick="solicitarUberDirect('${order.id}')" class="bg-black hover:bg-slate-800 text-white p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Chamar Uber Direct">
+                🚗
+              </button>
+              `
+          }
           
           ${
             order.status === "Pendente"
@@ -2236,11 +2366,34 @@
           let fcmToken = null;
           let orderNumber = orderId.substring(0, 5).toUpperCase();
           let isPickup = false;
+          let uberDeliveryId = null;
           if (orderSnap.exists()) {
              const data = orderSnap.data();
              fcmToken = data.fcmToken;
              isPickup = data.isPickup || false;
+             uberDeliveryId = data.uberDeliveryId;
              if (data.shortId) orderNumber = data.shortId;
+          }
+
+          if (nextState === "Cancelado" && uberDeliveryId) {
+             try {
+                const cancelRes = await fetch('/api/uber-direct/cancelar-entrega', {
+                   method: 'POST',
+                   headers: { 'Content-Type': 'application/json' },
+                   body: JSON.stringify({ 
+                      deliveryId: uberDeliveryId,
+                      storeId: window.currentStoreId 
+                   })
+                });
+                const cancelData = await cancelRes.json();
+                if (!cancelRes.ok) {
+                   console.error("Erro ao cancelar entrega na Uber (não bloqueante):", cancelData);
+                } else {
+                   console.log("Entrega na Uber cancelada com sucesso.");
+                }
+             } catch(uberErr) {
+                console.error("Exceção ao cancelar entrega na Uber (não bloqueante):", uberErr);
+             }
           }
 
           const updatePayload = {
@@ -2745,12 +2898,11 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 }
               } else {
                 // Cancelar sem reembolso
+                await changeOrderStatus(order.id, "Cancelado");
                 await updateDoc(doc(db, COLLECTIONS.orders, order.id), {
-                  status: "Cancelado",
                   cancelReason: "Cancelado pelo restaurante — sem reembolso",
                   refunded: false,
                 });
-                if (window.notifyOrderUpdate) await window.notifyOrderUpdate(order.id, "Cancelado", order.fcmToken, order.shortId, order.isPickup);
               }
             } else {
               // Pedido sem pagamento online — cancelar normalmente
@@ -3792,6 +3944,71 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         const input = document.getElementById('store-chat-input');
         input.value = text;
         input.focus();
+      }
+
+      window.solicitarUberDirect = async function(orderId) {
+        const order = globalOrdersList.find((o) => o.id === orderId);
+        if (!order) return;
+
+        if (!confirm(`Confirmar solicitação de entrega via Uber para o pedido #${order.id}?`)) return;
+
+        // Format phone to E.164
+        let dropPhone = order.customer.phone ? order.customer.phone.replace(/\D/g, '') : '';
+        if (dropPhone.length === 10 || dropPhone.length === 11) {
+          dropPhone = '+55' + dropPhone;
+        } else if (dropPhone.length > 11 && !dropPhone.startsWith('55')) {
+          dropPhone = '+55' + dropPhone;
+        } else if (dropPhone.length > 11 && dropPhone.startsWith('55')) {
+          dropPhone = '+' + dropPhone;
+        } else {
+          dropPhone = '+5511999999999'; // Fallback
+        }
+
+        // Mapear dados para a Uber
+        const orderDetails = {
+          pickup_name: "Seu Restaurante", // Ajuste conforme necessário
+          pickup_address: "Avenida Conselheiro Aguiar, Boa Viagem - Recife/PE, Nº 2420", // Ajuste conforme necessário
+          pickup_phone_number: "+5511999999999", // Ajuste conforme necessário
+          dropoff_name: order.customer.name,
+          dropoff_address: order.customer.address,
+          dropoff_phone_number: dropPhone,
+          manifest_items: order.items.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            size: "small"
+          }))
+        };
+
+        try {
+          const response = await fetch('/api/uber-direct/criar-entrega', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              orderDetails,
+              storeId: window.currentStoreId 
+            })
+          });
+          const data = await response.json();
+          if (data.success) {
+            try {
+              const delivery = data.delivery;
+              await updateDoc(doc(db, COLLECTIONS.orders, orderId), {
+                uberDeliveryId: delivery.id,
+                uberTrackingUrl: delivery.tracking_url,
+                status: "Saiu para entrega"
+              });
+              alert('Entrega solicitada com sucesso! O status do pedido foi atualizado.');
+            } catch (err) {
+              console.error("Erro ao atualizar o pedido com os dados da Uber:", err);
+              alert("Entrega solicitada na Uber, mas falhou ao salvar o rastreio no pedido.");
+            }
+          } else {
+            alert('Erro ao solicitar entrega: ' + data.error);
+          }
+        } catch (error) {
+          console.error("Erro:", error);
+          alert('Erro ao comunicar com o servidor.');
+        }
       }
 
       window.sendStoreChatMessage = async function(e) {
