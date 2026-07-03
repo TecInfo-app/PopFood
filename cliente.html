@@ -3696,7 +3696,7 @@
         </div>
         <div class="flex items-center gap-2 mt-2">
           <span class="text-sm font-black text-brand-primary leading-none">${formattedPrice}</span>
-          ${formattedOriginalPrice ? `<span class="text-[10px] font-bold text-gray-400 line-through leading-none">${formattedOriginalPrice}</span>` : ""}
+          ${formattedOriginalPrice ? `<span class="text-[10px] font-bold text-gray-400 line-through leading-none">${formattedOriginalPrice}</span><span class="bg-red-50 text-red-600 border border-red-100 text-[8.5px] font-extrabold px-1.5 py-0.5 rounded-sm flex items-center gap-0.5 leading-none shrink-0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2.5 h-2.5"><path fill-rule="evenodd" d="M4.5 2A2.5 2.5 0 002 4.5v3.879a2.5 2.5 0 00.732 1.767l7.5 7.5a2.5 2.5 0 003.536 0l3.878-3.878a2.5 2.5 0 000-3.536l-7.5-7.5A2.5 2.5 0 008.38 2H4.5zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg> Oferta</span>` : ""}
         </div>
       `;
         card.appendChild(metaDiv);
@@ -3766,7 +3766,7 @@
             <p class="text-[9px] text-gray-400 font-medium mt-0.5 line-clamp-2 leading-[1.2]">${descStr}</p>
             <div class="flex items-center gap-1 mt-1">
               <span class="text-xs font-black text-brand-primary leading-none">${formattedPrice}</span>
-              ${formattedOriginalPrice ? `<span class="text-[8px] font-bold text-gray-400 line-through leading-none">${formattedOriginalPrice}</span>` : ""}
+              ${formattedOriginalPrice ? `<span class="text-[8px] font-bold text-gray-400 line-through leading-none">${formattedOriginalPrice}</span><span class="bg-red-50 text-red-600 border border-red-100 text-[7px] font-extrabold px-1 py-0.5 rounded-sm flex items-center gap-0.5 leading-none shrink-0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2"><path fill-rule="evenodd" d="M4.5 2A2.5 2.5 0 002 4.5v3.879a2.5 2.5 0 00.732 1.767l7.5 7.5a2.5 2.5 0 003.536 0l3.878-3.878a2.5 2.5 0 000-3.536l-7.5-7.5A2.5 2.5 0 008.38 2H4.5zM5 6a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg> Oferta</span>` : ""}
             </div>
           </div>
         `;
