@@ -2377,12 +2377,20 @@
 
           if (nextState === "Cancelado" && uberDeliveryId) {
              try {
-                const cancelRes = await fetch('/api/uber-direct/cancelar-entrega', {
+                const clientId = loadedRestaurantProfile?.uberDirect?.clientId || "";
+                const clientSecret = loadedRestaurantProfile?.uberDirect?.clientSecret || "";
+                const customerId = loadedRestaurantProfile?.uberDirect?.customerId || "";
+
+                const UBER_WORKER_URL = "https://worker-uber.iranildo-jobs.workers.dev";
+                const apiUrl = `${UBER_WORKER_URL}/cancelar-entrega`;
+                
+                const cancelRes = await fetch(apiUrl, {
                    method: 'POST',
                    headers: { 'Content-Type': 'application/json' },
                    body: JSON.stringify({ 
                       deliveryId: uberDeliveryId,
-                      storeId: window.currentStoreId 
+                      storeId: window.currentStoreId,
+                      clientId, clientSecret, customerId
                    })
                 });
                 const cancelData = await cancelRes.json();
@@ -3980,12 +3988,20 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         };
 
         try {
-          const response = await fetch('/api/uber-direct/criar-entrega', {
+          const clientId = loadedRestaurantProfile?.uberDirect?.clientId || "";
+          const clientSecret = loadedRestaurantProfile?.uberDirect?.clientSecret || "";
+          const customerId = loadedRestaurantProfile?.uberDirect?.customerId || "";
+
+          const UBER_WORKER_URL = "https://worker-uber.iranildo-jobs.workers.dev";
+          const apiUrl = `${UBER_WORKER_URL}/criar-entrega`;
+
+          const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               orderDetails,
-              storeId: window.currentStoreId 
+              storeId: window.currentStoreId,
+              clientId, clientSecret, customerId
             })
           });
           const data = await response.json();
