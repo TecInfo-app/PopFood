@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PopFood - A plataforma que transforma seu restaurante</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: #0a0a0a; overflow-x: hidden; }
+        
+        .gradient-text { background: linear-gradient(135deg, #f97316, #ec4899, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .gradient-bg { background: linear-gradient(135deg, #f97316, #ec4899); }
+        
+        .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); }
+        .glass-dark { background: rgba(0,0,0,0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); }
+        
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-15px); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scrollDown { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .animate-float { animation: float 4s ease-in-out infinite; }
+        .animate-slideUp { animation: slideUp 0.8s ease-out forwards; }
+        .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
+        
+        .btn-primary { background: linear-gradient(135deg, #f97316, #ec4899); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .btn-primary:hover { transform: scale(1.05) translateY(-3px); box-shadow: 0 20px 60px rgba(249,115,22,0.3); }
+        .btn-primary:active { transform: scale(0.95); }
+        
+        .btn-outline { border: 2px solid rgba(255,255,255,0.15); transition: all 0.3s; }
+        .btn-outline:hover { background: rgba(255,255,255,0.08); border-color: #f97316; transform: translateY(-3px); }
+        
+        .feature-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: default; }
+        .feature-card:hover { transform: translateY(-10px); box-shadow: 0 30px 80px rgba(249,115,22,0.08); }
+        .feature-card:hover .feature-icon { transform: scale(1.1) rotate(-5deg); }
+        .feature-icon { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: inline-block; }
+        
+        .pricing-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .pricing-card:hover { transform: translateY(-8px); box-shadow: 0 30px 80px rgba(249,115,22,0.08); }
+        .pricing-card.popular { border: 2px solid rgba(249,115,22,0.4); box-shadow: 0 0 60px rgba(249,115,22,0.05); }
+        
+        .testimonial-card { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .testimonial-card:hover { transform: translateY(-5px); border-color: rgba(249,115,22,0.3); }
+        
+        .modal-overlay { background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); }
+        .modal-content { animation: slideUp 0.4s ease-out; }
+
+        .phone-mockup {
+            width: 320px;
+            height: 580px;
+            border-radius: 40px;
+            background: #1a1a1a;
+            padding: 14px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+            position: relative;
+            margin: 0 auto;
+        }
+        .phone-mockup .screen {
+            width: 100%;
+            height: 100%;
+            border-radius: 28px;
+            overflow: hidden;
+            background: #0a0a0a;
+            position: relative;
+        }
+        .phone-mockup .screen img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .phone-mockup .notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 28px;
+            background: #0a0a0a;
+            border-radius: 0 0 16px 16px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        .phone-mockup .notch .camera { width: 8px; height: 8px; background: #1a1a3a; border-radius: 50%; border: 1px solid #2a2a4a; }
+        .phone-mockup .notch .speaker { width: 40px; height: 4px; background: #1a1a3a; border-radius: 4px; }
+        
+        .phone-mockup .screen .scroll-wrapper {
+            height: 100%;
+            overflow-y: hidden;
+            position: relative;
+        }
+        .phone-mockup .screen .scroll-wrapper .scroll-content {
+            animation: scrollDown 35s linear infinite;
+        }
+        .phone-mockup .screen .scroll-wrapper .scroll-content:hover {
+            animation-play-state: paused;
+        }
+        .phone-mockup .screen .scroll-wrapper .fade-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(to bottom, #0a0a0a, transparent);
+            z-index: 5;
+            pointer-events: none;
+        }
+        .phone-mockup .screen .scroll-wrapper .fade-bottom {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: linear-gradient(to top, #0a0a0a, transparent);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #f97316, #ec4899); border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<!-- ============================ HEADER ============================ -->
+<header class="fixed top-0 left-0 right-0 z-50 glass-dark border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <!-- Ícone personalizado PopFood -->
+            <div class="w-25 h-10 rounded-xl flex items-center justify-center">
+                <img src="https://www.dropbox.com/scl/fi/ohbjh5rnj8q3k9kl3bh0d/Gemini_Generated_Image_e9jpz4e9jpz4e9jp-removebg-preview.png?rlkey=nyvd8ukqebhihs3zm01bwpzpu&st=235fafjl&raw=1" alt="PopFood" class="w-full h-full object-contain" onerror="this.style.display='none'">
+            </div>
+            <span class="text-xl font-bold text-white">Pop<span class="gradient-text">Food</span></span>
+        </div>
+        <nav class="hidden md:flex items-center gap-8 text-sm">
+            <a href="#features" class="text-white/60 hover:text-white transition-all">Funcionalidades</a>
+            <a href="#testimonials" class="text-white/60 hover:text-white transition-all">Depoimentos</a>
+            <a href="#pricing" class="text-white/60 hover:text-white transition-all">Preços</a>
+            <a href="#faq" class="text-white/60 hover:text-white transition-all">FAQ</a>
+        </nav>
+        <div class="flex items-center gap-3">
+            <a href="index.html" class="hidden sm:block text-white/60 hover:text-white text-sm transition-all"> </a>
+            <button onclick="openModal()" class="btn-primary text-white font-bold px-4 py-2.5 rounded-xl text-sm shadow-lg">Começar Agora</button>
+        </div>
+    </div>
+</header>
+
+<!-- ============================ HERO ============================ -->
+<section class="relative min-h-screen flex items-center pt-20 overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-b from-orange-500/5 via-transparent to-transparent"></div>
+    <div class="absolute top-0 right-0 w-[600px] h-[600px] rounded-full bg-orange-500/5 blur-3xl"></div>
+    <div class="absolute bottom-0 left-0 w-[500px] h-[500px] rounded-full bg-pink-500/5 blur-3xl"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-purple-500/5 blur-3xl"></div>
+    
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 relative z-10 w-full">
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <div class="space-y-8 animate-slideUp">
+                <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-white/10">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span class="text-white/60 text-xs font-medium">+50 restaurantes já confiam</span>
+                </div>
+                <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tight">
+                    <span class="text-white">Sua comida,</span><br>
+                    <span class="gradient-text">seu delivery</span>
+                </h1>
+                <p class="text-white/50 text-lg max-w-lg leading-relaxed">
+                    A plataforma completa para restaurantes venderem diretamente, sem taxas abusivas. <span class="text-white/70 font-medium">Sem intermediários, sem surpresas.</span>
+                </p>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button onclick="openModal()" class="btn-primary text-white font-bold px-8 py-4 rounded-xl text-center shadow-lg hover:shadow-2xl transition-all flex items-center justify-center gap-2 group">
+                        Começar Agora
+                        <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                    </button>
+                    <a href="#features" class="btn-outline text-white/70 font-medium px-8 py-4 rounded-xl text-center hover:text-white transition-all">Ver Funcionalidades</a>
+                </div>
+                <div class="flex items-center gap-6 pt-4">
+                    <div class="flex -space-x-2">
+                        <div class="w-10 h-10 rounded-full gradient-bg flex items-center justify-center text-white text-xs font-bold border-2 border-black">5</div>
+                        <div class="w-10 h-10 rounded-full gradient-bg flex items-center justify-center text-white text-xs font-bold border-2 border-black">★</div>
+                        <div class="w-10 h-10 rounded-full gradient-bg flex items-center justify-center text-white text-xs font-bold border-2 border-black">4.9</div>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1"><span class="text-yellow-400">★★★★★</span><span class="text-white/40 text-sm">(2.4k)</span></div>
+                        <p class="text-white/40 text-xs">Avaliação média dos nossos clientes</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mockup do celular com a imagem do cardápio -->
+            <div class="relative flex justify-center">
+                <div class="phone-mockup animate-float">
+                    <div class="screen">
+                        <div class="notch"><div class="camera"></div><div class="speaker"></div></div>
+                        <div class="scroll-wrapper">
+                            <div class="scroll-content">
+                                <img src="https://www.dropbox.com/scl/fi/fnugjg6wb3hv5v5zjdvam/Xiaomi-Mi-11i-tecinfo-app.github.io.png?rlkey=nzn1owzv3x1w9ejnjrojwken8&st=ams2pxt6&raw=1" alt="Cardápio Cantino do Tony" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%221000%22%3E%3Crect fill=%22%231a1a1a%22 width=%22300%22 height=%221000%22/%3E%3Ctext x=%2230%22 y=%2240%22 fill=%22%23ffffff%22 font-size=%2222%22 font-weight=%22bold%22%3ECantino do Tony%3C/text%3E%3Ctext x=%2230%22 y=%2270%22 fill=%22%23f97316%22 font-size=%2216%22%3E⭐ 5.0 (1)%3C/text%3E%3Crect x=%2230%22 y=%2290%22 width=%22240%22 height=%222%22 fill=%22%23333%22/%3E%3Ctext x=%2230%22 y=%22120%22 fill=%22%23ffffff%22 font-size=%2218%22 font-weight=%22bold%22%3E🍽️ Produtos em Destaque%3C/text%3E%3Ctext x=%2230%22 y=%22150%22 fill=%22%23cccccc%22 font-size=%2214%22%3EAbacaxi do parrilleiro - R$ 27,50%3C/text%3E%3Ctext x=%2230%22 y=%22175%22 fill=%22%23cccccc%22 font-size=%2214%22%3EAlto Tierruca Gran Reserva - R$ 129,90%3C/text%3E%3Ctext x=%2230%22 y=%22205%22 fill=%22%23f97316%22 font-size=%2214%22 font-weight=%22bold%22%3E🥘 ENTRADAS%3C/text%3E%3Ctext x=%2230%22 y=%22230%22 fill=%22%23cccccc%22 font-size=%2214%22%3EAmeijoas à Bulhão Pato - R$ 44,95%3C/text%3E%3Ctext x=%2230%22 y=%22255%22 fill=%22%23cccccc%22 font-size=%2214%22%3EBolinhos de Bacalhau - R$ 64,95%3C/text%3E%3Ctext x=%2230%22 y=%22280%22 fill=%22%23cccccc%22 font-size=%2214%22%3EGambas al Pil Pil - R$ 82,95%3C/text%3E%3Ctext x=%2230%22 y=%22310%22 fill=%22%23f97316%22 font-size=%2214%22 font-weight=%22bold%22%3E🍝 MASSAS%3C/text%3E%3Ctext x=%2230%22 y=%22335%22 fill=%22%23cccccc%22 font-size=%2214%22%3EGnocchi - R$ 49,95%3C/text%3E%3Ctext x=%2230%22 y=%22360%22 fill=%22%23cccccc%22 font-size=%2214%22%3ESpaghetti al Ragù - R$ 49,95%3C/text%3E%3Ctext x=%2230%22 y=%22390%22 fill=%22%23f97316%22 font-size=%2214%22 font-weight=%22bold%22%3E🐟 PESCADOS%3C/text%3E%3Ctext x=%2230%22 y=%22415%22 fill=%22%23cccccc%22 font-size=%2214%22%3EBacalhava Lagareiro - R$ 242,95%3C/text%3E%3Ctext x=%2230%22 y=%22440%22 fill=%22%23cccccc%22 font-size=%2214%22%3EGamberi al Cartoccio - R$ 89,95%3C/text%3E%3Ctext x=%2230%22 y=%22470%22 fill=%22%23f97316%22 font-size=%2214%22 font-weight=%22bold%22%3E🥩 CARNES%3C/text%3E%3Ctext x=%2230%22 y=%22495%22 fill=%22%23cccccc%22 font-size=%2214%22%3EFilletino Leonardo - R$ 76,95%3C/text%3E%3Ctext x=%2230%22 y=%22520%22 fill=%22%23cccccc%22 font-size=%2214%22%3EMedaglioni alla Casalinga - R$ 88,95%3C/text%3E%3Ctext x=%2230%22 y=%22545%22 fill=%22%23cccccc%22 font-size=%2214%22%3ENuldmann - R$ 89,95%3C/text%3E%3Ctext x=%2230%22 y=%22570%22 fill=%22%23cccccc%22 font-size=%2214%22%3ETornedor ao Porto - R$ 91,95%3C/text%3E%3Ctext x=%2230%22 y=%22600%22 fill=%22%23f97316%22 font-size=%2214%22 font-weight=%22bold%22%3E🍰 SOBREMESAS%3C/text%3E%3Ctext x=%2230%22 y=%22625%22 fill=%22%23cccccc%22 font-size=%2214%22%3EBrownnie Duvinni - R$ 25,95%3C/text%3E%3Ctext x=%2230%22 y=%22650%22 fill=%22%23cccccc%22 font-size=%2214%22%3EChurros de Banana - R$ 29,95%3C/text%3E%3Ctext x=%2230%22 y=%22675%22 fill=%22%23cccccc%22 font-size=%2214%22%3EPudim de leite - R$ 16,95%3C/text%3E%3C/svg%3E'">
+                            </div>
+                            <div class="fade-top"></div>
+                            <div class="fade-bottom"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="absolute -top-6 -right-6 glass rounded-2xl px-4 py-3 border border-orange-500/20 shadow-xl animate-float" style="animation-delay: -1s;">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🚀</span>
+                        <div><p class="text-white font-bold text-sm">+300%</p><p class="text-white/40 text-[10px]">aumento em vendas</p></div>
+                    </div>
+                </div>
+                <div class="absolute -bottom-4 -left-6 glass rounded-2xl px-4 py-3 border border-green-500/20 shadow-xl animate-float" style="animation-delay: -2s;">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">⭐</span>
+                        <div><p class="text-white font-bold text-sm">4.9★</p><p class="text-white/40 text-[10px]">clientes satisfeitos</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-16 pt-8 border-t border-white/5">
+            <p class="text-white/30 text-xs text-center mb-4 tracking-widest uppercase">Marcas que confiam na PopFood</p>
+            <div class="overflow-hidden">
+                <div class="flex gap-12 justify-center flex-wrap">
+                    <span class="text-white/20 font-bold text-lg whitespace-nowrap">🍔 Burger Prime</span>
+                    <span class="text-white/20 font-bold text-lg whitespace-nowrap">🍕 Pizza Express</span>
+                    <span class="text-white/20 font-bold text-lg whitespace-nowrap">🌮 Taco One</span>
+                    <span class="text-white/20 font-bold text-lg whitespace-nowrap">🍣 Sushi Star</span>
+                    <span class="text-white/20 font-bold text-lg whitespace-nowrap">🥗 Sabor Gourmet</span>
+                    <span class="text-white/20 font-bold text-lg whitespace-nowrap">🍜 Cantino do Tony</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ NÚMEROS ============================ -->
+<section class="py-16 border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            <div><p class="text-4xl font-extrabold gradient-text">50+</p><p class="text-white/40 text-sm">Restaurantes ativos</p></div>
+            <div><p class="text-4xl font-extrabold gradient-text">5k+</p><p class="text-white/40 text-sm">Pedidos realizados</p></div>
+            <div><p class="text-4xl font-extrabold gradient-text">4.9★</p><p class="text-white/40 text-sm">Avaliação média</p></div>
+            <div><p class="text-4xl font-extrabold gradient-text">150%</p><p class="text-white/40 text-sm">Crescimento médio</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ FUNCIONALIDADES ============================ -->
+<section id="features" class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="text-center mb-16">
+            <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold gradient-bg text-white">Tudo o que você precisa</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-white mt-4">Por que escolher a <span class="gradient-text">PopFood</span>?</h2>
+            <p class="text-white/40 max-w-xl mx-auto mt-3">A plataforma que resolve todos os problemas do seu delivery em um só lugar.</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="feature-card glass p-6 rounded-2xl border border-white/5">
+                <div class="feature-icon w-14 h-14 rounded-2xl gradient-bg flex items-center justify-center text-2xl mb-4">📱</div>
+                <h3 class="text-white font-bold text-lg">Cardápio Digital</h3>
+                <p class="text-white/40 text-sm mt-2 leading-relaxed">Gerencie produtos, categorias e complementos com total flexibilidade. Atualize em tempo real.</p>
+            </div>
+            <div class="feature-card glass p-6 rounded-2xl border border-white/5">
+                <div class="feature-icon w-14 h-14 rounded-2xl gradient-bg flex items-center justify-center text-2xl mb-4">💰</div>
+                <h3 class="text-white font-bold text-lg">Sem Taxas Abusivas</h3>
+                <p class="text-white/40 text-sm mt-2 leading-relaxed">Você recebe 100% do valor do pedido. Sem comissões, sem taxas escondidas.</p>
+            </div>
+            <div class="feature-card glass p-6 rounded-2xl border border-white/5">
+                <div class="feature-icon w-14 h-14 rounded-2xl gradient-bg flex items-center justify-center text-2xl mb-4">📊</div>
+                <h3 class="text-white font-bold text-lg">Relatórios Completos</h3>
+                <p class="text-white/40 text-sm mt-2 leading-relaxed">Acompanhe vendas, produtos mais vendidos e faturamento com gráficos em tempo real.</p>
+            </div>
+            <div class="feature-card glass p-6 rounded-2xl border border-white/5">
+                <div class="feature-icon w-14 h-14 rounded-2xl gradient-bg flex items-center justify-center text-2xl mb-4">🛵</div>
+                <h3 class="text-white font-bold text-lg">Entrega Inteligente</h3>
+                <p class="text-white/40 text-sm mt-2 leading-relaxed">Calcule taxas automaticamente por distância. Defina áreas de cobertura.</p>
+            </div>
+            <div class="feature-card glass p-6 rounded-2xl border border-white/5">
+                <div class="feature-icon w-14 h-14 rounded-2xl gradient-bg flex items-center justify-center text-2xl mb-4">🎟️</div>
+                <h3 class="text-white font-bold text-lg">Cupons Promocionais</h3>
+                <p class="text-white/40 text-sm mt-2 leading-relaxed">Crie cupons de desconto para fidelizar clientes e aumentar as vendas.</p>
+            </div>
+            <div class="feature-card glass p-6 rounded-2xl border border-white/5">
+                <div class="feature-icon w-14 h-14 rounded-2xl gradient-bg flex items-center justify-center text-2xl mb-4">🖨️</div>
+                <h3 class="text-white font-bold text-lg">Impressão Automática</h3>
+                <p class="text-white/40 text-sm mt-2 leading-relaxed">Imprima pedidos automaticamente ao recebê-los. Simplifique sua cozinha.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ DEPOIMENTOS ============================ -->
+<section id="testimonials" class="py-20 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="text-center mb-16">
+            <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold gradient-bg text-white">Depoimentos</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-white mt-4">O que nossos <span class="gradient-text">clientes</span> dizem</h2>
+            <p class="text-white/40 max-w-xl mx-auto mt-3">Histórias reais de quem transformou seu delivery com a PopFood.</p>
+        </div>
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="testimonial-card glass p-6 rounded-2xl border border-white/5 animate-fadeIn">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold">CS</div>
+                    <div><h4 class="text-white font-semibold">Carlos Silva</h4><p class="text-white/30 text-xs">Sabor Gourmet</p></div>
+                </div>
+                <div class="flex text-yellow-400 text-sm mb-2">★★★★★</div>
+                <p class="text-white/60 text-sm leading-relaxed">"A PopFood transformou nosso delivery. Em 2 meses, dobramos nossas vendas online. A interface é incrível e os clientes adoram!"</p>
+            </div>
+            <div class="testimonial-card glass p-6 rounded-2xl border border-white/5 animate-fadeIn" style="animation-delay:0.1s">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold">AM</div>
+                    <div><h4 class="text-white font-semibold">Ana Martins</h4><p class="text-white/30 text-xs">Burger Prime</p></div>
+                </div>
+                <div class="flex text-yellow-400 text-sm mb-2">★★★★★</div>
+                <p class="text-white/60 text-sm leading-relaxed">"Economizamos mais de R$ 5.000 em taxas no primeiro mês. Simplesmente incrível. Recomendo para todos os restaurantes!"</p>
+            </div>
+            <div class="testimonial-card glass p-6 rounded-2xl border border-white/5 animate-fadeIn" style="animation-delay:0.2s">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold">RP</div>
+                    <div><h4 class="text-white font-semibold">Ricardo Pereira</h4><p class="text-white/30 text-xs">Pizza Express</p></div>
+                </div>
+                <div class="flex text-yellow-400 text-sm mb-2">★★★★★</div>
+                <p class="text-white/60 text-sm leading-relaxed">"A gestão de pedidos ficou muito mais eficiente. A impressão automática na cozinha foi um game changer para nós."</p>
+            </div>
+            <div class="testimonial-card glass p-6 rounded-2xl border border-white/5 animate-fadeIn" style="animation-delay:0.3s">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold">FS</div>
+                    <div><h4 class="text-white font-semibold">Fernanda Santos</h4><p class="text-white/30 text-xs">Sushi Star</p></div>
+                </div>
+                <div class="flex text-yellow-400 text-sm mb-2">★★★★★</div>
+                <p class="text-white/60 text-sm leading-relaxed">"Os relatórios em tempo real nos ajudaram a entender melhor nossos clientes e aumentar o ticket médio em 40%."</p>
+            </div>
+            <div class="testimonial-card glass p-6 rounded-2xl border border-white/5 animate-fadeIn" style="animation-delay:0.4s">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold">LO</div>
+                    <div><h4 class="text-white font-semibold">Leandro Oliveira</h4><p class="text-white/30 text-xs">Taco One</p></div>
+                </div>
+                <div class="flex text-yellow-400 text-sm mb-2">★★★★★</div>
+                <p class="text-white/60 text-sm leading-relaxed">"O suporte da PopFood é excepcional. Sempre disponíveis para ajudar. A plataforma é estável e fácil de usar."</p>
+            </div>
+            <div class="testimonial-card glass p-6 rounded-2xl border border-white/5 animate-fadeIn" style="animation-delay:0.5s">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold">MR</div>
+                    <div><h4 class="text-white font-semibold">Mariana Rocha</h4><p class="text-white/30 text-xs">Cantino do Tony</p></div>
+                </div>
+                <div class="flex text-yellow-400 text-sm mb-2">★★★★★</div>
+                <p class="text-white/60 text-sm leading-relaxed">"Nossos clientes adoraram o novo cardápio digital. A experiência de compra ficou muito mais moderna e intuitiva."</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ PREÇOS ============================ -->
+<section id="pricing" class="py-20 border-t border-white/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+        <div class="text-center mb-16">
+            <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold gradient-bg text-white">Planos</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-white mt-4">Escolha o plano <span class="gradient-text">ideal</span></h2>
+            <p class="text-white/40 max-w-xl mx-auto mt-3">Comece grátis e cresça com a gente. Sem taxas escondidas.</p>
+        </div>
+        <div class="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div class="pricing-card glass p-6 rounded-2xl border border-white/5 text-center">
+                <h3 class="text-white font-bold">Starter</h3>
+                <div class="mt-4"><span class="text-4xl font-extrabold text-white">R$ 0</span><span class="text-white/30">/mês</span></div>
+                <p class="text-white/40 text-sm mt-2">Para começar seu delivery</p>
+                <ul class="mt-6 space-y-3 text-left">
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Até 50 pedidos/mês</li>
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Cardápio básico</li>
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> 1 usuário</li>
+                    <li class="flex items-center gap-2 text-white/40 text-sm"><span class="text-white/20">✕</span> Relatórios</li>
+                    <li class="flex items-center gap-2 text-white/40 text-sm"><span class="text-white/20">✕</span> Suporte prioritário</li>
+                </ul>
+                <button onclick="openModal()" class="mt-6 block w-full btn-outline text-white/70 font-medium py-3 rounded-xl hover:text-white hover:border-orange-500 transition-all">Começar grátis</button>
+            </div>
+            <div class="pricing-card popular glass p-6 rounded-2xl border-2 border-orange-500/20 text-center relative">
+                <div class="gradient-bg text-white text-xs font-bold px-4 py-1 rounded-full absolute -top-3 left-1/2 -translate-x-1/2">MAIS POPULAR</div>
+                <h3 class="text-white font-bold">Pro</h3>
+                <div class="mt-4"><span class="text-4xl font-extrabold text-white">R$ 97</span><span class="text-white/30">/mês</span></div>
+                <p class="text-white/40 text-sm mt-2">Para restaurantes em crescimento</p>
+                <ul class="mt-6 space-y-3 text-left">
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Pedidos ilimitados</li>
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Cardápio completo</li>
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Até 5 usuários</li>
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Relatórios avançados</li>
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Suporte prioritário</li>
+                </ul>
+                <button onclick="openModal()" class="mt-6 block w-full btn-primary text-white font-bold py-3 rounded-xl shadow-lg">Começar Agora</button>
+            </div>
+            <div class="pricing-card glass p-6 rounded-2xl border border-white/5 text-center">
+                <h3 class="text-white font-bold">Enterprise</h3>
+                <div class="mt-4"><span class="text-4xl font-extrabold text-white">Custom</span></div>
+                <p class="text-white/40 text-sm mt-2">Para grandes operações</p>
+                <ul class="mt-6 space-y-3 text-left">
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Tudo do Pro</li>
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Usuários ilimitados</li>
+                    <li class="flex items-center gap-2 text-white/70 text-sm"><span class="text-green-400">✓</span> Gestor de conta</li>
+                </ul>
+                <button onclick="openModal()" class="mt-6 block w-full btn-outline text-white/70 font-medium py-3 rounded-xl hover:text-white hover:border-orange-500 transition-all">Falar com vendas</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ FAQ ============================ -->
+<section id="faq" class="py-20 border-t border-white/5">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6">
+        <div class="text-center mb-12">
+            <span class="inline-block px-4 py-1.5 rounded-full text-xs font-semibold gradient-bg text-white">Dúvidas</span>
+            <h2 class="text-3xl font-bold text-white mt-4">Perguntas <span class="gradient-text">frequentes</span></h2>
+            <p class="text-white/40 mt-2">Tire suas dúvidas sobre a plataforma</p>
+        </div>
+        <div class="space-y-3">
+            <div class="faq-item glass p-4 rounded-xl border border-white/5">
+                <details>
+                    <summary class="text-white font-medium cursor-pointer">Como funciona a migração do meu cardápio?</summary>
+                    <div class="text-white/50 text-sm mt-3 leading-relaxed">Você pode cadastrar seus produtos manualmente ou importar via planilha. Nossa equipe oferece suporte completo durante a migração.</div>
+                </details>
+            </div>
+            <div class="faq-item glass p-4 rounded-xl border border-white/5">
+                <details>
+                    <summary class="text-white font-medium cursor-pointer">Preciso de um site próprio?</summary>
+                    <div class="text-white/50 text-sm mt-3 leading-relaxed">Não! A PopFood já inclui uma página de vendas completa para seus clientes. Você só precisa compartilhar o link.</div>
+                </details>
+            </div>
+            <div class="faq-item glass p-4 rounded-xl border border-white/5">
+                <details>
+                    <summary class="text-white font-medium cursor-pointer">Quais formas de pagamento são aceitas?</summary>
+                    <div class="text-white/50 text-sm mt-3 leading-relaxed">O cliente pode escolher entre Cartão, Dinheiro ou Pix. O pagamento é processado diretamente com o cliente.</div>
+                </details>
+            </div>
+            <div class="faq-item glass p-4 rounded-xl border border-white/5">
+                <details>
+                    <summary class="text-white font-medium cursor-pointer">Posso cancelar a qualquer momento?</summary>
+                    <div class="text-white/50 text-sm mt-3 leading-relaxed">Sim! Sem multas, sem taxas de cancelamento. Seu plano pode ser cancelado a qualquer momento.</div>
+                </details>
+            </div>
+            <div class="faq-item glass p-4 rounded-xl border border-white/5">
+                <details>
+                    <summary class="text-white font-medium cursor-pointer">A PopFood oferece suporte técnico?</summary>
+                    <div class="text-white/50 text-sm mt-3 leading-relaxed">Sim! Temos uma equipe dedicada para ajudar você com qualquer dúvida ou problema, 24/7.</div>
+                </details>
+            </div>
+            <div class="faq-item glass p-4 rounded-xl border border-white/5">
+                <details>
+                    <summary class="text-white font-medium cursor-pointer">Preciso de conhecimento técnico para usar?</summary>
+                    <div class="text-white/50 text-sm mt-3 leading-relaxed">Não! A plataforma foi desenvolvida para ser intuitiva e fácil de usar. Qualquer pessoa pode gerenciar o cardápio e os pedidos.</div>
+                </details>
+            </div>
+            <div class="faq-item glass p-4 rounded-xl border border-white/5">
+                <details>
+                    <summary class="text-white font-medium cursor-pointer">Como funciona a impressão automática?</summary>
+                    <div class="text-white/50 text-sm mt-3 leading-relaxed">Quando um pedido é recebido, a comanda é impressa automaticamente na sua cozinha. Você pode ativar/desativar a qualquer momento.</div>
+                </details>
+            </div>
+            <div class="faq-item glass p-4 rounded-xl border border-white/5">
+                <details>
+                    <summary class="text-white font-medium cursor-pointer">Posso testar a plataforma antes de assinar?</summary>
+                    <div class="text-white/50 text-sm mt-3 leading-relaxed">Sim! Oferecemos um período de teste gratuito de 7 dias. Sem compromisso, sem necessidade de cartão de crédito.</div>
+                </details>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ CTA FINAL ============================ -->
+<section class="py-20 border-t border-white/5">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+        <div class="glass p-12 rounded-3xl border border-white/10 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-64 h-64 rounded-full bg-orange-500/10 blur-2xl"></div>
+            <div class="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-pink-500/10 blur-2xl"></div>
+            <div class="relative z-10">
+                <span class="inline-block text-5xl mb-4">🚀</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-white">Pronto para <span class="gradient-text">transformar</span> seu delivery?</h2>
+                <p class="text-white/40 max-w-xl mx-auto mt-3">Junte-se a + restaurantes que já estão vendendo mais com a PopFood.</p>
+                <div class="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+                    <button onclick="openModal()" class="btn-primary text-white font-bold px-10 py-4 rounded-xl shadow-lg hover:shadow-2xl transition-all">Começar Agora</button>
+                    <a href="#features" class="btn-outline text-white/70 font-medium px-10 py-4 rounded-xl hover:text-white transition-all">Ver Funcionalidades</a>
+                </div>
+                <div class="flex items-center justify-center gap-6 mt-8 text-white/30 text-sm">
+                    <span>✅ Sem cartão de crédito</span>
+                    <span>🔒 Dados seguros</span>
+                    <span>🎯 Suporte 24/7</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============================ FOOTER ============================ -->
+<footer class="border-t border-white/5 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-2">
+            <div class="w-20 h-20 rounded-xl flex items-center justify-center">
+                <img src="https://www.dropbox.com/scl/fi/ohbjh5rnj8q3k9kl3bh0d/Gemini_Generated_Image_e9jpz4e9jpz4e9jp-removebg-preview.png?rlkey=nyvd8ukqebhihs3zm01bwpzpu&st=235fafjl&raw=1" alt="PopFood" class="w-full h-full object-contain" onerror="this.style.display='none'">
+            </div>
+            <span class="text-lg font-bold text-white">Pop<span class="gradient-text">Food</span></span>
+        </div>
+        <p class="text-white/20 text-xs">© 2026 PopFood. Todos os direitos reservados.</p>
+    </div>
+</footer>
+
+<!-- ============================ MODAL DE CAPTURA ============================ -->
+<div id="leadModal" class="fixed inset-0 z-50 modal-overlay flex items-center justify-center p-4 hidden">
+    <div class="glass rounded-2xl max-w-md w-full p-8 modal-content">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h3 class="text-2xl font-bold text-white">🚀 Começar Agora</h3>
+                <p class="text-white/40 text-sm mt-1">Preencha e entraremos em contato</p>
+            </div>
+            <button onclick="closeModal()" class="text-white/50 hover:text-white text-2xl">&times;</button>
+        </div>
+        <form id="leadForm" class="space-y-4">
+            <div>
+                <label class="text-white/60 text-sm font-medium">Nome completo *</label>
+                <input type="text" id="leadName" required placeholder="Seu nome" class="w-full mt-1 p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <div>
+                <label class="text-white/60 text-sm font-medium">WhatsApp *</label>
+                <input type="tel" id="leadPhone" required placeholder="(99) 99999-9999" class="w-full mt-1 p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <div>
+                <label class="text-white/60 text-sm font-medium">Email *</label>
+                <input type="email" id="leadEmail" required placeholder="seu@email.com" class="w-full mt-1 p-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+            </div>
+            <div>
+                <label class="text-white/60 text-sm font-medium">Como ficou sabendo da PopFood?</label>
+                <select id="leadSource" class="w-full mt-1 p-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50">
+                    <option value="Instagram">Instagram</option>
+                    <option value="Facebook">Facebook</option>
+                    <option value="Indicação">Indicação de amigo</option>
+                    <option value="Google">Google</option>
+                    <option value="Outro">Outro</option>
+                </select>
+            </div>
+            <button type="submit" class="w-full btn-primary text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-2xl transition-all flex items-center justify-center gap-2">
+                Enviar
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+            </button>
+        </form>
+        <p class="text-white/20 text-[10px] text-center mt-4">Seus dados estão seguros. Não compartilhamos com terceiros.</p>
+    </div>
+</div>
+
+<script>
+    // ============================ MODAL ============================
+    function openModal() {
+        document.getElementById('leadModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        document.getElementById('leadModal').classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+
+    document.getElementById('leadModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // ============================ FORMULÁRIO ============================
+    document.getElementById('leadForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const nome = document.getElementById('leadName').value.trim();
+        const telefone = document.getElementById('leadPhone').value.trim();
+        const email = document.getElementById('leadEmail').value.trim();
+        const origem = document.getElementById('leadSource').value;
+
+        if (!nome || !telefone || !email) {
+            alert('Preencha todos os campos obrigatórios!');
+            return;
+        }
+
+        const mensagem = `🍔 *NOVO LEAD - POPFOOD DELIVERY*%0A%0A` +
+                         `👤 *Nome:* ${encodeURIComponent(nome)}%0A` +
+                         `📞 *WhatsApp:* ${encodeURIComponent(telefone)}%0A` +
+                         `📧 *Email:* ${encodeURIComponent(email)}%0A` +
+                         `📌 *Origem:* ${encodeURIComponent(origem)}%0A%0A` +
+                         `🚀 *Interessado em contratar a plataforma PopFood!*`;
+
+        const numero = '81985651861';
+        window.open(`https://wa.me/55${numero}?text=${mensagem}`, '_blank');
+
+        const btn = this.querySelector('button[type="submit"]');
+        btn.innerHTML = '✅ Enviado!';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            closeModal();
+            this.reset();
+            btn.innerHTML = 'Enviar';
+            btn.disabled = false;
+        }, 2000);
+    });
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+</script>
+
+</body>
+</html>
