@@ -2189,6 +2189,7 @@
                 },
               ],
               returnUrl: returnUrl,
+              completionUrl: returnUrl,
             };
 
             const checkoutData = await makeProxySafeRequest(
@@ -2486,6 +2487,22 @@
                 if (res.ok) {
                   const data = await res.json();
                   if (data.isPaid) {
+                    // Atualiza status do pedido no Firestore para Pendente se ainda não estiver
+                    try {
+                      await setDoc(
+                        doc(db, COLLECTIONS.orders, orderId),
+                        {
+                          status: "Pendente",
+                          paymentApproved: true,
+                          isPaid: true,
+                          paymentStatus: "Aprovado",
+                        },
+                        { merge: true },
+                      );
+                    } catch (e) {
+                      console.warn("Erro ao atualizar status do pedido na página de retorno:", e);
+                    }
+
                     showToast(
                       "✅ Pagamento confirmado! Seu pedido está sendo preparado.",
                       false,
@@ -7752,7 +7769,7 @@
             deliveryPin: String(Math.floor(1000 + Math.random() * 9000)),
             deliveryProgress: 0,
             status:
-              rawMethod === "PixOnline" ? "AguardandoPagamento" : "Pendente",
+              (rawMethod === "PixOnline" || window.pendingCheckoutUrl) ? "AguardandoPagamento" : "Pendente",
             storeId: window.currentStoreId,
             aiChatEnabled: true,
             ...(window.currentFcmToken ? { fcmToken: window.currentFcmToken } : {}),
@@ -7810,32 +7827,34 @@
             }
           } catch(e) { console.error("Error updating orderCount and stock", e); }
 
-          // Trigger push notification to the merchant
-          try {
-            const profileSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId));
-            if (profileSnap.exists()) {
-              const profileData = profileSnap.data();
-              const merchantTokens = profileData.merchantTokens || [];
-              if (merchantTokens.length > 0) {
-                const { sendPushNotification } = await import('./fcm-sender.js');
-                const title = "🚨 Novo Pedido Recebido!";
-                const formattedTotal = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                const body = `Pedido #${orderId.substring(0, 5).toUpperCase()} no valor de ${formattedTotal} foi recebido!`;
-                
-                for (const mToken of merchantTokens) {
-                  try {
-                    await sendPushNotification(mToken, title, body, {
-                      orderId: orderId,
-                      type: "new_order"
-                    });
-                  } catch (pushErr) {
-                    console.error("Error sending push to merchant token:", pushErr);
+          // Trigger push notification to the merchant (APENAS para pagamentos que não necessitam de aprovação online futura)
+          if (rawMethod !== "PixOnline" && !window.pendingCheckoutUrl) {
+            try {
+              const profileSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId));
+              if (profileSnap.exists()) {
+                const profileData = profileSnap.data();
+                const merchantTokens = profileData.merchantTokens || [];
+                if (merchantTokens.length > 0) {
+                  const { sendPushNotification } = await import('./fcm-sender.js');
+                  const title = "🚨 Novo Pedido Recebido!";
+                  const formattedTotal = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                  const body = `Pedido #${orderId.substring(0, 5).toUpperCase()} no valor de ${formattedTotal} foi recebido!`;
+                  
+                  for (const mToken of merchantTokens) {
+                    try {
+                      await sendPushNotification(mToken, title, body, {
+                        orderId: orderId,
+                        type: "new_order"
+                      });
+                    } catch (pushErr) {
+                      console.error("Error sending push to merchant token:", pushErr);
+                    }
                   }
                 }
               }
+            } catch (fcmErr) {
+              console.error("Error triggering new order push:", fcmErr);
             }
-          } catch (fcmErr) {
-            console.error("Error triggering new order push:", fcmErr);
           }
 
           // Salva referência do pedido no localStorage

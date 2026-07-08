@@ -293,7 +293,8 @@ async function startServer() {
           const origin = req.headers.origin || 'http://localhost:3000';
           const checkoutPayload = {
               items: [{ id: prodData.data.id, quantity: 1 }],
-              returnUrl: `${origin}/cliente.html?store=${safeStoreId}&orderId=${orderId || ''}&abacateReturn=1`
+              returnUrl: `${origin}/cliente.html?store=${safeStoreId}&orderId=${orderId || ''}&abacateReturn=1`,
+              completionUrl: `${origin}/cliente.html?store=${safeStoreId}&orderId=${orderId || ''}&abacateReturn=1`
           };
           const checkoutRes = await fetch('https://api.abacatepay.com/v2/checkouts/create', {
               method: 'POST',
@@ -470,12 +471,66 @@ async function startServer() {
       if (isPaid && orderId) {
         try {
           const orderDocRef = doc(db, "orders", orderId as string);
-          await updateDoc(orderDocRef, {
-            paymentApproved: true,
-            isPaid: true,
-            paymentStatus: "Aprovado"
-          });
-          console.log(`Pedido ${orderId} atualizado com pagamento aprovado.`);
+          const orderSnap = await getDoc(orderDocRef);
+          if (orderSnap.exists()) {
+            const orderData = orderSnap.data();
+            // Somente altera status para Pendente e envia push se estiver em AguardandoPagamento
+            if (orderData.status === "AguardandoPagamento") {
+              await updateDoc(orderDocRef, {
+                status: "Pendente",
+                paymentApproved: true,
+                isPaid: true,
+                paymentStatus: "Aprovado"
+              });
+              console.log(`Pedido ${orderId} atualizado de AguardandoPagamento para Pendente.`);
+
+              // Enviar Push Notification de Novo Pedido para os tokens do lojista
+              try {
+                const dbAdmin = admin.firestore();
+                const profileDoc = await dbAdmin.collection("restaurantProfile").doc(safeStoreId).get();
+                if (profileDoc.exists) {
+                  const profileData = profileDoc.data();
+                  const merchantTokens = profileData?.merchantTokens || [];
+                  if (merchantTokens.length > 0) {
+                    const title = "🚨 Novo Pedido Recebido (Pago)!";
+                    const formattedTotal = Number(orderData.total || amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    const body = `Pedido #${(orderId as string).substring(0, 5).toUpperCase()} no valor de ${formattedTotal} foi pago e recebido!`;
+                    
+                    for (const mToken of merchantTokens) {
+                      try {
+                        const message = {
+                          notification: {
+                            title,
+                            body,
+                            image: 'favicon.png'
+                          },
+                          data: {
+                            orderId: orderId as string,
+                            type: "new_order"
+                          },
+                          token: mToken,
+                        };
+                        await admin.messaging().send(message);
+                        console.log(`Push enviado com sucesso para token ${mToken.substring(0, 8)}...`);
+                      } catch (pushErr) {
+                        console.error("Erro ao enviar push para token do lojista:", pushErr);
+                      }
+                    }
+                  }
+                }
+              } catch (pushErr) {
+                console.error("Erro ao obter tokens para envio de notificação push:", pushErr);
+              }
+            } else {
+              // Se já estiver em outro status (ex: Pendente, Preparando), apenas atualiza os flags de pagamento
+              await updateDoc(orderDocRef, {
+                paymentApproved: true,
+                isPaid: true,
+                paymentStatus: "Aprovado"
+              });
+              console.log(`Pedido ${orderId} já estava com status ${orderData.status}. Flags de pagamento atualizados.`);
+            }
+          }
         } catch (dbErr: any) {
           console.error(`Falha ao atualizar documento do pedido no Firestore:`, dbErr);
         }
