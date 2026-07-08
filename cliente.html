@@ -2153,19 +2153,42 @@
             const orderId = payload.orderId || "";
             const returnUrl = `${basePath}?store=${storeId}&orderId=${orderId}&abacateReturn=1`;
 
-            // AbacatePay v2 — cria produto e checkout em uma única chamada
+            // 1. Criar Produto primeiro (AbacatePay exige que o produto exista)
+            const productPayload = {
+              externalId: orderId || `pedido-${Date.now()}`,
+              name: description,
+              description: description,
+              price: amountCents,
+              currency: "BRL"
+            };
+
+            const productData = await makeProxySafeRequest(
+              "https://api.abacatepay.com/v2/products/create",
+              "POST",
+              {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${abacatePayToken}`,
+                Accept: "application/json",
+              },
+              productPayload,
+            );
+
+            const actualProduct = productData.data || productData;
+            const productId = actualProduct.id;
+
+            if (!productId) {
+              throw new Error("Falha ao criar produto na AbacatePay: " + JSON.stringify(productData));
+            }
+
+            // 2. Criar Checkout usando o ID do produto
             const checkoutPayload = {
-              products: [
+              items: [
                 {
-                  externalId: orderId || `pedido-${Date.now()}`,
-                  name: description,
-                  description: description,
-                  price: amountCents,
+                  id: productId,
                   quantity: 1,
                 },
               ],
               returnUrl: returnUrl,
-              methods: ["CREDIT_CARD", "DEBIT_CARD"],
             };
 
             const checkoutData = await makeProxySafeRequest(
@@ -2293,6 +2316,8 @@
               "[Payment Bridge] Falha no Bypass Client-Side. Tentando requisição via servidor...",
               bypassErr,
             );
+            // Salvar o erro original para repassar se o servidor falhar
+            options._originalBypassErr = bypassErr;
           }
         }
 
@@ -2311,8 +2336,14 @@
           if (alternateBackendHost && backendHost !== alternateBackendHost) {
             backendHost = alternateBackendHost;
             const altUrl = `${alternateBackendHost}${path}`;
-            return await fetch(altUrl, options);
+            try {
+              return await fetch(altUrl, options);
+            } catch (altErr) {
+              if (options._originalBypassErr) throw options._originalBypassErr;
+              throw altErr;
+            }
           }
+          if (options._originalBypassErr) throw options._originalBypassErr;
           throw err;
         }
       };
