@@ -3973,10 +3973,23 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
 
         // Mapear dados para a Uber
+        const pickupName = loadedRestaurantProfile?.name || "Restaurante";
+        const pickupAddress = loadedRestaurantProfile?.address || "Endereço do Restaurante";
+        let pickupPhone = loadedRestaurantProfile?.phone ? loadedRestaurantProfile.phone.replace(/\D/g, '') : '';
+        if (pickupPhone.length === 10 || pickupPhone.length === 11) {
+          pickupPhone = '+55' + pickupPhone;
+        } else if (pickupPhone.length > 11 && !pickupPhone.startsWith('55')) {
+          pickupPhone = '+55' + pickupPhone;
+        } else if (pickupPhone.length > 11 && pickupPhone.startsWith('55')) {
+          pickupPhone = '+' + pickupPhone;
+        } else {
+          pickupPhone = '+5511999999999'; // Fallback
+        }
+
         const orderDetails = {
-          pickup_name: "Seu Restaurante", // Ajuste conforme necessário
-          pickup_address: "Avenida Conselheiro Aguiar, Boa Viagem - Recife/PE, Nº 2420", // Ajuste conforme necessário
-          pickup_phone_number: "+5511999999999", // Ajuste conforme necessário
+          pickup_name: pickupName,
+          pickup_address: pickupAddress,
+          pickup_phone_number: pickupPhone,
           dropoff_name: order.customer.name,
           dropoff_address: order.customer.address,
           dropoff_phone_number: dropPhone,
