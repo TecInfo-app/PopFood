@@ -429,7 +429,12 @@ async function startServer() {
       // 1. ABACATEPAY CHECK
       if (abacatePayToken) {
         providerStr = "abacatepay";
-        const checkRes = await fetch(`https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`, {
+        const isCheckout = (paymentId as string).startsWith("bill_") || (paymentId as string).startsWith("chk_");
+        const abacateUrl = isCheckout 
+          ? `https://api.abacatepay.com/v2/checkouts/get?id=${paymentId}`
+          : `https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`;
+
+        const checkRes = await fetch(abacateUrl, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${abacatePayToken}`,

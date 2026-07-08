@@ -2240,10 +2240,15 @@
           }
 
           console.log(
-            `[Payment Bridge] Checando status do Pix diretamente via AbacatePay ID: ${paymentId}...`,
+            `[Payment Bridge] Checando status do pagamento diretamente via AbacatePay ID: ${paymentId}...`,
           );
+          const isCheckout = paymentId.startsWith("bill_") || paymentId.startsWith("chk_");
+          const abacateUrl = isCheckout 
+            ? `https://api.abacatepay.com/v2/checkouts/get?id=${paymentId}`
+            : `https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`;
+
           const checkData = await makeProxySafeRequest(
-            `https://api.abacatepay.com/v2/transparents/check?id=${paymentId}`,
+            abacateUrl,
             "GET",
             {
               Authorization: `Bearer ${abacatePayToken}`,
@@ -2477,6 +2482,18 @@
             try {
               // Give it a tiny delay for backend processing
               setTimeout(async () => {
+                // Ensure we have restaurantProfile loaded so client-side proxy bypass works
+                if (!restaurantProfile && typeof db !== "undefined") {
+                  try {
+                    const snap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, storeId));
+                    if (snap.exists()) {
+                      restaurantProfile = snap.data();
+                    }
+                  } catch (errProfile) {
+                    console.error("Erro ao pré-carregar perfil do restaurante:", errProfile);
+                  }
+                }
+
                 const paymentId =
                   params.get("paymentId") ||
                   localStorage.getItem("popfood_pending_payment_id") ||
