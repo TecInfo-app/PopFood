@@ -3993,6 +3993,8 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           dropoff_name: order.customer.name,
           dropoff_address: order.customer.address,
           dropoff_phone_number: dropPhone,
+          dropoff_notes: `Cliente: ${order.customer.name} - Pedido #${order.shortId || order.id.substring(0,5).toUpperCase()}`,
+          manifest_reference: order.shortId || order.id.substring(0,5).toUpperCase(),
           manifest_items: order.items.map(item => ({
             name: item.name,
             quantity: item.quantity,
