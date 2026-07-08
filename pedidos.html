@@ -4020,6 +4020,11 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           pickupPhone = '+5511999999999'; // Fallback
         }
 
+        let customPin = order.deliveryPin;
+        if (!customPin) {
+          customPin = String(Math.floor(1000 + Math.random() * 9000));
+        }
+
         const orderDetails = {
           pickup_name: pickupName,
           pickup_address: pickupAddress,
@@ -4034,11 +4039,11 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             quantity: item.quantity,
             size: "small"
           })),
-          dropoff_requirements: {
-            verification_requirements: {
-              pin: {
-                enabled: true
-              }
+          dropoff_verification: {
+            pincode: {
+              enabled: true,
+              type: "merchant_provided",
+              value: customPin
             }
           }
         };
@@ -4086,6 +4091,8 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
 
               if (uberPin) {
                 updateData.deliveryPin = String(uberPin);
+              } else {
+                updateData.deliveryPin = customPin;
               }
 
               await updateDoc(doc(db, COLLECTIONS.orders, orderId), updateData);
