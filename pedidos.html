@@ -800,6 +800,17 @@
               <strong class="text-gray-500 font-medium">Troco:</strong>
               <span id="modal-lbl-troco">--</span>
             </p>
+            <div id="modal-lbl-uber-row" class="hidden border-t border-gray-200 pt-2 mt-2 space-y-1">
+              <h5 class="font-bold text-gray-700">Uber Direct</h5>
+              <p>
+                <strong class="text-gray-500 font-medium">Link de Rastreio:</strong>
+                <a id="modal-lbl-uber-link" href="#" target="_blank" class="text-blue-600 underline font-semibold">Acompanhar Entrega 📍</a>
+              </p>
+              <p>
+                <strong class="text-gray-500 font-medium">PIN de Confirmação:</strong>
+                <span id="modal-lbl-uber-pin" class="font-mono bg-red-100 text-red-600 px-2 py-0.5 rounded font-bold">----</span>
+              </p>
+            </div>
           </div>
 
           <!-- Rating Feedback details (Visible when order is rated) -->
@@ -2706,6 +2717,29 @@
           trocoRow.classList.add("hidden");
         }
 
+        // Populate Uber Direct Details
+        const uberRow = document.getElementById("modal-lbl-uber-row");
+        const uberLink = document.getElementById("modal-lbl-uber-link");
+        const uberPin = document.getElementById("modal-lbl-uber-pin");
+        if (uberRow) {
+          if (order.uberTrackingUrl || order.deliveryPin) {
+            uberRow.classList.remove("hidden");
+            if (order.uberTrackingUrl) {
+              uberLink.parentElement.classList.remove("hidden");
+              uberLink.href = order.uberTrackingUrl;
+            } else {
+              uberLink.parentElement.classList.add("hidden");
+            }
+            if (order.deliveryPin) {
+              uberPin.textContent = order.deliveryPin;
+            } else {
+              uberPin.textContent = "----";
+            }
+          } else {
+            uberRow.classList.add("hidden");
+          }
+        }
+
         // Populate Client Rating if available
         const rRow = document.getElementById("modal-lbl-rating-row");
         if (order.rating) {
@@ -3999,7 +4033,14 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             name: item.name,
             quantity: item.quantity,
             size: "small"
-          }))
+          })),
+          dropoff_requirements: {
+            verification_requirements: {
+              pin_requirement: {
+                enabled: true
+              }
+            }
+          }
         };
 
         try {
@@ -4023,11 +4064,31 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           if (data.success) {
             try {
               const delivery = data.delivery;
-              await updateDoc(doc(db, COLLECTIONS.orders, orderId), {
+              let uberPin = "";
+              if (delivery) {
+                const findPin = (obj) => {
+                  if (!obj || typeof obj !== 'object') return null;
+                  if ('pin_code' in obj) return obj.pin_code;
+                  for (const key of Object.keys(obj)) {
+                    const found = findPin(obj[key]);
+                    if (found) return found;
+                  }
+                  return null;
+                };
+                uberPin = findPin(delivery) || "";
+              }
+
+              const updateData = {
                 uberDeliveryId: delivery.id,
                 uberTrackingUrl: delivery.tracking_url,
                 status: "Saiu para entrega"
-              });
+              };
+
+              if (uberPin) {
+                updateData.deliveryPin = String(uberPin);
+              }
+
+              await updateDoc(doc(db, COLLECTIONS.orders, orderId), updateData);
               alert('Entrega solicitada com sucesso! O status do pedido foi atualizado.');
             } catch (err) {
               console.error("Erro ao atualizar o pedido com os dados da Uber:", err);
