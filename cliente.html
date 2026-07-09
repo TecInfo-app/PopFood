@@ -2372,8 +2372,8 @@
       let appliedDiscountCoupon = null;
       let calculatedDistance = null;
       let calculatedDeliveryFee = 0.0;
-      let clientLatitude = null;
-      let clientLongitude = null;
+      let clientLatitude = localStorage.getItem("popfood_cust_lat") ? parseFloat(localStorage.getItem("popfood_cust_lat")) : null;
+      let clientLongitude = localStorage.getItem("popfood_cust_lon") ? parseFloat(localStorage.getItem("popfood_cust_lon")) : null;
 
       // Loyalty Program State Variables
       let hasLoyaltyDiscount = false;
@@ -2713,6 +2713,8 @@
               if (["cust-street", "cust-number"].includes(id)) {
                 clientLatitude = null;
                 clientLongitude = null;
+                localStorage.removeItem("popfood_cust_lat");
+                localStorage.removeItem("popfood_cust_lon");
               }
               if (typeof window.checkAndShowSavedDataBanner === "function") {
                 window.checkAndShowSavedDataBanner();
@@ -2727,6 +2729,8 @@
           cepInputEl.addEventListener("input", (e) => {
             clientLatitude = null;
             clientLongitude = null;
+            localStorage.removeItem("popfood_cust_lat");
+            localStorage.removeItem("popfood_cust_lon");
             const digits = e.target.value.replace(/\D/g, "");
             if (digits.length > 8) {
               e.target.value = digits.substring(0, 8);
@@ -3143,6 +3147,11 @@
                 }
                 renderCatalogItems();
                 calculateReceiptTotals();
+
+                // Recalculate delivery fee immediately now that the profile is fully loaded
+                if (typeof window.calculateDistanceAndFee === "function") {
+                  window.calculateDistanceAndFee(true);
+                }
               }
             },
             (err) => {
@@ -5565,6 +5574,8 @@
             // Set global variables directly so distance calculation is perfectly precise (bypass any approximations)
             clientLatitude = lat;
             clientLongitude = lon;
+            localStorage.setItem("popfood_cust_lat", lat);
+            localStorage.setItem("popfood_cust_lon", lon);
 
             try {
               // Call Nominatim Reverse Geocoding to get CEP & Street
@@ -5667,6 +5678,11 @@
 
       // Haversine route calculation from Nominatim API
       window.calculateDistanceAndFee = async function (silent = false) {
+        if (!restaurantProfile) {
+          console.warn("[calculateDistanceAndFee] Profile not loaded yet. Skipping calculation.");
+          return;
+        }
+
         const cepValue = document
           .getElementById("cust-cep")
           .value.replace(/\D/g, "");
@@ -5794,6 +5810,8 @@
               clientLon = parseFloat(data[0].lon);
               clientLatitude = clientLat;
               clientLongitude = clientLon;
+              localStorage.setItem("popfood_cust_lat", clientLat);
+              localStorage.setItem("popfood_cust_lon", clientLon);
               hasCoords = true;
             }
           }
@@ -6184,6 +6202,8 @@
 
             clientLatitude = lat;
             clientLongitude = lon;
+            localStorage.setItem("popfood_cust_lat", lat);
+            localStorage.setItem("popfood_cust_lon", lon);
 
             try {
               const response = await fetch(
@@ -6965,6 +6985,8 @@
         localStorage.removeItem("popfood_cust_number");
         localStorage.removeItem("popfood_cust_comp");
         localStorage.removeItem("popfood_cust_ref");
+        localStorage.removeItem("popfood_cust_lat");
+        localStorage.removeItem("popfood_cust_lon");
 
         const fields = [
           "cust-name",
