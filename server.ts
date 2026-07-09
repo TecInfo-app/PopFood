@@ -498,7 +498,7 @@ async function startServer() {
                   const merchantTokens = profileData?.merchantTokens || [];
                   if (merchantTokens.length > 0) {
                     const title = "🚨 Novo Pedido Recebido (Pago)!";
-                    const formattedTotal = Number(orderData.total || amount || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    const formattedTotal = Number(orderData.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
                     const body = `Pedido #${(orderId as string).substring(0, 5).toUpperCase()} no valor de ${formattedTotal} foi pago e recebido!`;
                     
                     for (const mToken of merchantTokens) {

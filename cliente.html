@@ -2459,7 +2459,7 @@
           
           // Re-calculate distance and fee for delivery
           if (typeof window.calculateDistanceAndFee === "function") {
-            window.calculateDistanceAndFee();
+            window.calculateDistanceAndFee(true);
           }
         }
         calculateReceiptTotals();
@@ -2641,6 +2641,25 @@
         refreshCartOverview();
         fetchRestaurantRatings(); // Load ratings asynchronous
 
+        // Retrieve cached customer details if they exist
+        const cachedFields = [
+          { id: "cust-name", key: "popfood_cust_name" },
+          { id: "cust-phone", key: "popfood_last_phone" },
+          { id: "cust-cep", key: "popfood_cust_cep" },
+          { id: "cust-street", key: "popfood_cust_street" },
+          { id: "cust-number", key: "popfood_cust_number" },
+          { id: "cust-comp", key: "popfood_cust_comp" },
+          { id: "cust-ref", key: "popfood_cust_ref" },
+          { id: "cust-email", key: "popfood_cust_email" },
+        ];
+        cachedFields.forEach((f) => {
+          const cachedVal = localStorage.getItem(f.key);
+          if (cachedVal) {
+            const el = document.getElementById(f.id);
+            if (el) el.value = cachedVal;
+          }
+        });
+
         // Retrieve cached delivery option if exists
         const cachedOption = localStorage.getItem(
           "popfood_cust_delivery_option",
@@ -2664,25 +2683,6 @@
         window.addEventListener("resize", () => {
           if (typeof window.checkAndShowStoreHoursStatus === "function") {
             window.checkAndShowStoreHoursStatus();
-          }
-        });
-
-        // Retrieve cached customer details if they exist
-        const cachedFields = [
-          { id: "cust-name", key: "popfood_cust_name" },
-          { id: "cust-phone", key: "popfood_last_phone" },
-          { id: "cust-cep", key: "popfood_cust_cep" },
-          { id: "cust-street", key: "popfood_cust_street" },
-          { id: "cust-number", key: "popfood_cust_number" },
-          { id: "cust-comp", key: "popfood_cust_comp" },
-          { id: "cust-ref", key: "popfood_cust_ref" },
-          { id: "cust-email", key: "popfood_cust_email" },
-        ];
-        cachedFields.forEach((f) => {
-          const cachedVal = localStorage.getItem(f.key);
-          if (cachedVal) {
-            const el = document.getElementById(f.id);
-            if (el) el.value = cachedVal;
           }
         });
 
@@ -2781,7 +2781,7 @@
           // Also trigger an updated background calculation so it stays fresh
           setTimeout(() => {
             if (typeof window.calculateDistanceAndFee === "function") {
-              window.calculateDistanceAndFee();
+              window.calculateDistanceAndFee(true);
             }
           }, 1000);
         }
@@ -3044,6 +3044,8 @@
       `;
       }
 
+      let profileTimeout = null;
+
       // Load active restaurant profile banner settings
       async function loadProfileAndBanners() {
         try {
@@ -3058,19 +3060,34 @@
             profileRef,
             (snap) => {
               if (!snap.exists()) {
-                document.body.innerHTML = `
-                <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-                  <div class="bg-gray-200 text-gray-500 shadow-sm p-6 rounded-full mb-6 relative">
-                    <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                  </div>
-                  <h1 class="text-2xl font-black font-display text-gray-800 mb-2">Loja Indisponível</h1>
-                  <p class="text-gray-500 max-w-sm mb-8 text-sm">Este estabelecimento não existe mais ou foi removido da plataforma.</p>
-                </div>
-              `;
+                console.warn("[Profile Load] Snapshot does not exist yet. Waiting for server response...");
+                // Start a safe 7 seconds timeout to allow slow connection recovery
+                if (!profileTimeout) {
+                  profileTimeout = setTimeout(() => {
+                    if (!restaurantProfile) {
+                      document.body.innerHTML = `
+                        <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+                          <div class="bg-gray-200 text-gray-500 shadow-sm p-6 rounded-full mb-6 relative">
+                            <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                          </div>
+                          <h1 class="text-2xl font-black font-display text-gray-800 mb-2">Loja Indisponível</h1>
+                          <p class="text-gray-500 max-w-sm mb-8 text-sm">Este estabelecimento não existe mais ou foi removido da plataforma, ou sua conexão está muito instável. Por favor, tente recarregar.</p>
+                          <button onclick="window.location.reload()" class="mt-4 bg-brand-primary text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:bg-orange-600 transition-all">Recarregar Página</button>
+                        </div>
+                      `;
+                    }
+                  }, 7000);
+                }
                 return;
               }
 
               if (snap.exists()) {
+                // Clear safety timeout since profile loaded successfully
+                if (profileTimeout) {
+                  clearTimeout(profileTimeout);
+                  profileTimeout = null;
+                }
+
                 restaurantProfile = snap.data();
 
                 if (restaurantProfile.suspended === true) {
@@ -5649,7 +5666,7 @@
       };
 
       // Haversine route calculation from Nominatim API
-      window.calculateDistanceAndFee = async function () {
+      window.calculateDistanceAndFee = async function (silent = false) {
         const cepValue = document
           .getElementById("cust-cep")
           .value.replace(/\D/g, "");
@@ -5660,7 +5677,9 @@
         const streetValue = document.getElementById("cust-street")?.value || "";
 
         if (!hasPreciseCoordinates && (!cepValue || cepValue.length !== 8) && streetValue.length < 5) {
-          showToast("Preencha o CEP ou Endereço primeiro, ou use a opção 'Minha Localização'!", true);
+          if (!silent) {
+            showToast("Preencha o CEP ou Endereço primeiro, ou use a opção 'Minha Localização'!", true);
+          }
           return;
         }
 
@@ -7887,8 +7906,6 @@
             shoppingCart = [];
             localStorage.removeItem("popfood_cart");
             appliedDiscountCoupon = null;
-            calculatedDistance = null;
-            calculatedDeliveryFee = 0;
             // O modal do Pix e o polling já foram iniciados antes do setDoc
             // O sucesso será mostrado pelo startPixPaymentChecking quando PAID
             return;
@@ -7919,8 +7936,6 @@
           shoppingCart = [];
           localStorage.removeItem("popfood_cart");
           appliedDiscountCoupon = null;
-          calculatedDistance = null;
-          calculatedDeliveryFee = 0;
 
           document.getElementById("success-modal").classList.remove("hidden");
         } catch (err) {
