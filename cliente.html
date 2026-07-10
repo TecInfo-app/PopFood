@@ -4883,7 +4883,7 @@
             return;
           }
 
-          const subtotal = shoppingCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          const subtotal = shoppingCart.reduce((sum, item) => sum + item.totalItemPrice * item.quantity, 0);
           const minOrder = parseFloat(restaurantProfile.minOrderValue) || 0;
           if (minOrder > 0 && subtotal < minOrder) {
             window.customAlert(`O valor mínimo para pedidos é de R$ ${minOrder.toFixed(2).replace('.', ',')}. Subtotal atual: R$ ${subtotal.toFixed(2).replace('.', ',')}.`);
