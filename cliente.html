@@ -3624,6 +3624,7 @@
           productsSnap.forEach((docSnap) => {
             productsList.push({ id: docSnap.id, ...docSnap.data() });
           });
+          productsList.sort((a, b) => (a.order || 0) - (b.order || 0));
           renderCatalogItems(); // Refresh catalog UI
         });
       }
