@@ -4264,7 +4264,8 @@
             compData.forEach((group, groupIdx) => {
               const groupDiv = document.createElement("div");
               groupDiv.className =
-                "bg-gray-50/70 rounded-2xl p-4.5 border border-gray-150 space-y-3.5 hover:border-orange-200/40 transition-colors duration-300";
+                "comp-group-container bg-gray-50/70 rounded-2xl p-4.5 border border-gray-150 space-y-3.5 hover:border-orange-200/40 transition-colors duration-300";
+              groupDiv.id = `comp-group-${groupIdx}`;
 
               // Draw group header attributes
               const mandateText = group.isMandatory
@@ -4346,7 +4347,7 @@
                       <button type="button" class="comp-minus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}" ${isOutOfStock ? 'disabled' : ''}>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20 12H4"></path></svg>
                       </button>
-                      <span class="comp-qty text-xs font-bold w-4 text-center text-gray-800" id="qty-${optId}" data-price="${opt.price || 0}" data-name="${opt.name}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${stockAttr}>${optQty}</span>
+                      <span class="comp-qty text-xs font-bold w-4 text-center text-gray-800" id="qty-${optId}" data-gidx="${groupIdx}" data-price="${opt.price || 0}" data-name="${opt.name}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${stockAttr}>${optQty}</span>
                       <button type="button" class="comp-plus-btn w-6 h-6 flex items-center justify-center text-gray-500 bg-white rounded shadow-sm border border-gray-200 active:scale-95 transition-transform" data-optid="${optId}" ${isOutOfStock ? 'disabled' : ''}>
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                       </button>
@@ -4358,7 +4359,7 @@
                     `flex items-center justify-between bg-white border border-stone-200 p-3.5 rounded-2xl transition-all shadow-3xs cursor-pointer select-none active:scale-[0.99] duration-150 mb-2 ${isOutOfStock ? 'opacity-60 cursor-not-allowed bg-stone-50' : ''}`;
                   optionDiv.innerHTML = `
                   <label for="${optId}" class="flex-grow flex items-center gap-3 py-0.5 min-w-0 font-sans ${isOutOfStock ? 'cursor-not-allowed' : 'cursor-pointer'}">
-                    <input type="${inputType}" id="${optId}" name="group-${groupIdx}" value="${opt.name}" data-price="${opt.price || 0}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${stockAttr} ${optChecked ? 'checked' : ''} ${isOutOfStock ? 'disabled' : ''} class="complement-checkbox w-4.5 h-4.5 accent-brand-primary text-brand-primary focus:ring-brand-primary/25 border-stone-300 rounded flex-shrink-0">
+                    <input type="${inputType}" id="${optId}" name="group-${groupIdx}" data-gidx="${groupIdx}" value="${opt.name}" data-price="${opt.price || 0}" data-gname="${group.name}" data-gmin="${minLimit}" data-gmax="${group.maxSelection || 1}" ${stockAttr} ${optChecked ? 'checked' : ''} ${isOutOfStock ? 'disabled' : ''} class="complement-checkbox w-4.5 h-4.5 accent-brand-primary text-brand-primary focus:ring-brand-primary/25 border-stone-300 rounded flex-shrink-0">
                     <div class="flex items-center flex-grow min-w-0">
                       ${optImgHtml}
                       <div class="flex flex-col">
@@ -4417,6 +4418,19 @@
 
                 qtySpan.textContent = parseInt(qtySpan.textContent) + 1;
                 recalculateModalPrice();
+
+                const newTotalSelected = Array.from(document.querySelectorAll(`.comp-qty[data-gname="${groupName}"]`))
+                  .reduce((acc, q) => acc + parseInt(q.textContent), 0);
+                
+                if (newTotalSelected === max) {
+                  const currentGroupIdx = parseInt(qtySpan.getAttribute("data-gidx"));
+                  const nextGroup = document.getElementById(`comp-group-${currentGroupIdx + 1}`);
+                  if (nextGroup) {
+                    setTimeout(() => {
+                      nextGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 150);
+                  }
+                }
               });
             });
 
@@ -4465,6 +4479,14 @@
                           );
                         }
                       });
+                      
+                      const currentGroupIdx = parseInt(input.getAttribute("data-gidx"));
+                      const nextGroup = document.getElementById(`comp-group-${currentGroupIdx + 1}`);
+                      if (nextGroup) {
+                        setTimeout(() => {
+                          nextGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 150);
+                      }
                     } else {
                       // Re-enable all if under limit
                       groupInputs.forEach((i) => {
