@@ -1603,7 +1603,7 @@ storeId: window.currentStoreId
 
       // Group products by category (activeCategories is already sorted by "order")
       activeCategories.forEach(cat => {
-        const catProducts = matching.filter(p => p.categoryId === cat.id);
+        const catProducts = matching.filter(p => p.categoryId === cat.id).sort((a, b) => (a.order || 0) - (b.order || 0));
         if (catProducts.length > 0) {
           // Create category section container
           const catSection = document.createElement('div');
@@ -1672,6 +1672,8 @@ storeId: window.currentStoreId
         </div>
 
         <div class="flex items-center gap-1.5 flex-wrap w-full sm:w-auto justify-end">
+          <button onclick="moveProductSorting('${prd.id}', -1)" class="w-7 h-7 bg-white text-gray-650 hover:text-brand-primary text-xs font-semibold rounded-md border border-gray-100 flex items-center justify-center cursor-pointer" title="Mover para cima">▲</button>
+          <button onclick="moveProductSorting('${prd.id}', 1)" class="w-7 h-7 bg-white text-gray-650 hover:text-brand-primary text-xs font-semibold rounded-md border border-gray-100 flex items-center justify-center cursor-pointer" title="Mover para baixo">▼</button>
           <button onclick="openComplementsModal('${prd.id}')" class="bg-gray-800 hover:bg-gray-950 text-white font-semibold py-2 px-3 text-[10px] rounded-lg transition-transform hover:scale-105 cursor-pointer">✏️ Complementos</button>
           <button onclick="toggleProductPauseState('${prd.id}', ${prd.paused})" class="py-2 px-3 text-[10px] rounded-lg transition-all font-semibold cursor-pointer ${prd.paused ? 'bg-orange-100 text-brand-primary' : 'bg-gray-100 text-gray-650'} hover:scale-105">${prd.paused ? 'Retomar' : 'Pausar'}</button>
           <button onclick="triggerProductEditionTrigger('${prd.id}')" class="bg-blue-50 text-blue-650 hover:bg-blue-100 py-2 px-3 text-[10px] font-semibold rounded-lg hover:scale-105 cursor-pointer">Editar</button>
@@ -1685,6 +1687,35 @@ storeId: window.currentStoreId
     window.triggerProductEditionTrigger = function(prdId) {
       const prd = activeProducts.find(p => p.id === prdId);
       if (prd) toggleProductFormModal(true, prd);
+    }
+
+    window.moveProductSorting = async function(prdId, dir) {
+      const prd = activeProducts.find(p => p.id === prdId);
+      if (!prd) return;
+      const catProducts = activeProducts.filter(p => p.categoryId === prd.categoryId).sort((a, b) => (a.order || 0) - (b.order || 0));
+      const idx = catProducts.findIndex(p => p.id === prdId);
+      if (idx === 0 && dir === -1) return;
+      if (idx === catProducts.length - 1 && dir === 1) return;
+      
+      const targetIdx = idx + dir;
+      const other = catProducts[targetIdx];
+      
+      const tempOrder = prd.order || 0;
+      prd.order = other.order || 0;
+      other.order = tempOrder;
+      
+      // Se a ordem for igual, usa o índice para forçar a troca
+      if (prd.order === other.order) {
+        prd.order = targetIdx;
+        other.order = idx;
+      }
+      
+      try {
+        await updateDoc(doc(db, COLLECTIONS.products, prd.id), { order: prd.order });
+        await updateDoc(doc(db, COLLECTIONS.products, other.id), { order: other.order });
+      } catch (err) {
+        console.error("Erro ao reordenar produtos: ", err);
+      }
     }
 
     window.toggleComplementsModal = function(show) {

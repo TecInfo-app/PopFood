@@ -2176,9 +2176,21 @@
             o.status === "Preparando" ||
             o.status === "Saiu para entrega",
         );
-        const finalizadosList = drawingList.filter(
-          (o) => o.status === "Entregue" || o.status === "Cancelado",
-        );
+        const sixHoursAgo = Date.now() - (6 * 60 * 60 * 1000);
+        const finalizadosList = drawingList.filter((o) => {
+          if (o.status !== "Entregue" && o.status !== "Cancelado") return false;
+          let orderTime = 0;
+          if (o.createdAt) {
+            if (typeof o.createdAt === "object" && typeof o.createdAt.seconds === "number") {
+              orderTime = o.createdAt.seconds * 1000;
+            } else if (typeof o.createdAt === "object" && typeof o.createdAt.toDate === "function") {
+              orderTime = o.createdAt.toDate().getTime();
+            } else {
+              orderTime = new Date(o.createdAt).getTime();
+            }
+          }
+          return orderTime >= sixHoursAgo;
+        });
 
         document.getElementById("active-pipes-count").textContent =
           andamentoList.length;
