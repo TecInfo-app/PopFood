@@ -170,31 +170,42 @@
       <div
         class="max-w-md sm:max-w-5xl mx-auto px-4 py-3 flex items-center justify-between"
       >
-        <div class="flex items-center gap-3">
-          <img
-            id="header-restaurant-logo"
-            src=""
-            alt="logo"
-            class="w-10 h-10 rounded-full object-cover"
-          />
-          <div>
-            <h1
-              id="header-restaurant-name"
-              class="font-display font-black text-lg text-brand-primary tracking-tight"
-            >
-              Carregando...
-            </h1>
-            <button
-              id="header-rating-badge"
-              onclick="toggleReviewsModal(true)"
-              class="flex items-center gap-1 text-[10px] text-gray-500 font-semibold hover:text-brand-primary"
-            >
-              <span>⭐</span>
-              <span id="header-lbl-avg-rating">0.0</span>
-              <span id="header-lbl-total-ratings">(0)</span>
-            </button>
+          <div class="flex items-center gap-3">
+            <img
+              id="header-restaurant-logo"
+              src=""
+              alt="logo"
+              class="w-10 h-10 rounded-full object-cover cursor-pointer hover:scale-105 transition-transform"
+              onclick="toggleRestaurantInfoModal(true)"
+            />
+            <div>
+              <h1
+                id="header-restaurant-name"
+                class="font-display font-black text-lg text-brand-primary tracking-tight cursor-pointer hover:text-orange-500 transition-colors"
+                onclick="toggleRestaurantInfoModal(true)"
+              >
+                Carregando...
+              </h1>
+              <div class="flex items-center gap-2">
+                <button
+                  id="header-rating-badge"
+                  onclick="toggleReviewsModal(true)"
+                  class="flex items-center gap-1 text-[10px] text-gray-500 font-semibold hover:text-brand-primary cursor-pointer"
+                >
+                  <span>⭐</span>
+                  <span id="header-lbl-avg-rating">0.0</span>
+                  <span id="header-lbl-total-ratings">(0)</span>
+                </button>
+                <span class="text-gray-300 text-[10px]">•</span>
+                <button
+                  onclick="toggleRestaurantInfoModal(true)"
+                  class="flex items-center gap-1 text-[10px] text-gray-500 font-semibold hover:text-brand-primary cursor-pointer"
+                >
+                  <span>ℹ️</span> Informações
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
 
         <div class="flex items-center gap-3">
           <!-- WELCOME GREETING IF LOGGED IN -->
@@ -1673,6 +1684,127 @@
             class="w-full text-xs text-gray-400 hover:text-gray-600 py-2 cursor-pointer"
           >
             Voltar ao Cardápio
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: INFORMAÇÕES DO RESTAURANTE -->
+    <div
+      id="restaurant-info-modal"
+      class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden backdrop-blur-xs"
+    >
+      <div
+        class="bg-white rounded-3xl w-full max-w-md max-h-[85vh] overflow-hidden shadow-2xl flex flex-col relative transform transition-transform scale-95 duration-200"
+      >
+        <!-- Header -->
+        <div
+          class="p-5 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-10"
+        >
+          <div>
+            <h3 class="font-display font-bold text-base text-gray-800 flex items-center gap-2">
+              <span>🏪 Informações da Loja</span>
+            </h3>
+            <p class="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-0.5">
+              Contato, endereço e valor mínimo de pedido
+            </p>
+          </div>
+          <button
+            onclick="toggleRestaurantInfoModal(false)"
+            class="text-gray-400 hover:text-gray-800 p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke-width="2.5"
+              stroke="currentColor"
+              class="w-5 h-5"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-grow overflow-y-auto p-6 space-y-6">
+          <!-- Main details block -->
+          <div class="flex flex-col items-center text-center space-y-3 pb-4 border-b border-gray-100">
+            <img
+              id="info-restaurant-logo"
+              src=""
+              alt="Logo"
+              class="w-16 h-16 rounded-full object-cover border-2 border-orange-100 shadow-xs hidden"
+            />
+            <div>
+              <h4 id="info-restaurant-name" class="font-display font-black text-lg text-gray-800">Carregando...</h4>
+              <p id="info-restaurant-desc" class="text-xs text-gray-500 mt-1 max-w-xs leading-relaxed"></p>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <!-- Horário de Funcionamento -->
+            <div class="flex gap-4 items-start bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+              <div class="w-8 h-8 bg-orange-100 text-brand-primary flex items-center justify-center rounded-xl shrink-0 text-base">
+                🕒
+              </div>
+              <div>
+                <p class="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Horário de Funcionamento</p>
+                <p id="info-restaurant-hours" class="text-xs text-gray-700 font-black mt-0.5">Carregando...</p>
+              </div>
+            </div>
+
+            <!-- Endereço -->
+            <div class="flex gap-4 items-start bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+              <div class="w-8 h-8 bg-blue-100 text-blue-600 flex items-center justify-center rounded-xl shrink-0 text-base">
+                📍
+              </div>
+              <div>
+                <p class="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Endereço</p>
+                <p id="info-restaurant-address" class="text-xs text-gray-700 font-semibold mt-0.5 leading-relaxed">Carregando...</p>
+                <p id="info-restaurant-cep" class="text-[10px] text-gray-400 font-bold mt-1">CEP: --</p>
+              </div>
+            </div>
+
+            <!-- Telefone de Contato -->
+            <div class="flex gap-4 items-start bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+              <div class="w-8 h-8 bg-green-100 text-green-600 flex items-center justify-center rounded-xl shrink-0 text-base">
+                📞
+              </div>
+              <div class="flex-1">
+                <p class="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Telefone / WhatsApp</p>
+                <p id="info-restaurant-phone" class="text-xs text-gray-700 font-black mt-0.5">Carregando...</p>
+                <a id="info-restaurant-whatsapp-btn" href="#" target="_blank" class="inline-flex items-center gap-1.5 mt-2 text-[10px] bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold py-1.5 px-3 rounded-lg transition-all shadow-xs cursor-pointer">
+                  💬 Iniciar Conversa
+                </a>
+              </div>
+            </div>
+
+            <!-- Valor Mínimo do Pedido -->
+            <div class="flex gap-4 items-start bg-gray-50 p-3.5 rounded-2xl border border-gray-100">
+              <div class="w-8 h-8 bg-rose-100 text-rose-600 flex items-center justify-center rounded-xl shrink-0 text-base">
+                💰
+              </div>
+              <div>
+                <p class="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider">Valor Mínimo do Pedido</p>
+                <p id="info-restaurant-min-order" class="text-xs text-gray-700 font-black mt-0.5">R$ 0,00</p>
+                <p class="text-[10px] text-rose-500 font-medium mt-0.5">Para poder fechar um pedido, o subtotal dos seus itens na sacola deve atingir este valor mínimo.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 bg-gray-50 border-t border-gray-100 shrink-0">
+          <button
+            onclick="toggleRestaurantInfoModal(false)"
+            class="w-full bg-gray-800 hover:bg-gray-900 text-white font-extrabold py-3 rounded-xl transition-all text-xs uppercase tracking-wider cursor-pointer"
+          >
+            Fechar
           </button>
         </div>
       </div>
@@ -3538,6 +3670,72 @@
         if (foodBar) foodBar.style.width = `${(avgFood / 5) * 100}%`;
         if (delivBar) delivBar.style.width = `${(avgDeliv / 5) * 100}%`;
       }
+
+      window.toggleRestaurantInfoModal = function (show) {
+        const modal = document.getElementById("restaurant-info-modal");
+        if (!modal) return;
+
+        if (show) {
+          modal.classList.remove("hidden");
+          if (restaurantProfile) {
+            document.getElementById("info-restaurant-name").textContent = restaurantProfile.name || "PopFood";
+            document.getElementById("info-restaurant-desc").textContent = restaurantProfile.description || "Bem-vindo ao nosso cardápio!";
+            
+            // Logo
+            const logoImg = document.getElementById("info-restaurant-logo");
+            const headerLogo = document.getElementById("header-restaurant-logo");
+            if (logoImg && headerLogo && headerLogo.src) {
+              logoImg.src = headerLogo.src;
+              logoImg.classList.remove("hidden");
+            } else if (logoImg) {
+              logoImg.classList.add("hidden");
+            }
+
+            // Horário de Funcionamento
+            const hoursEl = document.getElementById("info-restaurant-hours");
+            if (hoursEl) {
+              if (restaurantProfile.openTime && restaurantProfile.closeTime) {
+                hoursEl.textContent = `${restaurantProfile.openTime} às ${restaurantProfile.closeTime}`;
+              } else {
+                hoursEl.textContent = "Horário não configurado";
+              }
+            }
+
+            // Endereço
+            const addrEl = document.getElementById("info-restaurant-address");
+            if (addrEl) addrEl.textContent = restaurantProfile.address || "Não informado";
+            const cepEl = document.getElementById("info-restaurant-cep");
+            if (cepEl) cepEl.textContent = restaurantProfile.cep ? `CEP: ${restaurantProfile.cep}` : "CEP: Não informado";
+
+            // Contato / Telefone
+            const phoneEl = document.getElementById("info-restaurant-phone");
+            const whatsappBtn = document.getElementById("info-restaurant-whatsapp-btn");
+            if (phoneEl) {
+              const cleanedPhone = restaurantProfile.phone || "Não informado";
+              phoneEl.textContent = cleanedPhone;
+              
+              if (whatsappBtn) {
+                if (restaurantProfile.phone) {
+                  const justNumbers = restaurantProfile.phone.replace(/\D/g, "");
+                  whatsappBtn.href = `https://wa.me/55${justNumbers}`;
+                  whatsappBtn.classList.remove("hidden");
+                } else {
+                  whatsappBtn.classList.add("hidden");
+                }
+              }
+            }
+
+            // Valor Mínimo do Pedido
+            const minOrderEl = document.getElementById("info-restaurant-min-order");
+            if (minOrderEl) {
+              const minVal = parseFloat(restaurantProfile.minOrderValue) || 0;
+              minOrderEl.textContent = minVal > 0 ? `R$ ${minVal.toFixed(2).replace(".", ",")}` : "Sem valor mínimo";
+            }
+          }
+        } else {
+          modal.classList.add("hidden");
+        }
+      };
 
       window.toggleReviewsModal = function (show) {
         const modal = document.getElementById("reviews-modal");
