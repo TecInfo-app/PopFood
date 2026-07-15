@@ -284,13 +284,8 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3 pt-2">
-          <!-- Chat with Store Button -->
-          <button id="wa-chat-link" onclick="openChatModal()" class="bg-brand-primary hover:bg-orange-600 text-white font-semibold py-3 rounded-xl text-center text-xs flex items-center justify-center gap-2 shadow-md shadow-brand-primary/10 transition-all cursor-pointer relative">
-            <span>💬 Falar com a Loja</span>
-            <span id="chat-unread-badge" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white w-4 h-4 rounded-full text-[9px] flex items-center justify-center font-bold hidden border border-white">!</span>
-          </button>
-          <button onclick="logoutTracker()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-3 rounded-xl text-xs transition-all cursor-pointer">
+        <div class="pt-2">
+          <button onclick="logoutTracker()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold py-3 rounded-xl text-xs transition-all cursor-pointer">
             Sair/Mudar Conta
           </button>
         </div>
@@ -392,6 +387,13 @@
       </button>
     </div>
   </div>
+
+  <!-- Floating Chat Button -->
+  <button id="wa-chat-link" onclick="openChatModal()" class="fixed bottom-6 right-6 z-[60] bg-brand-primary hover:bg-orange-600 text-white font-semibold py-3 px-5 rounded-full flex items-center gap-2 shadow-lg shadow-brand-primary/30 transition-transform duration-300 hover:scale-105 active:scale-95 cursor-pointer">
+    <span class="text-lg leading-none">💬</span>
+    <span class="text-sm font-bold tracking-wide">Falar com a Loja</span>
+    <span id="chat-unread-badge" class="absolute -top-1 -right-1 bg-red-500 text-white w-5 h-5 rounded-full text-[10px] flex items-center justify-center font-bold hidden border-2 border-white shadow-sm">!</span>
+  </button>
 
   <!-- CHAT POPUP OVERLAY -->
   <div id="chat-modal" class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 hidden backdrop-blur-sm">
