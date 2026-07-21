@@ -528,6 +528,51 @@
     </div>
   </div>
 
+  <!-- MODAL: EDIT COMPLEMENT GROUP -->
+  <div id="edit-complement-group-modal" class="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 hidden backdrop-blur-xs">
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col relative text-left space-y-4 transform scale-95 duration-200">
+      <button onclick="toggleEditComplementGroupModal(false)" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 p-2 text-sm font-bold z-10 cursor-pointer">✕</button>
+
+      <div class="space-y-1">
+        <h3 class="font-display font-bold text-base text-gray-800">⚙️ Editar Grupo de Complementos</h3>
+        <p class="text-[11px] text-gray-450 leading-normal">Edite as configurações deste grupo</p>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Nome do Grupo</label>
+          <input type="text" id="comp-edit-group-name" placeholder="Nome (Ex: Escolha o queijo)" class="w-full text-xs p-2.5 bg-stone-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-primary">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Descrição/Aviso</label>
+          <input type="text" id="comp-edit-group-desc" placeholder="Aviso (Ex: Máximo 3 fatias)" class="w-full text-xs p-2.5 bg-stone-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-brand-primary">
+        </div>
+
+        <div class="pt-2 border-t border-gray-100">
+          <label class="flex items-center gap-1.5 text-xs font-semibold text-gray-700 cursor-pointer py-1 select-none">
+            <input type="checkbox" id="comp-edit-group-mand" class="w-4 h-4 text-orange-600 border-gray-300 rounded"> É Obrigatório?
+          </label>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Mín. Seleção</label>
+            <input type="number" id="comp-edit-group-min" placeholder="Mín seleção (Ex: 1)" class="w-full text-xs p-2.5 bg-stone-50 border border-gray-200 rounded-lg focus:outline-none font-mono">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Máx. Seleção</label>
+            <input type="number" id="comp-edit-group-max" placeholder="Max seleção (Ex: 3)" class="w-full text-xs p-2.5 bg-stone-50 border border-gray-200 rounded-lg focus:outline-none font-mono">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button onclick="toggleEditComplementGroupModal(false)" class="flex-1 border border-gray-200 text-gray-700 hover:bg-gray-50 font-semibold py-2.5 rounded-xl text-xs transition-all cursor-pointer">Cancelar</button>
+        <button onclick="saveEditComplementGroup()" class="flex-1 bg-gray-800 hover:bg-gray-950 text-white font-bold py-2.5 rounded-xl text-xs shadow-md transition-all cursor-pointer">Salvar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: IMPORT CARDAPIO -->
   <div id="import-menu-modal" class="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 hidden backdrop-blur-xs">
     <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col relative text-left space-y-4">
@@ -2049,6 +2094,24 @@ storeId: window.currentStoreId
       }
     }
 
+    let editingComplementGroupIdx = null;
+
+    window.toggleEditComplementGroupModal = function(show) {
+      const modal = document.getElementById('edit-complement-group-modal');
+      const inner = modal.querySelector('div');
+      if (show) {
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          inner.classList.remove('scale-95');
+        }, 50);
+      } else {
+        inner.classList.add('scale-95');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 200);
+      }
+    }
+
     window.triggerEditComplementGroup = async function(groupIdx) {
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
@@ -2058,19 +2121,55 @@ storeId: window.currentStoreId
         const data = compSnap.data();
         const group = data.groups[groupIdx];
 
-        const newName = prompt("Nome do Grupo:", group.name);
-        if (newName === null) return;
+        editingComplementGroupIdx = groupIdx;
 
-        const newDesc = prompt("Descrição do Grupo:", group.description || "");
-        if (newDesc === null) return;
+        // Pre-fill fields
+        document.getElementById('comp-edit-group-name').value = group.name || '';
+        document.getElementById('comp-edit-group-desc').value = group.description || '';
+        document.getElementById('comp-edit-group-mand').checked = !!group.isMandatory;
+        document.getElementById('comp-edit-group-min').value = group.minSelection !== undefined ? group.minSelection : 1;
+        document.getElementById('comp-edit-group-max').value = group.maxSelection !== undefined ? group.maxSelection : 1;
+
+        toggleEditComplementGroupModal(true);
+      } catch (err) {
+        console.error("Edit complement group fail: ", err);
+      }
+    }
+
+    window.saveEditComplementGroup = async function() {
+      if (editingComplementGroupIdx === null) return;
+      
+      const newName = document.getElementById('comp-edit-group-name').value.trim();
+      const newDesc = document.getElementById('comp-edit-group-desc').value.trim();
+      const newMand = document.getElementById('comp-edit-group-mand').checked;
+      const newMin = parseInt(document.getElementById('comp-edit-group-min').value || 1);
+      const newMax = parseInt(document.getElementById('comp-edit-group-max').value || 1);
+
+      if (!newName) {
+        alert("Preencha o nome do grupo!");
+        return;
+      }
+
+      try {
+        const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
+        const compSnap = await getDoc(docRef);
+        if (!compSnap.exists()) return;
+
+        const data = compSnap.data();
+        const group = data.groups[editingComplementGroupIdx];
 
         group.name = newName;
         group.description = newDesc;
+        group.isMandatory = newMand;
+        group.minSelection = newMin;
+        group.maxSelection = newMax;
 
         await setDoc(docRef, data);
+        
+        toggleEditComplementGroupModal(false);
         drawProductComplementsStructure();
       } catch (err) {
-        console.error("Edit complement group fail: ", err);
+        console.error("Save complement group fail: ", err);
       }
     }
 
