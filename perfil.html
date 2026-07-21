@@ -1762,35 +1762,143 @@
       }
     }
 
-    // Search coordinates using open Nominatim API from OpenStreetMap
+    // Search coordinates using open Nominatim API from OpenStreetMap with robust Brazilian fallbacks
     window.lookupGeoCoordinates = async function() {
-      const address = document.getElementById('store-address').value.trim();
-      if (!address) {
+      const originalAddress = document.getElementById('store-address').value.trim();
+      if (!originalAddress) {
         alert("🔒 Digite o endereço completo da loja primeiro!");
         return;
       }
 
-      try {
-        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
-        const response = await fetch(nominatimUrl);
-        const data = await response.json();
+      // Generate a list of search query candidates to maximize success on OpenStreetMap/Nominatim
+      const searchQueries = [];
 
-        if (data && data.length > 0) {
-          currentStoreLatitude = parseFloat(data[0].lat);
-          currentStoreLongitude = parseFloat(data[0].lon);
+      // 1. Original input
+      searchQueries.push(originalAddress);
 
-          document.getElementById('lbl-lat').textContent = currentStoreLatitude.toFixed(6);
-          document.getElementById('lbl-lon').textContent = currentStoreLongitude.toFixed(6);
-          
-          alert("📍 Coordenadas obtidas com sucesso!");
-        } else {
-          alert("❌ Coordenadas não localizadas! Certifique-se que o endereço está digitado em formato padrão (Rua, Número, Bairro, Cidade).");
-        }
-      } catch (err) {
-        console.error("Nominatim search error: ", err);
-        alert("Falha ao geolocalizar endereço: " + err.message);
+      // 2. Replace hyphens with commas (Nominatim parses comma-separated lists much better than dashes)
+      const noDashes = originalAddress.replace(/\s*-\s*/g, ", ");
+      if (noDashes !== originalAddress) {
+        searchQueries.push(noDashes);
       }
-    }
+
+      // 3. Remove Brazilian CEP/ZIP code (ZIP codes can cause street-level searches to fail in OSM)
+      const noCep = noDashes.replace(/\b\d{5}-?\d{3}\b/g, "").replace(/\s*,\s*,/g, ",").trim();
+      if (noCep && noCep !== noDashes) {
+        searchQueries.push(noCep);
+      }
+
+      // 4. Expand common Portuguese abbreviations (Av. -> Avenida, Dr. -> Doutor, R. -> Rua)
+      const expandAbbreviations = (str) => {
+        return str
+          .replace(/\bAv\.?\b/gi, "Avenida")
+          .replace(/\bDr\.?\b/gi, "Doutor")
+          .replace(/\bR\.?\b/gi, "Rua")
+          .replace(/\bBelminio\b/gi, "Belmínio") // Include proper accentuation for Belmínio
+          .replace(/\bPE\b/g, "Pernambuco");
+      };
+
+      const expandedOriginal = expandAbbreviations(originalAddress);
+      if (expandedOriginal !== originalAddress) {
+        searchQueries.push(expandedOriginal);
+      }
+
+      const expandedNoCep = expandAbbreviations(noCep);
+      if (expandedNoCep !== noCep && expandedNoCep !== expandedOriginal) {
+        searchQueries.push(expandedNoCep);
+      }
+
+      // 5. Try ultra-simplified Street Name + Number + City + State (strip neighborhoods, as they are often unindexed or misnamed)
+      const parts = noCep.split(",").map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        const street = parts[0];
+        let number = "";
+        let city = "Camaragibe"; // Default context based on user profile
+        let state = "PE";
+
+        // Extract number if any part looks like a house number (digits followed by optional letter)
+        const numberPart = parts.find(p => /^\d+\s*[a-zA-Z]?$/.test(p));
+        if (numberPart) {
+          number = numberPart;
+        } else {
+          // Check if number is appended to the street like "Av. Dr. Belminio Correia 3226"
+          const streetMatch = street.match(/(.*?)\s+(\d+)$/);
+          if (streetMatch) {
+            number = streetMatch[2];
+          }
+        }
+
+        // Try to identify other elements
+        const statePart = parts.find(p => p.toUpperCase() === "PE" || p.toUpperCase() === "PERNAMBUCO");
+        if (statePart) state = statePart;
+
+        const cityPart = parts.find(p => p.toLowerCase() === "camaragibe" || p.toLowerCase() === "recife");
+        if (cityPart) city = cityPart;
+
+        let simplifiedQuery = street;
+        if (number && !street.includes(number)) {
+          simplifiedQuery += `, ${number}`;
+        }
+        simplifiedQuery += `, ${city}, ${state}`;
+
+        searchQueries.push(simplifiedQuery);
+
+        const simplifiedExpanded = expandAbbreviations(simplifiedQuery);
+        if (simplifiedExpanded !== simplifiedQuery) {
+          searchQueries.push(simplifiedExpanded);
+        }
+      }
+
+      // 6. Last resort fallback: City, State, CEP/ZIP Code
+      const cepInput = document.getElementById('store-cep').value.trim().replace(/\D/g, '');
+      if (cepInput) {
+        searchQueries.push(`${cepInput}, Brasil`);
+      }
+
+      // Remove any duplicate queries and clean up spaces
+      const uniqueQueries = [...new Set(searchQueries)].map(q => q.replace(/\s+/g, ' ').trim()).filter(Boolean);
+      console.log("Resilient geocoding query sequence:", uniqueQueries);
+
+      let success = false;
+      let lastError = null;
+
+      for (const query of uniqueQueries) {
+        try {
+          const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+          const response = await fetch(nominatimUrl, {
+            headers: {
+              'Accept-Language': 'pt-BR,pt;q=0.9'
+            }
+          });
+          const data = await response.json();
+
+          if (data && data.length > 0) {
+            currentStoreLatitude = parseFloat(data[0].lat);
+            currentStoreLongitude = parseFloat(data[0].lon);
+
+            document.getElementById('lbl-lat').textContent = currentStoreLatitude.toFixed(6);
+            document.getElementById('lbl-lon').textContent = currentStoreLongitude.toFixed(6);
+            
+            console.log(`Successfully geocoded with query: "${query}"`);
+            success = true;
+            break;
+          }
+        } catch (err) {
+          console.error(`Query failed for "${query}":`, err);
+          lastError = err;
+        }
+      }
+
+      if (success) {
+        alert("📍 Coordenadas obtidas com sucesso!");
+      } else {
+        if (lastError) {
+          alert("Falha ao geolocalizar endereço: " + lastError.message);
+        } else {
+          alert("❌ Coordenadas não localizadas! Sugestão: remova o nome do bairro (Alberto Maia) e certifique-se que o número da casa está separado por vírgula.");
+        }
+      }
+    };
 
     // Save profile meta properties
     async function saveRestaurantProfileDetails(e) {
