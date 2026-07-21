@@ -160,7 +160,10 @@
         color: #895129 !important;
       }
 
-      /* Previne zoom automático indesejado no iOS/iPhone ao focar em inputs/selects */
+      /* Previne zoom automático indesejado no iOS/iPhone ao focar em inputs/selects e ao dar dois toques rápidos */
+      html, body {
+        touch-action: manipulation;
+      }
       @media screen and (max-width: 768px) {
         input, select, textarea, [contenteditable="true"] {
           font-size: 16px !important;
