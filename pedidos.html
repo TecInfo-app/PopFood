@@ -4060,6 +4060,17 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           }
         };
 
+        // Add precise coordinates if available to prevent Uber geocoding mismatch
+        const pLat = loadedRestaurantProfile?.latitude ? parseFloat(loadedRestaurantProfile.latitude) : null;
+        const pLng = loadedRestaurantProfile?.longitude ? parseFloat(loadedRestaurantProfile.longitude) : null;
+        const dLat = order.customer.latitude ? parseFloat(order.customer.latitude) : null;
+        const dLng = order.customer.longitude ? parseFloat(order.customer.longitude) : null;
+
+        if (pLat && !isNaN(pLat)) orderDetails.pickup_latitude = pLat;
+        if (pLng && !isNaN(pLng)) orderDetails.pickup_longitude = pLng;
+        if (dLat && !isNaN(dLat)) orderDetails.dropoff_latitude = dLat;
+        if (dLng && !isNaN(dLng)) orderDetails.dropoff_longitude = dLng;
+
         try {
           const clientId = loadedRestaurantProfile?.uberDirect?.clientId || "";
           const clientSecret = loadedRestaurantProfile?.uberDirect?.clientSecret || "";
