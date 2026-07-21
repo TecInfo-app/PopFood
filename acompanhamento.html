@@ -76,6 +76,14 @@
       }
     }
   </script>
+  <style>
+    /* Previne zoom automático indesejado no iOS/iPhone ao focar em inputs/selects */
+    @media screen and (max-width: 768px) {
+      input, select, textarea, [contenteditable="true"] {
+        font-size: 16px !important;
+      }
+    }
+  </style>
 </head>
 <body class="bg-brand-light font-sans text-gray-800 min-h-screen flex flex-col">
 
