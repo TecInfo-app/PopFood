@@ -13,7 +13,20 @@
           "firebase/messaging": "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js"
         }
       }
-    </script>
+    
+    window.copyStoreLink = function() {
+      if (!window.currentStoreId) return;
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      const link = `${window.location.origin}${basePath}/cliente.html?store=${window.currentStoreId}`;
+      navigator.clipboard.writeText(link).then(() => {
+        window.customAlert ? window.customAlert("Link do seu cardápio copiado!") : alert("Link copiado!");
+      }).catch(err => {
+        console.error('Falha ao copiar', err);
+        window.customAlert ? window.customAlert("Não foi possível copiar automaticamente. Use este link: " + link) : alert("Use este link: " + link);
+      });
+    };
+
+</script>
     <script>
       // Generate dynamic manifest based on URL parameters
       (function() {

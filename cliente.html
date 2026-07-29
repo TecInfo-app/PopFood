@@ -7227,6 +7227,11 @@
         localStorage.removeItem("popfood_cust_ref");
         localStorage.removeItem("popfood_cust_lat");
         localStorage.removeItem("popfood_cust_lon");
+        localStorage.removeItem("popfood_cart");
+
+        if (typeof shoppingCart !== 'undefined') {
+          shoppingCart = [];
+        }
 
         const fields = [
           "cust-name",
