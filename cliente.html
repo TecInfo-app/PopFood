@@ -3505,6 +3505,17 @@
       // Checking of opening hours status
       window.checkIfStoreIsOpen = function () {
         if (!restaurantProfile) return true; // Default to true if not loaded
+        
+        const now = new Date();
+        const currentDay = now.getDay(); // 0 is Sunday, 1 is Monday...
+
+        // Check operating days if configured
+        if (restaurantProfile.operatingDays && Array.isArray(restaurantProfile.operatingDays)) {
+          if (!restaurantProfile.operatingDays.includes(currentDay)) {
+            return false;
+          }
+        }
+
         const openTime = restaurantProfile.openTime;
         const closeTime = restaurantProfile.closeTime;
 
@@ -3512,7 +3523,6 @@
           return true; // No time limit configured
         }
 
-        const now = new Date();
         const currentHour = now.getHours();
         const currentMin = now.getMinutes();
         const currentMins = currentHour * 60 + currentMin;
@@ -3537,30 +3547,29 @@
         if (!banner) return;
 
         if (!restaurantProfile) return;
-        const openTime = restaurantProfile.openTime;
-        const closeTime = restaurantProfile.closeTime;
 
         const categorySelector = document.getElementById(
           "category-selector-section",
         );
 
-        if (!openTime || !closeTime) {
-          banner.classList.add("hidden");
-          if (categorySelector) {
-            categorySelector.style.top = "72px";
-          }
-          return;
-        }
-
         const isOpen = checkIfStoreIsOpen();
-
-        const openTimeEl = document.getElementById("store-open-time");
-        const closeTimeEl = document.getElementById("store-close-time");
-        if (openTimeEl) openTimeEl.textContent = openTime;
-        if (closeTimeEl) closeTimeEl.textContent = closeTime;
 
         if (!isOpen) {
           banner.classList.remove("hidden");
+          
+          const bannerSpan = banner.querySelector("span");
+          if (bannerSpan) {
+             const now = new Date();
+             const currentDay = now.getDay();
+             const isClosedByDay = restaurantProfile.operatingDays && Array.isArray(restaurantProfile.operatingDays) && !restaurantProfile.operatingDays.includes(currentDay);
+             
+             if (isClosedByDay) {
+                bannerSpan.innerHTML = `🏪 ESTABELECIMENTO FECHADO HOJE! Não abrimos neste dia da semana. Você pode navegar pelo cardápio, mas pedidos estão indisponíveis.`;
+             } else {
+                bannerSpan.innerHTML = `🏪 ESTABELECIMENTO FECHADO NO MOMENTO! Nosso horário de funcionamento é das <span id="store-open-time" class="underline font-black">${restaurantProfile.openTime || '--'}</span> às <span id="store-close-time" class="underline font-black">${restaurantProfile.closeTime || '--'}</span>. Você pode navegar pelo cardápio, mas novos pedidos estão temporariamente indisponíveis.`;
+             }
+          }
+
           // Calculate and set the sticky offset height dynamically to avoid overlapping
           setTimeout(() => {
             const bannerHeight = banner.offsetHeight || 44;

@@ -372,6 +372,33 @@
                 <input type="time" id="store-close" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none bg-white">
               </div>
             </div>
+
+            <div class="space-y-2 mt-4">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Dias de Funcionamento</label>
+              <div class="flex flex-wrap gap-2">
+                <label class="flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-stone-50 px-2.5 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <input type="checkbox" name="op-day" value="1" class="w-3.5 h-3.5 text-brand-primary rounded border-gray-300"> Segunda
+                </label>
+                <label class="flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-stone-50 px-2.5 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <input type="checkbox" name="op-day" value="2" class="w-3.5 h-3.5 text-brand-primary rounded border-gray-300"> Terça
+                </label>
+                <label class="flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-stone-50 px-2.5 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <input type="checkbox" name="op-day" value="3" class="w-3.5 h-3.5 text-brand-primary rounded border-gray-300"> Quarta
+                </label>
+                <label class="flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-stone-50 px-2.5 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <input type="checkbox" name="op-day" value="4" class="w-3.5 h-3.5 text-brand-primary rounded border-gray-300"> Quinta
+                </label>
+                <label class="flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-stone-50 px-2.5 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <input type="checkbox" name="op-day" value="5" class="w-3.5 h-3.5 text-brand-primary rounded border-gray-300"> Sexta
+                </label>
+                <label class="flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-stone-50 px-2.5 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <input type="checkbox" name="op-day" value="6" class="w-3.5 h-3.5 text-brand-primary rounded border-gray-300"> Sábado
+                </label>
+                <label class="flex items-center gap-1 text-[11px] font-medium text-gray-700 bg-stone-50 px-2.5 py-1.5 rounded-lg border border-gray-200 cursor-pointer hover:bg-stone-100 transition-colors">
+                  <input type="checkbox" name="op-day" value="0" class="w-3.5 h-3.5 text-brand-primary rounded border-gray-300"> Domingo
+                </label>
+              </div>
+            </div>
           </div>
 
           <button type="submit" id="save-profile-btn" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 text-xs rounded-xl shadow-md transition-transform hover:scale-101 cursor-pointer">Salvar Perfil</button>
@@ -1209,6 +1236,17 @@
           document.getElementById('store-close').value = profileData.closeTime || '';
           document.getElementById('abacatepay-token').value = profileData.abacatePayToken || '';
           
+          // Populate operating days
+          if (profileData.operatingDays && Array.isArray(profileData.operatingDays)) {
+            const checkboxes = document.querySelectorAll('input[name="op-day"]');
+            checkboxes.forEach(cb => {
+              cb.checked = profileData.operatingDays.includes(parseInt(cb.value));
+            });
+          } else {
+            // Default to all days checked if not previously set
+            document.querySelectorAll('input[name="op-day"]').forEach(cb => cb.checked = true);
+          }
+
           // Cardapio display settings
           document.getElementById('profile-destaques-ativo').checked = profileData.destaquesAtivo === true;
           document.getElementById('profile-mostrar-indisponiveis').checked = profileData.mostrarIndisponiveis !== false; // Default to true
@@ -1541,20 +1579,28 @@
     }
 
     // Logo upload converter with strict 1MB limit check
-    window.convertLogoToBase64 = function() {
+    window.convertLogoToBase64 = async function() {
       const fileInput = document.getElementById('logo-file-input');
       const file = fileInput.files[0];
       if (!file) return;
 
-      if (file.size > 1 * 1024 * 1024) {
-        alert("🔒 Atenção: O arquivo da imagem excede o tamanho limite absoluto de 1MB permitido!");
-        fileInput.value = '';
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result;
+      try {
+        let base64;
+        if (window.optimizeAndConvertToBase64) {
+          base64 = await window.optimizeAndConvertToBase64(file, 950);
+        } else {
+          if (file.size > 1 * 1024 * 1024) {
+            alert("🔒 Atenção: O arquivo da imagem excede o tamanho limite absoluto de 1MB permitido!");
+            fileInput.value = '';
+            return;
+          }
+          base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
         
         const oldSrc = document.getElementById('logo-preview-img').src;
         const oldHidden = document.getElementById('logo-preview-img').classList.contains('hidden');
@@ -1569,19 +1615,19 @@
           }, { merge: true });
           alert("Logomarca updated!");
         } catch (err) {
-          // Restore visual UI elements if save failed
           document.getElementById('logo-preview-img').src = oldSrc;
           if (oldHidden) {
             document.getElementById('logo-preview-img').classList.add('hidden');
             document.getElementById('logo-placeholder').classList.remove('hidden');
           }
-          console.error("Updating Logo error: ", err);
-          alert("Erro ao salvar a logomarca no banco de dados.");
-        } finally {
-          fileInput.value = '';
+          console.error("Logo update fails:", err);
+          alert("Ocorreu um erro ao salvar o logo.");
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("Error optimizing logo:", err);
+        alert("Erro ao processar a imagem do logo.");
+        fileInput.value = '';
+      }
     }
 
     window.removeRestaurantLogo = async function() {
@@ -1710,37 +1756,42 @@
       }
     };
 
-    window.convertBannerToBase64AndAdd = function() {
+    window.convertBannerToBase64AndAdd = async function() {
       const fileInput = document.getElementById('banner-file-input');
       const file = fileInput.files[0];
       if (!file) return;
 
-      // Single file check
-      if (file.size > 1 * 1024 * 1024) {
-        alert("🔒 Atenção: O arquivo do banner individualmente excede o tamanho limite de 1MB permitido!");
-        fileInput.value = '';
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result;
-
+      try {
+        let base64;
+        if (window.optimizeAndConvertToBase64) {
+          base64 = await window.optimizeAndConvertToBase64(file, 950);
+        } else {
+          if (file.size > 1 * 1024 * 1024) {
+            alert("🔒 Atenção: O arquivo do banner individualmente excede o tamanho limite de 1MB permitido!");
+            fileInput.value = '';
+            return;
+          }
+          base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
+        
         try {
           bannersList.push({ banner: base64, linkUrl: "" });
           await saveAllBannersToDb();
           renderStoreBannersList();
-          alert("Banner adicionado com sucesso!");
         } catch (err) {
-          // Rollback on failure so memory stays in clean state
-          bannersList.pop();
-          console.error("Banner upload error: ", err);
-          alert("Erro ao adicionar o banner no banco de dados.");
-        } finally {
-          fileInput.value = '';
+          console.error("Error saving banner:", err);
+          alert("Ocorreu um erro ao salvar o banner.");
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("Error optimizing banner:", err);
+        alert("Erro ao processar o arquivo do banner.");
+        fileInput.value = '';
+      }
     }
 
     window.removeBannerByIndex = async function(index) {
@@ -1914,6 +1965,12 @@
       const close = document.getElementById('store-close').value;
       const abacatePayToken = document.getElementById('abacatepay-token').value.trim();
 
+      const opDaysCheckboxes = document.querySelectorAll('input[name="op-day"]');
+      const opDays = [];
+      opDaysCheckboxes.forEach(cb => {
+        if (cb.checked) opDays.push(parseInt(cb.value));
+      });
+
       const paymentMethods = {
         offlinePix: document.getElementById('pay-offline-pix').checked,
         offlineCard: document.getElementById('pay-offline-card').checked,
@@ -1932,6 +1989,7 @@
         minOrderValue: minOrderValue,
         openTime: open,
         closeTime: close,
+        operatingDays: opDays,
         abacatePayToken: abacatePayToken,
         paymentMethods: paymentMethods,
         latitude: currentStoreLatitude,
@@ -2776,5 +2834,6 @@
     // Auto-detect load state
     setTimeout(applySidebarState, 100);
   </script>
+  <script src="/image-optimizer.js"></script>
 </body>
 </html>

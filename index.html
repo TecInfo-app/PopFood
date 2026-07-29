@@ -350,6 +350,20 @@
           <button onclick="applyCatalogFilter('exclusive')" class="catalog-filter-btn px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 font-bold transition-all hover:bg-gray-200" id="filter-exclusive">Exclusivos</button>
         </div>
 
+        <!-- Mass Actions Toolbar -->
+        <div id="mass-actions-toolbar" class="hidden bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4 flex items-center justify-between transition-all">
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-700">
+              <input type="checkbox" id="select-all-products" onchange="toggleSelectAllProducts(this)" class="w-4 h-4 text-brand-primary rounded border-gray-300 focus:ring-brand-primary">
+              <span id="selected-products-count">0 itens selecionados</span>
+            </label>
+          </div>
+          <div class="flex gap-2">
+             <button onclick="massActionPause()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors">Pausar/Ativar</button>
+             <button onclick="massActionDelete()" class="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-brand-danger text-white hover:bg-red-600 transition-colors">Deletar</button>
+          </div>
+        </div>
+
         <!-- List rows products -->
         <div id="products-catalog-list" class="space-y-4 font-sans">
           <!-- Filled dynamically -->
@@ -1019,6 +1033,7 @@ storeId: window.currentStoreId
           address: "Endereço da Loja, Número",
           openTime: "18:00",
           closeTime: "23:59",
+          operatingDays: [0, 1, 2, 3, 4, 5, 6],
           show: true,
           suspended: false,
           adminEmail: mail.toLowerCase(),
@@ -1428,7 +1443,7 @@ storeId: window.currentStoreId
       }
     }
 
-    window.convertProductImageToBase64 = function() {
+    window.convertProductImageToBase64 = async function() {
       const fileInput = document.getElementById('form-product-image-file');
       const preview = document.getElementById('form-img-preview');
       const placeholder = document.getElementById('form-img-placeholder');
@@ -1436,20 +1451,31 @@ storeId: window.currentStoreId
       const file = fileInput.files[0];
       if (!file) return;
 
-      if (file.size > 950 * 1024) {
-        alert("🔒 Atenção: O arquivo da imagem excede os limites de segurança da plataforma: Máximo 950KB compatível com Firestore!");
-        fileInput.value = '';
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        imageBase64Data = reader.result;
+      try {
+        if (window.optimizeAndConvertToBase64) {
+          imageBase64Data = await window.optimizeAndConvertToBase64(file, 950);
+        } else {
+          // Fallback if not loaded
+          if (file.size > 950 * 1024) {
+            alert("🔒 Atenção: O arquivo da imagem excede os limites de segurança da plataforma: Máximo 950KB compatível com Firestore!");
+            fileInput.value = '';
+            return;
+          }
+          imageBase64Data = await new Promise((resolve, reject) => {
+             const reader = new FileReader();
+             reader.onload = () => resolve(reader.result);
+             reader.onerror = reject;
+             reader.readAsDataURL(file);
+          });
+        }
         preview.src = imageBase64Data;
         preview.classList.remove('hidden');
         placeholder.classList.add('hidden');
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error("Error optimizing image:", err);
+        alert("Erro ao otimizar imagem: " + err);
+        fileInput.value = '';
+      }
     }
 
     async function saveOrUpdateCatalogProduct(e) {
@@ -1606,6 +1632,14 @@ storeId: window.currentStoreId
       const parent = document.getElementById('products-catalog-list');
       parent.innerHTML = '';
 
+      // Reset mass actions state
+      const selectAll = document.getElementById('select-all-products');
+      if (selectAll) selectAll.checked = false;
+      const toolbar = document.getElementById('mass-actions-toolbar');
+      if (toolbar) toolbar.classList.add('hidden');
+      const countLabel = document.getElementById('selected-products-count');
+      if (countLabel) countLabel.textContent = '0 itens selecionados';
+
       let matching = activeProducts;
       
       // 1. Apply filter
@@ -1706,6 +1740,9 @@ storeId: window.currentStoreId
 
       row.innerHTML = `
         <div class="flex items-center gap-3.5 flex-grow pr-4 w-full sm:w-auto">
+          <label class="cursor-pointer flex items-center shrink-0 mr-1">
+             <input type="checkbox" value="${prd.id}" onchange="updateSelectedProductsCount()" class="product-selection-checkbox w-4 h-4 text-brand-primary rounded border-gray-300 focus:ring-brand-primary">
+          </label>
           <div class="w-14 h-14 bg-orange-100 rounded-xl overflow-hidden border border-orange-200 flex items-center justify-center flex-shrink-0">
             <img src="${imgPrvUrl}" class="w-full h-full object-cover">
           </div>
@@ -1727,6 +1764,81 @@ storeId: window.currentStoreId
         </div>
       `;
       return row;
+    }
+
+    // Mass Actions Logic
+    window.toggleSelectAllProducts = function(checkbox) {
+      const isChecked = checkbox.checked;
+      const checkboxes = document.querySelectorAll('.product-selection-checkbox');
+      checkboxes.forEach(cb => {
+         cb.checked = isChecked;
+      });
+      updateSelectedProductsCount();
+    }
+
+    window.updateSelectedProductsCount = function() {
+      const selected = document.querySelectorAll('.product-selection-checkbox:checked');
+      const countLabel = document.getElementById('selected-products-count');
+      const toolbar = document.getElementById('mass-actions-toolbar');
+      
+      if (selected.length > 0) {
+        toolbar.classList.remove('hidden');
+        countLabel.textContent = `${selected.length} ${selected.length === 1 ? 'item selecionado' : 'itens selecionados'}`;
+      } else {
+        toolbar.classList.add('hidden');
+        // Uncheck "select all" if 0 selected
+        document.getElementById('select-all-products').checked = false;
+      }
+    }
+
+    window.massActionPause = async function() {
+      const selected = Array.from(document.querySelectorAll('.product-selection-checkbox:checked')).map(cb => cb.value);
+      if (selected.length === 0) return;
+
+      if (!confirm(`Tem certeza que deseja alternar o status de pausa de ${selected.length} produtos?`)) return;
+
+      try {
+         for (const prdId of selected) {
+            const prd = activeProducts.find(p => p.id === prdId);
+            if (prd) {
+               const newStatus = !prd.paused;
+               const ref = doc(db, COLLECTIONS.products, prdId);
+               await updateDoc(ref, { paused: newStatus });
+               prd.paused = newStatus; // Update local state for immediate feedback
+            }
+         }
+         
+         // Uncheck all and hide toolbar
+         document.querySelectorAll('.product-selection-checkbox').forEach(cb => cb.checked = false);
+         updateSelectedProductsCount();
+         drawProductsCatalogViewer(document.getElementById('product-search-bar').value);
+      } catch (e) {
+         console.error("Erro na ação em massa:", e);
+         alert("Ocorreu um erro ao atualizar alguns produtos.");
+      }
+    }
+
+    window.massActionDelete = async function() {
+      const selected = Array.from(document.querySelectorAll('.product-selection-checkbox:checked')).map(cb => cb.value);
+      if (selected.length === 0) return;
+
+      if (!confirm(`Tem certeza que deseja DELETAR ${selected.length} produtos? Esta ação não pode ser desfeita.`)) return;
+
+      try {
+         for (const prdId of selected) {
+            const ref = doc(db, COLLECTIONS.products, prdId);
+            await deleteDoc(ref);
+         }
+         
+         // Uncheck all and hide toolbar
+         document.querySelectorAll('.product-selection-checkbox').forEach(cb => cb.checked = false);
+         updateSelectedProductsCount();
+         // The snapshot listener will trigger and redraw automatically, but we can redraw manually too
+         // drawProductsCatalogViewer(document.getElementById('product-search-bar').value);
+      } catch (e) {
+         console.error("Erro ao deletar em massa:", e);
+         alert("Ocorreu um erro ao deletar alguns produtos.");
+      }
     }
 
     window.triggerProductEditionTrigger = function(prdId) {
@@ -1796,6 +1908,59 @@ storeId: window.currentStoreId
       toggleComplementsModal(true);
     }
 
+    let draggedGroupIndex = null;
+
+    window.handleGroupDragStart = function(e) {
+      draggedGroupIndex = parseInt(e.currentTarget.dataset.groupIndex, 10);
+      e.dataTransfer.effectAllowed = 'move';
+      e.currentTarget.classList.add('opacity-50', 'scale-95', 'z-50');
+    };
+
+    window.handleGroupDragOver = function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      e.currentTarget.classList.add('border-brand-primary', 'border-dashed', 'border-2');
+    };
+
+    window.handleGroupDragEnter = function(e) {
+      e.preventDefault();
+    };
+
+    window.handleGroupDragLeave = function(e) {
+      e.currentTarget.classList.remove('border-brand-primary', 'border-dashed', 'border-2');
+    };
+
+    window.handleGroupDrop = async function(e) {
+      e.preventDefault();
+      e.currentTarget.classList.remove('border-brand-primary', 'border-dashed', 'border-2');
+      
+      const targetGroupIndex = parseInt(e.currentTarget.dataset.groupIndex, 10);
+      
+      if (draggedGroupIndex === null || draggedGroupIndex === targetGroupIndex || !activeComplementProduct) return;
+
+      try {
+        const compRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
+        const compSnap = await getDoc(compRef);
+        
+        if (compSnap.exists() && compSnap.data().groups) {
+          const compsListArr = compSnap.data().groups;
+          const [movedGroup] = compsListArr.splice(draggedGroupIndex, 1);
+          compsListArr.splice(targetGroupIndex, 0, movedGroup);
+          
+          await updateDoc(compRef, { groups: compsListArr });
+          drawProductComplementsStructure(); // Redraw
+        }
+      } catch (err) {
+        console.error("Erro ao reordenar grupos de complemento:", err);
+        alert("Ocorreu um erro ao reordenar os grupos.");
+      }
+    };
+
+    window.handleGroupDragEnd = function(e) {
+      e.currentTarget.classList.remove('opacity-50', 'scale-95', 'z-50');
+      draggedGroupIndex = null;
+    };
+
     async function drawProductComplementsStructure() {
       const parentList = document.getElementById('complements-groups-list');
       parentList.innerHTML = '';
@@ -1817,15 +1982,30 @@ storeId: window.currentStoreId
             }
 
             const groupCard = document.createElement('div');
-            groupCard.className = "bg-gray-50 p-4 border border-gray-150/40 rounded-xl space-y-3.5 text-left";
+            groupCard.className = "bg-gray-50 p-4 border border-gray-150/40 rounded-xl space-y-3.5 text-left transition-all duration-200";
+            
+            // Drag and Drop
+            groupCard.draggable = true;
+            groupCard.dataset.groupIndex = idx;
+            groupCard.addEventListener('dragstart', handleGroupDragStart);
+            groupCard.addEventListener('dragover', handleGroupDragOver);
+            groupCard.addEventListener('dragenter', handleGroupDragEnter);
+            groupCard.addEventListener('dragleave', handleGroupDragLeave);
+            groupCard.addEventListener('drop', handleGroupDrop);
+            groupCard.addEventListener('dragend', handleGroupDragEnd);
 
             const mandateBadge = group.isMandatory ? `<span class="bg-orange-100 text-brand-primary font-bold text-[9px] px-2 py-0.5 rounded">Obrigatório</span>` : `<span class="bg-gray-200 text-gray-500 font-bold text-[9px] px-2 py-0.5 rounded">Opcional</span>`;
 
             groupCard.innerHTML = `
-              <div class="flex items-start justify-between">
-                <div>
-                  <h4 class="text-xs font-bold text-gray-800 uppercase tracking-tight block">${group.name}</h4>
-                  <p class="text-[10px] text-gray-400 italic">${group.description || "Escolha adereços adicionais"}</p>
+              <div class="flex items-start justify-between cursor-move">
+                <div class="flex items-center gap-2">
+                  <div class="text-gray-400 cursor-move" title="Arraste para reordenar">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                  </div>
+                  <div>
+                    <h4 class="text-xs font-bold text-gray-800 uppercase tracking-tight block">${group.name}</h4>
+                    <p class="text-[10px] text-gray-400 italic">${group.description || "Escolha adereços adicionais"}</p>
+                  </div>
                 </div>
                 <div class="flex items-center gap-1.5 flex-shrink-0">
                   ${mandateBadge}
@@ -1987,28 +2167,34 @@ storeId: window.currentStoreId
       if (!fileInput || !fileInput.files || !fileInput.files[0]) return;
       
       const file = fileInput.files[0];
-      if (file.size > 950 * 1024) {
-        alert("🔒 Erro: Imagem do complemento excede 950KB.");
-        fileInput.value = '';
-        return;
-      }
 
       try {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const base64 = reader.result;
-          
-          const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-          const compSnap = await getDoc(docRef);
-
-          if (compSnap.exists()) {
-            const data = compSnap.data();
-            data.groups[groupIdx].options[optIdx].image = base64;
-            await setDoc(docRef, data);
-            drawProductComplementsStructure();
+        let base64;
+        if (window.optimizeAndConvertToBase64) {
+          base64 = await window.optimizeAndConvertToBase64(file, 950);
+        } else {
+          if (file.size > 950 * 1024) {
+            alert("🔒 Erro: Imagem do complemento excede 950KB.");
+            fileInput.value = '';
+            return;
           }
-        };
-        reader.readAsDataURL(file);
+          base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        }
+          
+        const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
+        const compSnap = await getDoc(docRef);
+
+        if (compSnap.exists()) {
+          const data = compSnap.data();
+          data.groups[groupIdx].options[optIdx].image = base64;
+          await setDoc(docRef, data);
+          drawProductComplementsStructure();
+        }
       } catch (e) {
         console.error("Direct image edit error: ", e);
         alert("Erro ao salvar imagem do complemento.");
@@ -2034,23 +2220,27 @@ storeId: window.currentStoreId
         return;
       }
 
-      let optionImage = "";
+            let optionImage = "";
       if (fileInput && fileInput.files && fileInput.files[0]) {
         const file = fileInput.files[0];
-        if (file.size > 950 * 1024) {
-          alert("🔒 Erro: Imagem do complemento excede limite de 950KB.");
-          return;
-        }
-        
+          
         try {
-          optionImage = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = (err) => reject(err);
-            reader.readAsDataURL(file);
-          });
+          if (window.optimizeAndConvertToBase64) {
+            optionImage = await window.optimizeAndConvertToBase64(file, 950);
+          } else {
+            if (file.size > 950 * 1024) {
+              alert("🔒 Erro: Imagem do complemento excede limite de 950KB.");
+              return;
+            }
+            optionImage = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.onerror = (err) => reject(err);
+              reader.readAsDataURL(file);
+            });
+          }
         } catch (e) {
-          alert("Erro ao ler arquivo da imagem.");
+          alert("Erro ao ler/otimizar arquivo da imagem.");
           return;
         }
       }
@@ -2295,5 +2485,6 @@ storeId: window.currentStoreId
     // Auto-detect load state
     setTimeout(applySidebarState, 100);
   </script>
+  <script src="/image-optimizer.js"></script>
 </body>
 </html>
