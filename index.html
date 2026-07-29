@@ -1587,7 +1587,7 @@ storeId: window.currentStoreId
 
         // Fetch source complements document to duplicate
         const compRef = doc(db, COLLECTIONS.complements, prd.id);
-        const compSnap = await getDoc(compRef);
+        const compSnap = await getComplementDoc(compRef, prd.id);
         if (compSnap.exists()) {
           const compData = compSnap.data();
           compData.id = newPrdId;
@@ -1908,58 +1908,45 @@ storeId: window.currentStoreId
       toggleComplementsModal(true);
     }
 
-    let draggedGroupIndex = null;
-
-    window.handleGroupDragStart = function(e) {
-      draggedGroupIndex = parseInt(e.currentTarget.dataset.groupIndex, 10);
-      e.dataTransfer.effectAllowed = 'move';
-      e.currentTarget.classList.add('opacity-50', 'scale-95', 'z-50');
-    };
-
-    window.handleGroupDragOver = function(e) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      e.currentTarget.classList.add('border-brand-primary', 'border-dashed', 'border-2');
-    };
-
-    window.handleGroupDragEnter = function(e) {
-      e.preventDefault();
-    };
-
-    window.handleGroupDragLeave = function(e) {
-      e.currentTarget.classList.remove('border-brand-primary', 'border-dashed', 'border-2');
-    };
-
-    window.handleGroupDrop = async function(e) {
-      e.preventDefault();
-      e.currentTarget.classList.remove('border-brand-primary', 'border-dashed', 'border-2');
-      
-      const targetGroupIndex = parseInt(e.currentTarget.dataset.groupIndex, 10);
-      
-      if (draggedGroupIndex === null || draggedGroupIndex === targetGroupIndex || !activeComplementProduct) return;
-
+    window.moveComplementGroup = async function(idx, dir) {
+      if (!activeComplementProduct) return;
       try {
         const compRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(compRef);
+        const compSnap = await getComplementDoc(compRef, activeComplementProduct.id);
         
         if (compSnap.exists() && compSnap.data().groups) {
           const compsListArr = compSnap.data().groups;
-          const [movedGroup] = compsListArr.splice(draggedGroupIndex, 1);
-          compsListArr.splice(targetGroupIndex, 0, movedGroup);
+          const targetIdx = idx + dir;
+          
+          if (targetIdx < 0 || targetIdx >= compsListArr.length) return;
+          
+          const temp = compsListArr[idx];
+          compsListArr[idx] = compsListArr[targetIdx];
+          compsListArr[targetIdx] = temp;
           
           await updateDoc(compRef, { groups: compsListArr });
-          drawProductComplementsStructure(); // Redraw
+          drawProductComplementsStructure();
         }
       } catch (err) {
-        console.error("Erro ao reordenar grupos de complemento:", err);
-        alert("Ocorreu um erro ao reordenar os grupos.");
+        console.error("Erro ao reordenar grupo: ", err);
+        alert("Ocorreu um erro ao reordenar o grupo.");
       }
     };
 
-    window.handleGroupDragEnd = function(e) {
-      e.currentTarget.classList.remove('opacity-50', 'scale-95', 'z-50');
-      draggedGroupIndex = null;
-    };
+    async function getComplementDoc(ref, id) {
+      try {
+        const snap = await getDoc(ref);
+        return snap;
+      } catch (e) {
+        if (activeComplementsMap[id]) {
+          return {
+            exists: () => true,
+            data: () => activeComplementsMap[id]
+          };
+        }
+        return { exists: () => false, data: () => null };
+      }
+    }
 
     async function drawProductComplementsStructure() {
       const parentList = document.getElementById('complements-groups-list');
@@ -1967,7 +1954,7 @@ storeId: window.currentStoreId
 
       try {
         const compRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(compRef);
+        const compSnap = await getComplementDoc(compRef, activeComplementProduct.id);
 
         if (compSnap.exists() && compSnap.data().groups && compSnap.data().groups.length > 0) {
           const compsListArr = compSnap.data().groups;
@@ -1984,23 +1971,14 @@ storeId: window.currentStoreId
             const groupCard = document.createElement('div');
             groupCard.className = "bg-gray-50 p-4 border border-gray-150/40 rounded-xl space-y-3.5 text-left transition-all duration-200";
             
-            // Drag and Drop
-            groupCard.draggable = true;
-            groupCard.dataset.groupIndex = idx;
-            groupCard.addEventListener('dragstart', handleGroupDragStart);
-            groupCard.addEventListener('dragover', handleGroupDragOver);
-            groupCard.addEventListener('dragenter', handleGroupDragEnter);
-            groupCard.addEventListener('dragleave', handleGroupDragLeave);
-            groupCard.addEventListener('drop', handleGroupDrop);
-            groupCard.addEventListener('dragend', handleGroupDragEnd);
-
             const mandateBadge = group.isMandatory ? `<span class="bg-orange-100 text-brand-primary font-bold text-[9px] px-2 py-0.5 rounded">Obrigatório</span>` : `<span class="bg-gray-200 text-gray-500 font-bold text-[9px] px-2 py-0.5 rounded">Opcional</span>`;
 
             groupCard.innerHTML = `
-              <div class="flex items-start justify-between cursor-move">
+              <div class="flex items-start justify-between">
                 <div class="flex items-center gap-2">
-                  <div class="text-gray-400 cursor-move" title="Arraste para reordenar">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                  <div class="flex flex-col gap-0.5">
+                    <button onclick="moveComplementGroup(${idx}, -1)" class="w-5 h-5 bg-white text-gray-650 hover:text-brand-primary text-[10px] font-semibold rounded border border-gray-200 flex items-center justify-center cursor-pointer transition-colors" title="Mover para cima" ${idx === 0 ? 'disabled class="opacity-30 cursor-not-allowed"' : ''}>▲</button>
+                    <button onclick="moveComplementGroup(${idx}, 1)" class="w-5 h-5 bg-white text-gray-650 hover:text-brand-primary text-[10px] font-semibold rounded border border-gray-200 flex items-center justify-center cursor-pointer transition-colors" title="Mover para baixo" ${idx === compsListArr.length - 1 ? 'disabled class="opacity-30 cursor-not-allowed"' : ''}>▼</button>
                   </div>
                   <div>
                     <h4 class="text-xs font-bold text-gray-800 uppercase tracking-tight block">${group.name}</h4>
@@ -2102,7 +2080,7 @@ storeId: window.currentStoreId
 
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
 
         let data = { id: activeComplementProduct.id, groups: [], storeId: window.currentStoreId };
         if (compSnap.exists()) {
@@ -2140,7 +2118,7 @@ storeId: window.currentStoreId
 
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
 
         if (compSnap.exists()) {
           const data = compSnap.data();
@@ -2187,7 +2165,7 @@ storeId: window.currentStoreId
         }
           
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
 
         if (compSnap.exists()) {
           const data = compSnap.data();
@@ -2247,7 +2225,7 @@ storeId: window.currentStoreId
 
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
 
         if (compSnap.exists()) {
           const data = compSnap.data();
@@ -2305,7 +2283,7 @@ storeId: window.currentStoreId
     window.triggerEditComplementGroup = async function(groupIdx) {
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
         if (!compSnap.exists()) return;
 
         const data = compSnap.data();
@@ -2342,7 +2320,7 @@ storeId: window.currentStoreId
 
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
         if (!compSnap.exists()) return;
 
         const data = compSnap.data();
@@ -2366,7 +2344,7 @@ storeId: window.currentStoreId
     window.triggerEditComplementOption = async function(groupIdx, optIdx) {
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
         if (!compSnap.exists()) return;
 
         const data = compSnap.data();
@@ -2405,7 +2383,7 @@ storeId: window.currentStoreId
     window.toggleComplementOptionPausedState = async function(groupIdx, optIdx, isCurrentlyPaused) {
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
 
         if (compSnap.exists()) {
           const data = compSnap.data();
@@ -2421,7 +2399,7 @@ storeId: window.currentStoreId
     window.removeComplementOptionByIndex = async function(groupIdx, optIdx) {
       try {
         const docRef = doc(db, COLLECTIONS.complements, activeComplementProduct.id);
-        const compSnap = await getDoc(docRef);
+        const compSnap = await getComplementDoc(docRef, activeComplementProduct.id);
 
         if (compSnap.exists()) {
           const data = compSnap.data();
