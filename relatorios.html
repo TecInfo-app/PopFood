@@ -561,13 +561,13 @@ window.copyStoreLink = function() {
       const totalOrdersCount = orders.length;
       const avgValue = totalOrdersCount > 0 ? (grossRevenue / totalOrdersCount) : 0;
 
-      document.getElementById('lbl-rep-gross').textContent = `R$ ${grossRevenue.toFixed(2).replace('.', ',')}`;
-      document.getElementById('lbl-rep-avg').textContent = `R$ ${avgValue.toFixed(2).replace('.', ',')}`;
-      document.getElementById('lbl-rep-delivery').textContent = `R$ ${deliverySpent.toFixed(2).replace('.', ',')}`;
-      document.getElementById('lbl-rep-coupons').textContent = `R$ ${couponSpent.toFixed(2).replace('.', ',')}`;
+      const elG = document.getElementById('lbl-rep-gross'); if (elG) elG.textContent = `R$ ${grossRevenue.toFixed(2).replace('.', ',')}`;
+      const elA = document.getElementById('lbl-rep-avg'); if (elA) elA.textContent = `R$ ${avgValue.toFixed(2).replace('.', ',')}`;
+      const elD = document.getElementById('lbl-rep-delivery'); if (elD) elD.textContent = `R$ ${deliverySpent.toFixed(2).replace('.', ',')}`;
+      const elC = document.getElementById('lbl-rep-coupons'); if (elC) elC.textContent = `R$ ${couponSpent.toFixed(2).replace('.', ',')}`;
 
-      document.getElementById('lbl-rep-orders-count').textContent = `Dividido por ${totalOrdersCount} pedidos`;
-      document.getElementById('lbl-rep-coupons-count').textContent = `Total de ${couponCount} cupons aplicados`;
+      const elOC = document.getElementById('lbl-rep-orders-count'); if (elOC) elOC.textContent = `Dividido por ${totalOrdersCount} pedidos`;
+      const elCC = document.getElementById('lbl-rep-coupons-count'); if (elCC) elCC.textContent = `Total de ${couponCount} cupons aplicados`;
     }
 
     function processAndRenderTopProducts(orders) {
@@ -590,6 +590,7 @@ window.copyStoreLink = function() {
       // convert map to sorted Array
       const sorted = Object.values(productsMap).sort((a,b) => b.qty - a.qty).slice(0, 5);
       const tbody = document.getElementById('top-products-tbody');
+      if (!tbody) return;
       tbody.innerHTML = '';
 
       if (sorted.length === 0) {
@@ -620,6 +621,7 @@ window.copyStoreLink = function() {
     // Dynamic clean SVG chart rendering Weekly/Monthly values
     function renderInteractiveRevenueChart(orders, rangeType, customStart, customEnd) {
       const parent = document.getElementById('revenue-chart-parent');
+      if (!parent) return;
       parent.innerHTML = '';
 
       // Map daily values
@@ -711,6 +713,7 @@ window.copyStoreLink = function() {
     // Dynamic horizontal bar distribution for Category ranges
     function renderCategoryDistributionMetrics(orders) {
       const parentList = document.getElementById('category-chart-parent');
+      if (!parentList) return;
       parentList.innerHTML = '';
 
       const catCounterMap = {};

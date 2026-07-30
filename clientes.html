@@ -492,9 +492,9 @@ window.copyStoreLink = function() {
       const finishedNonCancelledOrdersCount = globalOrdersListForCrm.filter(o => o.status !== "Cancelado").length;
       const avgTicket = finishedNonCancelledOrdersCount > 0 ? (totalCumulativeLtv / finishedNonCancelledOrdersCount) : 0;
 
-      document.getElementById('lbl-total-clients').textContent = activeClients;
-      document.getElementById('lbl-total-ltv').textContent = `R$ ${totalCumulativeLtv.toFixed(2).replace('.', ',')}`;
-      document.getElementById('lbl-avg-ticket').textContent = `R$ ${avgTicket.toFixed(2).replace('.', ',')}`;
+      (document.getElementById('lbl-total-clients') || {}).textContent = activeClients;
+      (document.getElementById('lbl-total-ltv') || {}).textContent = `R$ ${totalCumulativeLtv.toFixed(2).replace('.', ',')}`;
+      (document.getElementById('lbl-avg-ticket') || {}).textContent = `R$ ${avgTicket.toFixed(2).replace('.', ',')}`;
     }
 
     // Filter searchable indexes
@@ -506,6 +506,7 @@ window.copyStoreLink = function() {
     // Render table rows
     function drawCrmClientsGrid(searchQuery = "") {
       const body = document.getElementById('crm-table-body');
+      if (!body) return;
       body.innerHTML = '';
 
       let matching = globalClientsList;
@@ -604,10 +605,11 @@ window.copyStoreLink = function() {
       const client = globalClientsList.find(c => c.phone.replace(/\D/g, '') === phone.replace(/\D/g, ''));
       if (!client) return;
 
-      document.getElementById('crm-lbl-client-name').textContent = client.name;
-      document.getElementById('crm-lbl-client-phone').textContent = `Celular: ${client.phone}`;
+      (document.getElementById('crm-lbl-client-name') || {}).textContent = client.name;
+      (document.getElementById('crm-lbl-client-phone') || {}).textContent = `Celular: ${client.phone}`;
 
       const historyParent = document.getElementById('crm-orders-history-container');
+      if (!historyParent) return;
       historyParent.innerHTML = '';
 
       // Find matching client orders

@@ -386,10 +386,10 @@
             }
           });
           
-          document.getElementById('order-search-input').value = '';
+          (document.getElementById('order-search-input') || {}).value = '';
         } else {
           // Already in list, just view it
-          document.getElementById('order-search-input').value = '';
+          (document.getElementById('order-search-input') || {}).value = '';
         }
         
         renderDeliveriesList();
@@ -463,8 +463,8 @@
           viewDelivery(activeDeliveries[0].id);
         } else {
           document.getElementById('active-workflow-panel').classList.add('hidden');
-          document.getElementById('order-search-input').value = '';
-          document.getElementById('milestone-pin-input').value = '';
+          (document.getElementById('order-search-input') || {}).value = '';
+          (document.getElementById('milestone-pin-input') || {}).value = '';
           selectedOrder = null;
           currentViewingOrderId = null;
         }
@@ -513,8 +513,8 @@
     // Populate active carrier items dynamically
     function bindWorkflowDetails(order) {
       selectedOrder = order;
-      document.getElementById('order-lbl-id').textContent = `#${order.id}`;
-      document.getElementById('order-lbl-status').textContent = order.status;
+      (document.getElementById('order-lbl-id') || {}).textContent = `#${order.id}`;
+      (document.getElementById('order-lbl-status') || {}).textContent = order.status;
       
       const statusSpan = document.getElementById('order-lbl-status');
       statusSpan.className = "px-3 py-1 rounded-full text-xs font-bold leading-none";
@@ -530,26 +530,26 @@
         statusSpan.classList.add("bg-red-950", "text-red-400", "border", "border-red-900/30");
       }
 
-      document.getElementById('order-lbl-payment').textContent = order.paymentMethod || "Dinheiro";
-      document.getElementById('order-lbl-total').textContent = `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`;
+      (document.getElementById('order-lbl-payment') || {}).textContent = order.paymentMethod || "Dinheiro";
+      (document.getElementById('order-lbl-total') || {}).textContent = `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`;
 
       // Handle Cash changes
       const cashRow = document.getElementById('order-row-troco');
       if (order.troco && order.troco > 0) {
         cashRow.classList.remove('hidden');
-        document.getElementById('order-lbl-troco').textContent = `R$ ${order.troco.toFixed(2).replace('.', ',')}`;
+        (document.getElementById('order-lbl-troco') || {}).textContent = `R$ ${order.troco.toFixed(2).replace('.', ',')}`;
       } else {
         cashRow.classList.add('hidden');
       }
 
       // Customer section
-      document.getElementById('client-lbl-name').textContent = order.customer.name || "Sem Nome";
-      document.getElementById('client-lbl-address').textContent = order.customer.address || "Sem endereço cadastrado";
+      (document.getElementById('client-lbl-name') || {}).textContent = order.customer.name || "Sem Nome";
+      (document.getElementById('client-lbl-address') || {}).textContent = order.customer.address || "Sem endereço cadastrado";
       
       const refRow = document.getElementById('client-row-reference');
       if (order.customer.reference) {
         refRow.classList.remove('hidden');
-        document.getElementById('client-lbl-reference').textContent = order.customer.reference;
+        (document.getElementById('client-lbl-reference') || {}).textContent = order.customer.reference;
       } else {
         refRow.classList.add('hidden');
       }
@@ -632,7 +632,7 @@
         selectedOrder.deliveryProgress = progress;
         selectedOrder.deliveryMilestone = milestone;
 
-        document.getElementById('order-lbl-status').textContent = "Saiu para entrega";
+        (document.getElementById('order-lbl-status') || {}).textContent = "Saiu para entrega";
         const statusSpan = document.getElementById('order-lbl-status');
         statusSpan.className = "px-3 py-1 rounded-full text-xs font-bold leading-none bg-purple-950 text-purple-400 border border-purple-900/30";
       } catch (err) {

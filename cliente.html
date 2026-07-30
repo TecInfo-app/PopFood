@@ -3087,7 +3087,7 @@
         let html = "";
 
         if (timing === "offline") {
-          document.getElementById("payment-method-label").textContent =
+          (document.getElementById("payment-method-label") || {}).textContent =
             "Pagamento na Entrega";
           if (pm.offlinePix !== false)
             html += buildPaymentMethodCard("Pix", "Pix offline", "⚡");
@@ -3100,7 +3100,7 @@
           if (pm.offlineMoney !== false)
             html += buildPaymentMethodCard("Dinheiro", "Em espécie", "💵");
         } else {
-          document.getElementById("payment-method-label").textContent =
+          (document.getElementById("payment-method-label") || {}).textContent =
             "Pagamento Online Seguro";
           if (pm.onlinePix !== false)
             html += buildPaymentMethodCard("PixOnline", "Pix Imediato", "⚡");
@@ -3679,9 +3679,9 @@
         lblTotal.textContent = `(${allRestaurantRatings.length})`;
 
         // Update Modal stats too
-        document.getElementById("modal-avg-score").textContent =
+        (document.getElementById("modal-avg-score") || {}).textContent =
           globalAvg.toFixed(1);
-        document.getElementById("modal-total-count").textContent =
+        (document.getElementById("modal-total-count") || {}).textContent =
           `${allRestaurantRatings.length} avaliações`;
 
         const foodBar = document.getElementById("bar-food-stars");
@@ -3697,8 +3697,8 @@
         if (show) {
           modal.classList.remove("hidden");
           if (restaurantProfile) {
-            document.getElementById("info-restaurant-name").textContent = restaurantProfile.name || "PopFood";
-            document.getElementById("info-restaurant-desc").textContent = restaurantProfile.description || "Bem-vindo ao nosso cardápio!";
+            (document.getElementById("info-restaurant-name") || {}).textContent = restaurantProfile.name || "PopFood";
+            (document.getElementById("info-restaurant-desc") || {}).textContent = restaurantProfile.description || "Bem-vindo ao nosso cardápio!";
             
             // Logo
             const logoImg = document.getElementById("info-restaurant-logo");
@@ -4425,23 +4425,23 @@
           const cartItem = shoppingCart.find((i) => i.uniqueId === isEditingUniqueId);
           if (cartItem) {
             currentModalQty = cartItem.quantity;
-            document.getElementById("modal-product-notes").value = cartItem.notes || "";
+            (document.getElementById("modal-product-notes") || {}).value = cartItem.notes || "";
           } else {
             currentModalQty = 1;
-            document.getElementById("modal-product-notes").value = "";
+            (document.getElementById("modal-product-notes") || {}).value = "";
           }
         } else {
           currentModalQty = 1;
-          document.getElementById("modal-product-notes").value = "";
+          (document.getElementById("modal-product-notes") || {}).value = "";
         }
 
         currentModalComplementsPrice = 0;
 
-        document.getElementById("modal-qty").textContent = currentModalQty;
-        document.getElementById("modal-product-name").textContent = prod.name;
-        document.getElementById("modal-product-desc").textContent =
+        (document.getElementById("modal-qty") || {}).textContent = currentModalQty;
+        (document.getElementById("modal-product-name") || {}).textContent = prod.name;
+        (document.getElementById("modal-product-desc") || {}).textContent =
           prod.description || "Nenhuma descrição disponível.";
-        document.getElementById("modal-product-price").textContent =
+        (document.getElementById("modal-product-price") || {}).textContent =
           `R$ ${(prod.price || 0).toFixed(2).replace(".", ",")}`;
 
         const modalImg = document.getElementById("modal-product-img");
@@ -4760,7 +4760,7 @@
           }
         }
         currentModalQty = Math.max(1, currentModalQty + val);
-        document.getElementById("modal-qty").textContent = currentModalQty;
+        (document.getElementById("modal-qty") || {}).textContent = currentModalQty;
         recalculateModalPrice();
       };
 
@@ -4781,7 +4781,7 @@
         currentModalComplementsPrice = extra;
         const totalItem =
           (currentSelectedProduct.price + extra) * currentModalQty;
-        document.getElementById("modal-total-button-price").textContent =
+        (document.getElementById("modal-total-button-price") || {}).textContent =
           `R$ ${totalItem.toFixed(2).replace(".", ",")}`;
       }
 
@@ -5006,8 +5006,8 @@
         const phone = document.getElementById("cust-phone").value.trim();
 
         if (name && phone) {
-          document.getElementById("saved-banner-name").textContent = name;
-          document.getElementById("saved-banner-phone").textContent = phone;
+          (document.getElementById("saved-banner-name") || {}).textContent = name;
+          (document.getElementById("saved-banner-phone") || {}).textContent = phone;
 
           // Check selected delivery option
           const optionNodes = document.getElementsByName("delivery-option");
@@ -5026,7 +5026,7 @@
               document
                 .getElementById("saved-banner-addr-row")
                 .classList.remove("hidden");
-              document.getElementById("saved-banner-addr").textContent =
+              (document.getElementById("saved-banner-addr") || {}).textContent =
                 addrStr;
               banner.classList.remove("hidden");
             } else {
@@ -5436,7 +5436,7 @@
           (acc, current) => acc + current.quantity,
           0,
         );
-        document.getElementById("cart-badge").textContent = totalQty;
+        (document.getElementById("cart-badge") || {}).textContent = totalQty;
 
         const navCartBadge = document.getElementById("nav-cart-badge");
         if (navCartBadge) {
@@ -5776,7 +5776,7 @@
             return;
           }
 
-          document.getElementById("cust-street").value =
+          (document.getElementById("cust-street") || {}).value =
             `${block.logradouro}, ${block.bairro} - ${block.localidade}/${block.uf}`;
 
           // Automatic distance and fee calculation
@@ -5878,9 +5878,9 @@
                 }
 
                 // Fill fields
-                document.getElementById("cust-street").value = street;
+                (document.getElementById("cust-street") || {}).value = street;
                 if (cep && cep.length === 8) {
-                  document.getElementById("cust-cep").value = cep;
+                  (document.getElementById("cust-cep") || {}).value = cep;
                 }
 
                 showToast("📍 Localização preenchida com sucesso!");
@@ -5961,9 +5961,9 @@
           calculatedDistance = 2.0;
           calculatedDeliveryFee = fallbackFee;
 
-          document.getElementById("delivery-calc-km").textContent =
+          (document.getElementById("delivery-calc-km") || {}).textContent =
             `Aprox. 2.0 km`;
-          document.getElementById("delivery-calc-fee").textContent =
+          (document.getElementById("delivery-calc-fee") || {}).textContent =
             `R$ ${calculatedDeliveryFee.toFixed(2).replace(".", ",")}`;
 
           if (alertDiv) {
@@ -6066,7 +6066,7 @@
             );
 
             calculatedDistance = parseFloat(dist.toFixed(2));
-            document.getElementById("delivery-calc-km").textContent =
+            (document.getElementById("delivery-calc-km") || {}).textContent =
               `${calculatedDistance.toFixed(1)} km`;
 
             // Get maximum configured delivery distance
@@ -6078,7 +6078,7 @@
               alertDiv.classList.remove("hidden");
 
               calculatedDeliveryFee = 0;
-              document.getElementById("delivery-calc-fee").textContent =
+              (document.getElementById("delivery-calc-fee") || {}).textContent =
                 `R$ 0,00`;
               btn.disabled = true;
               btn.classList.add(
@@ -6135,7 +6135,7 @@
               calculatedDeliveryFee = parseFloat(
                 restaurantProfile.deliveryRates[matchedKM] || 0,
               );
-              document.getElementById("delivery-calc-fee").textContent =
+              (document.getElementById("delivery-calc-fee") || {}).textContent =
                 `R$ ${calculatedDeliveryFee.toFixed(2).replace(".", ",")}`;
             }
 
@@ -6172,9 +6172,9 @@
               matchedKM !== null
                 ? parseFloat(restaurantProfile.deliveryRates[matchedKM] || 5.0)
                 : 5.0;
-            document.getElementById("delivery-calc-km").textContent =
+            (document.getElementById("delivery-calc-km") || {}).textContent =
               `Aprox. 2.0 km`;
-            document.getElementById("delivery-calc-fee").textContent =
+            (document.getElementById("delivery-calc-fee") || {}).textContent =
               `R$ ${calculatedDeliveryFee.toFixed(2).replace(".", ",")}`;
 
             btn.disabled = false;
@@ -6250,8 +6250,8 @@
         const modal = document.getElementById("loyalty-reward-modal");
         const inner = document.getElementById("loyalty-reward-modal-inner");
         
-        document.getElementById("loyalty-reward-modal-discount-text").textContent = `${discountValue} de Desconto!`;
-        document.getElementById("loyalty-reward-modal-subtitle").textContent = `Parabéns! Você completou ${requiredOrders} pedidos e desbloqueou seu prêmio de fidelidade para usar na próxima compra.`;
+        (document.getElementById("loyalty-reward-modal-discount-text") || {}).textContent = `${discountValue} de Desconto!`;
+        (document.getElementById("loyalty-reward-modal-subtitle") || {}).textContent = `Parabéns! Você completou ${requiredOrders} pedidos e desbloqueou seu prêmio de fidelidade para usar na próxima compra.`;
 
         modal.classList.remove("hidden");
         setTimeout(() => {
@@ -6314,7 +6314,7 @@
           });
 
           if (firstOrderCoupon) {
-            document.getElementById("first-order-coupon-code").textContent = firstOrderCoupon.code;
+            (document.getElementById("first-order-coupon-code") || {}).textContent = firstOrderCoupon.code;
             const modal = document.getElementById("first-order-modal");
             const inner = document.getElementById("first-order-modal-inner");
             
@@ -6370,19 +6370,19 @@
         }
 
         // Fill main checkout form fields so everything is perfectly synced
-        document.getElementById("cust-name").value = name;
-        document.getElementById("cust-phone").value = phone;
+        (document.getElementById("cust-name") || {}).value = name;
+        (document.getElementById("cust-phone") || {}).value = phone;
         if (street) {
-          document.getElementById("cust-street").value = street;
+          (document.getElementById("cust-street") || {}).value = street;
         }
         if (cep) {
-          document.getElementById("cust-cep").value = cep;
+          (document.getElementById("cust-cep") || {}).value = cep;
         }
         if (number) {
-          document.getElementById("cust-number").value = number;
+          (document.getElementById("cust-number") || {}).value = number;
         }
         if (comp) {
-          document.getElementById("cust-comp").value = comp;
+          (document.getElementById("cust-comp") || {}).value = comp;
         }
 
         // Save to localStorage
@@ -6500,9 +6500,9 @@
                 }
 
                 // Update inputs on main UI
-                document.getElementById("cust-street").value = street;
+                (document.getElementById("cust-street") || {}).value = street;
                 if (cep && cep.length === 8) {
-                  document.getElementById("cust-cep").value = cep;
+                  (document.getElementById("cust-cep") || {}).value = cep;
                 }
 
                 // Update preview in the modal
@@ -7342,7 +7342,7 @@
           return sum + item.totalItemPrice * item.quantity;
         }, 0);
 
-        document.getElementById("lbl-subtotal").textContent =
+        (document.getElementById("lbl-subtotal") || {}).textContent =
           `R$ ${subtotal.toFixed(2).replace(".", ",")}`;
 
         // Recalculate manual coupon discount
@@ -7359,7 +7359,7 @@
 
           discPanel.classList.remove("h-0");
           discPanel.classList.add("py-0.5");
-          document.getElementById("lbl-desconto").textContent =
+          (document.getElementById("lbl-desconto") || {}).textContent =
             `- R$ ${discount.toFixed(2).replace(".", ",")}`;
         } else {
           discPanel.classList.add("h-0");
@@ -7388,7 +7388,7 @@
 
           if (loyaltyPanel) {
             loyaltyPanel.classList.remove("hidden");
-            document.getElementById("lbl-desconto-fidelidade").textContent =
+            (document.getElementById("lbl-desconto-fidelidade") || {}).textContent =
               `- R$ ${loyaltyDisc.toFixed(2).replace(".", ",")}`;
           }
         } else {
@@ -7400,14 +7400,14 @@
         // Add delivery fee
         const displayDeliveryFee =
           selectedDeliveryOption === "pickup" ? 0.0 : calculatedDeliveryFee;
-        document.getElementById("lbl-taxa").textContent =
+        (document.getElementById("lbl-taxa") || {}).textContent =
           `R$ ${displayDeliveryFee.toFixed(2).replace(".", ",")}`;
 
         const total = Math.max(
           0,
           subtotal - discount - loyaltyDisc + displayDeliveryFee,
         );
-        document.getElementById("lbl-total").textContent =
+        (document.getElementById("lbl-total") || {}).textContent =
           `R$ ${total.toFixed(2).replace(".", ",")}`;
         updateFloatingCartBar();
       }
@@ -7588,9 +7588,9 @@
           }
         }
 
-        document.getElementById("review-payment-method").textContent = method;
-        document.getElementById("review-phone").textContent = phone;
-        document.getElementById("review-total").textContent =
+        (document.getElementById("review-payment-method") || {}).textContent = method;
+        (document.getElementById("review-phone") || {}).textContent = phone;
+        (document.getElementById("review-total") || {}).textContent =
           `R$ ${finalVal.toFixed(2).replace(".", ",")}`;
 
         const reviewAddressRow = document.getElementById("review-address-row");
@@ -7981,7 +7981,7 @@
                 const nextAction = result.paymentIntent.next_action;
                 if (nextAction && nextAction.pix_display_qr_code) {
                   const qrData = nextAction.pix_display_qr_code;
-                  document.getElementById("pix-qr-container").innerHTML =
+                  const qrCont = document.getElementById("pix-qr-container"); if (qrCont) qrCont.innerHTML =
                     `<img src="${qrData.image_url_svg}" class="w-full h-full" />`;
                   document.getElementById("btn-copy-pix").onclick = () => {
                     navigator.clipboard.writeText(qrData.data);
@@ -8194,7 +8194,7 @@
           togglePaymentModal(false);
           toggleCartModal(false);
 
-          document.getElementById("succ-order-id").textContent = orderId;
+          (document.getElementById("succ-order-id") || {}).textContent = orderId;
 
           if (typeof window.setupBackgroundOrderStatusTracker === "function") {
             window.setupBackgroundOrderStatusTracker();

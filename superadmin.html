@@ -512,7 +512,7 @@
       if (currentOverride) {
         document.getElementById('active-override-banner').classList.remove('hidden');
         document.getElementById('active-override-banner').classList.add('flex');
-        document.getElementById('override-store-name-lbl').textContent = currentOverride;
+        (document.getElementById('override-store-name-lbl') || {}).textContent = currentOverride;
       }
     }
 
@@ -554,10 +554,10 @@
         let totalClientsCount = clientsSnap.size;
 
         // Calculate and paint stats
-        document.getElementById('stat-total-stores').textContent = loadedStores.length;
-        document.getElementById('stat-open-stores').textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
-        document.getElementById('stat-total-orders').textContent = totalOrdersCount;
-        document.getElementById('stat-total-clients').textContent = totalClientsCount;
+        (document.getElementById('stat-total-stores') || {}).textContent = loadedStores.length;
+        (document.getElementById('stat-open-stores') || {}).textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
+        (document.getElementById('stat-total-orders') || {}).textContent = totalOrdersCount;
+        (document.getElementById('stat-total-clients') || {}).textContent = totalClientsCount;
 
         renderStoresListUI();
       } catch (err) {
@@ -568,6 +568,7 @@
     // Draw grid list UI elements
     function renderStoresListUI() {
       const grid = document.getElementById('stores-visual-grid');
+      if (!grid) return;
       grid.innerHTML = '';
 
       let filtered = loadedStores;
@@ -753,7 +754,7 @@
         }
         
         // Recalculate operational stores
-        document.getElementById('stat-open-stores').textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
+        (document.getElementById('stat-open-stores') || {}).textContent = loadedStores.filter(s => s.isOpen === true || s.isOpen === 'true').length;
         console.log(`Instant status changed for store ${storeId} to ${nextStatus}`);
       } catch (err) {
         window.customAlert("Erro ao alterar o status da loja: " + err.message);
@@ -772,6 +773,7 @@
 
     function renderUsersList() {
       const container = document.getElementById('users-list-container');
+      if (!container) return;
       container.innerHTML = '';
       
       // Ensure the absolute owner is always in the list visually
@@ -866,10 +868,10 @@
     window.openBillingSettings = function(storeId) {
       const store = loadedStores.find(s => s.id === storeId);
       if(!store) return;
-      document.getElementById('billing-store-id').value = storeId;
-      document.getElementById('billing-day').value = store.billingDay || '';
-      document.getElementById('billing-fee').value = store.monthlyFee || '';
-      document.getElementById('billing-pix').value = store.pixKey || '';
+      (document.getElementById('billing-store-id') || {}).value = storeId;
+      (document.getElementById('billing-day') || {}).value = store.billingDay || '';
+      (document.getElementById('billing-fee') || {}).value = store.monthlyFee || '';
+      (document.getElementById('billing-pix') || {}).value = store.pixKey || '';
       document.getElementById('billing-modal').classList.remove('hidden');
     }
 
@@ -984,8 +986,8 @@
         try {
           const snap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, 'GLOBAL_SETTINGS'));
           if(snap.exists()) {
-            document.getElementById('global-admin-whatsapp').value = snap.data().adminWhatsApp || '';
-            document.getElementById('global-abacatepay-master-token').value = snap.data().abacatePayMasterToken || '';
+            (document.getElementById('global-admin-whatsapp') || {}).value = snap.data().adminWhatsApp || '';
+            (document.getElementById('global-abacatepay-master-token') || {}).value = snap.data().abacatePayMasterToken || '';
           }
         } catch(e) {
           console.error("Erro ao carregar settings", e);
@@ -1016,11 +1018,11 @@
     window.openPlanSettingsModal = function(storeId) {
       const store = loadedStores.find(s => s.id === storeId);
       if(!store) return;
-      document.getElementById('plan-store-id').value = store.id;
-      document.getElementById('plan-total-months').value = store.planMonths || 1;
-      document.getElementById('plan-paid-months').value = store.paidMonths || 0;
-      document.getElementById('plan-value').value = store.planValue || '';
-      document.getElementById('plan-billing-day').value = store.billingDay || '';
+      (document.getElementById('plan-store-id') || {}).value = store.id;
+      (document.getElementById('plan-total-months') || {}).value = store.planMonths || 1;
+      (document.getElementById('plan-paid-months') || {}).value = store.paidMonths || 0;
+      (document.getElementById('plan-value') || {}).value = store.planValue || '';
+      (document.getElementById('plan-billing-day') || {}).value = store.billingDay || '';
       togglePlanSettingsModal(true);
     }
 
@@ -1149,7 +1151,7 @@
       // Paint visual notice
       document.getElementById('active-override-banner').classList.remove('hidden');
       document.getElementById('active-override-banner').classList.add('flex');
-      document.getElementById('override-store-name-lbl').textContent = storeName;
+      (document.getElementById('override-store-name-lbl') || {}).textContent = storeName;
       
       window.customAlert(`Fabuloso! Modo simulação ativo.\nRedirecionando para o Painel de Pedidos da loja "${storeName}".`);
       window.location.href = "pedidos.html";
@@ -1285,12 +1287,12 @@
         window.customAlert("Loja não encontrada!");
         return;
       }
-      document.getElementById('edit-store-id').value = store.id;
-      document.getElementById('edit-store-name').value = store.name || '';
-      document.getElementById('edit-store-phone').value = store.phone || '';
-      document.getElementById('edit-store-desc').value = store.description || '';
-      document.getElementById('edit-store-email').value = store.adminEmail || '';
-      document.getElementById('edit-store-password').value = store.adminPassword || '';
+      (document.getElementById('edit-store-id') || {}).value = store.id;
+      (document.getElementById('edit-store-name') || {}).value = store.name || '';
+      (document.getElementById('edit-store-phone') || {}).value = store.phone || '';
+      (document.getElementById('edit-store-desc') || {}).value = store.description || '';
+      (document.getElementById('edit-store-email') || {}).value = store.adminEmail || '';
+      (document.getElementById('edit-store-password') || {}).value = store.adminPassword || '';
 
       toggleEditStoreModal(true);
     }

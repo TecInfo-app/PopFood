@@ -500,7 +500,7 @@
           activeDeliveryRating = 5;
           updateStarsDisplay('food', 5);
           updateStarsDisplay('delivery', 5);
-          document.getElementById('rating-comment-text').value = '';
+          (document.getElementById('rating-comment-text') || {}).value = '';
           
           const ratingDeliveryTitle = document.getElementById('rating-delivery-title');
           if (ratingDeliveryTitle) {
@@ -800,7 +800,7 @@
       }
 
       if (localPhone) {
-        document.getElementById('login-phone-field').value = localPhone;
+        (document.getElementById('login-phone-field') || {}).value = localPhone;
         // Verify active tracking
         startOnSnapshotOrderTracker(localPhone, savedOrderId);
       }
@@ -868,7 +868,7 @@
 
     // Bind values dynamically
     function drawActiveTrackDetails(order) {
-      document.getElementById('track-lbl-orderid').textContent = `#${order.id}`;
+      (document.getElementById('track-lbl-orderid') || {}).textContent = `#${order.id}`;
 
       const isPickup = order.customer && order.customer.type === 'pickup';
 
@@ -895,7 +895,7 @@
       if (isPickup && order.status === "Saiu para entrega") {
         displayStatus = "Pronto p/ Retirada";
       }
-      document.getElementById('track-lbl-statusbadge').textContent = displayStatus;
+      (document.getElementById('track-lbl-statusbadge') || {}).textContent = displayStatus;
 
       // Color scheme for statuses
       const badge = document.getElementById('track-lbl-statusbadge');
@@ -920,6 +920,7 @@
 
       // Render Items list
       const containerItems = document.getElementById('track-order-items');
+      if (!containerItems) return;
       containerItems.innerHTML = '';
 
       order.items.forEach(item => {
@@ -947,36 +948,36 @@
 
       // Fill address details
       if (order.customer && (order.customer.type === 'pickup' || !order.customer.cep)) {
-        document.getElementById('track-lbl-address').textContent = order.customer.address || "Retirada no Restaurante";
+        (document.getElementById('track-lbl-address') || {}).textContent = order.customer.address || "Retirada no Restaurante";
       } else {
-        document.getElementById('track-lbl-address').textContent = `${order.customer.address} (CEP: ${order.customer.cep})`;
+        (document.getElementById('track-lbl-address') || {}).textContent = `${order.customer.address} (CEP: ${order.customer.cep})`;
       }
       
       const rowRef = document.getElementById('track-row-ref');
       if (order.customer.reference) {
         rowRef.classList.remove('hidden');
-        document.getElementById('track-lbl-ref').textContent = order.customer.reference;
+        (document.getElementById('track-lbl-ref') || {}).textContent = order.customer.reference;
       } else {
         rowRef.classList.add('hidden');
       }
 
       // Payments
-      document.getElementById('track-lbl-payment').textContent = order.paymentMethod;
-      document.getElementById('track-lbl-time').textContent = order.date;
+      (document.getElementById('track-lbl-payment') || {}).textContent = order.paymentMethod;
+      (document.getElementById('track-lbl-time') || {}).textContent = order.date;
 
       // Receipts
-      document.getElementById('track-subtotal').textContent = `R$ ${order.subtotal.toFixed(2).replace('.', ',')}`;
+      (document.getElementById('track-subtotal') || {}).textContent = `R$ ${order.subtotal.toFixed(2).replace('.', ',')}`;
       
       const discRow = document.getElementById('track-row-discount');
       if (order.desconto && order.desconto > 0) {
         discRow.classList.remove('hidden');
-        document.getElementById('track-desconto').textContent = `- R$ ${order.desconto.toFixed(2).replace('.', ',')}`;
+        (document.getElementById('track-desconto') || {}).textContent = `- R$ ${order.desconto.toFixed(2).replace('.', ',')}`;
       } else {
         discRow.classList.add('hidden');
       }
 
-      document.getElementById('track-taxa').textContent = `R$ ${order.deliveryFee.toFixed(2).replace('.', ',')}`;
-      document.getElementById('track-total').textContent = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
+      (document.getElementById('track-taxa') || {}).textContent = `R$ ${order.deliveryFee.toFixed(2).replace('.', ',')}`;
+      (document.getElementById('track-total') || {}).textContent = `R$ ${order.total.toFixed(2).replace('.', ',')}`;
 
       // Update chat unread badge
       const chatBadge = document.getElementById('chat-unread-badge');

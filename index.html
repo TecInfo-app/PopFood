@@ -747,9 +747,9 @@
 
           currentImportData = parsed;
           
-          document.getElementById('import-lbl-categories').textContent = parsed.categories.length;
-          document.getElementById('import-lbl-products').textContent = parsed.products.length;
-          document.getElementById('import-lbl-complements').textContent = (parsed.complements || []).length;
+          (document.getElementById('import-lbl-categories') || {}).textContent = parsed.categories.length;
+          (document.getElementById('import-lbl-products') || {}).textContent = parsed.products.length;
+          (document.getElementById('import-lbl-complements') || {}).textContent = (parsed.complements || []).length;
 
           window.toggleImportMenuModal(true);
         } catch (err) {
@@ -916,7 +916,7 @@ storeId: window.currentStoreId
 
           authView.classList.add('hidden');
           dashView.classList.remove('hidden');
-          document.getElementById('lbl-admin-email').textContent = customStoreEmail || (user ? user.email : 'admin');
+          (document.getElementById('lbl-admin-email') || {}).textContent = customStoreEmail || (user ? user.email : 'admin');
           document.getElementById('btn-view-cardapio').href = `cliente.html?store=${window.currentStoreId}`;
           
           // Boot admin tracking pipelines
@@ -1151,9 +1151,9 @@ storeId: window.currentStoreId
 
     window.viewInvoice = function() {
       if (!window.currentInvoiceDetails) return;
-      document.getElementById('invoice-lbl-fee').textContent = `R$ ${window.currentInvoiceDetails.fee}`;
-      document.getElementById('invoice-lbl-date').textContent = `Todo dia ${window.currentInvoiceDetails.date}`;
-      document.getElementById('invoice-lbl-pix').textContent = window.currentInvoiceDetails.pix;
+      (document.getElementById('invoice-lbl-fee') || {}).textContent = `R$ ${window.currentInvoiceDetails.fee}`;
+      (document.getElementById('invoice-lbl-date') || {}).textContent = `Todo dia ${window.currentInvoiceDetails.date}`;
+      (document.getElementById('invoice-lbl-pix') || {}).textContent = window.currentInvoiceDetails.pix;
       document.getElementById('invoice-modal').classList.remove('hidden');
     }
 
@@ -1303,7 +1303,7 @@ storeId: window.currentStoreId
                 urgencyClass = 'from-orange-500 to-red-500';
               }
 
-              document.getElementById('billing-notice-title').textContent = title;
+              (document.getElementById('billing-notice-title') || {}).textContent = title;
               noticeEl.className = `bg-gradient-to-r ${urgencyClass} text-white px-4 py-3 mx-4 mt-6 rounded-xl shadow-lg flex-col sm:flex-row items-center justify-between gap-3 transform transition-all cursor-pointer`;
               
               // Helper details for modal
@@ -1370,9 +1370,10 @@ storeId: window.currentStoreId
     // Category CRUD list builder
     function renderCategoriesManager() {
       const container = document.getElementById('categories-sort-list');
+      if (!container) return;
       container.innerHTML = '';
 
-      document.getElementById('lbl-categories-count').textContent = activeCategories.length;
+      (document.getElementById('lbl-categories-count') || {}).textContent = activeCategories.length;
 
       activeCategories.forEach((cat, idx) => {
         const item = document.createElement('div');
@@ -1433,7 +1434,7 @@ storeId: window.currentStoreId
 };
 
         await setDoc(doc(db, COLLECTIONS.categories, catId), block);
-        document.getElementById('new-category-name').value = '';
+        (document.getElementById('new-category-name') || {}).value = '';
         refreshManagementDatabases();
       } catch(err) {
         console.error("Creating category fail: ", err);
@@ -1454,7 +1455,7 @@ storeId: window.currentStoreId
 
     function fillProductFormCategorySelect() {
       const sel = document.getElementById('form-product-category');
-      sel.innerHTML = `<option value="">Selecione a categoria...</option>`;
+      if (sel) sel.innerHTML = `<option value="">Selecione a categoria...</option>`;
       activeCategories.forEach(c => {
         const option = document.createElement('option');
         option.value = c.id;
@@ -1469,16 +1470,16 @@ storeId: window.currentStoreId
       
       if (show) {
         if (prd) {
-          document.getElementById('product-form-title').textContent = "Editar Produto";
-          document.getElementById('form-product-id').value = prd.id;
-          document.getElementById('form-product-name').value = prd.name;
-          document.getElementById('form-product-pdv').value = prd.pdvCode || '';
-          document.getElementById('form-product-price').value = prd.price;
-          document.getElementById('form-product-stock').value = prd.stock !== null && prd.stock !== undefined ? prd.stock : '';
-          document.getElementById('form-product-origprice').value = prd.originalPrice || '';
-          document.getElementById('form-product-category').value = prd.categoryId;
-          document.getElementById('form-product-desc').value = prd.description || '';
-          document.getElementById('form-product-exclusive').checked = !!prd.exclusivo;
+          (document.getElementById('product-form-title') || {}).textContent = "Editar Produto";
+          (document.getElementById('form-product-id') || {}).value = prd.id;
+          (document.getElementById('form-product-name') || {}).value = prd.name;
+          (document.getElementById('form-product-pdv') || {}).value = prd.pdvCode || '';
+          (document.getElementById('form-product-price') || {}).value = prd.price;
+          (document.getElementById('form-product-stock') || {}).value = prd.stock !== null && prd.stock !== undefined ? prd.stock : '';
+          (document.getElementById('form-product-origprice') || {}).value = prd.originalPrice || '';
+          (document.getElementById('form-product-category') || {}).value = prd.categoryId;
+          (document.getElementById('form-product-desc') || {}).value = prd.description || '';
+          (document.getElementById('form-product-exclusive') || {}).checked = !!prd.exclusivo;
 
           // Setup availability fields
           const days = prd.availableDays || [0, 1, 2, 3, 4, 5, 6];
@@ -1486,12 +1487,12 @@ storeId: window.currentStoreId
             const dayChkbx = document.getElementById(`avail-day-${d}`);
             if (dayChkbx) dayChkbx.checked = days.includes(d);
           }
-          document.getElementById('avail-time-start').value = prd.availableTimeStart || '';
-          document.getElementById('avail-time-end').value = prd.availableTimeEnd || '';
+          (document.getElementById('avail-time-start') || {}).value = prd.availableTimeStart || '';
+          (document.getElementById('avail-time-end') || {}).value = prd.availableTimeEnd || '';
 
           if (prd.image) {
             imageBase64Data = prd.image;
-            document.getElementById('form-img-preview').src = prd.image;
+            (document.getElementById('form-img-preview') || {}).src = prd.image;
             document.getElementById('form-img-preview').classList.remove('hidden');
             document.getElementById('form-img-placeholder').classList.add('hidden');
           } else {
@@ -1500,9 +1501,9 @@ storeId: window.currentStoreId
             document.getElementById('form-img-placeholder').classList.remove('hidden');
           }
         } else {
-          document.getElementById('product-form-title').textContent = "Cadastrar Produto";
+          (document.getElementById('product-form-title') || {}).textContent = "Cadastrar Produto";
           document.getElementById('product-catalog-form').reset();
-          document.getElementById('form-product-id').value = '';
+          (document.getElementById('form-product-id') || {}).value = '';
           imageBase64Data = "";
           document.getElementById('form-img-preview').classList.add('hidden');
           document.getElementById('form-img-placeholder').classList.remove('hidden');
@@ -1512,8 +1513,8 @@ storeId: window.currentStoreId
             const dayChkbx = document.getElementById(`avail-day-${d}`);
             if (dayChkbx) dayChkbx.checked = true;
           }
-          document.getElementById('avail-time-start').value = '';
-          document.getElementById('avail-time-end').value = '';
+          (document.getElementById('avail-time-start') || {}).value = '';
+          (document.getElementById('avail-time-end') || {}).value = '';
         }
 
         modal.classList.remove('hidden');
@@ -1715,6 +1716,7 @@ storeId: window.currentStoreId
 
     function drawProductsCatalogViewer(searchQuery = "") {
       const parent = document.getElementById('products-catalog-list');
+      if (!parent) return;
       parent.innerHTML = '';
 
       // Reset mass actions state
@@ -1872,7 +1874,7 @@ storeId: window.currentStoreId
       } else {
         toolbar.classList.add('hidden');
         // Uncheck "select all" if 0 selected
-        document.getElementById('select-all-products').checked = false;
+        (document.getElementById('select-all-products') || {}).checked = false;
       }
     }
 
@@ -1981,13 +1983,13 @@ storeId: window.currentStoreId
       if (!prd) return;
 
       activeComplementProduct = prd;
-      document.getElementById('comp-lbl-product-name').textContent = prd.name;
+      (document.getElementById('comp-lbl-product-name') || {}).textContent = prd.name;
 
-      document.getElementById('comp-new-group-name').value = '';
-      document.getElementById('comp-new-group-desc').value = '';
-      document.getElementById('comp-new-group-mand').checked = false;
-      document.getElementById('comp-new-group-min').value = '';
-      document.getElementById('comp-new-group-max').value = '';
+      (document.getElementById('comp-new-group-name') || {}).value = '';
+      (document.getElementById('comp-new-group-desc') || {}).value = '';
+      (document.getElementById('comp-new-group-mand') || {}).checked = false;
+      (document.getElementById('comp-new-group-min') || {}).value = '';
+      (document.getElementById('comp-new-group-max') || {}).value = '';
 
       drawProductComplementsStructure();
       toggleComplementsModal(true);
@@ -2035,6 +2037,7 @@ storeId: window.currentStoreId
 
     async function drawProductComplementsStructure() {
       const parentList = document.getElementById('complements-groups-list');
+      if (!parentList) return;
       parentList.innerHTML = '';
 
       try {
@@ -2185,11 +2188,11 @@ storeId: window.currentStoreId
         data.groups.push(newGroup);
         await setDoc(docRef, data);
 
-        document.getElementById('comp-new-group-name').value = '';
-        document.getElementById('comp-new-group-desc').value = '';
-        document.getElementById('comp-new-group-mand').checked = false;
-        document.getElementById('comp-new-group-min').value = '';
-        document.getElementById('comp-new-group-max').value = '';
+        (document.getElementById('comp-new-group-name') || {}).value = '';
+        (document.getElementById('comp-new-group-desc') || {}).value = '';
+        (document.getElementById('comp-new-group-mand') || {}).checked = false;
+        (document.getElementById('comp-new-group-min') || {}).value = '';
+        (document.getElementById('comp-new-group-max') || {}).value = '';
 
         drawProductComplementsStructure();
       } catch (err) {
@@ -2377,11 +2380,11 @@ storeId: window.currentStoreId
         editingComplementGroupIdx = groupIdx;
 
         // Pre-fill fields
-        document.getElementById('comp-edit-group-name').value = group.name || '';
-        document.getElementById('comp-edit-group-desc').value = group.description || '';
-        document.getElementById('comp-edit-group-mand').checked = !!group.isMandatory;
-        document.getElementById('comp-edit-group-min').value = group.minSelection !== undefined ? group.minSelection : 1;
-        document.getElementById('comp-edit-group-max').value = group.maxSelection !== undefined ? group.maxSelection : 1;
+        (document.getElementById('comp-edit-group-name') || {}).value = group.name || '';
+        (document.getElementById('comp-edit-group-desc') || {}).value = group.description || '';
+        (document.getElementById('comp-edit-group-mand') || {}).checked = !!group.isMandatory;
+        (document.getElementById('comp-edit-group-min') || {}).value = group.minSelection !== undefined ? group.minSelection : 1;
+        (document.getElementById('comp-edit-group-max') || {}).value = group.maxSelection !== undefined ? group.maxSelection : 1;
 
         toggleEditComplementGroupModal(true);
       } catch (err) {

@@ -1465,15 +1465,15 @@ window.copyStoreLink = function() {
           });
 
           // Synchronize auto indicator tags
-          document.getElementById("lbl-auto-indicator").textContent =
+          (document.getElementById("lbl-auto-indicator") || {}).textContent =
             autoPrintSetting
               ? "🖨️ Impressão Auto: ON"
               : "🖨️ Impressão Auto: OFF";
-          document.getElementById("lbl-continuous-buzzer").textContent =
+          (document.getElementById("lbl-continuous-buzzer") || {}).textContent =
             continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
-          document.getElementById("lbl-auto-accept").textContent =
+          (document.getElementById("lbl-auto-accept") || {}).textContent =
             autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
-          document.getElementById("sound-selector").value = selectedSound;
+          (document.getElementById("sound-selector") || {}).value = selectedSound;
           const msgSoundSel = document.getElementById("message-sound-selector");
           if (msgSoundSel) {
             msgSoundSel.value = selectedMessageSound;
@@ -1486,7 +1486,7 @@ window.copyStoreLink = function() {
             localPrinters.length > 0
               ? localPrinters[localPrinters.length - 1].url
               : "";
-          document.getElementById("printer-server-url").value = lastUrl;
+          (document.getElementById("printer-server-url") || {}).value = lastUrl;
           if (lastUrl) fetchPrinters(false);
 
           // Handle default printer width fallback persistence
@@ -1582,9 +1582,9 @@ window.copyStoreLink = function() {
           if(profileDoc.exists()) {
             const data = profileDoc.data();
             if(data.uberDirect) {
-              document.getElementById("uber-client-id").value = data.uberDirect.clientId || "";
-              document.getElementById("uber-customer-id").value = data.uberDirect.customerId || "";
-              document.getElementById("uber-client-secret").value = data.uberDirect.clientSecret || "";
+              (document.getElementById("uber-client-id") || {}).value = data.uberDirect.clientId || "";
+              (document.getElementById("uber-customer-id") || {}).value = data.uberDirect.customerId || "";
+              (document.getElementById("uber-client-secret") || {}).value = data.uberDirect.clientSecret || "";
             }
           }
         } catch(e) { console.error("Error loading Uber Direct config", e); }
@@ -1743,7 +1743,7 @@ window.copyStoreLink = function() {
         );
 
         // Reset form but keep URL for convenience maybe
-        document.getElementById("printer-select").value = "";
+        (document.getElementById("printer-select") || {}).value = "";
         renderPrintersList();
         alert("Impressora adicionada com sucesso!");
       };
@@ -1759,7 +1759,7 @@ window.copyStoreLink = function() {
           url = "http://" + url;
         }
 
-        document.getElementById("printer-server-url").value = url; // Update the input to show the corrected URL
+        (document.getElementById("printer-server-url") || {}).value = url; // Update the input to show the corrected URL
 
         try {
           const resp = await fetch(`${url.replace(/\/$/, "")}/impressoras`);
@@ -1951,7 +1951,7 @@ window.copyStoreLink = function() {
       window.toggleAutoPrint = function () {
         autoPrintSetting = !autoPrintSetting;
         localStorage.setItem("popfood_autoprint", autoPrintSetting.toString());
-        document.getElementById("lbl-auto-indicator").textContent =
+        (document.getElementById("lbl-auto-indicator") || {}).textContent =
           autoPrintSetting ? "🖨️ Impressão Auto: ON" : "🖨️ Impressão Auto: OFF";
       };
 
@@ -2214,10 +2214,8 @@ window.copyStoreLink = function() {
           return orderTime >= sixHoursAgo;
         });
 
-        document.getElementById("active-pipes-count").textContent =
-          andamentoList.length;
-        document.getElementById("finish-pipes-count").textContent =
-          finalizadosList.length;
+        const apc = document.getElementById("active-pipes-count"); if (apc) apc.textContent = andamentoList.length;
+        const fpc = document.getElementById("finish-pipes-count"); if (fpc) fpc.textContent = finalizadosList.length;
 
         if (andamentoList.length === 0) {
           activeParent.innerHTML = `
@@ -2482,7 +2480,7 @@ window.copyStoreLink = function() {
           "popfood_continuous_buzzer",
           continuousBuzzerSetting.toString(),
         );
-        document.getElementById("lbl-continuous-buzzer").textContent =
+        (document.getElementById("lbl-continuous-buzzer") || {}).textContent =
           continuousBuzzerSetting ? "🚨 Campainha: ON" : "🚨 Campainha: OFF";
       };
 
@@ -2492,7 +2490,7 @@ window.copyStoreLink = function() {
           "popfood_auto_accept",
           autoAcceptSetting.toString(),
         );
-        document.getElementById("lbl-auto-accept").textContent =
+        (document.getElementById("lbl-auto-accept") || {}).textContent =
           autoAcceptSetting ? "⚡ Auto-Aceitar: ON" : "⚡ Auto-Aceitar: OFF";
 
         if (autoAcceptSetting) {
@@ -2550,7 +2548,7 @@ window.copyStoreLink = function() {
         if (show) {
           modal.classList.remove("hidden");
           setTimeout(() => box.classList.remove("scale-100", "scale-95"), 10);
-          document.getElementById("custom-prep-minutes").value = "";
+          (document.getElementById("custom-prep-minutes") || {}).value = "";
         } else {
           box.classList.add("scale-95");
           setTimeout(() => modal.classList.add("hidden"), 200);
@@ -2649,9 +2647,9 @@ window.copyStoreLink = function() {
           chatBadge.classList.add('hidden');
         }
 
-        document.getElementById("modal-lbl-orderid").textContent =
+        (document.getElementById("modal-lbl-orderid") || {}).textContent =
           `Pedido #${order.id}`;
-        document.getElementById("modal-lbl-date").textContent = order.date;
+        (document.getElementById("modal-lbl-date") || {}).textContent = order.date;
 
         const isPickup = order.customer && order.customer.type === "pickup";
         const badge = document.getElementById("modal-lbl-status");
@@ -2675,9 +2673,9 @@ window.copyStoreLink = function() {
         else badge.classList.add("bg-red-100", "text-brand-danger");
 
         // Client details
-        document.getElementById("modal-lbl-name").textContent =
+        (document.getElementById("modal-lbl-name") || {}).textContent =
           order.customer.name;
-        document.getElementById("modal-lbl-phone").textContent =
+        (document.getElementById("modal-lbl-phone") || {}).textContent =
           order.customer.phone;
 
         const addressLabelEl = document.getElementById("modal-title-address");
@@ -2688,36 +2686,38 @@ window.copyStoreLink = function() {
         }
 
         if (isPickup) {
-          document.getElementById("modal-lbl-address").textContent =
+          (document.getElementById("modal-lbl-address") || {}).textContent =
             "Retirada no Restaurante (Vou buscar)";
         } else {
           if (order.customer && order.customer.cep) {
-            document.getElementById("modal-lbl-address").textContent =
+            (document.getElementById("modal-lbl-address") || {}).textContent =
               `${order.customer.address} (CEP: ${order.customer.cep})`;
           } else {
-            document.getElementById("modal-lbl-address").textContent =
+            (document.getElementById("modal-lbl-address") || {}).textContent =
               order.customer ? order.customer.address : "Não informado";
           }
         }
 
         const compVal = document.getElementById("modal-lbl-comp");
-        if (order.customer.complement) {
-          document
-            .getElementById("modal-lbl-comp-row")
-            .classList.remove("hidden");
-          compVal.textContent = order.customer.complement;
-        } else {
-          document.getElementById("modal-lbl-comp-row").classList.add("hidden");
+        const compRow = document.getElementById("modal-lbl-comp-row");
+        if (compRow) {
+          if (order.customer.complement) {
+            compRow.classList.remove("hidden");
+            if (compVal) compVal.textContent = order.customer.complement;
+          } else {
+            compRow.classList.add("hidden");
+          }
         }
 
         const refVal = document.getElementById("modal-lbl-ref");
-        if (order.customer.reference) {
-          document
-            .getElementById("modal-lbl-ref-row")
-            .classList.remove("hidden");
-          refVal.textContent = order.customer.reference;
-        } else {
-          document.getElementById("modal-lbl-ref-row").classList.add("hidden");
+        const refRow = document.getElementById("modal-lbl-ref-row");
+        if (refRow) {
+          if (order.customer.reference) {
+            refRow.classList.remove("hidden");
+            if (refVal) refVal.textContent = order.customer.reference;
+          } else {
+            refRow.classList.add("hidden");
+          }
         }
 
         // Populate Payment and Troco
@@ -2739,16 +2739,18 @@ window.copyStoreLink = function() {
             modalPayLabel = `${modalPayLabel} ✅ Pago Online`;
           }
         }
-        document.getElementById("modal-lbl-payment").textContent =
+        (document.getElementById("modal-lbl-payment") || {}).textContent =
           modalPayLabel;
 
         const trocoRow = document.getElementById("modal-lbl-troco-row");
         const trocoVal = document.getElementById("modal-lbl-troco");
-        if (order.paymentMethod === "Dinheiro" && order.troco) {
-          trocoRow.classList.remove("hidden");
-          trocoVal.textContent = order.troco;
-        } else {
-          trocoRow.classList.add("hidden");
+        if (trocoRow) {
+          if (order.paymentMethod === "Dinheiro" && order.troco) {
+            trocoRow.classList.remove("hidden");
+            if (trocoVal) trocoVal.textContent = order.troco;
+          } else {
+            trocoRow.classList.add("hidden");
+          }
         }
 
         // Populate Uber Direct Details
@@ -2777,14 +2779,14 @@ window.copyStoreLink = function() {
         // Populate Client Rating if available
         const rRow = document.getElementById("modal-lbl-rating-row");
         if (order.rating) {
-          rRow.classList.remove("hidden");
+          if (rRow) rRow.classList.remove("hidden");
           const starsFood = parseInt(order.rating.starsFood) || 0;
           const starsDeliv = parseInt(order.rating.starsDelivery) || 0;
-          document.getElementById("modal-lbl-rating-food").textContent =
+          (document.getElementById("modal-lbl-rating-food") || {}).textContent =
             "★".repeat(starsFood) +
             "☆".repeat(5 - starsFood) +
             ` (${starsFood}/5)`;
-          document.getElementById("modal-lbl-rating-delivery").textContent =
+          (document.getElementById("modal-lbl-rating-delivery") || {}).textContent =
             "★".repeat(starsDeliv) +
             "☆".repeat(5 - starsDeliv) +
             ` (${starsDeliv}/5)`;
@@ -2793,14 +2795,14 @@ window.copyStoreLink = function() {
             "modal-lbl-rating-comment-sec",
           );
           if (order.rating.comment && order.rating.comment.trim() !== "") {
-            rCommentSec.classList.remove("hidden");
-            document.getElementById("modal-lbl-rating-comment").textContent =
+            if (rCommentSec) rCommentSec.classList.remove("hidden");
+            (document.getElementById("modal-lbl-rating-comment") || {}).textContent =
               `"${order.rating.comment}"`;
           } else {
-            rCommentSec.classList.add("hidden");
+            if (rCommentSec) rCommentSec.classList.add("hidden");
           }
         } else {
-          rRow.classList.add("hidden");
+          if (rRow) rRow.classList.add("hidden");
         }
 
         // Populate Items details list
@@ -2875,13 +2877,13 @@ window.copyStoreLink = function() {
         });
 
         // Populate values receipt summaries
-        document.getElementById("modal-subtotal").textContent =
+        (document.getElementById("modal-subtotal") || {}).textContent =
           `R$ ${order.subtotal.toFixed(2).replace(".", ",")}`;
-        document.getElementById("modal-desconto").textContent =
+        (document.getElementById("modal-desconto") || {}).textContent =
           `- R$ ${(order.desconto || 0).toFixed(2).replace(".", ",")}`;
-        document.getElementById("modal-taxa").textContent =
+        (document.getElementById("modal-taxa") || {}).textContent =
           `R$ ${order.deliveryFee.toFixed(2).replace(".", ",")}`;
-        document.getElementById("modal-total").textContent =
+        (document.getElementById("modal-total") || {}).textContent =
           `R$ ${order.total.toFixed(2).replace(".", ",")}`;
 
         // Configured event listeners with actions trigger buttons on details popup

@@ -1248,15 +1248,15 @@ window.copyStoreLink = function() {
         if (snap.exists()) {
           profileData = snap.data();
           
-          document.getElementById('store-name').value = profileData.name || '';
-          document.getElementById('store-desc').value = profileData.description || '';
-          document.getElementById('store-phone').value = profileData.phone || '';
-          document.getElementById('store-cep').value = profileData.cep || '';
-          document.getElementById('store-address').value = profileData.address || '';
-          document.getElementById('store-min-order-value').value = profileData.minOrderValue || '';
-          document.getElementById('store-open').value = profileData.openTime || '';
-          document.getElementById('store-close').value = profileData.closeTime || '';
-          document.getElementById('abacatepay-token').value = profileData.abacatePayToken || '';
+          (document.getElementById('store-name') || {}).value = profileData.name || '';
+          (document.getElementById('store-desc') || {}).value = profileData.description || '';
+          (document.getElementById('store-phone') || {}).value = profileData.phone || '';
+          (document.getElementById('store-cep') || {}).value = profileData.cep || '';
+          (document.getElementById('store-address') || {}).value = profileData.address || '';
+          (document.getElementById('store-min-order-value') || {}).value = profileData.minOrderValue || '';
+          (document.getElementById('store-open') || {}).value = profileData.openTime || '';
+          (document.getElementById('store-close') || {}).value = profileData.closeTime || '';
+          (document.getElementById('abacatepay-token') || {}).value = profileData.abacatePayToken || '';
           
           // Populate operating days
           if (profileData.operatingDays && Array.isArray(profileData.operatingDays)) {
@@ -1270,8 +1270,8 @@ window.copyStoreLink = function() {
           }
 
           // Cardapio display settings
-          document.getElementById('profile-destaques-ativo').checked = profileData.destaquesAtivo === true;
-          document.getElementById('profile-mostrar-indisponiveis').checked = profileData.mostrarIndisponiveis !== false; // Default to true
+          (document.getElementById('profile-destaques-ativo') || {}).checked = profileData.destaquesAtivo === true;
+          (document.getElementById('profile-mostrar-indisponiveis') || {}).checked = profileData.mostrarIndisponiveis !== false; // Default to true
           
           const destaquesTipo = profileData.destaquesTipo || 'mais_pedidos';
           const radioToSelect = document.querySelector(`input[name="profile-destaques-tipo"][value="${destaquesTipo}"]`);
@@ -1290,19 +1290,19 @@ window.copyStoreLink = function() {
 
           // Assinatura
           const planVal = profileData.planValue || profileData.monthlyFee || 0;
-          document.getElementById('assinatura-fee').textContent = planVal ? `R$ ${parseFloat(planVal).toFixed(2).replace('.', ',')}` : 'R$ 0,00';
+          (document.getElementById('assinatura-fee') || {}).textContent = planVal ? `R$ ${parseFloat(planVal).toFixed(2).replace('.', ',')}` : 'R$ 0,00';
           
-          document.getElementById('assinatura-plan-name').textContent = profileData.planMonths > 1 ? `Plano ${profileData.planMonths} Meses` : 'Mensal';
+          (document.getElementById('assinatura-plan-name') || {}).textContent = profileData.planMonths > 1 ? `Plano ${profileData.planMonths} Meses` : 'Mensal';
           
           const planMonths = profileData.planMonths || 1;
           const paidMonths = profileData.paidMonths || 0;
           const pct = Math.min(100, (paidMonths / planMonths) * 100);
-          document.getElementById('assinatura-progress-text').textContent = `${paidMonths}/${planMonths}`;
+          (document.getElementById('assinatura-progress-text') || {}).textContent = `${paidMonths}/${planMonths}`;
           document.getElementById('assinatura-progress-bar').style.width = `${pct}%`;
 
           const storeBilling = document.getElementById('store-billing-day');
           if (storeBilling) storeBilling.value = profileData.billingDay || '';
-          document.getElementById('assinatura-due-date').textContent = profileData.billingDay ? `Dia ${profileData.billingDay}` : 'Não Definido';
+          (document.getElementById('assinatura-due-date') || {}).textContent = profileData.billingDay ? `Dia ${profileData.billingDay}` : 'Não Definido';
 
           const today = new Date();
           const currentMonth = today.getMonth();
@@ -1521,36 +1521,36 @@ window.copyStoreLink = function() {
 
           
           if (profileData.paymentMethods) {
-            document.getElementById('pay-offline-pix').checked = profileData.paymentMethods.offlinePix ?? true;
-            document.getElementById('pay-offline-card').checked = profileData.paymentMethods.offlineCard ?? true;
-            document.getElementById('pay-offline-money').checked = profileData.paymentMethods.offlineMoney ?? true;
-            document.getElementById('pay-online-pix').checked = profileData.paymentMethods.onlinePix ?? true;
-            document.getElementById('pay-online-card').checked = profileData.paymentMethods.onlineCard ?? true;
+            (document.getElementById('pay-offline-pix') || {}).checked = profileData.paymentMethods.offlinePix ?? true;
+            (document.getElementById('pay-offline-card') || {}).checked = profileData.paymentMethods.offlineCard ?? true;
+            (document.getElementById('pay-offline-money') || {}).checked = profileData.paymentMethods.offlineMoney ?? true;
+            (document.getElementById('pay-online-pix') || {}).checked = profileData.paymentMethods.onlinePix ?? true;
+            (document.getElementById('pay-online-card') || {}).checked = profileData.paymentMethods.onlineCard ?? true;
           } else {
-             document.getElementById('pay-offline-pix').checked = true;
-             document.getElementById('pay-offline-card').checked = true;
-             document.getElementById('pay-offline-money').checked = true;
-             document.getElementById('pay-online-pix').checked = true;
-             document.getElementById('pay-online-card').checked = true;
+             (document.getElementById('pay-offline-pix') || {}).checked = true;
+             (document.getElementById('pay-offline-card') || {}).checked = true;
+             (document.getElementById('pay-offline-money') || {}).checked = true;
+             (document.getElementById('pay-online-pix') || {}).checked = true;
+             (document.getElementById('pay-online-card') || {}).checked = true;
           }
 
-          document.getElementById('mp-access-token').value = '';
-          document.getElementById('mp-public-key').value = '';
-          document.getElementById('stripe-public-key').value = '';
-          document.getElementById('stripe-secret-key').value = '';
+          (document.getElementById('mp-access-token') || {}).value = '';
+          (document.getElementById('mp-public-key') || {}).value = '';
+          (document.getElementById('stripe-public-key') || {}).value = '';
+          (document.getElementById('stripe-secret-key') || {}).value = '';
 
           if (profileData.latitude && profileData.longitude) {
             currentStoreLatitude = profileData.latitude;
             currentStoreLongitude = profileData.longitude;
-            document.getElementById('lbl-lat').textContent = parseFloat(profileData.latitude).toFixed(6);
-            document.getElementById('lbl-lon').textContent = parseFloat(profileData.longitude).toFixed(6);
+            (document.getElementById('lbl-lat') || {}).textContent = parseFloat(profileData.latitude).toFixed(6);
+            (document.getElementById('lbl-lon') || {}).textContent = parseFloat(profileData.longitude).toFixed(6);
           }
           
           // Populate Loyalty Coupon Config
-          document.getElementById('loyalty-active').checked = !!profileData.loyaltyActive;
-          document.getElementById('loyalty-type').value = profileData.loyaltyType || 'percentual';
-          document.getElementById('loyalty-value').value = profileData.loyaltyValue !== undefined ? profileData.loyaltyValue : '';
-          document.getElementById('loyalty-min-orders').value = profileData.loyaltyMinOrders !== undefined ? profileData.loyaltyMinOrders : 3;
+          (document.getElementById('loyalty-active') || {}).checked = !!profileData.loyaltyActive;
+          (document.getElementById('loyalty-type') || {}).value = profileData.loyaltyType || 'percentual';
+          (document.getElementById('loyalty-value') || {}).value = profileData.loyaltyValue !== undefined ? profileData.loyaltyValue : '';
+          (document.getElementById('loyalty-min-orders') || {}).value = profileData.loyaltyMinOrders !== undefined ? profileData.loyaltyMinOrders : 3;
 
           // Build dynamic deliveryRates indices
           buildKmRatesInputsGrid(profileData.deliveryRates || {}, profileData.deliveryTimes || {});
@@ -1565,7 +1565,7 @@ window.copyStoreLink = function() {
           if (logoSnap.exists()) {
             const logoVal = logoSnap.data().logo;
             if (logoVal) {
-              document.getElementById('logo-preview-img').src = logoVal;
+              (document.getElementById('logo-preview-img') || {}).src = logoVal;
               document.getElementById('logo-preview-img').classList.remove('hidden');
               document.getElementById('logo-placeholder').classList.add('hidden');
             }
@@ -1628,7 +1628,7 @@ window.copyStoreLink = function() {
         const oldHidden = document.getElementById('logo-preview-img').classList.contains('hidden');
 
         try {
-          document.getElementById('logo-preview-img').src = base64;
+          (document.getElementById('logo-preview-img') || {}).src = base64;
           document.getElementById('logo-preview-img').classList.remove('hidden');
           document.getElementById('logo-placeholder').classList.add('hidden');
 
@@ -1637,7 +1637,7 @@ window.copyStoreLink = function() {
           }, { merge: true });
           alert("Logomarca updated!");
         } catch (err) {
-          document.getElementById('logo-preview-img').src = oldSrc;
+          (document.getElementById('logo-preview-img') || {}).src = oldSrc;
           if (oldHidden) {
             document.getElementById('logo-preview-img').classList.add('hidden');
             document.getElementById('logo-placeholder').classList.remove('hidden');
@@ -1660,7 +1660,7 @@ window.copyStoreLink = function() {
         await deleteDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId + "_logo"));
         document.getElementById('logo-preview-img').classList.add('hidden');
         document.getElementById('logo-placeholder').classList.remove('hidden');
-        document.getElementById('logo-preview-img').src = '';
+        (document.getElementById('logo-preview-img') || {}).src = '';
         alert("Logo removida!");
       } catch (err) {
         console.error("Removing logo failure: ", err);
@@ -1671,6 +1671,7 @@ window.copyStoreLink = function() {
     // Banners lists modifiers
     function renderStoreBannersList() {
       const parent = document.getElementById('banners-scannable-list');
+      if (!parent) return;
       parent.innerHTML = '';
 
       if (bannersList.length === 0) {
@@ -1949,8 +1950,8 @@ window.copyStoreLink = function() {
             currentStoreLatitude = parseFloat(data[0].lat);
             currentStoreLongitude = parseFloat(data[0].lon);
 
-            document.getElementById('lbl-lat').textContent = currentStoreLatitude.toFixed(6);
-            document.getElementById('lbl-lon').textContent = currentStoreLongitude.toFixed(6);
+            (document.getElementById('lbl-lat') || {}).textContent = currentStoreLatitude.toFixed(6);
+            (document.getElementById('lbl-lon') || {}).textContent = currentStoreLongitude.toFixed(6);
             
             console.log(`Successfully geocoded with query: "${query}"`);
             success = true;
@@ -2053,6 +2054,7 @@ window.copyStoreLink = function() {
     // Populate rates input grids
     function buildKmRatesInputsGrid(existingRates, existingTimes) {
       const container = document.getElementById('km-pricing-grid');
+      if (!container) return;
       container.innerHTML = '';
 
       // Standard ranges 1km to 10km
@@ -2180,6 +2182,7 @@ window.copyStoreLink = function() {
     // Load active Coupons array
     async function loadPromotionalCouponsList() {
       const parent = document.getElementById('coupons-card-parent');
+      if (!parent) return;
       parent.innerHTML = '';
 
       try {
@@ -2236,20 +2239,20 @@ window.copyStoreLink = function() {
 
       if (show) {
         if (itemObj) {
-          document.getElementById('coupon-modal-title').textContent = "Editar Cupom";
-          document.getElementById('coupon-form-id').value = itemObj.id;
-          document.getElementById('coupon-form-code').value = itemObj.code;
-          document.getElementById('coupon-form-type').value = itemObj.type;
-          document.getElementById('coupon-form-value').value = itemObj.value;
-          document.getElementById('coupon-form-expiry').value = itemObj.expiry;
-          document.getElementById('coupon-form-active').checked = !!itemObj.active;
-          document.getElementById('coupon-form-first-order').checked = !!itemObj.firstOrderOnly;
+          (document.getElementById('coupon-modal-title') || {}).textContent = "Editar Cupom";
+          (document.getElementById('coupon-form-id') || {}).value = itemObj.id;
+          (document.getElementById('coupon-form-code') || {}).value = itemObj.code;
+          (document.getElementById('coupon-form-type') || {}).value = itemObj.type;
+          (document.getElementById('coupon-form-value') || {}).value = itemObj.value;
+          (document.getElementById('coupon-form-expiry') || {}).value = itemObj.expiry;
+          (document.getElementById('coupon-form-active') || {}).checked = !!itemObj.active;
+          (document.getElementById('coupon-form-first-order') || {}).checked = !!itemObj.firstOrderOnly;
         } else {
-          document.getElementById('coupon-modal-title').textContent = "Criar Cupom";
+          (document.getElementById('coupon-modal-title') || {}).textContent = "Criar Cupom";
           document.getElementById('coupon-modal-form').reset();
-          document.getElementById('coupon-form-id').value = '';
-          document.getElementById('coupon-form-active').checked = true;
-          document.getElementById('coupon-form-first-order').checked = false;
+          (document.getElementById('coupon-form-id') || {}).value = '';
+          (document.getElementById('coupon-form-active') || {}).checked = true;
+          (document.getElementById('coupon-form-first-order') || {}).checked = false;
         }
 
         modal.classList.remove('hidden');
