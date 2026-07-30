@@ -973,32 +973,108 @@ storeId: window.currentStoreId
         const userCredential = await signInWithEmailAndPassword(auth, mail, pass);
         const loggedUser = userCredential.user;
 
-        // Now we can securely query restaurantProfile because we are authenticated
-        const profilesRef = collection(db, COLLECTIONS.restaurantProfile);
-        const q = query(profilesRef, where("adminEmail", "==", mail.toLowerCase()));
-        const qSnap = await getDocs(q);
-        
-        if (!qSnap.empty) {
-          const matchedStoreDoc = qSnap.docs[0];
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlStoreId = urlParams.get('store');
+
+        let matchedStoreDoc = null;
+        let matchedStoreId = null;
+
+        // 1. Check if urlStoreId from URL matches an existing store in Firestore
+        if (urlStoreId) {
+          try {
+            const urlSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, urlStoreId));
+            if (urlSnap.exists()) {
+              const urlData = urlSnap.data();
+              // Verify if this store belongs to this user/email
+              const storeMail = (urlData.adminEmail || urlData.email || '').trim().toLowerCase();
+              if (!storeMail || storeMail === mail.toLowerCase() || urlData.storeId === urlStoreId) {
+                matchedStoreDoc = urlSnap;
+                matchedStoreId = urlStoreId;
+              }
+            }
+          } catch (e) {
+            console.warn("Could not check urlStoreId doc directly:", e);
+          }
+        }
+
+        // 2. Query restaurantProfile by adminEmail (exact or case-insensitive)
+        if (!matchedStoreId) {
+          const profilesRef = collection(db, COLLECTIONS.restaurantProfile);
+          const queriesToTry = [
+            query(profilesRef, where("adminEmail", "==", mail.toLowerCase())),
+            query(profilesRef, where("adminEmail", "==", mail)),
+            query(profilesRef, where("email", "==", mail.toLowerCase())),
+            query(profilesRef, where("email", "==", mail))
+          ];
+
+          for (const q of queriesToTry) {
+            try {
+              const qSnap = await getDocs(q);
+              if (!qSnap.empty) {
+                matchedStoreDoc = qSnap.docs[0];
+                matchedStoreId = matchedStoreDoc.id;
+                break;
+              }
+            } catch (e) {
+              console.warn("Query attempt failed:", e);
+            }
+          }
+        }
+
+        // 3. Fallback scan of all stores if query yielded no results
+        if (!matchedStoreId) {
+          try {
+            const allSnap = await getDocs(collection(db, COLLECTIONS.restaurantProfile));
+            for (const docSnap of allSnap.docs) {
+              const d = docSnap.data();
+              const storeMail = (d.adminEmail || d.email || d.ownerEmail || '').trim().toLowerCase();
+              if (storeMail && storeMail === mail.toLowerCase()) {
+                matchedStoreDoc = docSnap;
+                matchedStoreId = docSnap.id;
+                break;
+              }
+              if (urlStoreId && docSnap.id === urlStoreId) {
+                matchedStoreDoc = docSnap;
+                matchedStoreId = docSnap.id;
+                break;
+              }
+            }
+          } catch (e) {
+            console.warn("Fallback store scan failed:", e);
+          }
+        }
+
+        // 4. Check if a store document exists with user's UID
+        if (!matchedStoreId) {
+          try {
+            const uidSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, loggedUser.uid));
+            if (uidSnap.exists()) {
+              matchedStoreDoc = uidSnap;
+              matchedStoreId = loggedUser.uid;
+            }
+          } catch (e) {
+            console.warn("Could not check UID doc directly:", e);
+          }
+        }
+
+        // Final decision
+        if (matchedStoreDoc && matchedStoreDoc.exists()) {
           const storeData = matchedStoreDoc.data();
-          
           if (storeData.isStoreOwner === false || storeData.isStoreOwner === "false") {
             await signOut(auth);
             alert("Acesso Negado: Você não tem permissão de 'Dono de Loja'. Entre em contato com o administrador.");
             return;
           }
-
-          const matchedStoreId = matchedStoreDoc.id;
-          localStorage.setItem('popfood_custom_store_id', matchedStoreId);
-          localStorage.setItem('popfood_custom_store_email', mail);
-        } else {
-          // If no custom profile is found, default custom store ID to user's UID
-          localStorage.setItem('popfood_custom_store_id', loggedUser.uid);
-          localStorage.setItem('popfood_custom_store_email', mail);
         }
 
-        // Reload page to apply login
-        window.location.reload();
+        const finalStoreId = matchedStoreId || urlStoreId || loggedUser.uid;
+        localStorage.setItem('popfood_custom_store_id', finalStoreId);
+        localStorage.setItem('popfood_custom_store_email', mail);
+
+        // Redirect to index.html explicitly appending ?store=STORE_ID
+        const targetUrl = new URL(window.location.href);
+        targetUrl.searchParams.set('store', finalStoreId);
+        window.location.href = targetUrl.toString();
       } catch (err) {
         console.error("Login Admin fail: ", err);
         alert("Falha ao entrar: " + err.message);
