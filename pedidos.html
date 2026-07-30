@@ -1435,6 +1435,15 @@ window.copyStoreLink = function() {
             injectOverrideBannerUI();
           }
 
+          // Dynamically update address bar URL if store parameter is missing or different
+          if (window.currentStoreId) {
+            const currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.get("store") !== window.currentStoreId) {
+              currentUrl.searchParams.set("store", window.currentStoreId);
+              window.history.replaceState(null, "", currentUrl.toString());
+            }
+          }
+
           // Dynamically append currentStoreId universally to ALL internal admin links
           document.querySelectorAll("a").forEach((el) => {
             const href = el.getAttribute("href");

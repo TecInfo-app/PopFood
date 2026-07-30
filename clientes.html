@@ -345,6 +345,15 @@ window.copyStoreLink = function() {
           injectOverrideBannerUI();
         }
 
+        // Dynamically update address bar URL if store parameter is missing or different
+        if (window.currentStoreId) {
+          const currentUrl = new URL(window.location.href);
+          if (currentUrl.searchParams.get('store') !== window.currentStoreId) {
+            currentUrl.searchParams.set('store', window.currentStoreId);
+            window.history.replaceState(null, '', currentUrl.toString());
+          }
+        }
+
         // Monitor suspensions globally on route
         onSnapshot(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), (docSnap) => {
           if (!docSnap.exists() && !overrideStoreId) {
