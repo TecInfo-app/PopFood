@@ -3583,7 +3583,16 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           }
         } else {
           detailsText += centerText("* PAGAMENTO NA ENTREGA *");
-          detailsText += centerText("COBRAR");
+          const methodUpper = (order.paymentMethod || "").toUpperCase();
+          if (methodUpper.includes("PIX")) {
+            detailsText += centerText("PIX NA ENTREGA - COBRAR");
+          } else if (methodUpper.includes("CART") || methodUpper.includes("CARD")) {
+            detailsText += centerText("CARTÃO NA ENTREGA - COBRAR");
+          } else if (methodUpper.includes("DINHEIRO")) {
+            detailsText += centerText("DINHEIRO - COBRAR");
+          } else {
+            detailsText += centerText(`${methodUpper} - COBRAR`);
+          }
         }
         detailsText += makeDivider("-");
         
@@ -3780,7 +3789,13 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 ? (order.paymentMethod === "PixOnline" || order.paymentMethod === "Pix Imediato" || order.paymentMethod === "Pix" || order.paymentMethodType === "pix" || (order.paymentMethod && order.paymentMethod.toUpperCase().includes("PIX"))
                   ? "PIX PAGO ONLINE"
                   : "CARTÃO PAGO ONLINE")
-                : "* PAGAMENTO NA ENTREGA *<br>COBRAR"
+                : (function() {
+                    const m = (order.paymentMethod || "").toUpperCase();
+                    if (m.includes("PIX")) return "* PAGAMENTO NA ENTREGA *<br>PIX NA ENTREGA - COBRAR";
+                    if (m.includes("CART") || m.includes("CARD")) return "* PAGAMENTO NA ENTREGA *<br>CARTÃO NA ENTREGA - COBRAR";
+                    if (m.includes("DINHEIRO")) return "* PAGAMENTO NA ENTREGA *<br>DINHEIRO - COBRAR";
+                    return `* PAGAMENTO NA ENTREGA *<br>${m} - COBRAR`;
+                  })()
             }
           </div>
           
