@@ -8149,10 +8149,8 @@
           );
           const rawMethod = methodSelection ? methodSelection.value : "Pix";
           let method = rawMethod;
-          if (method === "Online") {
-            method = "Cartão de Crédito";
-          } else if (method === "PixOnline") {
-            method = "Pix";
+          if (method === "Online" || method === "PixOnline") {
+            method = "Pago Online";
           }
 
           const isPickup = selectedDeliveryOption === "pickup";
@@ -8472,6 +8470,8 @@
             }
           }
 
+          const isPaidImmediately = !!(paymentResponse && paymentResponse.method === "card" && (paymentResponse.status === "CONFIRMED" || paymentResponse.status === "RECEIVED" || paymentResponse.status === "approved" || paymentResponse.status === "succeeded"));
+
           const orderDocument = {
             id: orderId,
             date: new Date().toLocaleString("pt-BR"),
@@ -8491,6 +8491,9 @@
             paymentMethod: method,
             paymentProvider: paymentResponse ? paymentResponse.provider : null,
             paymentId: paymentResponse ? paymentResponse.paymentId : null,
+            isPaid: isPaidImmediately,
+            paymentApproved: isPaidImmediately,
+            paymentStatus: isPaidImmediately ? "Aprovado" : "Pendente",
             troco: trocoValue,
             items: shoppingCart.map((i) => ({
               productId: i.productId,
