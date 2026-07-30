@@ -2842,6 +2842,8 @@
       window.editingCartItemUniqueId = null;
       let shoppingCart = JSON.parse(localStorage.getItem("popfood_cart")) || [];
       let appliedDiscountCoupon = null;
+      let appliedDiscountCouponIsManual = false;
+      let storeCouponsList = [];
       let calculatedDistance = null;
       let calculatedDeliveryFee = 0.0;
       let clientLatitude = localStorage.getItem("popfood_cust_lat") ? parseFloat(localStorage.getItem("popfood_cust_lat")) : null;
@@ -3674,6 +3676,7 @@
                   window.setupDynamicPaymentMethods();
                 }
                 renderCatalogItems();
+                fetchStoreCoupons();
                 calculateReceiptTotals();
 
                 // Recalculate delivery fee immediately now that the profile is fully loaded
@@ -6983,6 +6986,26 @@
         }
       };
 
+      async function fetchStoreCoupons() {
+        if (typeof db === "undefined" || !window.currentStoreId) return;
+        try {
+          const qSnap = await getDocs(
+            query(
+              collection(db, COLLECTIONS.coupons),
+              where("storeId", "==", window.currentStoreId),
+            ),
+          );
+          storeCouponsList = [];
+          qSnap.forEach((snap) => {
+            const data = snap.data();
+            storeCouponsList.push({ id: snap.id, ...data });
+          });
+          calculateReceiptTotals();
+        } catch (e) {
+          console.error("Erro ao carregar cupons do estabelecimento: ", e);
+        }
+      }
+
       window.applyDiscountCoupon = async function () {
         const codeInput = document
           .getElementById("coupon-code-field")
@@ -6991,7 +7014,11 @@
         const msg = document.getElementById("coupon-msg");
 
         if (!codeInput) {
-          showToast("Preencha um código primeiro!", true);
+          appliedDiscountCouponIsManual = false;
+          appliedDiscountCoupon = null;
+          if (msg) msg.classList.add("hidden");
+          calculateReceiptTotals();
+          showToast("Cupom manual removido.");
           return;
         }
 
@@ -7021,7 +7048,22 @@
             msg.textContent = "❌ Cupom inválido, inativo ou inexistente.";
             msg.classList.add("text-brand-danger");
             appliedDiscountCoupon = null;
+            appliedDiscountCouponIsManual = false;
           } else {
+            // Verify Minimum Purchase restriction
+            const minVal = parseFloat(matchCoupon.minValue || 0);
+            const subtotal = shoppingCart.reduce((sum, item) => {
+              return sum + item.totalItemPrice * item.quantity;
+            }, 0);
+            if (subtotal < minVal) {
+              msg.textContent = `❌ Este cupom exige um valor mínimo de compra de R$ ${minVal.toFixed(2).replace(".", ",")}.`;
+              msg.classList.add("text-brand-danger");
+              appliedDiscountCoupon = null;
+              appliedDiscountCouponIsManual = false;
+              calculateReceiptTotals();
+              return;
+            }
+
             // Verify First Order only constraint
             if (matchCoupon.firstOrderOnly) {
               const phoneInput = document.getElementById("cust-phone").value.trim().replace(/\D/g, "");
@@ -7029,6 +7071,7 @@
                  msg.textContent = "❌ Informe seu WhatsApp (Cadastro) para usar este cupom de Primeiro Pedido.";
                  msg.classList.add("text-brand-danger");
                  appliedDiscountCoupon = null;
+                 appliedDiscountCouponIsManual = false;
                  calculateReceiptTotals();
                  return;
               }
@@ -7043,6 +7086,7 @@
                  msg.textContent = "❌ Este cupom é válido apenas para o seu primeiro pedido.";
                  msg.classList.add("text-brand-danger");
                  appliedDiscountCoupon = null;
+                 appliedDiscountCouponIsManual = false;
                  calculateReceiptTotals();
                  return;
               }
@@ -7056,14 +7100,17 @@
               msg.textContent = `❌ Cupom expirado em ${limit.toLocaleDateString("pt-BR")}`;
               msg.classList.add("text-brand-danger");
               appliedDiscountCoupon = null;
+              appliedDiscountCouponIsManual = false;
             } else {
               msg.textContent = `✅ Cupom "${matchCoupon.code}" aplicado com sucesso!`;
               msg.classList.add("text-brand-secondary");
               appliedDiscountCoupon = matchCoupon;
+              appliedDiscountCouponIsManual = true;
             }
           }
         } catch (err) {
           console.error("Erro ao resgatar cupons: ", err);
+          appliedDiscountCouponIsManual = false;
         }
 
         calculateReceiptTotals();
@@ -7730,6 +7777,54 @@
 
         (document.getElementById("lbl-subtotal") || {}).textContent =
           `R$ ${subtotal.toFixed(2).replace(".", ",")}`;
+
+        // Check for automatic coupons if no manual coupon is active
+        if (!appliedDiscountCouponIsManual) {
+          let bestAutoCoupon = null;
+          let bestDiscountAmount = 0;
+          const now = new Date();
+
+          storeCouponsList.forEach((coupon) => {
+            if (coupon.active && coupon.automatic) {
+              const limit = new Date(coupon.expiry);
+              if (limit >= now) {
+                // Check minimum purchase restriction
+                const minVal = parseFloat(coupon.minValue || 0);
+                if (subtotal >= minVal) {
+                  let discountVal = 0;
+                  if (coupon.type === "percentual") {
+                    discountVal = subtotal * (coupon.value / 100);
+                  } else {
+                    discountVal = coupon.value;
+                  }
+                  
+                  if (discountVal > bestDiscountAmount) {
+                    bestDiscountAmount = discountVal;
+                    bestAutoCoupon = coupon;
+                  }
+                }
+              }
+            }
+          });
+
+          if (bestAutoCoupon) {
+            appliedDiscountCoupon = bestAutoCoupon;
+          } else {
+            appliedDiscountCoupon = null;
+          }
+        }
+
+        // Show notice if automatic coupon is applied
+        const msg = document.getElementById("coupon-msg");
+        if (msg) {
+          if (appliedDiscountCoupon && !appliedDiscountCouponIsManual) {
+            msg.textContent = `⚡ Desconto automático "${appliedDiscountCoupon.code}" aplicado!`;
+            msg.className = "text-xs font-semibold px-2 py-1 select-none text-brand-secondary block";
+            msg.classList.remove("hidden");
+          } else if (!appliedDiscountCoupon && !appliedDiscountCouponIsManual) {
+            msg.classList.add("hidden");
+          }
+        }
 
         // Recalculate manual coupon discount
         let discount = 0;
