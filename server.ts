@@ -217,7 +217,7 @@ async function startServer() {
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
-    const { amount, paymentMethodType, cardToken, email, description, storeId, orderId } = req.body;
+    const { amount, paymentMethodType, cardToken, email, description, storeId, orderId, phone, customerName, customerEmail } = req.body;
     
     try {
       const projectId = firebaseConfig.projectId;
@@ -236,9 +236,100 @@ async function startServer() {
       const mpAccessToken = fields.mpAccessToken?.stringValue;
       const stripeSecretKey = fields.stripeSecretKey?.stringValue;
       const abacatePayToken = fields.abacatePayToken?.stringValue;
+      const asaasApiKey = fields.asaasApiKey?.stringValue;
+      const asaasEnv = fields.asaasEnv?.stringValue || 'production';
+      const onlineGateway = fields.onlineGateway?.stringValue || (asaasApiKey ? 'asaas' : 'abacatepay');
+
+      // ASAAS FLOW
+      if (onlineGateway === 'asaas' && asaasApiKey) {
+        const asaasBaseUrl = asaasEnv === 'sandbox' ? 'https://sandbox.asaas.com/api/v3' : 'https://www.asaas.com/api/v3';
+
+        async function callAsaasApi(endpoint: string, method = 'GET', bodyData: any = null) {
+          const res = await fetch(`${asaasBaseUrl}${endpoint}`, {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json',
+              'access_token': asaasApiKey,
+              'Accept': 'application/json'
+            },
+            body: bodyData ? JSON.stringify(bodyData) : undefined
+          });
+          const data = await res.json();
+          if (!res.ok || data.errors) {
+            const msg = data.errors && data.errors[0] ? data.errors[0].description : JSON.stringify(data);
+            throw new Error(`Erro Asaas (${endpoint}): ${msg}`);
+          }
+          return data;
+        }
+
+        let customerId = null;
+        const custPhone = (phone || '').replace(/\D/g, '');
+        if (custPhone) {
+          try {
+            const searchRes = await callAsaasApi(`/customers?mobilePhone=${custPhone}`);
+            if (searchRes.data && searchRes.data.length > 0) {
+              customerId = searchRes.data[0].id;
+            }
+          } catch (e) { }
+        }
+
+        if (!customerId) {
+          const newCust = await callAsaasApi('/customers', 'POST', {
+            name: customerName || 'Cliente PopFood',
+            email: customerEmail || 'cliente@popfood.com',
+            mobilePhone: custPhone || '81999999999',
+            notificationDisabled: true
+          });
+          customerId = newCust.id;
+        }
+
+        const dueDateIso = new Date().toISOString().split('T')[0];
+
+        if (paymentMethodType === 'pix') {
+          const payRes = await callAsaasApi('/payments', 'POST', {
+            customer: customerId,
+            billingType: 'PIX',
+            value: Number(amount),
+            dueDate: dueDateIso,
+            description: description || 'Pedido PopFood',
+            externalReference: orderId || `ord_${Date.now()}`
+          });
+
+          const pixQr = await callAsaasApi(`/payments/${payRes.id}/pixQrCode`);
+          let qrImg = pixQr.encodedImage || '';
+          if (qrImg && !qrImg.startsWith('data:')) {
+            qrImg = 'data:image/png;base64,' + qrImg;
+          }
+
+          return res.json({
+            provider: 'asaas',
+            method: 'pix',
+            qrCode: pixQr.payload,
+            qrCodeBase64: qrImg,
+            paymentId: payRes.id,
+            status: payRes.status || 'PENDING'
+          });
+        } else {
+          const payRes = await callAsaasApi('/payments', 'POST', {
+            customer: customerId,
+            billingType: 'CREDIT_CARD',
+            value: Number(amount),
+            dueDate: dueDateIso,
+            description: description || 'Pedido PopFood',
+            externalReference: orderId || `ord_${Date.now()}`
+          });
+
+          return res.json({
+            provider: 'asaas',
+            method: 'checkout',
+            url: payRes.invoiceUrl || payRes.bankSlipUrl,
+            paymentId: payRes.id
+          });
+        }
+      }
 
       // ABACATEPAY FLOW
-      if (abacatePayToken) {
+      if (abacatePayToken && onlineGateway === 'abacatepay') {
         let amountCents = Math.round(Number(amount) * 100);
         
         if (paymentMethodType === 'pix') {
@@ -420,14 +511,42 @@ async function startServer() {
       const docData = await response.json();
       const fields = docData.fields || {};
       const abacatePayToken = fields.abacatePayToken?.stringValue;
+      const asaasApiKey = fields.asaasApiKey?.stringValue;
+      const asaasEnv = fields.asaasEnv?.stringValue || 'production';
+      const onlineGateway = fields.onlineGateway?.stringValue || (asaasApiKey ? 'asaas' : 'abacatepay');
       const mpAccessToken = fields.mpAccessToken?.stringValue;
 
       let isPaid = false;
       let statusStr = "PENDING";
       let providerStr = "";
 
-      // 1. ABACATEPAY CHECK
-      if (abacatePayToken) {
+      // 1. ASAAS CHECK
+      if (asaasApiKey && (onlineGateway === 'asaas' || (paymentId as string).startsWith('pay_'))) {
+        providerStr = "asaas";
+        const asaasBaseUrl = asaasEnv === 'sandbox' ? 'https://sandbox.asaas.com/api/v3' : 'https://www.asaas.com/api/v3';
+        const checkRes = await fetch(`${asaasBaseUrl}/payments/${paymentId}`, {
+          method: 'GET',
+          headers: {
+            'access_token': asaasApiKey,
+            'Accept': 'application/json'
+          }
+        });
+        if (!checkRes.ok) {
+          throw new Error(`Erro ao consultar status no Asaas (Status: ${checkRes.status})`);
+        }
+        const checkData = await checkRes.json();
+        const rawStatus = checkData.status || "PENDING";
+        if (["RECEIVED", "CONFIRMED", "DUNNING_RECEIVED"].includes(rawStatus)) {
+          isPaid = true;
+          statusStr = "PAID";
+        } else if (rawStatus === "PENDING" || rawStatus === "AWAITING_RISK_ANALYSIS") {
+          statusStr = "PENDING";
+        } else {
+          statusStr = "CANCELLED";
+        }
+      }
+      // 2. ABACATEPAY CHECK
+      else if (abacatePayToken) {
         providerStr = "abacatepay";
         const isCheckout = (paymentId as string).startsWith("bill_") || (paymentId as string).startsWith("chk_");
         const abacateUrl = isCheckout 

@@ -2223,6 +2223,196 @@
         return await response.json();
       }
 
+      // Direct Browser-to-Asaas payment creation bypass
+      async function executeAsaasClientSide(path, options) {
+        const asaasApiKey = restaurantProfile.asaasApiKey;
+        if (!asaasApiKey) {
+          throw new Error(
+            "Chave de API do Asaas não configurada no perfil deste restaurante.",
+          );
+        }
+        const asaasEnv = restaurantProfile.asaasEnv || "production";
+        const baseUrl =
+          asaasEnv === "sandbox"
+            ? "https://sandbox.asaas.com/api/v3"
+            : "https://www.asaas.com/api/v3";
+
+        async function callAsaas(endpoint, method = "GET", bodyData = null) {
+          const res = await fetch(`${baseUrl}${endpoint}`, {
+            method: method,
+            headers: {
+              "Content-Type": "application/json",
+              access_token: asaasApiKey,
+              Accept: "application/json",
+            },
+            body: bodyData ? JSON.stringify(bodyData) : undefined,
+          });
+          const data = await res.json();
+          if (!res.ok || data.errors) {
+            const msg =
+              data.errors && data.errors[0]
+                ? data.errors[0].description
+                : JSON.stringify(data);
+            throw new Error(`Erro Asaas (${endpoint}): ${msg}`);
+          }
+          return data;
+        }
+
+        if (path.includes("/api/create-payment")) {
+          const payload = JSON.parse(options.body || "{}");
+          const amount = Number(payload.amount);
+          const paymentMethodType = payload.paymentMethodType || "pix";
+          const description = payload.description || "Pedido PopFood";
+          const orderId = payload.orderId || "";
+
+          let customerId = null;
+          const custPhone = (payload.customerPhone || "").replace(/\D/g, "");
+          const custName = payload.customerName || "Cliente PopFood";
+          const custEmail = payload.customerEmail || "cliente@popfood.com";
+
+          if (custPhone) {
+            try {
+              const searchRes = await callAsaas(`/customers?mobilePhone=${custPhone}`);
+              if (searchRes.data && searchRes.data.length > 0) {
+                customerId = searchRes.data[0].id;
+              }
+            } catch (e) {}
+          }
+
+          if (!customerId) {
+            const newCust = await callAsaas("/customers", "POST", {
+              name: custName,
+              email: custEmail,
+              mobilePhone: custPhone || "81999999999",
+              notificationDisabled: true,
+            });
+            customerId = newCust.id;
+          }
+
+          const dueDateIso = new Date().toISOString().split("T")[0];
+
+          if (paymentMethodType === "pix") {
+            const payRes = await callAsaas("/payments", "POST", {
+              customer: customerId,
+              billingType: "PIX",
+              value: amount,
+              dueDate: dueDateIso,
+              description: description,
+              externalReference: orderId || `ord_${Date.now()}`,
+            });
+
+            const pixQr = await callAsaas(`/payments/${payRes.id}/pixQrCode`);
+            let qrImg = pixQr.encodedImage || "";
+            if (qrImg && !qrImg.startsWith("data:")) {
+              qrImg = "data:image/png;base64," + qrImg;
+            }
+
+            const resultObj = {
+              provider: "asaas",
+              method: "pix",
+              qrCode: pixQr.payload,
+              qrCodeBase64: qrImg,
+              paymentId: payRes.id,
+              status: payRes.status || "PENDING",
+            };
+
+            return {
+              ok: true,
+              status: 200,
+              headers: {
+                get: (n) =>
+                  n.toLowerCase() === "content-type"
+                    ? "application/json"
+                    : null,
+              },
+              json: async () => resultObj,
+              text: async () => JSON.stringify(resultObj),
+            };
+          } else {
+            const payRes = await callAsaas("/payments", "POST", {
+              customer: customerId,
+              billingType: "CREDIT_CARD",
+              value: amount,
+              dueDate: dueDateIso,
+              description: description,
+              externalReference: orderId || `ord_${Date.now()}`,
+            });
+
+            const checkoutUrl = payRes.invoiceUrl || payRes.bankSlipUrl;
+            localStorage.setItem("popfood_pending_payment_id", payRes.id);
+
+            const resultObj = {
+              provider: "asaas",
+              method: "checkout",
+              url: checkoutUrl,
+              paymentId: payRes.id,
+            };
+
+            return {
+              ok: true,
+              status: 200,
+              headers: {
+                get: (n) =>
+                  n.toLowerCase() === "content-type"
+                    ? "application/json"
+                    : null,
+              },
+              json: async () => resultObj,
+              text: async () => JSON.stringify(resultObj),
+            };
+          }
+        }
+
+        if (path.includes("/api/check-payment")) {
+          const urlParams = new URLSearchParams(path.split("?")[1] || "");
+          const paymentId = urlParams.get("paymentId");
+          const orderIdParam = urlParams.get("orderId");
+
+          if (!paymentId) throw new Error("Parâmetro paymentId ausente.");
+
+          const payStatusData = await callAsaas(`/payments/${paymentId}`);
+          const rawStatus = payStatusData.status || "PENDING";
+          const isPaid = ["RECEIVED", "CONFIRMED", "DUNNING_RECEIVED"].includes(rawStatus);
+
+          if (isPaid && orderIdParam) {
+            try {
+              await setDoc(
+                doc(db, "orders", orderIdParam),
+                {
+                  paymentApproved: true,
+                  isPaid: true,
+                  paymentStatus: "Aprovado",
+                },
+                { merge: true },
+              );
+            } catch (dbErr) {
+              console.error("Erro atualizando pedido Asaas no Firestore:", dbErr);
+            }
+          }
+
+          const resultObj = {
+            status: isPaid ? "PAID" : rawStatus,
+            provider: "asaas",
+            isPaid: isPaid,
+          };
+
+          return {
+            ok: true,
+            status: 200,
+            headers: {
+              get: (n) =>
+                n.toLowerCase() === "content-type"
+                  ? "application/json"
+                  : null,
+            },
+            json: async () => resultObj,
+            text: async () => JSON.stringify(resultObj),
+          };
+        }
+
+        throw new Error(`Endpoint não suportado pelo Asaas bypass: ${path}`);
+      }
+
       // Direct Browser-to-AbacatePay payment creation bypass
       async function executeAbacatePayClientSide(path, options) {
         const abacatePayToken = restaurantProfile.abacatePayToken;
@@ -2447,25 +2637,36 @@
         throw new Error(`Endpoint não suportado pelo cliente bypass: ${path}`);
       }
 
-      // Resilient API calling helper with automatic client-side AbacatePay bypass + server failovers
+      // Resilient API calling helper with automatic client-side AbacatePay / Asaas bypass + server failovers
       window.resilientFetch = async function (path, options = {}) {
-        // If the restaurant profile has AbacatePay token loaded, bypass backend completely
+        // If the restaurant profile has online payment token loaded, bypass backend completely
         // to avoid Google Ingress / Cloud Run CORS blocks for github.io domains!
         if (
           restaurantProfile &&
-          restaurantProfile.abacatePayToken &&
           (path.includes("/api/create-payment") ||
             path.includes("/api/check-payment"))
         ) {
-          try {
-            return await executeAbacatePayClientSide(path, options);
-          } catch (bypassErr) {
-            console.warn(
-              "[Payment Bridge] Falha no Bypass Client-Side. Tentando requisição via servidor...",
-              bypassErr,
-            );
-            // Salvar o erro original para repassar se o servidor falhar
-            options._originalBypassErr = bypassErr;
+          const activeGw = restaurantProfile.onlineGateway || (restaurantProfile.asaasApiKey ? "asaas" : "abacatepay");
+          if (activeGw === "asaas" && restaurantProfile.asaasApiKey) {
+            try {
+              return await executeAsaasClientSide(path, options);
+            } catch (bypassErr) {
+              console.warn(
+                "[Payment Bridge] Falha no Bypass Asaas. Tentando requisição via servidor...",
+                bypassErr,
+              );
+              options._originalBypassErr = bypassErr;
+            }
+          } else if (restaurantProfile.abacatePayToken) {
+            try {
+              return await executeAbacatePayClientSide(path, options);
+            } catch (bypassErr) {
+              console.warn(
+                "[Payment Bridge] Falha no Bypass Client-Side. Tentando requisição via servidor...",
+                bypassErr,
+              );
+              options._originalBypassErr = bypassErr;
+            }
           }
         }
 
@@ -3014,12 +3215,11 @@
 
         const hasOffline = pm.offlinePix || pm.offlineCard || pm.offlineMoney;
         // AbacatePayToken determines if online works at all via our logic, but let's blindly support checking it on backend or trust the profile for now
-        const hasOnline =
-          restaurantProfile && restaurantProfile.abacatePayToken
-            ? pm.onlinePix || pm.onlineCard
-            : restaurantProfile && restaurantProfile.stripePublicKey
-              ? true
-              : false;
+        const hasOnlineConfigured = !!(
+          restaurantProfile &&
+          (restaurantProfile.abacatePayToken || restaurantProfile.asaasApiKey)
+        );
+        const hasOnline = hasOnlineConfigured ? (pm.onlinePix || pm.onlineCard) : false;
 
         const timingContainer = document.getElementById(
           "payment-timing-selector",
@@ -7879,7 +8079,7 @@
               );
             }
 
-            if (paymentResponse.provider === "abacatepay") {
+            if (paymentResponse.provider === "abacatepay" || paymentResponse.provider === "asaas") {
               if (paymentResponse.method === "pix") {
                 // Show QR Code modal for AbacatePay Pix
                 const qrContainer = document.getElementById("pix-qr-container");
