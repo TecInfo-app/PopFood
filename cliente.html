@@ -2232,10 +2232,11 @@
           );
         }
         const asaasEnv = restaurantProfile.asaasEnv || "production";
+        const WORKER_URL = "https://popfood.iranildo-jobs.workers.dev";
         const baseUrl =
           asaasEnv === "sandbox"
-            ? "https://sandbox.asaas.com/api/v3"
-            : "https://www.asaas.com/api/v3";
+            ? `${WORKER_URL}/sandbox`
+            : `${WORKER_URL}/production`;
 
         async function callAsaas(endpoint, method = "GET", bodyData = null) {
           const res = await fetch(`${baseUrl}${endpoint}`, {
