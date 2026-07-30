@@ -2413,7 +2413,7 @@ window.copyStoreLink = function() {
           if (orderSnap.exists()) {
              const data = orderSnap.data();
              fcmToken = data.fcmToken;
-             isPickup = data.isPickup || false;
+             isPickup = data.isPickup || (data.customer && data.customer.type === "pickup") || false;
              uberDeliveryId = data.uberDeliveryId;
              if (data.shortId) orderNumber = data.shortId;
           }
@@ -2949,7 +2949,7 @@ window.copyStoreLink = function() {
                       refundedAt: new Date().toISOString(),
                       refundId: refundData.data?.id || "",
                     });
-                    if (window.notifyOrderUpdate) await window.notifyOrderUpdate(order.id, "Cancelado", order.fcmToken, order.shortId, order.isPickup);
+                    if (window.notifyOrderUpdate) await window.notifyOrderUpdate(order.id, "Cancelado", order.fcmToken, order.shortId, order.isPickup || (order.customer && order.customer.type === "pickup") || false);
                     alert(
                       "✅ Pedido cancelado e reembolso enviado ao cliente com sucesso!",
                     );
@@ -2965,7 +2965,10 @@ window.copyStoreLink = function() {
                           "Cancelado pelo restaurante — reembolso manual pendente",
                         refunded: false,
                       });
-                      if (window.notifyOrderUpdate) await window.notifyOrderUpdate(order.id, "Cancelado", order.fcmToken, order.shortId, order.isPickup);
+                      if (window.notifyOrderUpdate) {
+                       const isOrderPickup = order.isPickup || (order.customer && order.customer.type === "pickup") || false;
+                       await window.notifyOrderUpdate(order.id, "Cancelado", order.fcmToken, order.shortId, isOrderPickup);
+                     }
                     }
                   }
                 } catch (err) {
