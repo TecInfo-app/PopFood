@@ -530,7 +530,13 @@
         statusSpan.classList.add("bg-red-950", "text-red-400", "border", "border-red-900/30");
       }
 
-      (document.getElementById('order-lbl-payment') || {}).textContent = order.paymentMethod || "Dinheiro";
+      let displayPaymentMethod = order.paymentMethod || "Dinheiro";
+      if (displayPaymentMethod === "Online" || displayPaymentMethod === "Pago Online") {
+        displayPaymentMethod = "Cartão Pago Online";
+      } else if (displayPaymentMethod === "PixOnline") {
+        displayPaymentMethod = "Pix Pago Online";
+      }
+      (document.getElementById('order-lbl-payment') || {}).textContent = displayPaymentMethod;
       (document.getElementById('order-lbl-total') || {}).textContent = `R$ ${(order.total || 0).toFixed(2).replace('.', ',')}`;
 
       // Handle Cash changes

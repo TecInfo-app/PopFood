@@ -962,7 +962,13 @@
       }
 
       // Payments
-      (document.getElementById('track-lbl-payment') || {}).textContent = order.paymentMethod;
+      let displayPaymentMethod = order.paymentMethod || "Dinheiro";
+      if (displayPaymentMethod === "Online" || displayPaymentMethod === "Pago Online") {
+        displayPaymentMethod = "Cartão Pago Online";
+      } else if (displayPaymentMethod === "PixOnline") {
+        displayPaymentMethod = "Pix Pago Online";
+      }
+      (document.getElementById('track-lbl-payment') || {}).textContent = displayPaymentMethod;
       (document.getElementById('track-lbl-time') || {}).textContent = order.date;
 
       // Receipts

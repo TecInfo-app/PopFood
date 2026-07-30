@@ -2724,22 +2724,24 @@ window.copyStoreLink = function() {
         // Label de pagamento no modal
         let modalPayLabel = order.paymentMethod || "Não informado";
         const isOnlinePaidVal = ["abacatepay", "asaas", "mercadopago", "stripe"].includes(order.paymentProvider) || order.isPaid || false;
-        if (isOnlinePaidVal && (order.isPaid || order.paymentMethod === "Pago Online" || order.paymentMethod === "Cartão de Crédito" || order.paymentMethod === "Pix")) {
-          if (
-            order.paymentMethod === "PixOnline" ||
-            order.paymentMethod === "Pix Imediato" ||
-            order.paymentMethod === "Pix"
-          ) {
-            modalPayLabel = "⚡ Pix Online (Pago)";
-          } else if (
-            order.paymentMethod === "Online" ||
-            order.paymentMethod === "Cartão de Crédito" ||
-            order.paymentMethod === "CartaoOnline" ||
-            order.paymentMethod === "Pago Online"
-          ) {
-            modalPayLabel = "💳 Pago Online ✅";
+        if (isOnlinePaidVal || order.paymentMethod === "Pago Online" || order.paymentMethod === "PixOnline" || order.paymentMethod === "Online") {
+          const isPix = order.paymentMethod === "PixOnline" || 
+                        order.paymentMethod === "Pix Imediato" || 
+                        order.paymentMethod === "Pix" || 
+                        order.paymentMethodType === "pix" ||
+                        (order.paymentMethod && order.paymentMethod.toUpperCase().includes("PIX"));
+          if (isPix) {
+            modalPayLabel = "⚡ Pix Pago Online ✅";
           } else {
-            modalPayLabel = `${modalPayLabel} ✅ Pago Online`;
+            modalPayLabel = "💳 Cartão Pago Online ✅";
+          }
+        } else {
+          if (order.paymentMethod === "Pix" || order.paymentMethod === "Pix no ato") {
+            modalPayLabel = "⚡ Pix na Entrega";
+          } else if (order.paymentMethod === "Cartão" || order.paymentMethod === "Cartao") {
+            modalPayLabel = "💳 Cartão na Entrega";
+          } else if (order.paymentMethod === "Dinheiro") {
+            modalPayLabel = "💵 Dinheiro";
           }
         }
         (document.getElementById("modal-lbl-payment") || {}).textContent =
@@ -3569,7 +3571,11 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         
         detailsText += makeDivider("-");
         if (isOnlinePaid) {
-          const isPix = order.paymentMethod === "PixOnline" || order.paymentMethod === "Pix Imediato" || order.paymentMethod === "Pix" || (order.paymentMethod && order.paymentMethod.toUpperCase().includes("PIX"));
+          const isPix = order.paymentMethod === "PixOnline" || 
+                        order.paymentMethod === "Pix Imediato" || 
+                        order.paymentMethod === "Pix" || 
+                        order.paymentMethodType === "pix" ||
+                        (order.paymentMethod && order.paymentMethod.toUpperCase().includes("PIX"));
           if (isPix) {
             detailsText += centerText("PIX PAGO ONLINE");
           } else {
@@ -3771,7 +3777,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           <div style="text-align: center; font-weight: 900; line-height: 1.3; margin: 6px 0; font-size: ${headerFontSize};">
             ${
               isOnlinePaid
-                ? (order.paymentMethod === "PixOnline" || order.paymentMethod === "Pix Imediato" || order.paymentMethod === "Pix" || (order.paymentMethod && order.paymentMethod.toUpperCase().includes("PIX"))
+                ? (order.paymentMethod === "PixOnline" || order.paymentMethod === "Pix Imediato" || order.paymentMethod === "Pix" || order.paymentMethodType === "pix" || (order.paymentMethod && order.paymentMethod.toUpperCase().includes("PIX"))
                   ? "PIX PAGO ONLINE"
                   : "CARTÃO PAGO ONLINE")
                 : "* PAGAMENTO NA ENTREGA *<br>COBRAR"

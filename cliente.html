@@ -8149,9 +8149,6 @@
           );
           const rawMethod = methodSelection ? methodSelection.value : "Pix";
           let method = rawMethod;
-          if (method === "Online" || method === "PixOnline") {
-            method = "Pago Online";
-          }
 
           const isPickup = selectedDeliveryOption === "pickup";
           const street = isPickup
@@ -8491,6 +8488,7 @@
             paymentMethod: method,
             paymentProvider: paymentResponse ? paymentResponse.provider : null,
             paymentId: paymentResponse ? paymentResponse.paymentId : null,
+            paymentMethodType: paymentResponse ? paymentResponse.method : null,
             isPaid: isPaidImmediately,
             paymentApproved: isPaidImmediately,
             paymentStatus: isPaidImmediately ? "Aprovado" : "Pendente",
