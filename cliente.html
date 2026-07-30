@@ -2343,6 +2343,7 @@
           const custPhone = (payload.customerPhone || "").replace(/\D/g, "");
           const custName = payload.customerName || "Cliente PopFood";
           const custEmail = payload.customerEmail || "cliente@popfood.com";
+          const cpfCnpj = payload.cpfCnpj || (payload.asaasCardData ? payload.asaasCardData.cpfCnpj : "");
 
           if (custPhone) {
             try {
@@ -2358,9 +2359,16 @@
               name: custName,
               email: custEmail,
               mobilePhone: custPhone || "81999999999",
+              cpfCnpj: cpfCnpj || undefined,
               notificationDisabled: true,
             });
             customerId = newCust.id;
+          } else if (cpfCnpj) {
+            try {
+              await callAsaas(`/customers/${customerId}`, "POST", {
+                cpfCnpj: cpfCnpj,
+              });
+            } catch (e) {}
           }
 
           const dueDateIso = new Date().toISOString().split("T")[0];
@@ -2403,37 +2411,84 @@
               text: async () => JSON.stringify(resultObj),
             };
           } else {
-            const payRes = await callAsaas("/payments", "POST", {
-              customer: customerId,
-              billingType: "CREDIT_CARD",
-              value: amount,
-              dueDate: dueDateIso,
-              description: description,
-              externalReference: orderId || `ord_${Date.now()}`,
-            });
+            if (payload.asaasCardData) {
+              const payRes = await callAsaas("/payments", "POST", {
+                customer: customerId,
+                billingType: "CREDIT_CARD",
+                value: amount,
+                dueDate: dueDateIso,
+                description: description,
+                externalReference: orderId || `ord_${Date.now()}`,
+                creditCard: {
+                  holderName: payload.asaasCardData.holderName,
+                  number: payload.asaasCardData.number,
+                  expiryMonth: payload.asaasCardData.expiryMonth,
+                  expiryYear: payload.asaasCardData.expiryYear,
+                  ccv: payload.asaasCardData.ccv,
+                },
+                creditCardHolderInfo: {
+                  name: payload.asaasCardData.holderName,
+                  email: payload.asaasCardData.email,
+                  cpfCnpj: payload.asaasCardData.cpfCnpj,
+                  postalCode: payload.asaasCardData.postalCode,
+                  addressNumber: payload.asaasCardData.addressNumber,
+                  phone: custPhone || "81999999999",
+                  mobilePhone: custPhone || "81999999999",
+                },
+              });
 
-            const checkoutUrl = payRes.invoiceUrl || payRes.bankSlipUrl;
-            localStorage.setItem("popfood_pending_payment_id", payRes.id);
+              const resultObj = {
+                provider: "asaas",
+                method: "card",
+                status: payRes.status || "CONFIRMED",
+                paymentId: payRes.id,
+              };
 
-            const resultObj = {
-              provider: "asaas",
-              method: "checkout",
-              url: checkoutUrl,
-              paymentId: payRes.id,
-            };
+              return {
+                ok: true,
+                status: 200,
+                headers: {
+                  get: (n) =>
+                    n.toLowerCase() === "content-type"
+                      ? "application/json"
+                      : null,
+                },
+                json: async () => resultObj,
+                text: async () => JSON.stringify(resultObj),
+              };
+            } else {
+              const payRes = await callAsaas("/payments", "POST", {
+                customer: customerId,
+                billingType: "CREDIT_CARD",
+                value: amount,
+                dueDate: dueDateIso,
+                description: description,
+                externalReference: orderId || `ord_${Date.now()}`,
+              });
 
-            return {
-              ok: true,
-              status: 200,
-              headers: {
-                get: (n) =>
-                  n.toLowerCase() === "content-type"
-                    ? "application/json"
-                    : null,
-              },
-              json: async () => resultObj,
-              text: async () => JSON.stringify(resultObj),
-            };
+              const checkoutUrl = payRes.invoiceUrl || payRes.bankSlipUrl;
+              localStorage.setItem("popfood_pending_payment_id", payRes.id);
+
+              const resultObj = {
+                provider: "asaas",
+                method: "checkout",
+                url: checkoutUrl,
+                paymentId: payRes.id,
+              };
+
+              return {
+                ok: true,
+                status: 200,
+                headers: {
+                  get: (n) =>
+                    n.toLowerCase() === "content-type"
+                      ? "application/json"
+                      : null,
+                },
+                json: async () => resultObj,
+                text: async () => JSON.stringify(resultObj),
+              };
+            }
           }
         }
 
@@ -8473,8 +8528,8 @@
 
           // Increment orderCount for products to power "Os Mais Pedidos" feature and deduct stock
           try {
-            for (const item of cart) {
-              const prodRef = doc(db, COLLECTIONS.products, item.id);
+            for (const item of shoppingCart) {
+              const prodRef = doc(db, COLLECTIONS.products, item.productId);
               const prodSnap = await getDoc(prodRef);
               if (prodSnap.exists()) {
                 const pData = prodSnap.data();
@@ -8489,7 +8544,7 @@
 
               // Deduct complements stock if necessary
               if (item.complements && item.complements.length > 0) {
-                const compRef = doc(db, COLLECTIONS.complements, item.id);
+                const compRef = doc(db, COLLECTIONS.complements, item.productId);
                 const compSnap = await getDoc(compRef);
                 if (compSnap.exists()) {
                   const cData = compSnap.data();
