@@ -217,7 +217,7 @@ async function startServer() {
 
   // API route for payments
   app.post("/api/create-payment", async (req, res) => {
-    const { amount, paymentMethodType, cardToken, email, description, storeId, orderId, phone, customerName, customerEmail } = req.body;
+    const { amount, paymentMethodType, cardToken, email, description, storeId, orderId, phone, customerName, customerEmail, cpfCnpj, asaasCardData } = req.body;
     
     try {
       const projectId = firebaseConfig.projectId;
@@ -278,9 +278,17 @@ async function startServer() {
             name: customerName || 'Cliente PopFood',
             email: customerEmail || 'cliente@popfood.com',
             mobilePhone: custPhone || '81999999999',
+            cpfCnpj: cpfCnpj || undefined,
             notificationDisabled: true
           });
           customerId = newCust.id;
+        } else if (cpfCnpj) {
+          // Attempt to update customer with CPF/CNPJ if not present
+          try {
+            await callAsaasApi(`/customers/${customerId}`, 'POST', {
+              cpfCnpj: cpfCnpj
+            });
+          } catch (e) {}
         }
 
         const dueDateIso = new Date().toISOString().split('T')[0];
@@ -310,21 +318,57 @@ async function startServer() {
             status: payRes.status || 'PENDING'
           });
         } else {
-          const payRes = await callAsaasApi('/payments', 'POST', {
-            customer: customerId,
-            billingType: 'CREDIT_CARD',
-            value: Number(amount),
-            dueDate: dueDateIso,
-            description: description || 'Pedido PopFood',
-            externalReference: orderId || `ord_${Date.now()}`
-          });
+          // If we have custom asaas credit card data, do a transparent card transaction!
+          if (asaasCardData) {
+            const payRes = await callAsaasApi('/payments', 'POST', {
+              customer: customerId,
+              billingType: 'CREDIT_CARD',
+              value: Number(amount),
+              dueDate: dueDateIso,
+              description: description || 'Pedido PopFood',
+              externalReference: orderId || `ord_${Date.now()}`,
+              creditCard: {
+                holderName: asaasCardData.holderName,
+                number: asaasCardData.number,
+                expiryMonth: asaasCardData.expiryMonth,
+                expiryYear: asaasCardData.expiryYear,
+                ccv: asaasCardData.ccv
+              },
+              creditCardHolderInfo: {
+                name: asaasCardData.holderName,
+                email: asaasCardData.email,
+                cpfCnpj: asaasCardData.cpfCnpj,
+                postalCode: asaasCardData.postalCode,
+                addressNumber: asaasCardData.addressNumber,
+                phone: custPhone || '81999999999',
+                mobilePhone: custPhone || '81999999999'
+              }
+            });
 
-          return res.json({
-            provider: 'asaas',
-            method: 'checkout',
-            url: payRes.invoiceUrl || payRes.bankSlipUrl,
-            paymentId: payRes.id
-          });
+            return res.json({
+              provider: 'asaas',
+              method: 'card',
+              status: payRes.status || 'CONFIRMED',
+              paymentId: payRes.id
+            });
+          } else {
+            // Fallback to Checkout Link if no card data provided
+            const payRes = await callAsaasApi('/payments', 'POST', {
+              customer: customerId,
+              billingType: 'CREDIT_CARD',
+              value: Number(amount),
+              dueDate: dueDateIso,
+              description: description || 'Pedido PopFood',
+              externalReference: orderId || `ord_${Date.now()}`
+            });
+
+            return res.json({
+              provider: 'asaas',
+              method: 'checkout',
+              url: payRes.invoiceUrl || payRes.bankSlipUrl,
+              paymentId: payRes.id
+            });
+          }
         }
       }
 

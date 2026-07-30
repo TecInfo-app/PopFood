@@ -1196,6 +1196,79 @@
                 ></div>
               </div>
 
+              <!-- Asaas CPF Container for Pix -->
+              <div
+                id="asaas-cpf-container"
+                class="hidden space-y-2 p-4 bg-teal-50/40 border border-teal-100 rounded-2xl transition-all shadow-3xs"
+              >
+                <label
+                  class="block text-[10px] font-extrabold text-teal-800 uppercase tracking-wider"
+                  >👤 CPF do Pagador (Requerido para PIX)</label
+                >
+                <input
+                  type="text"
+                  id="asaas-pix-cpf"
+                  placeholder="000.000.000-00"
+                  class="w-full text-xs p-2.5 border border-teal-200 rounded-xl focus:outline-none focus:border-teal-400 bg-white"
+                />
+                <p class="text-[9px] text-teal-650">O CPF é obrigatório pelo Banco Central para emissão do Pix Dinâmico.</p>
+              </div>
+
+              <!-- Asaas Card Element Container -->
+              <div
+                id="asaas-card-container"
+                class="hidden space-y-3 p-4 bg-blue-50/40 border border-blue-100 rounded-2xl transition-all shadow-3xs"
+              >
+                <label
+                  class="block text-[10px] font-extrabold text-blue-800 uppercase tracking-wider"
+                  >💳 Dados do Cartão de Crédito</label
+                >
+                <div class="space-y-2.5 text-xs text-stone-700">
+                  <div>
+                    <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">Nome no Cartão</label>
+                    <input type="text" id="asaas-card-holder" placeholder="Como está gravado no cartão" class="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-blue-500 bg-white">
+                  </div>
+                  <div>
+                    <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">Número do Cartão</label>
+                    <input type="text" id="asaas-card-number" placeholder="0000 0000 0000 0000" class="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-blue-500 bg-white">
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div>
+                      <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">Mês (MM)</label>
+                      <input type="text" id="asaas-card-expiry-month" placeholder="MM" maxlength="2" class="w-full p-2.5 border border-stone-200 rounded-xl text-center focus:outline-none focus:border-blue-500 bg-white">
+                    </div>
+                    <div>
+                      <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">Ano (AAAA)</label>
+                      <input type="text" id="asaas-card-expiry-year" placeholder="AAAA" maxlength="4" class="w-full p-2.5 border border-stone-200 rounded-xl text-center focus:outline-none focus:border-blue-500 bg-white">
+                    </div>
+                    <div>
+                      <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">CVV</label>
+                      <input type="text" id="asaas-card-cvv" placeholder="123" maxlength="4" class="w-full p-2.5 border border-stone-200 rounded-xl text-center focus:outline-none focus:border-blue-500 bg-white">
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">CPF do Titular</label>
+                      <input type="text" id="asaas-card-cpf" placeholder="000.000.000-00" class="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-blue-500 bg-white">
+                    </div>
+                    <div>
+                      <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">CEP do Endereço</label>
+                      <input type="text" id="asaas-card-postalcode" placeholder="00000-000" class="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-blue-500 bg-white">
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-2">
+                      <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">E-mail do Titular</label>
+                      <input type="email" id="asaas-card-email" placeholder="email@exemplo.com" class="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-blue-500 bg-white">
+                    </div>
+                    <div>
+                      <label class="block text-[9px] font-bold uppercase text-stone-500 mb-1">Número</label>
+                      <input type="text" id="asaas-card-address-number" placeholder="123" class="w-full p-2.5 border border-stone-200 rounded-xl focus:outline-none focus:border-blue-500 bg-white">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- CONTÊINER DO TROCO (oculto por padrão) -->
               <div
                 id="change-needed-container"
@@ -3317,6 +3390,39 @@
         const stripeContainer = document.getElementById(
           "stripe-card-container",
         );
+        const asaasCardContainer = document.getElementById(
+          "asaas-card-container",
+        );
+        const asaasCpfContainer = document.getElementById(
+          "asaas-cpf-container",
+        );
+
+        // Apply masks to Asaas fields
+        const applyMask = (id, pattern) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("input", (e) => {
+            let val = e.target.value.replace(/\D/g, "");
+            if (pattern === "cpf") {
+              let x = val.match(/(\d{0,3})(\d{0,3})(\d{0,3})(\d{0,2})/);
+              e.target.value = !x[2]
+                ? x[1]
+                : x[1] + "." + x[2] + (x[3] ? "." + x[3] : "") + (x[4] ? "-" + x[4] : "");
+            } else if (pattern === "cep") {
+              let x = val.match(/(\d{0,5})(\d{0,3})/);
+              e.target.value = !x[2] ? x[1] : x[1] + "-" + x[2];
+            } else if (pattern === "card") {
+              let x = val.match(/(\d{0,4})(\d{0,4})(\d{0,4})(\d{0,4})/);
+              e.target.value = !x[2]
+                ? x[1]
+                : x[1] + " " + x[2] + (x[3] ? " " + x[3] : "") + (x[4] ? " " + x[4] : "");
+            }
+          });
+        };
+        applyMask("asaas-pix-cpf", "cpf");
+        applyMask("asaas-card-cpf", "cpf");
+        applyMask("asaas-card-postalcode", "cep");
+        applyMask("asaas-card-number", "card");
 
         const cards = methodContainer.querySelectorAll(".payment-card");
         cards.forEach((card) => {
@@ -3338,6 +3444,12 @@
             const radio = card.querySelector("input");
             radio.checked = true;
 
+            // Determine if active gateway is Asaas
+            const isAsaas = !!(
+              restaurantProfile &&
+              (restaurantProfile.onlineGateway === "asaas" || restaurantProfile.asaasApiKey)
+            );
+
             // If Dinheiro, show change option box
             if (changeContainer) {
               if (radio.value === "Dinheiro") {
@@ -3351,12 +3463,30 @@
               }
             }
 
-            // If Online card, show stripe box
+            // If Online card, show stripe box (only if NOT Asaas)
             if (stripeContainer) {
-              if (radio.value === "Online" && stripe && cardElement) {
+              if (radio.value === "Online" && !isAsaas && stripe && cardElement) {
                 stripeContainer.classList.remove("hidden");
               } else {
                 stripeContainer.classList.add("hidden");
+              }
+            }
+
+            // If Online card and Asaas, show custom transparent credit card form
+            if (asaasCardContainer) {
+              if (radio.value === "Online" && isAsaas) {
+                asaasCardContainer.classList.remove("hidden");
+              } else {
+                asaasCardContainer.classList.add("hidden");
+              }
+            }
+
+            // If Online Pix and Asaas, show CPF input
+            if (asaasCpfContainer) {
+              if (radio.value === "PixOnline" && isAsaas) {
+                asaasCpfContainer.classList.remove("hidden");
+              } else {
+                asaasCpfContainer.classList.add("hidden");
               }
             }
           });
@@ -8039,6 +8169,53 @@
           if (rawMethod === "Online" || rawMethod === "PixOnline") {
             let paymentResponse = null;
 
+            // Collect custom inputs for Asaas transparent flow
+            const activeGw = restaurantProfile && (restaurantProfile.onlineGateway || (restaurantProfile.asaasApiKey ? "asaas" : "abacatepay"));
+            let asaasPixCpf = "";
+            let asaasCardData = null;
+
+            if (activeGw === "asaas") {
+              if (rawMethod === "PixOnline") {
+                const cpfInput = document.getElementById("asaas-pix-cpf");
+                asaasPixCpf = cpfInput ? cpfInput.value.trim().replace(/\D/g, "") : "";
+                if (!asaasPixCpf) {
+                  throw new Error("Por favor, informe seu CPF/CNPJ para gerar o Pix.");
+                }
+                if (asaasPixCpf.length !== 11 && asaasPixCpf.length !== 14) {
+                  throw new Error("CPF ou CNPJ inválido. Digite um CPF de 11 dígitos ou CNPJ de 14 dígitos.");
+                }
+              } else if (rawMethod === "Online") {
+                const holder = document.getElementById("asaas-card-holder").value.trim();
+                const num = document.getElementById("asaas-card-number").value.trim().replace(/\D/g, "");
+                const expM = document.getElementById("asaas-card-expiry-month").value.trim().replace(/\D/g, "");
+                const expY = document.getElementById("asaas-card-expiry-year").value.trim().replace(/\D/g, "");
+                const cvv = document.getElementById("asaas-card-cvv").value.trim().replace(/\D/g, "");
+                const cpf = document.getElementById("asaas-card-cpf").value.trim().replace(/\D/g, "");
+                const postal = document.getElementById("asaas-card-postalcode").value.trim().replace(/\D/g, "");
+                const cEmail = document.getElementById("asaas-card-email").value.trim();
+                const addrNum = document.getElementById("asaas-card-address-number").value.trim();
+
+                if (!holder || !num || !expM || !expY || !cvv || !cpf || !postal || !cEmail || !addrNum) {
+                  throw new Error("Por favor, preencha todos os campos do Cartão de Crédito.");
+                }
+                if (cpf.length !== 11 && cpf.length !== 14) {
+                  throw new Error("CPF ou CNPJ do titular do cartão é inválido.");
+                }
+
+                asaasCardData = {
+                  holderName: holder,
+                  number: num,
+                  expiryMonth: expM,
+                  expiryYear: expY,
+                  ccv: cvv,
+                  cpfCnpj: cpf,
+                  postalCode: postal,
+                  email: cEmail,
+                  addressNumber: addrNum
+                };
+              }
+            }
+
             try {
               const piResponse = await window.resilientFetch(
                 "/api/create-payment",
@@ -8057,6 +8234,8 @@
                     customerPhone: phone,
                     customerName: name,
                     customerEmail: email || "cliente@email.com",
+                    cpfCnpj: asaasPixCpf,
+                    asaasCardData: asaasCardData,
                   }),
                 },
               );
@@ -8117,6 +8296,11 @@
                   paymentResponse.paymentId,
                   orderId,
                 );
+              } else if (paymentResponse.method === "card") {
+                if (paymentResponse.status !== "CONFIRMED" && paymentResponse.status !== "RECEIVED") {
+                  throw new Error("O pagamento por cartão não foi autorizado pelo gateway. Status: " + paymentResponse.status);
+                }
+                showToast("✅ Pagamento em cartão aprovado com sucesso!");
               } else if (paymentResponse.method === "checkout") {
                 // Flag to redirect after order is saved to firestore
                 window.pendingCheckoutUrl = paymentResponse.url;
