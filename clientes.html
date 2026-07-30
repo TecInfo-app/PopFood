@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Clientes CRM - PopFood Delivery</title>
   <script type="importmap">
-    {
+{
       "imports": {
         "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
         "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
@@ -13,8 +13,9 @@
         "firebase/messaging": "https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging.js"
       }
     }
-  
-    window.copyStoreLink = function() {
+</script>
+<script>
+window.copyStoreLink = function() {
       if (!window.currentStoreId) return;
       const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
       const link = `${window.location.origin}${basePath}/cliente.html?store=${window.currentStoreId}`;
@@ -25,7 +26,6 @@
         window.customAlert ? window.customAlert("Não foi possível copiar automaticamente. Use este link: " + link) : alert("Use este link: " + link);
       });
     };
-
 </script>
   <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
