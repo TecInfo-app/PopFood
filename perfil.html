@@ -1218,6 +1218,22 @@ window.copyStoreLink = function() {
       window.open(url, '_blank');
     };
 
+    window.toggleGatewayFields = function() {
+      const gw = (document.getElementById('online-gateway') || {}).value || 'abacatepay';
+      const abacateDiv = document.getElementById('abacatepay-fields');
+      const asaasDiv = document.getElementById('asaas-fields');
+      if (gw === 'asaas') {
+        if (abacateDiv) abacateDiv.classList.add('hidden');
+        if (asaasDiv) asaasDiv.classList.remove('hidden');
+      } else {
+        if (abacateDiv) abacateDiv.classList.remove('hidden');
+        if (asaasDiv) asaasDiv.classList.add('hidden');
+      }
+    };
+    function toggleGatewayFields() {
+      window.toggleGatewayFields();
+    }
+
     // Load Profile
     async function loadRestaurantProfileData() {
       try {
@@ -2014,18 +2030,6 @@ window.copyStoreLink = function() {
       const minOrderValue = parseFloat(document.getElementById('store-min-order-value').value) || 0;
       const open = document.getElementById('store-open').value;
       const close = document.getElementById('store-close').value;
-      window.toggleGatewayFields = function() {
-        const gw = (document.getElementById('online-gateway') || {}).value || 'abacatepay';
-        const abacateDiv = document.getElementById('abacatepay-fields');
-        const asaasDiv = document.getElementById('asaas-fields');
-        if (gw === 'asaas') {
-          if (abacateDiv) abacateDiv.classList.add('hidden');
-          if (asaasDiv) asaasDiv.classList.remove('hidden');
-        } else {
-          if (abacateDiv) abacateDiv.classList.remove('hidden');
-          if (asaasDiv) asaasDiv.classList.add('hidden');
-        }
-      };
 
       const onlineGateway = (document.getElementById('online-gateway') || {}).value || 'abacatepay';
       const abacatePayToken = (document.getElementById('abacatepay-token') || {}).value ? document.getElementById('abacatepay-token').value.trim() : '';
