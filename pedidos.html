@@ -3447,7 +3447,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         const predictionLabel = isPickup ? "Retirada prevista:" : "Entrega prevista:";
 
         // Payment status & modes calculation
-        const isOnlinePaid = ["abacatepay", "asaas", "mercadopago", "stripe"].includes(order.paymentProvider) || order.isPaid || false;
+        const isOnlinePaid = ["abacatepay", "asaas", "mercadopago", "stripe"].includes(order.paymentProvider) || 
+                             order.isPaid || 
+                             order.paymentMethod === "Pago Online" || 
+                             order.paymentMethod === "PixOnline" || 
+                             order.paymentMethod === "Online" || 
+                             false;
         const paymentStatusLabel = isOnlinePaid ? "Pagamento realizado" : "Pagamento na entrega";
         
         let paymentLabel = order.paymentMethod ? order.paymentMethod.toUpperCase() : "N/A";
@@ -3563,8 +3568,17 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         });
         
         detailsText += makeDivider("-");
-        detailsText += centerText(`* ${paymentStatusLabel.toUpperCase()} *`);
-        detailsText += centerText(paymentLabel);
+        if (isOnlinePaid) {
+          const isPix = order.paymentMethod === "PixOnline" || order.paymentMethod === "Pix Imediato" || order.paymentMethod === "Pix" || (order.paymentMethod && order.paymentMethod.toUpperCase().includes("PIX"));
+          if (isPix) {
+            detailsText += centerText("PIX PAGO ONLINE");
+          } else {
+            detailsText += centerText("CARTÃO PAGO ONLINE");
+          }
+        } else {
+          detailsText += centerText("* PAGAMENTO NA ENTREGA *");
+          detailsText += centerText("COBRAR");
+        }
         detailsText += makeDivider("-");
         
         detailsText += formatLine("Valor total do pedido:", `R$ ${subtotal.toFixed(2).replace(".", ",")}`);
@@ -3754,9 +3768,14 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           <div style="border-top: 1px dashed black; margin: 8px 0;"></div>
           
           <!-- PAYMENT STATUS BANNER -->
-          <div style="text-align: center; font-weight: 900; line-height: 1.3; margin: 6px 0;">
-            * ${paymentStatusLabel.toUpperCase()} *<br>
-            <span style="font-size: ${headerFontSize};">${paymentLabel}</span>
+          <div style="text-align: center; font-weight: 900; line-height: 1.3; margin: 6px 0; font-size: ${headerFontSize};">
+            ${
+              isOnlinePaid
+                ? (order.paymentMethod === "PixOnline" || order.paymentMethod === "Pix Imediato" || order.paymentMethod === "Pix" || (order.paymentMethod && order.paymentMethod.toUpperCase().includes("PIX"))
+                  ? "PIX PAGO ONLINE"
+                  : "CARTÃO PAGO ONLINE")
+                : "* PAGAMENTO NA ENTREGA *<br>COBRAR"
+            }
           </div>
           
           <!-- dashed separator -->
