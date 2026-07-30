@@ -738,8 +738,14 @@
         title = "🧑‍🍳 Pedido na Cozinha!";
         message = "O restaurante confirmou seu pedido e o preparo já começou.";
       } else if (order.status === "Saiu para entrega") {
-        title = "🛵 Saiu para entrega!";
-        message = `O entregador já está a caminho do seu endereço com a refeição quentinha!`;
+        const isPickup = order.isPickup || (order.customer && order.customer.type === 'pickup') || false;
+        if (isPickup) {
+          title = "🛍️ Pronto para retirada!";
+          message = "Seu pedido já está esperando por você! Dirija-se ao caixa/balcão do restaurante para retirar.";
+        } else {
+          title = "🛵 Saiu para entrega!";
+          message = `O entregador já está a caminho do seu endereço com a refeição quentinha!`;
+        }
       } else if (order.status === "Entregue") {
         title = "💖 Entregue! Bom apetite!";
         message = "Seu pedido foi finalizado. Não esqueça de deixar sua avaliação para nos ajudar a melhorar!";
