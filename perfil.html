@@ -1088,60 +1088,98 @@ window.copyStoreLink = function() {
     };
 
     let whatsappUnsubscribe = null;
+    let whatsappHttpInterval = null;
+
+    function clearWhatsappStatusChecks() {
+      if (whatsappUnsubscribe) {
+        try {
+          whatsappUnsubscribe();
+        } catch (e) {}
+        whatsappUnsubscribe = null;
+      }
+      if (whatsappHttpInterval) {
+        clearInterval(whatsappHttpInterval);
+        whatsappHttpInterval = null;
+      }
+    }
+
+    function updateWhatsappUI(data) {
+      const statusCont = document.getElementById('whatsapp-status-container');
+      const qrCont = document.getElementById('whatsapp-qr-container');
+      const connCont = document.getElementById('whatsapp-connected-container');
+      const disconnCont = document.getElementById('whatsapp-disconnected-container');
+      const qrImg = document.getElementById('whatsapp-qr-image');
+
+      if (!statusCont || !qrCont || !connCont || !disconnCont) return;
+
+      if (data.connected) {
+        statusCont.classList.add('hidden');
+        connCont.classList.remove('hidden');
+        qrCont.classList.add('hidden');
+        disconnCont.classList.add('hidden');
+      } else if (data.qr) {
+        statusCont.classList.add('hidden');
+        qrCont.classList.remove('hidden');
+        if (qrImg) qrImg.src = data.qr;
+        connCont.classList.add('hidden');
+        disconnCont.classList.add('hidden');
+      } else if (data.status === 'connecting') {
+        statusCont.classList.remove('hidden');
+        qrCont.classList.add('hidden');
+        connCont.classList.add('hidden');
+        disconnCont.classList.add('hidden');
+      } else {
+        statusCont.classList.add('hidden');
+        qrCont.classList.add('hidden');
+        connCont.classList.add('hidden');
+        disconnCont.classList.remove('hidden');
+      }
+    }
+
+    async function fetchWhatsappStatusHttp() {
+      if (!window.currentStoreId) return;
+      try {
+        const res = await fetch(getApiUrl(`/api/whatsapp/status?storeId=${window.currentStoreId}`));
+        if (res.ok) {
+          const data = await res.json();
+          updateWhatsappUI(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch WhatsApp status via HTTP", e);
+      }
+    }
+
+    function startWhatsappHttpPolling() {
+      if (whatsappHttpInterval) return;
+      // Fetch immediately
+      fetchWhatsappStatusHttp();
+      // Start polling
+      whatsappHttpInterval = setInterval(fetchWhatsappStatusHttp, 5000);
+    }
 
     window.checkWhatsappStatus = function() {
       if (!window.currentStoreId) return;
       
-      if (whatsappUnsubscribe) {
-        whatsappUnsubscribe();
-        whatsappUnsubscribe = null;
-      }
+      clearWhatsappStatusChecks();
 
-      const docRef = doc(db, "whatsapp_sessions", window.currentStoreId);
-      whatsappUnsubscribe = onSnapshot(docRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          
-          if (data.connected) {
-            document.getElementById('whatsapp-status-container').classList.add('hidden');
-            document.getElementById('whatsapp-connected-container').classList.remove('hidden');
-            document.getElementById('whatsapp-qr-container').classList.add('hidden');
-            document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
-          } else if (data.qr) {
-            document.getElementById('whatsapp-status-container').classList.add('hidden');
-            document.getElementById('whatsapp-qr-container').classList.remove('hidden');
-            document.getElementById('whatsapp-qr-image').src = data.qr;
-            document.getElementById('whatsapp-connected-container').classList.add('hidden');
-            document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
-          } else if (data.status === 'connecting') {
-            document.getElementById('whatsapp-status-container').classList.remove('hidden');
-            document.getElementById('whatsapp-qr-container').classList.add('hidden');
-            document.getElementById('whatsapp-connected-container').classList.add('hidden');
-            document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
+      try {
+        const docRef = doc(db, "whatsapp_sessions", window.currentStoreId);
+        whatsappUnsubscribe = onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            updateWhatsappUI(data);
           } else {
-            document.getElementById('whatsapp-status-container').classList.add('hidden');
-            document.getElementById('whatsapp-qr-container').classList.add('hidden');
-            document.getElementById('whatsapp-connected-container').classList.add('hidden');
-            document.getElementById('whatsapp-disconnected-container').classList.remove('hidden');
+            // Document doesn't exist yet, show disconnected state
+            updateWhatsappUI({ status: 'disconnected', connected: false });
           }
-        } else {
-          // Document doesn't exist yet, show disconnected state
-          document.getElementById('whatsapp-status-container').classList.add('hidden');
-          document.getElementById('whatsapp-qr-container').classList.add('hidden');
-          document.getElementById('whatsapp-connected-container').classList.add('hidden');
-          document.getElementById('whatsapp-disconnected-container').classList.remove('hidden');
-        }
-      }, (e) => {
-        console.error("Failed to listen to whatsapp status in Firestore", e);
-        const statusCont = document.getElementById('whatsapp-status-container');
-        if (statusCont) statusCont.classList.add('hidden');
-        const qrCont = document.getElementById('whatsapp-qr-container');
-        if (qrCont) qrCont.classList.add('hidden');
-        const connCont = document.getElementById('whatsapp-connected-container');
-        if (connCont) connCont.classList.add('hidden');
-        const disconnCont = document.getElementById('whatsapp-disconnected-container');
-        if (disconnCont) disconnCont.classList.remove('hidden');
-      });
+        }, (e) => {
+          console.warn("Firestore listener denied or failed. Falling back to HTTP Polling...", e);
+          startWhatsappHttpPolling();
+        });
+      } catch (err) {
+        console.warn("Firestore initialization error. Falling back to HTTP Polling...", err);
+        startWhatsappHttpPolling();
+      }
     };
 
     window.loadWhatsappQr = async function() {
@@ -1151,6 +1189,7 @@ window.copyStoreLink = function() {
       document.getElementById('whatsapp-connected-container').classList.add('hidden');
       document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
       
+      let firestoreWorked = false;
       try {
         const docRef = doc(db, "whatsapp_sessions", window.currentStoreId);
         await setDoc(docRef, {
@@ -1159,20 +1198,39 @@ window.copyStoreLink = function() {
           updatedAt: new Date().toISOString()
         }, { merge: true });
         
+        firestoreWorked = true;
         window.checkWhatsappStatus();
       } catch (e) {
-        console.error("Failed to load whatsapp qr in Firestore", e);
-        // Hide spinner and restore disconnected container
-        const statusCont = document.getElementById('whatsapp-status-container');
-        if (statusCont) statusCont.classList.add('hidden');
-        const disconnCont = document.getElementById('whatsapp-disconnected-container');
-        if (disconnCont) disconnCont.classList.remove('hidden');
-        
-        // Show non-blocking feedback
-        if (window.customAlert) {
-          window.customAlert("Falha ao gerar o código QR. Por favor, tente novamente.");
-        } else {
-          alert("Falha ao gerar o código QR. Por favor, tente novamente.");
+        console.warn("Firestore generate trigger blocked. Using secure HTTP API fallback...", e);
+      }
+
+      // If Firestore failed, trigger via HTTP endpoint
+      if (!firestoreWorked) {
+        try {
+          const res = await fetch(getApiUrl(`/api/whatsapp/qr?storeId=${window.currentStoreId}`));
+          if (!res.ok) {
+            throw new Error("HTTP error " + res.status);
+          }
+          const data = await res.json();
+          
+          window.checkWhatsappStatus();
+          
+          if (data && (data.qr || data.connected)) {
+            updateWhatsappUI(data);
+          }
+        } catch (httpErr) {
+          console.error("Failed to load WhatsApp QR via HTTP fallback", httpErr);
+          // Hide spinner and restore disconnected container
+          const statusCont = document.getElementById('whatsapp-status-container');
+          if (statusCont) statusCont.classList.add('hidden');
+          const disconnCont = document.getElementById('whatsapp-disconnected-container');
+          if (disconnCont) disconnCont.classList.remove('hidden');
+          
+          if (window.customAlert) {
+            window.customAlert("Falha ao gerar o código QR. Por favor, tente novamente.");
+          } else {
+            alert("Falha ao gerar o código QR. Por favor, tente novamente.");
+          }
         }
       }
     };
@@ -1181,14 +1239,31 @@ window.copyStoreLink = function() {
       if (!window.currentStoreId) return;
       if (!confirm("Tem certeza que deseja desconectar o WhatsApp?")) return;
       
+      let firestoreWorked = false;
       try {
         const docRef = doc(db, "whatsapp_sessions", window.currentStoreId);
         await setDoc(docRef, {
           action: "logout",
           updatedAt: new Date().toISOString()
         }, { merge: true });
+        firestoreWorked = true;
       } catch (e) {
-        console.error("Failed to logout whatsapp in Firestore", e);
+        console.warn("Firestore logout trigger blocked. Using secure HTTP API fallback...", e);
+      }
+
+      if (!firestoreWorked) {
+        try {
+          const res = await fetch(getApiUrl(`/api/whatsapp/logout`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ storeId: window.currentStoreId })
+          });
+          if (res.ok) {
+            updateWhatsappUI({ status: 'disconnected', connected: false });
+          }
+        } catch (httpErr) {
+          console.error("Failed to logout WhatsApp via HTTP fallback", httpErr);
+        }
       }
     };
 
