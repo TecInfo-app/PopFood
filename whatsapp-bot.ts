@@ -145,7 +145,13 @@ async function startWhatsappSession(storeId) {
   });
 
   const { state, saveCreds } = await useMultiFileAuthState(`baileys_auth_info_${storeId}`);
-  const version: any = [6, 33, 0];
+  let version: any = [2, 3000, 1015901307];
+  try {
+    const v = await fetchLatestBaileysVersion();
+    if (v && v.version) {
+      version = v.version;
+    }
+  } catch (e) {}
   
   const sock = makeWASocket({
     version,
@@ -195,13 +201,14 @@ async function startWhatsappSession(storeId) {
         sessionState.connected = false;
         sessionState.qr = null;
         
-        const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-        console.log(`[WhatsApp] Connection closed for store ${storeId}. Status code: ${statusCode}. Was connected: ${wasConnected}. Error:`, lastDisconnect?.error);
+        const errObj = lastDisconnect?.error as any;
+        const statusCode = errObj?.output?.statusCode || errObj?.statusCode;
+        const errMsg = String(errObj?.message || errObj || '');
 
         // DisconnectReason.restartRequired (515) occurs during normal login / authentication stream transitions
-        const isRestartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515;
+        const isRestartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515 || errMsg.includes('515') || errMsg.includes('restart required');
         if (isRestartRequired) {
-          console.log(`[WhatsApp] Restart required (515) for store ${storeId}. Reconnecting immediately...`);
+          console.log(`[WhatsApp] Stream restart required (515) for store ${storeId}. Reconnecting session...`);
           try {
             (sock.ev as any).removeAllListeners?.();
             sock.end(undefined);
@@ -213,6 +220,8 @@ async function startWhatsappSession(storeId) {
           }, 1000);
           return;
         }
+
+        console.log(`[WhatsApp] Connection closed for store ${storeId}. Status code: ${statusCode}. Was connected: ${wasConnected}. Reason: ${errMsg}`);
 
         // If logged out, timed out during QR code generation (408), or the session is invalidated/bad (e.g. 401, 403, 500, 411), stop reconnecting and clear files
         const isLoggedOut = statusCode === DisconnectReason.loggedOut;
