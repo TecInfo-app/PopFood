@@ -922,16 +922,6 @@ async function handleIncomingMessage(storeId: string, sock: any, senderId: strin
     return;
   }
 
-  // Fallback: If customer has an active order and sent an unrecognized message, automatically provide active order status!
-  if (hasActiveOrder) {
-    let reply = `📦 *Localizamos o seu pedido #${activeOrder.id}:*\n\n` +
-                formatOrderStatusMessage(activeOrder, storeId, profile) +
-                `\n\n💡 _Digite *Menu* para ver as opções da loja ou digite sua dúvida._`;
-    await sock.sendMessage(senderId, { text: reply });
-    return;
-  }
-
-  
   // 5. Cupons
   if (lowerText === '5' || lowerText.includes('cupons') || lowerText.includes('cupom') || lowerText.includes('promocao') || lowerText.includes('promoção')) {
     const couponsRef = collection(db, "coupons");
@@ -994,6 +984,15 @@ async function handleIncomingMessage(storeId: string, sock: any, senderId: strin
     reply += `🎁 *O prêmio:* ${typeDesc} após completar ${minOrders} pedidos!\n\n`;
     reply += `👉 Faça um novo pedido e continue acumulando!`;
 
+    await sock.sendMessage(senderId, { text: reply });
+    return;
+  }
+
+  // Fallback: If customer has an active order and sent an unrecognized message, automatically provide active order status!
+  if (hasActiveOrder) {
+    let reply = `📦 *Localizamos o seu pedido #${activeOrder.id}:*\n\n` +
+                formatOrderStatusMessage(activeOrder, storeId, profile) +
+                `\n\n💡 _Digite *Menu* para ver as opções da loja ou digite sua dúvida._`;
     await sock.sendMessage(senderId, { text: reply });
     return;
   }
