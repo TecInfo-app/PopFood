@@ -8,6 +8,7 @@ import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, updateDoc } from 'firebase/firestore';
 import admin from 'firebase-admin';
+import { initWhatsappBot, getWhatsappQr, getWhatsappStatus, stopWhatsappSession } from './whatsapp-bot.js';
 
 // Initialize Firebase Admin for Push Notifications
 try {
@@ -865,6 +866,45 @@ async function startServer() {
       console.error("[Scheduler] Erro no processador de agendamentos:", err);
     }
   }, 15000); // Executa a cada 15 segundos para máxima precisão
+
+  // WhatsApp Endpoints
+  initWhatsappBot(db);
+
+  app.get("/api/whatsapp/qr", async (req, res) => {
+    try {
+      const storeId = req.query.storeId as string;
+      if (!storeId) return res.status(400).json({ error: "storeId is required" });
+      const result = await getWhatsappQr(storeId);
+      res.json(result);
+    } catch (e) {
+      console.error("WhatsApp QR Error:", e);
+      res.status(500).json({ error: "Failed to load WhatsApp session" });
+    }
+  });
+
+  app.get("/api/whatsapp/status", async (req, res) => {
+    try {
+      const storeId = req.query.storeId as string;
+      if (!storeId) return res.status(400).json({ error: "storeId is required" });
+      const status = await getWhatsappStatus(storeId);
+      res.json(status);
+    } catch (e) {
+      console.error("WhatsApp Status Error:", e);
+      res.status(500).json({ error: "Failed to get status" });
+    }
+  });
+
+  app.post("/api/whatsapp/logout", async (req, res) => {
+    try {
+      const { storeId } = req.body;
+      if (!storeId) return res.status(400).json({ error: "storeId is required" });
+      await stopWhatsappSession(storeId);
+      res.json({ success: true });
+    } catch (e) {
+      console.error("WhatsApp Logout Error:", e);
+      res.status(500).json({ error: "Failed to logout" });
+    }
+  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

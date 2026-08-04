@@ -303,6 +303,17 @@ window.copyStoreLink = function() {
           </div>
           <span class="font-bold text-orange-500">➔</span>
         </button>
+
+        <button type="button" onclick="switchTab('whatsapp')" id="menu-btn-whatsapp" class="w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-emerald-50/40">
+          <div class="flex items-center gap-3">
+            <span class="text-lg">🤖</span>
+            <div>
+              <p class="font-bold text-slate-800">WhatsApp Bot</p>
+              <p class="text-[9px] text-gray-400 mt-0.5 font-medium">Atendimento Automático</p>
+            </div>
+          </div>
+          <span class="font-bold text-emerald-500">➔</span>
+        </button>
       </div>
     </aside>
 
@@ -977,6 +988,80 @@ window.copyStoreLink = function() {
     </div>
   </div>
 
+  <!-- TAB: WHATSAPP BOT -->
+  <div id="tab-whatsapp" class="space-y-6 hidden absolute top-0 left-0 w-full z-10 bg-gray-50/50" style="position: static;">
+    <!-- HEADER CARD -->
+    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 text-left">
+      <div class="flex items-center justify-between flex-wrap gap-4 border-b border-gray-100 pb-4">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">🤖</span>
+          <div>
+            <h2 class="font-display font-bold text-xl text-slate-800">WhatsApp Bot</h2>
+            <p class="text-xs text-gray-500 font-medium">Automatize o atendimento e permita pedidos pelo WhatsApp.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="space-y-4">
+        <div id="whatsapp-status-container" class="p-4 rounded-xl bg-gray-50 border border-gray-200 text-center">
+          <p class="text-sm text-gray-600 font-semibold mb-2">Verificando status do WhatsApp...</p>
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto"></div>
+        </div>
+
+        <div id="whatsapp-disconnected-container" class="hidden p-6 rounded-xl bg-white border border-gray-200 flex flex-col items-center text-center">
+          <div class="w-12 h-12 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm border border-gray-200">📱</div>
+          <h3 class="font-bold text-slate-800 mb-1">WhatsApp Desconectado</h3>
+          <p class="text-xs text-gray-500 text-center mb-4 max-w-sm leading-relaxed">O robô de atendimento automático está desligado. Clique no botão abaixo para gerar um QR Code e conectar seu WhatsApp.</p>
+          <button type="button" onclick="loadWhatsappQr()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-colors shadow-sm cursor-pointer">
+            Gerar QR Code de Conexão 🚀
+          </button>
+        </div>
+
+        <div id="whatsapp-qr-container" class="hidden p-4 rounded-xl bg-white border border-gray-200 flex flex-col items-center">
+          <h3 class="font-bold text-slate-800 mb-2">Conectar WhatsApp</h3>
+          <p class="text-xs text-gray-500 text-center mb-4 max-w-sm">Escaneie o QR Code abaixo com seu WhatsApp para ativar o robô automático. O robô responderá com seu cardápio, horário e link do app.</p>
+          <img id="whatsapp-qr-image" src="" alt="WhatsApp QR Code" class="w-64 h-64 bg-gray-100 rounded-xl mb-4 p-2 border border-gray-200 object-contain shadow-sm">
+          <button type="button" onclick="loadWhatsappQr()" class="bg-emerald-50 text-emerald-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-emerald-100 transition-colors border border-emerald-200">
+            Gerar Novo QR Code
+          </button>
+        </div>
+
+        <div id="whatsapp-connected-container" class="hidden p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col items-center">
+          <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm border border-emerald-200">✅</div>
+          <h3 class="font-bold text-emerald-800 mb-1">WhatsApp Conectado!</h3>
+          <p class="text-xs text-emerald-600/80 text-center mb-4 max-w-sm">A sessão do WhatsApp está conectada.</p>
+
+          <!-- Toggle Pause/Active -->
+          <div class="w-full max-w-sm bg-white p-4 rounded-xl border border-emerald-100 mb-4 flex items-center justify-between">
+            <div class="text-left">
+              <h4 class="font-bold text-slate-800 text-sm">Robô Automático</h4>
+              <p class="text-[10px] text-gray-500 leading-tight mt-0.5">Pause o robô para atendimento humano.</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="whatsapp-bot-active" class="sr-only peer" onchange="toggleWhatsappBot(this.checked)">
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+            </label>
+          </div>
+          
+          <button type="button" onclick="logoutWhatsapp()" class="bg-white text-red-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-red-50 transition-colors border border-red-200 shadow-sm">
+            Desconectar WhatsApp
+          </button>
+        </div>
+        
+        <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+          <h4 class="font-bold text-blue-800 text-sm mb-2 flex items-center gap-1.5"><i data-lucide="info" class="w-4 h-4"></i> Como funciona?</h4>
+          <ul class="text-xs text-blue-700 space-y-1.5 list-disc pl-4">
+            <li>O robô enviará uma mensagem de boas-vindas automática com o menu.</li>
+            <li>Enviará os horários de funcionamento configurados.</li>
+            <li>Enviará o cardápio atualizado do seu app.</li>
+            <li>Enviará o link do site para o cliente finalizar o pedido sozinho.</li>
+            <li>Permite consultar o status do pedido em tempo real.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
     import { db, auth, Timestamp, COLLECTIONS, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, onAuthStateChanged, where, query, onSnapshot, signOut, app } from './firebase-config.js';
     import { getMessaging, getToken, onMessage } from './firebase-config.js';
@@ -993,6 +1078,83 @@ window.copyStoreLink = function() {
       window.location.href = "index.html";
     };
 
+    window.checkWhatsappStatus = async function() {
+      if (!window.currentStoreId) return;
+      try {
+        const res = await fetch(`/api/whatsapp/status?storeId=${window.currentStoreId}`);
+        const data = await res.json();
+        
+        document.getElementById('whatsapp-status-container').classList.add('hidden');
+        if (data.connected) {
+          document.getElementById('whatsapp-connected-container').classList.remove('hidden');
+          document.getElementById('whatsapp-qr-container').classList.add('hidden');
+          document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
+          if (window.whatsappInterval) clearInterval(window.whatsappInterval);
+        } else if (data.qr) {
+          document.getElementById('whatsapp-qr-container').classList.remove('hidden');
+          document.getElementById('whatsapp-qr-image').src = data.qr;
+          document.getElementById('whatsapp-connected-container').classList.add('hidden');
+          document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
+        } else {
+          document.getElementById('whatsapp-qr-container').classList.add('hidden');
+          document.getElementById('whatsapp-status-container').classList.add('hidden');
+          document.getElementById('whatsapp-connected-container').classList.add('hidden');
+          document.getElementById('whatsapp-disconnected-container').classList.remove('hidden');
+        }
+      } catch (e) {
+        console.error("Failed to check whatsapp status", e);
+      }
+    };
+
+    window.loadWhatsappQr = async function() {
+      if (!window.currentStoreId) return;
+      document.getElementById('whatsapp-status-container').classList.remove('hidden');
+      document.getElementById('whatsapp-qr-container').classList.add('hidden');
+      document.getElementById('whatsapp-connected-container').classList.add('hidden');
+      document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
+      
+      try {
+        await fetch(`/api/whatsapp/qr?storeId=${window.currentStoreId}`);
+        window.checkWhatsappStatus();
+        if (window.whatsappInterval) clearInterval(window.whatsappInterval);
+        window.whatsappInterval = setInterval(window.checkWhatsappStatus, 5000);
+      } catch (e) {
+        console.error("Failed to load whatsapp qr", e);
+        if (window.whatsappInterval) clearInterval(window.whatsappInterval);
+        window.whatsappInterval = setInterval(window.checkWhatsappStatus, 5000);
+      }
+    };
+
+    window.logoutWhatsapp = async function() {
+      if (!window.currentStoreId) return;
+      if (!confirm("Tem certeza que deseja desconectar o WhatsApp?")) return;
+      
+      try {
+        await fetch(`/api/whatsapp/logout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storeId: window.currentStoreId })
+        });
+        window.checkWhatsappStatus();
+      } catch (e) {
+        console.error("Failed to logout whatsapp", e);
+      }
+    };
+
+    window.toggleWhatsappBot = async function(isActive) {
+      if (!window.currentStoreId) return;
+      try {
+        await updateDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
+          whatsappBotPaused: !isActive
+        });
+        window.customAlert ? window.customAlert(isActive ? "Robô automático ativado." : "Robô pausado para atendimento manual.") : alert(isActive ? "Robô automático ativado." : "Robô pausado para atendimento manual.");
+      } catch (e) {
+        console.error("Erro ao alterar status do robô", e);
+        window.customAlert ? window.customAlert("Erro ao alterar status do robô.") : alert("Erro ao alterar status do robô.");
+        document.getElementById('whatsapp-bot-active').checked = !isActive; // revert
+      }
+    };
+
     // App state
     let profileData = null;
     let bannersList = [];
@@ -1004,7 +1166,7 @@ window.copyStoreLink = function() {
 
     // Switch tab handler
     window.switchTab = function(tabId) {
-      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'pagamentos', 'assinatura', 'motoboy', 'notificacoes'];
+      const tabs = ['cadastro', 'banners', 'taxa-entrega', 'cupons', 'pagamentos', 'assinatura', 'motoboy', 'notificacoes', 'whatsapp'];
       tabs.forEach(id => {
         const tabEl = document.getElementById(`tab-${id}`);
         if (tabEl) tabEl.classList.add('hidden');
@@ -1030,6 +1192,10 @@ window.copyStoreLink = function() {
           activeBtn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-green-50 text-green-700 border-l-4 border-green-500 pl-2.5";
           const arrow = activeBtn.querySelector('span:last-child');
           if (arrow) arrow.className = "text-green-600 font-bold translate-x-1 transition-transform";
+        } else if (tabId === 'whatsapp') {
+          activeBtn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-emerald-50 text-emerald-700 border-l-4 border-emerald-500 pl-2.5";
+          const arrow = activeBtn.querySelector('span:last-child');
+          if (arrow) arrow.className = "text-emerald-600 font-bold translate-x-1 transition-transform";
         } else {
           activeBtn.className = "w-full flex items-center justify-between px-3.5 py-3.5 rounded-xl text-left text-xs font-semibold cursor-pointer transition-all duration-205 bg-orange-50 text-brand-primary border-l-4 border-brand-primary pl-2.5";
           const arrow = activeBtn.querySelector('span:last-child');
@@ -1122,6 +1288,11 @@ window.copyStoreLink = function() {
         if (btnOpenMotoboy) {
           btnOpenMotoboy.href = motoboyUrl;
         }
+
+        // Initialize Whatsapp
+        window.checkWhatsappStatus();
+        if (window.whatsappInterval) clearInterval(window.whatsappInterval);
+        window.whatsappInterval = setInterval(window.checkWhatsappStatus, 5000);
 
         // Fetch Profile
         loadRestaurantProfileData();
@@ -1329,6 +1500,7 @@ window.copyStoreLink = function() {
           // Cardapio display settings
           (document.getElementById('profile-destaques-ativo') || {}).checked = profileData.destaquesAtivo === true;
           (document.getElementById('profile-mostrar-indisponiveis') || {}).checked = profileData.mostrarIndisponiveis !== false; // Default to true
+          (document.getElementById('whatsapp-bot-active') || {}).checked = profileData.whatsappBotPaused !== true;
           
           const destaquesTipo = profileData.destaquesTipo || 'mais_pedidos';
           const radioToSelect = document.querySelector(`input[name="profile-destaques-tipo"][value="${destaquesTipo}"]`);
