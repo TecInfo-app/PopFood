@@ -79,6 +79,7 @@ export async function getWhatsappQr(storeId) {
     // If not connected, clean up the old socket and session to start fresh
     if (session.sock) {
       try {
+        session.sock.ev.removeAllListeners();
         session.sock.end(undefined);
       } catch (e) {}
     }
@@ -109,7 +110,8 @@ export async function stopWhatsappSession(storeId) {
     const session = sessions.get(storeId);
     if (session.sock) {
       try {
-        await session.sock.logout();
+        session.sock.ev.removeAllListeners();
+        session.sock.end(undefined);
       } catch (e) {}
     }
     sessions.delete(storeId);
@@ -134,13 +136,7 @@ async function startWhatsappSession(storeId) {
   });
 
   const { state, saveCreds } = await useMultiFileAuthState(`baileys_auth_info_${storeId}`);
-  let version: any = [6, 33, 0];
-  try {
-    const fetched = await fetchLatestBaileysVersion();
-    version = fetched.version;
-  } catch (err) {
-    console.warn("Failed to fetch latest Baileys version, using fallback", err);
-  }
+  const version: any = [6, 33, 0];
   
   const sock = makeWASocket({
     version,
