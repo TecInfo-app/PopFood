@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 
 const sessions = new Map();
+const reconnectTimers = new Map();
 let db;
 
 function clearAuthDirectory(storeId) {
@@ -154,6 +155,12 @@ export async function stopWhatsappSession(storeId) {
 }
 
 async function startWhatsappSession(storeId) {
+  // Clear any pending reconnect timer for this store
+  if (reconnectTimers.has(storeId)) {
+    clearTimeout(reconnectTimers.get(storeId));
+    reconnectTimers.delete(storeId);
+  }
+
   // Clean up any existing socket for this store if one exists
   const existingSession = sessions.get(storeId);
   if (existingSession && existingSession.sock) {
@@ -171,7 +178,7 @@ async function startWhatsappSession(storeId) {
   });
 
   const { state, saveCreds } = await useMultiFileAuthState(`baileys_auth_info_${storeId}`);
-  let version: any = [2, 3000, 1015901307];
+  let version: any = [2, 3000, 1017531234];
   try {
     const v = await fetchLatestBaileysVersion();
     if (v && v.version) {
@@ -183,13 +190,16 @@ async function startWhatsappSession(storeId) {
     version,
     printQRInTerminal: false,
     auth: state,
-    browser: Browsers.macOS('Desktop'),
+    browser: Browsers.ubuntu('Chrome'),
     syncFullHistory: false,
-    keepAliveIntervalMs: 25000,
+    markOnlineOnConnect: false,
+    keepAliveIntervalMs: 30000,
     connectTimeoutMs: 60000,
     defaultQueryTimeoutMs: 60000,
     retryRequestDelayMs: 2000,
     maxMsgRetryCount: 5,
+    shouldIgnoreJid: (jid) => jid.includes('status@broadcast') || jid.includes('newsletter'),
+    getMessage: async () => ({ conversation: '' }),
     logger: pino({ level: 'silent' })
   });
 
@@ -244,11 +254,13 @@ async function startWhatsappSession(storeId) {
             (sock.ev as any).removeAllListeners?.();
             sock.end(undefined);
           } catch (e) {}
-          setTimeout(() => {
-            if (sessions.has(storeId)) {
-              startWhatsappSession(storeId).catch(console.error);
-            }
-          }, 1000);
+          
+          if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
+          const t = setTimeout(() => {
+            reconnectTimers.delete(storeId);
+            startWhatsappSession(storeId).catch(console.error);
+          }, 1500);
+          reconnectTimers.set(storeId, t);
           return;
         }
 
@@ -258,8 +270,14 @@ async function startWhatsappSession(storeId) {
         const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
         const isQrTimeout = !wasConnected && (statusCode === DisconnectReason.timedOut || statusCode === 408);
 
+        // Teardown the closed socket instance
+        try {
+          (sock.ev as any).removeAllListeners?.();
+          sock.end(undefined);
+        } catch (e) {}
+
         if (isLoggedOut || isQrTimeout) {
-          console.log(`[WhatsApp] Session closed (isLoggedOut: ${isLoggedOut}, isQrTimeout: ${isQrTimeout}) for store ${storeId}. Clearing auth directory.`);
+          console.log(`[WhatsApp] Session permanently closed (isLoggedOut: ${isLoggedOut}, isQrTimeout: ${isQrTimeout}) for store ${storeId}. Clearing auth directory.`);
           sessions.delete(storeId);
           clearAuthDirectory(storeId);
           await updateWhatsappDocInFirestore(storeId, {
@@ -268,17 +286,20 @@ async function startWhatsappSession(storeId) {
             status: 'disconnected'
           });
         } else {
-          // It's a temporary connection drop (network drop, socket timeout, etc). Reconnect automatically!
-          console.log(`[WhatsApp] Temporary disconnect for store ${storeId}. Auto-reconnecting in 5s...`);
+          // It's a temporary connection drop (network drop, socket timeout, 503 stream error, etc). Reconnect automatically!
+          console.log(`[WhatsApp] Temporary disconnect (code: ${statusCode}) for store ${storeId}. Auto-reconnecting in 3s...`);
           await updateWhatsappDocInFirestore(storeId, {
             connected: false,
             qr: null,
-            status: 'disconnected'
+            status: 'connecting'
           });
           
-          setTimeout(() => {
+          if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
+          const t = setTimeout(() => {
+            reconnectTimers.delete(storeId);
             startWhatsappSession(storeId).catch(console.error);
-          }, 5000);
+          }, 3000);
+          reconnectTimers.set(storeId, t);
         }
       } else if (connection === 'open') {
         sessionState.connected = true;
@@ -300,26 +321,30 @@ async function startWhatsappSession(storeId) {
   sock.ev.on('messages.upsert', async (m) => {
     if (m.type !== 'notify') return;
     for (const msg of (m.messages || [])) {
-      if (!msg.message || msg.key.fromMe) continue;
-      const senderId = msg.key.remoteJid || '';
-      const participantId = msg.key.participant || (msg as any).participant || (msg.key as any).participantAlt || (msg.key as any).remoteJidAlt || '';
-      
-      const text = 
-        msg.message.conversation ||
-        msg.message.extendedTextMessage?.text ||
-        msg.message.imageMessage?.caption ||
-        msg.message.videoMessage?.caption ||
-        msg.message.documentMessage?.caption ||
-        msg.message.buttonsResponseMessage?.selectedButtonId ||
-        msg.message.buttonsResponseMessage?.selectedDisplayText ||
-        msg.message.listResponseMessage?.singleSelectReply?.selectedRowId ||
-        msg.message.listResponseMessage?.title ||
-        msg.message.templateButtonReplyMessage?.selectedId ||
-        msg.message.templateButtonReplyMessage?.selectedDisplayText ||
-        msg.message.interactiveResponseMessage?.body?.text ||
-        '';
+      try {
+        if (!msg.message || msg.key.fromMe) continue;
+        const senderId = msg.key.remoteJid || '';
+        const participantId = msg.key.participant || (msg as any).participant || (msg.key as any).participantAlt || (msg.key as any).remoteJidAlt || '';
+        
+        const text = 
+          msg.message.conversation ||
+          msg.message.extendedTextMessage?.text ||
+          msg.message.imageMessage?.caption ||
+          msg.message.videoMessage?.caption ||
+          msg.message.documentMessage?.caption ||
+          msg.message.buttonsResponseMessage?.selectedButtonId ||
+          msg.message.buttonsResponseMessage?.selectedDisplayText ||
+          msg.message.listResponseMessage?.singleSelectReply?.selectedRowId ||
+          msg.message.listResponseMessage?.title ||
+          msg.message.templateButtonReplyMessage?.selectedId ||
+          msg.message.templateButtonReplyMessage?.selectedDisplayText ||
+          msg.message.interactiveResponseMessage?.body?.text ||
+          '';
 
-      await handleIncomingMessage(storeId, sock, senderId, text.trim(), participantId, msg);
+        await handleIncomingMessage(storeId, sock, senderId, text.trim(), participantId, msg);
+      } catch (msgErr) {
+        console.error(`[WhatsApp Bot] Error processing incoming message for ${storeId}:`, msgErr);
+      }
     }
   });
 
@@ -832,12 +857,14 @@ async function handleIncomingMessage(storeId: string, sock: any, senderId: strin
                              `1️⃣ *Cardápio*\n` +
                              `2️⃣ *Horário de Funcionamento*\n` +
                              `3️⃣ *Fazer Novo Pedido*\n` +
-                             `4️⃣ *Ver Detalhes do Pedido (#${activeOrder.id})*`;
+                             `4️⃣ *Ver Detalhes do Pedido (#${activeOrder.id})*\n` +
+                             `5️⃣ *Cupons*\n` +
+                             `6️⃣ *Programa Fidelidade*`;
       await sock.sendMessage(senderId, { text: activeGreeting });
       return;
     }
 
-    const welcomeTemplate = profile.whatsappWelcome || `Olá! Bem-vindo(a) ao *{name}*! 🍔🍕\n_{description}_\n\nDigite o número da opção desejada:\n1️⃣ *Cardápio*\n2️⃣ *Horário de Funcionamento*\n3️⃣ *Fazer Pedido*\n4️⃣ *Status do Pedido*`;
+    const welcomeTemplate = profile.whatsappWelcome || `Olá! Bem-vindo(a) ao *{name}*! 🍔🍕\n_{description}_\n\nDigite o número da opção desejada:\n1️⃣ *Cardápio*\n2️⃣ *Horário de Funcionamento*\n3️⃣ *Fazer Pedido*\n4️⃣ *Status do Pedido*\n5️⃣ *Cupons*\n6️⃣ *Programa Fidelidade*`;
     const reply = renderTemplate(welcomeTemplate, profile, storeId);
     await sock.sendMessage(senderId, { text: reply });
     return;
@@ -900,6 +927,73 @@ async function handleIncomingMessage(storeId: string, sock: any, senderId: strin
     let reply = `📦 *Localizamos o seu pedido #${activeOrder.id}:*\n\n` +
                 formatOrderStatusMessage(activeOrder, storeId, profile) +
                 `\n\n💡 _Digite *Menu* para ver as opções da loja ou digite sua dúvida._`;
+    await sock.sendMessage(senderId, { text: reply });
+    return;
+  }
+
+  
+  // 5. Cupons
+  if (lowerText === '5' || lowerText.includes('cupons') || lowerText.includes('cupom') || lowerText.includes('promocao') || lowerText.includes('promoção')) {
+    const couponsRef = collection(db, "coupons");
+    const q = query(couponsRef, where("storeId", "==", storeId));
+    const qSnap = await getDocs(q);
+    
+    let activeCoupons = [];
+    qSnap.forEach(docSnap => {
+      const c = docSnap.data();
+      if (c.active) activeCoupons.push(c);
+    });
+
+    if (activeCoupons.length === 0) {
+      await sock.sendMessage(senderId, { text: "🎫 *Cupons de Desconto*\n\nNo momento não temos cupons promocionais ativos. Fique de olho em nossas redes sociais para novidades!" });
+      return;
+    }
+
+    let reply = "🎫 *Cupons de Desconto Ativos:*\n\n";
+    activeCoupons.forEach(c => {
+      reply += `🏷️ *CÓDIGO: ${c.code}*\n`;
+      const desc = c.type === 'percentual' ? `${c.value}% de desconto` : `R$ ${Number(c.value).toFixed(2).replace('.', ',')} de desconto`;
+      reply += `🎁 ${desc}\n`;
+      if (c.minValue) reply += `⚠️ Pedido mínimo: R$ ${Number(c.minValue).toFixed(2).replace('.', ',')}\n`;
+      if (c.firstOrderOnly) reply += `✨ Válido apenas para o primeiro pedido\n`;
+      reply += `\n`;
+    });
+    reply += `👉 Acesse nosso cardápio e use seu cupom no final do pedido!`;
+    
+    await sock.sendMessage(senderId, { text: reply });
+    return;
+  }
+
+  // 6. Programa Fidelidade
+  if (lowerText === '6' || lowerText.includes('fidelidade') || lowerText.includes('programa fidelidade') || lowerText.includes('pontos')) {
+    if (!profile.loyaltyActive) {
+      await sock.sendMessage(senderId, { text: "🏆 *Programa Fidelidade*\n\nNosso programa de fidelidade não está ativo no momento. Continue acompanhando nossas novidades!" });
+      return;
+    }
+
+    const minOrders = profile.loyaltyMinOrders || 3;
+    
+    const validOrders = customerOrders.filter(d => d.status === "Entregue" && !(d.descontoFidelidade > 0 || d.fidelidadeAtivo === true)).length;
+    const usedRewards = customerOrders.filter(d => d.status !== "Cancelado" && (d.descontoFidelidade > 0 || d.fidelidadeAtivo === true)).length;
+    
+    const earnedRewards = Math.floor(validOrders / minOrders);
+    const availableRewards = Math.max(0, earnedRewards - usedRewards);
+    const progress = validOrders % minOrders;
+
+    let reply = "🏆 *Seu Programa de Fidelidade*\n\n";
+    
+    if (availableRewards > 0) {
+      reply += `🎉 *PARABÉNS! Você tem ${availableRewards} prêmio(s) pronto(s) para resgatar!*\n`;
+      reply += `O desconto será aplicado automaticamente no seu próximo pedido.\n\n`;
+    }
+    
+    reply += `📊 *Seu progresso atual:* \n`;
+    reply += `Você tem *${progress}* de *${minOrders}* pedidos necessários para o próximo prêmio.\n\n`;
+    
+    const typeDesc = profile.loyaltyType === 'percentual' ? `${profile.loyaltyValue}% de desconto` : `R$ ${Number(profile.loyaltyValue || 0).toFixed(2).replace('.', ',')} de desconto`;
+    reply += `🎁 *O prêmio:* ${typeDesc} após completar ${minOrders} pedidos!\n\n`;
+    reply += `👉 Faça um novo pedido e continue acumulando!`;
+
     await sock.sendMessage(senderId, { text: reply });
     return;
   }

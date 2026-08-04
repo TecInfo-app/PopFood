@@ -866,10 +866,14 @@ async function startServer() {
           }
         }
       }
-    } catch (err) {
-      console.error("[Scheduler] Erro no processador de agendamentos:", err);
+    } catch (err: any) {
+      if (err.code === 8 || err.message?.includes('RESOURCE_EXHAUSTED')) {
+        console.warn("[Scheduler] Cota do Firestore excedida no processador de agendamentos. Ignorando temporariamente.");
+      } else {
+        console.error("[Scheduler] Erro no processador de agendamentos:", err);
+      }
     }
-  }, 15000); // Executa a cada 15 segundos para máxima precisão
+  }, 300000); // Executa a cada 5 minutos para economizar cota
 
   // WhatsApp Endpoints
   initWhatsappBot(db);
