@@ -884,6 +884,20 @@
       startOnSnapshotOrderTracker(phoneInput);
     }
 
+    // Helper to test if two phone numbers match flexibly
+    function matchPhones(phone1, phone2) {
+      if (!phone1 || !phone2) return false;
+      const c1 = String(phone1).replace(/\D/g, '');
+      const c2 = String(phone2).replace(/\D/g, '');
+      if (!c1 || !c2) return false;
+      if (c1 === c2) return true;
+      if (c1.endsWith(c2) || c2.endsWith(c1)) return true;
+      if (c1.length >= 8 && c2.length >= 8) {
+        if (c1.slice(-8) === c2.slice(-8)) return true;
+      }
+      return false;
+    }
+
     // Launch instant Firestore listener monitoring the latest order written by customer
     function startOnSnapshotOrderTracker(phone, orderIdInput = null) {
       document.getElementById('tracker-login-panel').classList.add('hidden');
@@ -891,13 +905,17 @@
 
       const colRef = query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId));
       
-      // Perform lookup. If orderId is provided, track that exact one. If not, fetch latest order from user
-      let q = query(colRef, where("customer.phone", "==", phone));
-      
-      onSnapshot(q, (snapshot) => {
+      onSnapshot(colRef, (snapshot) => {
         let orders = [];
         snapshot.forEach(docSnap => {
-          orders.push({ id: docSnap.id, ...docSnap.data() });
+          const data = docSnap.data();
+          const docPhone = data.customer?.phone || data.phone || data.customerPhone || '';
+          
+          if (orderIdInput && docSnap.id === orderIdInput) {
+            orders.push({ id: docSnap.id, ...data });
+          } else if (phone && matchPhones(docPhone, phone)) {
+            orders.push({ id: docSnap.id, ...data });
+          }
         });
 
         if (orders.length === 0) {
@@ -911,7 +929,7 @@
         }
 
         // Sort orders descending by date or choose matching id
-        orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        orders.sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime());
         
         let targetOrder = orders[0];
         if (orderIdInput) {

@@ -271,80 +271,195 @@ async function startWhatsappSession(storeId) {
 
   sock.ev.on('messages.upsert', async (m) => {
     if (m.type !== 'notify') return;
-    const msg = m.messages[0];
-    if (!msg.message || msg.key.fromMe) return;
-    const senderId = msg.key.remoteJid;
-    const text = msg.message.conversation || msg.message.extendedTextMessage?.text || '';
-    
-    await handleIncomingMessage(storeId, sock, senderId, text.trim());
+    for (const msg of (m.messages || [])) {
+      if (!msg.message || msg.key.fromMe) continue;
+      const senderId = msg.key.remoteJid || '';
+      const participantId = msg.key.participant || (msg as any).participant || (msg.key as any).participantAlt || (msg.key as any).remoteJidAlt || '';
+      
+      const text = 
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        msg.message.imageMessage?.caption ||
+        msg.message.videoMessage?.caption ||
+        msg.message.documentMessage?.caption ||
+        msg.message.buttonsResponseMessage?.selectedButtonId ||
+        msg.message.buttonsResponseMessage?.selectedDisplayText ||
+        msg.message.listResponseMessage?.singleSelectReply?.selectedRowId ||
+        msg.message.listResponseMessage?.title ||
+        msg.message.templateButtonReplyMessage?.selectedId ||
+        msg.message.templateButtonReplyMessage?.selectedDisplayText ||
+        msg.message.interactiveResponseMessage?.body?.text ||
+        '';
+
+      await handleIncomingMessage(storeId, sock, senderId, text.trim(), participantId, msg);
+    }
   });
 
   return sessionState.initialPromise;
 }
 
-// Phone extraction and matching helpers
-function extractPhoneVariations(senderId: string): string[] {
-  const clean = (senderId || '').split('@')[0].split(':')[0].replace(/\D/g, '');
-  const variations = new Set<string>();
-  if (!clean) return [];
+// Comprehensive Brazilian & international phone extraction and variation helper
+function normalizePhoneVariants(input: string): string[] {
+  if (!input) return [];
+  const clean = input.split('@')[0].split(':')[0].replace(/\D/g, '');
+  if (!clean || clean.length < 8) return [];
 
+  const variations = new Set<string>();
   variations.add(clean);
 
-  // If starts with 55 (Brazil country code)
+  // If starts with 55 (Brazil country code) and has 12 or 13 digits
   if (clean.startsWith('55') && clean.length >= 12) {
     const withoutCountry = clean.slice(2); // e.g. 81988887777 or 8188887777
     variations.add(withoutCountry);
-    
-    // DDD (2 digits) + number
+
     const ddd = withoutCountry.slice(0, 2);
     const num = withoutCountry.slice(2);
+
     if (num.length === 9 && num.startsWith('9')) {
-      // 8-digit variation without leading 9
-      variations.add(ddd + num.slice(1));
+      variations.add(num); // 9-digit local (e.g. 988887777)
+      variations.add(num.slice(1)); // 8-digit local (e.g. 88887777)
+      variations.add(ddd + num.slice(1)); // DDD + 8-digit (e.g. 8188887777)
+      variations.add('55' + ddd + num.slice(1)); // 55 + DDD + 8-digit (e.g. 558188887777)
+      variations.add(ddd + num); // DDD + 9-digit (e.g. 81988887777)
     } else if (num.length === 8) {
-      // 9-digit variation with leading 9
+      variations.add(num); // 8-digit local (e.g. 88887777)
+      variations.add('9' + num); // 9-digit local (e.g. 988887777)
+      variations.add(ddd + '9' + num); // DDD + 9-digit (e.g. 81988887777)
+      variations.add('55' + ddd + '9' + num); // 55 + DDD + 9-digit (e.g. 5581988887777)
+      variations.add(ddd + num); // DDD + 8-digit (e.g. 8188887777)
+    }
+  } else if (clean.length === 10 || clean.length === 11) {
+    // DDD (2 digits) + number without country code
+    variations.add('55' + clean);
+    const ddd = clean.slice(0, 2);
+    const num = clean.slice(2);
+
+    if (num.length === 9 && num.startsWith('9')) {
+      variations.add(num);
+      variations.add(num.slice(1));
+      variations.add(ddd + num.slice(1));
+      variations.add('55' + ddd + num.slice(1));
+      variations.add(clean);
+    } else if (num.length === 8) {
+      variations.add(num);
+      variations.add('9' + num);
       variations.add(ddd + '9' + num);
+      variations.add('55' + ddd + '9' + num);
+      variations.add(clean);
+    }
+  } else if (clean.length === 8 || clean.length === 9) {
+    if (clean.length === 9 && clean.startsWith('9')) {
+      variations.add(clean.slice(1));
+    } else if (clean.length === 8) {
+      variations.add('9' + clean);
     }
   }
 
-  // Last 8 and 9 digits
+  // Always include the core 8 digits and 9 digits if available
   if (clean.length >= 8) variations.add(clean.slice(-8));
   if (clean.length >= 9) variations.add(clean.slice(-9));
 
   return Array.from(variations);
 }
 
-function phoneMatches(orderPhone: string, senderVariations: string[]): boolean {
+function phoneMatches(orderPhone: string, senderVariants: string[]): boolean {
   if (!orderPhone) return false;
-  const cleanOrderPhone = orderPhone.replace(/\D/g, '');
-  if (!cleanOrderPhone) return false;
+  const orderVariants = normalizePhoneVariants(orderPhone);
+  if (orderVariants.length === 0) return false;
 
-  for (const v of senderVariations) {
-    if (cleanOrderPhone === v || cleanOrderPhone.endsWith(v) || v.endsWith(cleanOrderPhone)) {
-      return true;
+  const senderSet = new Set(senderVariants);
+  for (const ov of orderVariants) {
+    if (senderSet.has(ov)) return true;
+  }
+
+  const cleanOrder = orderPhone.replace(/\D/g, '');
+  if (!cleanOrder || cleanOrder.length < 8) return false;
+
+  for (const sv of senderVariants) {
+    if (!sv || sv.length < 8) continue;
+    if (cleanOrder === sv) return true;
+    if (cleanOrder.endsWith(sv) || sv.endsWith(cleanOrder)) return true;
+
+    // Check last 8 digits matching
+    if (cleanOrder.slice(-8) === sv.slice(-8)) {
+      // If both have at least 10 digits (DDD present), verify DDD
+      if (cleanOrder.length >= 10 && sv.length >= 10) {
+        const dddOrder = cleanOrder.startsWith('55') ? cleanOrder.slice(2, 4) : cleanOrder.slice(0, 2);
+        const dddSender = sv.startsWith('55') ? sv.slice(2, 4) : sv.slice(0, 2);
+        if (dddOrder === dddSender) return true;
+      } else {
+        return true;
+      }
     }
   }
   return false;
 }
 
-// Find orders placed by this customer's phone number
-async function findOrdersByCustomer(storeId: string, senderId: string): Promise<any[]> {
-  const variations = extractPhoneVariations(senderId);
-  if (variations.length === 0) return [];
+// Find orders placed by this customer's phone number or typed phone
+async function findOrdersByCustomer(storeId: string, senderId: string, altSenderId?: string, typedText?: string): Promise<any[]> {
+  const allVariants = new Set<string>();
+
+  normalizePhoneVariants(senderId).forEach(v => allVariants.add(v));
+  if (altSenderId) {
+    normalizePhoneVariants(altSenderId).forEach(v => allVariants.add(v));
+  }
+
+  // If customer typed a phone number in the message text (e.g. 10 or 11 digits)
+  if (typedText) {
+    const extractedPhones = typedText.match(/\b(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?(?:9\s?)?\d{4}[-\s]?\d{4}\b/g);
+    if (extractedPhones) {
+      for (const p of extractedPhones) {
+        normalizePhoneVariants(p).forEach(v => allVariants.add(v));
+      }
+    }
+  }
+
+  const senderVariants = Array.from(allVariants);
+  if (senderVariants.length === 0) return [];
 
   try {
     const ordersRef = collection(db, "orders");
     const q = query(ordersRef, where("storeId", "==", storeId));
     const qSnap = await getDocs(q);
 
+    let docs = qSnap.docs;
+
+    // Fallback: If no orders found with strict storeId match, try getting all orders for the store
+    if (docs.length === 0) {
+      const allSnap = await getDocs(ordersRef);
+      docs = allSnap.docs.filter(d => {
+        const o = d.data();
+        return !o.storeId || o.storeId === storeId || String(o.storeId).toLowerCase() === String(storeId).toLowerCase();
+      });
+    }
+
     const matchedOrders: any[] = [];
-    qSnap.forEach(d => {
+    for (const d of docs) {
       const o = d.data();
-      const phone = o.customer?.phone || o.phone || o.customerPhone || '';
-      if (phoneMatches(phone, variations)) {
+      const phoneCandidates = [
+        o.customer?.phone,
+        o.customer?.telefone,
+        o.customer?.celular,
+        o.customer?.whatsapp,
+        o.phone,
+        o.customerPhone,
+        o.clientPhone,
+        o.customer_phone,
+        o.telephone
+      ].filter(Boolean);
+
+      let matched = false;
+      for (const p of phoneCandidates) {
+        if (phoneMatches(String(p), senderVariants)) {
+          matched = true;
+          break;
+        }
+      }
+
+      if (matched) {
         matchedOrders.push({ id: d.id, ...o });
       }
-    });
+    }
 
     // Sort descending by creation date
     matchedOrders.sort((a, b) => {
@@ -353,9 +468,10 @@ async function findOrdersByCustomer(storeId: string, senderId: string): Promise<
       return dateB - dateA;
     });
 
+    console.log(`[WhatsApp Bot] Found ${matchedOrders.length} order(s) for customer phone variations:`, senderVariants.slice(0, 5));
     return matchedOrders;
   } catch (e) {
-    console.error("[WhatsApp] Error searching orders by customer phone:", e);
+    console.error("[WhatsApp Bot] Error searching orders by customer phone:", e);
     return [];
   }
 }
@@ -416,7 +532,7 @@ async function findOrderByIdOrNumber(storeId: string, text: string): Promise<any
       const snap = await getDoc(doc(db, "orders", cand));
       if (snap.exists()) {
         const data = snap.data();
-        if (data.storeId === storeId) {
+        if (!data.storeId || data.storeId === storeId || String(data.storeId).toLowerCase() === String(storeId).toLowerCase()) {
           return { id: snap.id, ...data };
         }
       }
@@ -426,11 +542,13 @@ async function findOrderByIdOrNumber(storeId: string, text: string): Promise<any
   // 2. Query orders for the store if direct lookup misses
   try {
     const ordersRef = collection(db, "orders");
-    const q = query(ordersRef, where("storeId", "==", storeId));
-    const qSnap = await getDocs(q);
+    const qSnap = await getDocs(ordersRef);
 
     for (const d of qSnap.docs) {
       const o = d.data();
+      if (o.storeId && o.storeId !== storeId && String(o.storeId).toLowerCase() !== String(storeId).toLowerCase()) {
+        continue;
+      }
       const orderId = (o.id || d.id || '').toString().toUpperCase();
       for (const cand of uniqueCandidates) {
         if (orderId === cand || orderId.endsWith(cand) || cand.endsWith(orderId)) {
@@ -439,18 +557,19 @@ async function findOrderByIdOrNumber(storeId: string, text: string): Promise<any
       }
     }
   } catch (e) {
-    console.error("[WhatsApp] Error querying orders by ID:", e);
+    console.error("[WhatsApp Bot] Error querying orders by ID:", e);
   }
 
   return null;
 }
 
-// Format full order status message
-function formatOrderStatusMessage(order: any, storeId: string, profile: any): string {
+// Status labels formatter
+function getStatusLabel(rawStatus: string): string {
   const statusMap: Record<string, string> = {
     'Pendente': '⏳ Pendente (Aguardando Restaurante)',
     'pending': '⏳ Pendente (Aguardando Restaurante)',
     'AguardandoPagamento': '💳 Aguardando Pagamento',
+    'Aguardando Pagamento': '💳 Aguardando Pagamento',
     'Aceito': '🍳 Aceito e em Preparo',
     'Em Preparo': '🍳 Aceito e em Preparo',
     'Preparando': '🍳 Aceito e em Preparo',
@@ -469,8 +588,23 @@ function formatOrderStatusMessage(order: any, storeId: string, profile: any): st
     'Cancelado': '❌ Pedido Cancelado',
     'cancelled': '❌ Pedido Cancelado'
   };
+  return statusMap[rawStatus] || rawStatus || 'Em Processamento';
+}
 
-  const st = statusMap[order.status] || order.status || 'Em Processamento';
+function isOrderRecent(order: any, maxHours = 48): boolean {
+  if (!order) return false;
+  const dateVal = order.createdAt || order.date;
+  if (!dateVal) return true;
+  const orderTime = new Date(dateVal).getTime();
+  if (isNaN(orderTime) || orderTime <= 0) return true;
+  const now = Date.now();
+  const diffHours = (now - orderTime) / (1000 * 60 * 60);
+  return diffHours <= maxHours;
+}
+
+// Format full order status message
+function formatOrderStatusMessage(order: any, storeId: string, profile: any): string {
+  const st = getStatusLabel(order.status);
 
   const customBaseUrl = profile?.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
   const normalizedBaseUrl = customBaseUrl.endsWith('/') ? customBaseUrl.slice(0, -1) : customBaseUrl;
@@ -512,7 +646,12 @@ function formatOrderStatusMessage(order: any, storeId: string, profile: any): st
          `👉 *Acompanhe em tempo real:* \n${trackUrl}`;
 }
 
-async function handleIncomingMessage(storeId, sock, senderId, text) {
+async function handleIncomingMessage(storeId: string, sock: any, senderId: string, text: string, participantId?: string, rawMsg?: any) {
+  // Ignore broadcast, status, newsletter, or empty sender
+  if (!senderId || senderId.includes('status@broadcast') || senderId.includes('newsletter')) {
+    return;
+  }
+
   // Fetch store profile
   const profileRef = doc(db, "restaurantProfile", storeId);
   const profileSnap = await getDoc(profileRef);
@@ -524,7 +663,7 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
   }
 
   // Render template helpers
-  function renderTemplate(template, profile, storeId) {
+  function renderTemplate(template: string, profile: any, storeId: string) {
     const name = profile.name || 'Nosso Restaurante';
     const description = profile.description || 'A melhor comida da região!';
     const openTime = profile.openTime || '--:--';
@@ -532,7 +671,7 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
     
     const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
     const operatingDays = (profile.operatingDays || [])
-      .map(d => typeof d === 'number' ? (dayNames[d] || d) : d)
+      .map((d: any) => typeof d === 'number' ? (dayNames[d] || d) : d)
       .join(', ');
 
     const customBaseUrl = profile.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
@@ -550,13 +689,25 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
 
   const lowerText = text.toLowerCase().trim();
 
+  // AUTOMATIC CUSTOMER ORDER LOOKUP BY PHONE
+  const customerOrders = await findOrdersByCustomer(storeId, senderId, participantId, text);
+  const activeStatuses = [
+    'Pendente', 'pending',
+    'AguardandoPagamento', 'Aguardando Pagamento',
+    'Aceito', 'Em Preparo', 'Preparando', 'accepted',
+    'Saiu para Entrega', 'Saiu para entrega', 'dispatch', 'Em Rota',
+    'Pronto para Retirada', 'ready', 'Pronto'
+  ];
+  const activeOrder = customerOrders.find(o => activeStatuses.includes(o.status)) || customerOrders[0];
+  const hasActiveOrder = !!activeOrder && (activeStatuses.includes(activeOrder.status) || isOrderRecent(activeOrder, 48));
+
   // A. Check if the message contains an explicit Order ID or Order Number search
   const isExplicitIdQuery = /^(status|pedido|rastrear|rastreio|ver|consultar)\s*[#\s]*[a-z0-9]+/i.test(lowerText) ||
                             /^#\s*[a-z0-9]+/i.test(lowerText) ||
                             /^pf\s*\d+/i.test(lowerText) ||
                             /^\d{4,8}$/.test(lowerText);
 
-  if (isExplicitIdQuery) {
+  if (isExplicitIdQuery && !['1', '2', '3', '4'].includes(lowerText)) {
     const foundOrder = await findOrderByIdOrNumber(storeId, text);
     if (foundOrder) {
       const reply = formatOrderStatusMessage(foundOrder, storeId, profile);
@@ -564,19 +715,25 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
       return;
     }
 
-    // If it was explicitly trying to check an ID and not found
-    if (!['1', '2', '3', '4'].includes(lowerText)) {
-      const customBaseUrl = profile.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
-      const normalizedBaseUrl = customBaseUrl.endsWith('/') ? customBaseUrl.slice(0, -1) : customBaseUrl;
-      const link = `${normalizedBaseUrl}/cliente.html?store=${storeId}`;
-
-      const notFoundMsg = `❌ *Pedido não localizado.*\n\nNão encontramos nenhum pedido com esse número em nossa loja.\n\nPor favor, verifique o código digitado (ex: *#PF123456* ou *123456*) ou faça um novo pedido em nosso cardápio:\n👉 ${link}`;
-      await sock.sendMessage(senderId, { text: notFoundMsg });
+    // If ID not found, but customer has active order, show their active order
+    if (hasActiveOrder) {
+      let reply = `❌ *Pedido não localizado com o código digitado.*\n\n` +
+                  `📦 *Identificamos este pedido ativo no seu WhatsApp:*\n\n` +
+                  formatOrderStatusMessage(activeOrder, storeId, profile);
+      await sock.sendMessage(senderId, { text: reply });
       return;
     }
+
+    const customBaseUrl = profile.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
+    const normalizedBaseUrl = customBaseUrl.endsWith('/') ? customBaseUrl.slice(0, -1) : customBaseUrl;
+    const link = `${normalizedBaseUrl}/cliente.html?store=${storeId}`;
+
+    const notFoundMsg = `❌ *Pedido não localizado.*\n\nNão encontramos nenhum pedido com esse número em nossa loja.\n\nPor favor, verifique o código digitado (ex: *#PF123456* ou *123456*) ou faça um novo pedido em nosso cardápio:\n👉 ${link}`;
+    await sock.sendMessage(senderId, { text: notFoundMsg });
+    return;
   }
 
-  // B. Option 4 or General Status queries -> Automatically check customer phone!
+  // B. Option 4 or General Status queries -> Automatically return customer order status!
   const isStatusIntent = lowerText === '4' ||
                          lowerText === 'status' ||
                          lowerText.includes('meu pedido') ||
@@ -589,18 +746,17 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
                          lowerText.includes('como esta meu pedido') ||
                          lowerText.includes('como está meu pedido') ||
                          lowerText.includes('consultar pedido') ||
-                         lowerText.includes('status do pedido');
+                         lowerText.includes('status do pedido') ||
+                         lowerText.includes('cade meu pedido') ||
+                         lowerText.includes('cadê meu pedido') ||
+                         lowerText.includes('ja saiu') ||
+                         lowerText.includes('já saiu');
 
   if (isStatusIntent) {
-    const customerOrders = await findOrdersByCustomer(storeId, senderId);
     if (customerOrders.length > 0) {
-      // Find active order or fallback to the latest order
-      const activeStatuses = ['Pendente', 'pending', 'AguardandoPagamento', 'Aceito', 'Em Preparo', 'Preparando', 'accepted', 'Saiu para Entrega', 'Saiu para entrega', 'dispatch', 'Em Rota', 'Pronto para Retirada', 'ready', 'Pronto'];
-      const activeOrder = customerOrders.find(o => activeStatuses.includes(o.status)) || customerOrders[0];
-
       let reply = formatOrderStatusMessage(activeOrder, storeId, profile);
       if (customerOrders.length > 1) {
-        reply += `\n\n💡 _Identificamos seu pedido recente. Para consultar outro pedido específico, digite o número dele (ex: #PF123456 ou 123456)._`;
+        reply += `\n\n💡 _Identificamos seu pedido mais recente. Para consultar outro pedido anterior específico, digite o número dele (ex: #PF123456 ou 123456)._`;
       }
       await sock.sendMessage(senderId, { text: reply });
       return;
@@ -624,7 +780,35 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
   }
 
   // 1. Mensagem de Boas-Vindas / Menu Principal
-  if (lowerText === 'ola' || lowerText === 'olá' || lowerText === 'oi' || lowerText === 'menu' || lowerText === 'bom dia' || lowerText === 'boa tarde' || lowerText === 'boa noite' || lowerText === 'inicio' || lowerText === 'início' || lowerText === 'opcoes' || lowerText === 'opções') {
+  const isGreetingIntent = lowerText === 'ola' || lowerText === 'olá' || lowerText === 'oi' || lowerText === 'oie' ||
+                           lowerText === 'menu' || lowerText === 'bom dia' || lowerText === 'boa tarde' || lowerText === 'boa noite' ||
+                           lowerText === 'inicio' || lowerText === 'início' || lowerText === 'opcoes' || lowerText === 'opções' ||
+                           lowerText === 'start' || lowerText === 'comecar' || lowerText === 'começar';
+
+  if (isGreetingIntent) {
+    if (hasActiveOrder) {
+      const customBaseUrl = profile.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
+      const normalizedBaseUrl = customBaseUrl.endsWith('/') ? customBaseUrl.slice(0, -1) : customBaseUrl;
+      const trackUrl = `${normalizedBaseUrl}/acompanhamento.html?store=${storeId}&order=${activeOrder.id}`;
+      const totalVal = Number(activeOrder.total || 0).toFixed(2).replace('.', ',');
+      const orderStatusFormatted = getStatusLabel(activeOrder.status);
+
+      const activeGreeting = `👋 Olá! Bem-vindo(a) ao *${profile.name || 'Nosso Restaurante'}*!\n\n` +
+                             `📦 *Identificamos seu pedido em andamento (#${activeOrder.id}):*\n` +
+                             `🚦 *Status:* ${orderStatusFormatted}\n` +
+                             `💰 *Total:* R$ ${totalVal}\n` +
+                             `👉 *Acompanhe ao vivo:* \n${trackUrl}\n\n` +
+                             `💡 _Digite *4* para ver todos os detalhes do seu pedido (itens, endereço e PIN)._\n\n` +
+                             `─────────────────────\n` +
+                             `Escolha uma opção:\n` +
+                             `1️⃣ *Cardápio*\n` +
+                             `2️⃣ *Horário de Funcionamento*\n` +
+                             `3️⃣ *Fazer Novo Pedido*\n` +
+                             `4️⃣ *Ver Detalhes do Pedido (#${activeOrder.id})*`;
+      await sock.sendMessage(senderId, { text: activeGreeting });
+      return;
+    }
+
     const welcomeTemplate = profile.whatsappWelcome || `Olá! Bem-vindo(a) ao *{name}*! 🍔🍕\n_{description}_\n\nDigite o número da opção desejada:\n1️⃣ *Cardápio*\n2️⃣ *Horário de Funcionamento*\n3️⃣ *Fazer Pedido*\n4️⃣ *Status do Pedido*`;
     const reply = renderTemplate(welcomeTemplate, profile, storeId);
     await sock.sendMessage(senderId, { text: reply });
@@ -679,6 +863,15 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
   if (lowerText === '3' || lowerText.includes('fazer pedido') || lowerText.includes('pedir') || lowerText.includes('comprar') || lowerText.includes('link')) {
     const orderTemplate = profile.whatsappOrder || `🛒 *Pronto para pedir?*\nAcesse nosso site para montar seu pedido com facilidade e segurança:\n👉 {link}`;
     const reply = renderTemplate(orderTemplate, profile, storeId);
+    await sock.sendMessage(senderId, { text: reply });
+    return;
+  }
+
+  // Fallback: If customer has an active order and sent an unrecognized message, automatically provide active order status!
+  if (hasActiveOrder) {
+    let reply = `📦 *Localizamos o seu pedido #${activeOrder.id}:*\n\n` +
+                formatOrderStatusMessage(activeOrder, storeId, profile) +
+                `\n\n💡 _Digite *Menu* para ver as opções da loja ou digite sua dúvida._`;
     await sock.sendMessage(senderId, { text: reply });
     return;
   }
