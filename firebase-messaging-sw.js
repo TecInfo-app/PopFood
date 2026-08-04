@@ -10,35 +10,52 @@ const firebaseConfig = {
   appId: "1:49269002867:web:1ea3437d3e74e0671c1006"
 };
 
-firebase.initializeApp(firebaseConfig);
+try {
+  firebase.initializeApp(firebaseConfig);
+} catch (e) {
+  console.warn('[firebase-messaging-sw.js] initializeApp warning:', e);
+}
 
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Received background message ', payload);
-
-  // If the payload already contains a notification object, the browser/FCM SDK
-  // will automatically show it when in the background. Showing it again here
-  // results in double/duplicate notifications on the device.
-  if (payload.notification) {
-    console.log('[firebase-messaging-sw.js] Notification object present, letting browser handle it to avoid duplicates.');
-    return;
+let messaging = null;
+try {
+  if (typeof firebase !== 'undefined' && firebase.messaging && typeof firebase.messaging.isSupported === 'function') {
+    if (firebase.messaging.isSupported()) {
+      messaging = firebase.messaging();
+    }
+  } else if (typeof firebase !== 'undefined' && firebase.messaging) {
+    messaging = firebase.messaging();
   }
+} catch (e) {
+  console.warn('[firebase-messaging-sw.js] FCM messaging unsupported in this browser:', e);
+}
 
-  // Otherwise, if it is a data-only payload, we construct and show the notification ourselves.
-  const title = payload.data?.title || 'PopFood 🔔';
-  const body = payload.data?.body || 'Você tem uma nova atualização no PopFood.';
-  const icon = payload.data?.icon || 'favicon.png';
+if (messaging) {
+  messaging.onBackgroundMessage(function(payload) {
+    console.log('[firebase-messaging-sw.js] Received background message ', payload);
 
-  const notificationOptions = {
-    body: body,
-    icon: icon,
-    badge: 'favicon.png',
-    data: payload.data
-  };
+    // If the payload already contains a notification object, the browser/FCM SDK
+    // will automatically show it when in the background. Showing it again here
+    // results in double/duplicate notifications on the device.
+    if (payload.notification) {
+      console.log('[firebase-messaging-sw.js] Notification object present, letting browser handle it to avoid duplicates.');
+      return;
+    }
 
-  self.registration.showNotification(title, notificationOptions);
-});
+    // Otherwise, if it is a data-only payload, we construct and show the notification ourselves.
+    const title = payload.data?.title || 'PopFood 🔔';
+    const body = payload.data?.body || 'Você tem uma nova atualização no PopFood.';
+    const icon = payload.data?.icon || 'favicon.png';
+
+    const notificationOptions = {
+      body: body,
+      icon: icon,
+      badge: 'favicon.png',
+      data: payload.data
+    };
+
+    self.registration.showNotification(title, notificationOptions);
+  });
+}
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

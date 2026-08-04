@@ -23,7 +23,7 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging as _getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCtz-4cniRtbA_rdxAE26-uOA_ji3Xz4RU",
@@ -37,12 +37,41 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+
 let messaging = null;
+let isMessagingSupported = false;
+
 if (typeof window !== 'undefined') {
   try {
-    messaging = getMessaging(app);
+    isSupported().then((supported) => {
+      isMessagingSupported = !!supported;
+      if (supported) {
+        try {
+          messaging = _getMessaging(app);
+        } catch (e) {
+          messaging = null;
+        }
+      }
+    }).catch(() => {
+      isMessagingSupported = false;
+      messaging = null;
+    });
   } catch (e) {
-    console.error("Failed to initialize Firebase Messaging", e);
+    isMessagingSupported = false;
+    messaging = null;
+  }
+}
+
+function safeGetMessaging(appInstance) {
+  if (typeof window === 'undefined') return null;
+  if (messaging) return messaging;
+  if (!isMessagingSupported) return null;
+  try {
+    messaging = _getMessaging(appInstance || app);
+    return messaging;
+  } catch (e) {
+    console.warn("Firebase Messaging is not supported in this browser/environment:", e?.message || e);
+    return null;
   }
 }
 
@@ -222,7 +251,8 @@ export {
   sendPasswordResetEmail,
 
   // Messaging APIs
-  getMessaging,
+  isSupported,
+  safeGetMessaging as getMessaging,
   getToken,
   onMessage,
   VAPID_KEY

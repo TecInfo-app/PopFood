@@ -1045,12 +1045,14 @@ window.copyStoreLink = function() {
       
       try {
         const messaging = getMessaging(app);
-        onMessage(messaging, (payload) => {
-          console.log("Foreground notification received in perfil.html:", payload);
-          const title = payload.notification?.title || "Nova Notificação! 🔔";
-          const body = payload.notification?.body || "";
-          alert(`🔔 Nova Notificação!\n${title}\n${body}`);
-        });
+        if (messaging) {
+          onMessage(messaging, (payload) => {
+            console.log("Foreground notification received in perfil.html:", payload);
+            const title = payload.notification?.title || "Nova Notificação! 🔔";
+            const body = payload.notification?.body || "";
+            alert(`🔔 Nova Notificação!\n${title}\n${body}`);
+          });
+        }
       } catch (e) {
         console.error("Could not init FCM foreground listener in perfil.html", e);
       }

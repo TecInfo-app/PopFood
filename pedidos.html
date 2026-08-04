@@ -1400,7 +1400,7 @@ window.copyStoreLink = function() {
           }
 
           // Auto-register merchant FCM token if notification permission is already granted
-          if ("Notification" in window && Notification.permission === "granted") {
+          if (messaging && "Notification" in window && Notification.permission === "granted") {
             try {
               const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
               try {
@@ -3134,36 +3134,38 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             localStorage.setItem("popfood_notifications_enabled", "true");
             updateNotificationIndicator();
 
-            try {
-              console.log("Requesting FCM token manually...");
-              const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+            if (messaging) {
               try {
-                await registration.update();
-              } catch (err) {
-                console.log("Failed to update SW registration:", err);
+                console.log("Requesting FCM token manually...");
+                const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                try {
+                  await registration.update();
+                } catch (err) {
+                  console.log("Failed to update SW registration:", err);
+                }
+                let currentToken = null;
+                try {
+                  currentToken = await getToken(messaging, {
+                     vapidKey: VAPID_KEY,
+                     serviceWorkerRegistration: registration
+                  });
+                } catch (e) {
+                  console.warn("FCM manual request token failed:", e);
+                  window.showToast("Falha ao obter token push. Verifique permissões.", true);
+                }
+                if (currentToken) {
+                   console.log("FCM Token manually requested:", currentToken);
+                   if (window.currentStoreId) {
+                      const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+                      await updateDoc(profileRef, {
+                         merchantTokens: arrayUnion(currentToken)
+                      });
+                      console.log("Manual FCM Token successfully registered inside restaurant profile.");
+                   }
+                }
+              } catch(e) {
+                console.error("FCM Token generation failed", e);
               }
-              let currentToken = null;
-              try {
-                currentToken = await getToken(messaging, {
-                   vapidKey: VAPID_KEY,
-                   serviceWorkerRegistration: registration
-                });
-              } catch (e) {
-                console.warn("FCM manual request token failed:", e);
-                window.showToast("Falha ao obter token push. Verifique permissões.", true);
-              }
-              if (currentToken) {
-                 console.log("FCM Token manually requested:", currentToken);
-                 if (window.currentStoreId) {
-                    const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
-                    await updateDoc(profileRef, {
-                       merchantTokens: arrayUnion(currentToken)
-                    });
-                    console.log("Manual FCM Token successfully registered inside restaurant profile.");
-                 }
-              }
-            } catch(e) {
-              console.error("FCM Token generation failed", e);
             }
 
             try {
@@ -3186,34 +3188,36 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                 updateNotificationIndicator();
 
                 // Register token in callback
-                (async () => {
-                  try {
-                    const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                if (messaging) {
+                  (async () => {
                     try {
-                      await registration.update();
-                    } catch (err) {
-                      console.log("Failed to update SW registration:", err);
-                    }
-                    let currentToken = null;
-                    try {
-                      currentToken = await getToken(messaging, {
-                         vapidKey: VAPID_KEY,
-                         serviceWorkerRegistration: registration
-                      });
+                      const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+                      try {
+                        await registration.update();
+                      } catch (err) {
+                        console.log("Failed to update SW registration:", err);
+                      }
+                      let currentToken = null;
+                      try {
+                        currentToken = await getToken(messaging, {
+                           vapidKey: VAPID_KEY,
+                           serviceWorkerRegistration: registration
+                        });
+                      } catch (e) {
+                        console.warn("FCM callback request token failed:", e);
+                      }
+                      if (currentToken && window.currentStoreId) {
+                        const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+                        await updateDoc(profileRef, {
+                          merchantTokens: arrayUnion(currentToken)
+                        });
+                        console.log("Merchant token registered inside fallback callback.");
+                      }
                     } catch (e) {
-                      console.warn("FCM callback request token failed:", e);
+                      console.error("FCM Token generation failed in fallback", e);
                     }
-                    if (currentToken && window.currentStoreId) {
-                      const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
-                      await updateDoc(profileRef, {
-                        merchantTokens: arrayUnion(currentToken)
-                      });
-                      console.log("Merchant token registered inside fallback callback.");
-                    }
-                  } catch (e) {
-                    console.error("FCM Token generation failed in fallback", e);
-                  }
-                })();
+                  })();
+                }
 
                 try {
                   new Notification("Notificações Ativas! 🔔", {

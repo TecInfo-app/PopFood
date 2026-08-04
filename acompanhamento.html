@@ -602,6 +602,11 @@
             const { app, db, doc, updateDoc } = await import('./firebase-config.js');
             const messaging = getMessaging(app);
 
+            if (!messaging) {
+              console.warn("FCM Messaging is not supported or disabled in this browser.");
+              return;
+            }
+
             // Listen to foreground notifications
             try {
               onMessage(messaging, (payload) => {
