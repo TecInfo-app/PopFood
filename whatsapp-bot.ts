@@ -185,6 +185,11 @@ async function startWhatsappSession(storeId) {
     auth: state,
     browser: Browsers.macOS('Desktop'),
     syncFullHistory: false,
+    keepAliveIntervalMs: 25000,
+    connectTimeoutMs: 60000,
+    defaultQueryTimeoutMs: 60000,
+    retryRequestDelayMs: 2000,
+    maxMsgRetryCount: 5,
     logger: pino({ level: 'silent' })
   });
 
@@ -249,13 +254,12 @@ async function startWhatsappSession(storeId) {
 
         console.log(`[WhatsApp] Connection closed for store ${storeId}. Status code: ${statusCode}. Was connected: ${wasConnected}. Reason: ${errMsg}`);
 
-        // If logged out, timed out during QR code generation (408), or the session is invalidated/bad (e.g. 401, 403, 500, 411), stop reconnecting and clear files
-        const isLoggedOut = statusCode === DisconnectReason.loggedOut;
-        const isBadSession = statusCode === 401 || statusCode === 403 || statusCode === 500 || statusCode === 411;
+        // Only permanently clear session if explicitly logged out or if QR timed out before scanning
+        const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
         const isQrTimeout = !wasConnected && (statusCode === DisconnectReason.timedOut || statusCode === 408);
 
-        if (isLoggedOut || isBadSession || isQrTimeout) {
-          console.log(`[WhatsApp] Session closed (isLoggedOut: ${isLoggedOut}, isBadSession: ${isBadSession}, isQrTimeout: ${isQrTimeout}) for store ${storeId}. Clearing auth directory.`);
+        if (isLoggedOut || isQrTimeout) {
+          console.log(`[WhatsApp] Session closed (isLoggedOut: ${isLoggedOut}, isQrTimeout: ${isQrTimeout}) for store ${storeId}. Clearing auth directory.`);
           sessions.delete(storeId);
           clearAuthDirectory(storeId);
           await updateWhatsappDocInFirestore(storeId, {
@@ -264,7 +268,8 @@ async function startWhatsappSession(storeId) {
             status: 'disconnected'
           });
         } else {
-          // It's a temporary connection drop. Try to reconnect after a delay.
+          // It's a temporary connection drop (network drop, socket timeout, etc). Reconnect automatically!
+          console.log(`[WhatsApp] Temporary disconnect for store ${storeId}. Auto-reconnecting in 5s...`);
           await updateWhatsappDocInFirestore(storeId, {
             connected: false,
             qr: null,
@@ -272,10 +277,7 @@ async function startWhatsappSession(storeId) {
           });
           
           setTimeout(() => {
-            // Only reconnect if the session still exists in our Map and hasn't been deleted
-            if (sessions.has(storeId)) {
-              startWhatsappSession(storeId).catch(console.error);
-            }
+            startWhatsappSession(storeId).catch(console.error);
           }, 5000);
         }
       } else if (connection === 'open') {
