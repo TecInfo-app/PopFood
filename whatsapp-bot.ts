@@ -13,9 +13,15 @@ export function initWhatsappBot(firestoreDb) {
 export async function getWhatsappQr(storeId) {
   if (sessions.has(storeId)) {
     const session = sessions.get(storeId);
-    if (session.qr) return { qr: session.qr };
     if (session.connected) return { connected: true };
-    if (session.initialPromise) return await session.initialPromise;
+    
+    // If not connected, clean up the old socket and session to start fresh
+    if (session.sock) {
+      try {
+        session.sock.end(undefined);
+      } catch (e) {}
+    }
+    sessions.delete(storeId);
   }
   // Create new session
   return await startWhatsappSession(storeId);
