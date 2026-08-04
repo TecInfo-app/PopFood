@@ -45,7 +45,11 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const resolvedDirname = typeof __dirname !== 'undefined'
+  ? __dirname
+  : (typeof import.meta !== 'undefined' && import.meta.url
+      ? path.dirname(fileURLToPath(import.meta.url))
+      : process.cwd());
 
 async function startServer() {
   const app = express();
