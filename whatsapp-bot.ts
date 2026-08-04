@@ -48,15 +48,18 @@ export function listenToWhatsappActions() {
         const storeId = change.doc.id;
         const data = change.doc.data();
         
-        if (data.action === "generate") {
-          console.log(`[Firestore Action] Generating QR code for store ${storeId}`);
-          // Remove the action trigger to avoid repeated calls
+        if (data.action === "generate" || data.action === "force_reset") {
+          console.log(`[Firestore Action] Generating / resetting QR code for store ${storeId}`);
+          // Clear action and reset document state immediately
           await updateWhatsappDocInFirestore(storeId, { action: null, status: 'connecting', qr: null, connected: false });
-          // Trigger QR generation
+          // Stop and clean any old session, then start fresh
+          try {
+            await stopWhatsappSession(storeId);
+          } catch (e) {}
           getWhatsappQr(storeId).catch(console.error);
         } else if (data.action === "logout") {
           console.log(`[Firestore Action] Logging out store ${storeId}`);
-          await updateWhatsappDocInFirestore(storeId, { action: null });
+          await updateWhatsappDocInFirestore(storeId, { action: null, connected: false, qr: null, status: 'disconnected' });
           stopWhatsappSession(storeId).catch(console.error);
         }
       }
@@ -65,10 +68,33 @@ export function listenToWhatsappActions() {
   console.log("Listening to real-time WhatsApp actions on Firestore.");
 }
 
+async function restoreSavedSessions() {
+  try {
+    const cwd = process.cwd();
+    const files = fs.readdirSync(cwd);
+    for (const f of files) {
+      if (f.startsWith('baileys_auth_info_')) {
+        const storeId = f.replace('baileys_auth_info_', '');
+        const credsPath = path.join(cwd, f, 'creds.json');
+        if (fs.existsSync(credsPath)) {
+          console.log(`[WhatsApp Bot] Found existing credentials for store: ${storeId}. Restoring session...`);
+          startWhatsappSession(storeId).catch((err) => {
+            console.error(`[WhatsApp Bot] Failed to restore session for store ${storeId}:`, err);
+          });
+        }
+      }
+    }
+  } catch (e) {
+    console.error("[WhatsApp Bot] Error restoring saved sessions:", e);
+  }
+}
+
 export function initWhatsappBot(firestoreDb) {
   db = firestoreDb;
   // Start listening to real-time actions
   listenToWhatsappActions();
+  // Restore any existing connected sessions on server boot
+  restoreSavedSessions().catch(console.error);
 }
 
 export async function getWhatsappQr(storeId) {

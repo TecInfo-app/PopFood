@@ -1005,7 +1005,22 @@ window.copyStoreLink = function() {
       <div class="space-y-4">
         <div id="whatsapp-status-container" class="p-4 rounded-xl bg-gray-50 border border-gray-200 text-center">
           <p class="text-sm text-gray-600 font-semibold mb-2">Verificando status do WhatsApp...</p>
-          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto"></div>
+          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+          <button type="button" onclick="forceResetWhatsapp()" class="mt-2 bg-white text-red-600 font-bold py-1.5 px-3 rounded text-xs hover:bg-red-50 transition-colors border border-red-200 shadow-sm">
+            Forçar Reset (Se estiver travado)
+          </button>
+        </div>
+
+        <!-- Toggle Pause/Active (Always Visible) -->
+        <div class="w-full max-w-sm bg-white p-4 rounded-xl border border-emerald-100 flex items-center justify-between mx-auto shadow-sm">
+          <div class="text-left">
+            <h4 class="font-bold text-slate-800 text-sm">Robô Automático</h4>
+            <p class="text-[10px] text-gray-500 leading-tight mt-0.5">Pause o robô para atendimento humano.</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="whatsapp-bot-active" class="sr-only peer" onchange="toggleWhatsappBot(this.checked)">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+          </label>
         </div>
 
         <div id="whatsapp-disconnected-container" class="hidden p-6 rounded-xl bg-white border border-gray-200 flex flex-col items-center text-center">
@@ -1030,18 +1045,6 @@ window.copyStoreLink = function() {
           <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm border border-emerald-200">✅</div>
           <h3 class="font-bold text-emerald-800 mb-1">WhatsApp Conectado!</h3>
           <p class="text-xs text-emerald-600/80 text-center mb-4 max-w-sm">A sessão do WhatsApp está conectada.</p>
-
-          <!-- Toggle Pause/Active -->
-          <div class="w-full max-w-sm bg-white p-4 rounded-xl border border-emerald-100 mb-4 flex items-center justify-between">
-            <div class="text-left">
-              <h4 class="font-bold text-slate-800 text-sm">Robô Automático</h4>
-              <p class="text-[10px] text-gray-500 leading-tight mt-0.5">Pause o robô para atendimento humano.</p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="whatsapp-bot-active" class="sr-only peer" onchange="toggleWhatsappBot(this.checked)">
-              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-            </label>
-          </div>
           
           <button type="button" onclick="logoutWhatsapp()" class="bg-white text-red-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-red-50 transition-colors border border-red-200 shadow-sm">
             Desconectar WhatsApp
@@ -1297,6 +1300,21 @@ window.copyStoreLink = function() {
             alert("Falha ao gerar o código QR. Por favor, tente novamente.");
           }
         }
+      }
+    };
+
+    window.forceResetWhatsapp = async function() {
+      if (!window.currentStoreId) return;
+      if (!confirm("Isso forçará a limpeza da sessão atual para gerar um novo QR Code. Continuar?")) return;
+      try {
+        const docRef = doc(db, "whatsapp_sessions", window.currentStoreId);
+        await setDoc(docRef, {
+          action: "force_reset",
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        window.checkWhatsappStatus();
+      } catch (e) {
+        console.warn("Firestore reset trigger failed", e);
       }
     };
 
