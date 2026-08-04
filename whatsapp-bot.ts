@@ -182,18 +182,20 @@ async function startWhatsappSession(storeId) {
       }
 
       if (connection === 'close') {
+        const wasConnected = sessionState.connected === true;
         sessionState.connected = false;
         sessionState.qr = null;
         
         const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
-        console.log(`[WhatsApp] Connection closed for store ${storeId}. Status code: ${statusCode}. Error:`, lastDisconnect?.error);
+        console.log(`[WhatsApp] Connection closed for store ${storeId}. Status code: ${statusCode}. Was connected: ${wasConnected}. Error:`, lastDisconnect?.error);
 
-        // If logged out or the session is invalidated/bad (e.g. 401, 403, 500, 411), stop reconnecting and clear files
+        // If logged out, timed out during QR code generation (408), or the session is invalidated/bad (e.g. 401, 403, 500, 411), stop reconnecting and clear files
         const isLoggedOut = statusCode === DisconnectReason.loggedOut;
         const isBadSession = statusCode === 401 || statusCode === 403 || statusCode === 500 || statusCode === 411;
+        const isQrTimeout = !wasConnected && (statusCode === DisconnectReason.timedOut || statusCode === 408);
 
-        if (isLoggedOut || isBadSession) {
-          console.log(`[WhatsApp] Session logged out or bad for store ${storeId}. Clearing auth directory.`);
+        if (isLoggedOut || isBadSession || isQrTimeout) {
+          console.log(`[WhatsApp] Session closed (isLoggedOut: ${isLoggedOut}, isBadSession: ${isBadSession}, isQrTimeout: ${isQrTimeout}) for store ${storeId}. Clearing auth directory.`);
           sessions.delete(storeId);
           clearAuthDirectory(storeId);
           await updateWhatsappDocInFirestore(storeId, {
