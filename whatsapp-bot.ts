@@ -1,13 +1,60 @@
 import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } from '@whiskeysockets/baileys';
 import QRCode from 'qrcode';
-import { getFirestore, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import pino from 'pino';
 
 const sessions = new Map();
 let db;
 
+async function updateWhatsappDocInFirestore(storeId, data) {
+  if (!db) return;
+  try {
+    const docRef = doc(db, "whatsapp_sessions", storeId);
+    await setDoc(docRef, {
+      ...data,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+  } catch (e) {
+    console.error(`Error updating Firestore session for ${storeId}:`, e);
+  }
+}
+
+let actionsListenerUnsubscribe = null;
+
+export function listenToWhatsappActions() {
+  if (!db) return;
+  if (actionsListenerUnsubscribe) {
+    actionsListenerUnsubscribe();
+  }
+  
+  const colRef = collection(db, "whatsapp_sessions");
+  actionsListenerUnsubscribe = onSnapshot(colRef, (snapshot) => {
+    snapshot.docChanges().forEach(async (change) => {
+      if (change.type === "added" || change.type === "modified") {
+        const storeId = change.doc.id;
+        const data = change.doc.data();
+        
+        if (data.action === "generate") {
+          console.log(`[Firestore Action] Generating QR code for store ${storeId}`);
+          // Remove the action trigger to avoid repeated calls
+          await updateWhatsappDocInFirestore(storeId, { action: null, status: 'connecting', qr: null, connected: false });
+          // Trigger QR generation
+          getWhatsappQr(storeId).catch(console.error);
+        } else if (data.action === "logout") {
+          console.log(`[Firestore Action] Logging out store ${storeId}`);
+          await updateWhatsappDocInFirestore(storeId, { action: null });
+          stopWhatsappSession(storeId).catch(console.error);
+        }
+      }
+    });
+  });
+  console.log("Listening to real-time WhatsApp actions on Firestore.");
+}
+
 export function initWhatsappBot(firestoreDb) {
   db = firestoreDb;
+  // Start listening to real-time actions
+  listenToWhatsappActions();
 }
 
 export async function getWhatsappQr(storeId) {
@@ -43,14 +90,28 @@ export async function stopWhatsappSession(storeId) {
   if (sessions.has(storeId)) {
     const session = sessions.get(storeId);
     if (session.sock) {
-      session.sock.logout();
+      try {
+        await session.sock.logout();
+      } catch (e) {}
     }
     sessions.delete(storeId);
   }
+  await updateWhatsappDocInFirestore(storeId, {
+    connected: false,
+    qr: null,
+    status: 'disconnected'
+  });
   return { success: true };
 }
 
 async function startWhatsappSession(storeId) {
+  // Set initial status to connecting in Firestore
+  await updateWhatsappDocInFirestore(storeId, {
+    connected: false,
+    qr: null,
+    status: 'connecting'
+  });
+
   const { state, saveCreds } = await useMultiFileAuthState(`baileys_auth_info_${storeId}`);
   let version: any = [6, 33, 0];
   try {
@@ -92,6 +153,11 @@ async function startWhatsappSession(storeId) {
       
       if (qr) {
         sessionState.qr = await QRCode.toDataURL(qr);
+        await updateWhatsappDocInFirestore(storeId, {
+          connected: false,
+          qr: sessionState.qr,
+          status: 'qr_ready'
+        });
         if (!resolved) {
           resolved = true;
           resolve({ qr: sessionState.qr });
@@ -101,6 +167,11 @@ async function startWhatsappSession(storeId) {
       if (connection === 'close') {
         sessionState.connected = false;
         sessionState.qr = null;
+        await updateWhatsappDocInFirestore(storeId, {
+          connected: false,
+          qr: null,
+          status: 'disconnected'
+        });
         const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
         if (shouldReconnect) {
           setTimeout(() => {
@@ -112,6 +183,11 @@ async function startWhatsappSession(storeId) {
       } else if (connection === 'open') {
         sessionState.connected = true;
         sessionState.qr = null;
+        await updateWhatsappDocInFirestore(storeId, {
+          connected: true,
+          qr: null,
+          status: 'connected'
+        });
         if (!resolved) {
           resolved = true;
           resolve({ connected: true });

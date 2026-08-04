@@ -1087,40 +1087,52 @@ window.copyStoreLink = function() {
       window.location.href = "index.html";
     };
 
-    window.checkWhatsappStatus = async function() {
+    let whatsappUnsubscribe = null;
+
+    window.checkWhatsappStatus = function() {
       if (!window.currentStoreId) return;
-      try {
-        const res = await fetch(getApiUrl(`/api/whatsapp/status?storeId=${window.currentStoreId}`));
-        const data = await res.json();
-        
-        if (data.connected) {
-          document.getElementById('whatsapp-status-container').classList.add('hidden');
-          document.getElementById('whatsapp-connected-container').classList.remove('hidden');
-          document.getElementById('whatsapp-qr-container').classList.add('hidden');
-          document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
-          if (window.whatsappInterval) clearInterval(window.whatsappInterval);
-        } else if (data.qr) {
-          document.getElementById('whatsapp-status-container').classList.add('hidden');
-          document.getElementById('whatsapp-qr-container').classList.remove('hidden');
-          document.getElementById('whatsapp-qr-image').src = data.qr;
-          document.getElementById('whatsapp-connected-container').classList.add('hidden');
-          document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
-        } else if (data.status === 'connecting') {
-          // Keep displaying the loading indicator while connection is being initialized
-          document.getElementById('whatsapp-status-container').classList.remove('hidden');
-          document.getElementById('whatsapp-qr-container').classList.add('hidden');
-          document.getElementById('whatsapp-connected-container').classList.add('hidden');
-          document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
+      
+      if (whatsappUnsubscribe) {
+        whatsappUnsubscribe();
+        whatsappUnsubscribe = null;
+      }
+
+      const docRef = doc(db, "whatsapp_sessions", window.currentStoreId);
+      whatsappUnsubscribe = onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          
+          if (data.connected) {
+            document.getElementById('whatsapp-status-container').classList.add('hidden');
+            document.getElementById('whatsapp-connected-container').classList.remove('hidden');
+            document.getElementById('whatsapp-qr-container').classList.add('hidden');
+            document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
+          } else if (data.qr) {
+            document.getElementById('whatsapp-status-container').classList.add('hidden');
+            document.getElementById('whatsapp-qr-container').classList.remove('hidden');
+            document.getElementById('whatsapp-qr-image').src = data.qr;
+            document.getElementById('whatsapp-connected-container').classList.add('hidden');
+            document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
+          } else if (data.status === 'connecting') {
+            document.getElementById('whatsapp-status-container').classList.remove('hidden');
+            document.getElementById('whatsapp-qr-container').classList.add('hidden');
+            document.getElementById('whatsapp-connected-container').classList.add('hidden');
+            document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
+          } else {
+            document.getElementById('whatsapp-status-container').classList.add('hidden');
+            document.getElementById('whatsapp-qr-container').classList.add('hidden');
+            document.getElementById('whatsapp-connected-container').classList.add('hidden');
+            document.getElementById('whatsapp-disconnected-container').classList.remove('hidden');
+          }
         } else {
+          // Document doesn't exist yet, show disconnected state
           document.getElementById('whatsapp-status-container').classList.add('hidden');
           document.getElementById('whatsapp-qr-container').classList.add('hidden');
           document.getElementById('whatsapp-connected-container').classList.add('hidden');
           document.getElementById('whatsapp-disconnected-container').classList.remove('hidden');
-          if (window.whatsappInterval) clearInterval(window.whatsappInterval);
         }
-      } catch (e) {
-        console.error("Failed to check whatsapp status", e);
-        // Safely hide spinner and show disconnected/retry screen on fetch failure
+      }, (e) => {
+        console.error("Failed to listen to whatsapp status in Firestore", e);
         const statusCont = document.getElementById('whatsapp-status-container');
         if (statusCont) statusCont.classList.add('hidden');
         const qrCont = document.getElementById('whatsapp-qr-container');
@@ -1129,7 +1141,7 @@ window.copyStoreLink = function() {
         if (connCont) connCont.classList.add('hidden');
         const disconnCont = document.getElementById('whatsapp-disconnected-container');
         if (disconnCont) disconnCont.classList.remove('hidden');
-      }
+      });
     };
 
     window.loadWhatsappQr = async function() {
@@ -1140,15 +1152,16 @@ window.copyStoreLink = function() {
       document.getElementById('whatsapp-disconnected-container').classList.add('hidden');
       
       try {
-        const res = await fetch(getApiUrl(`/api/whatsapp/qr?storeId=${window.currentStoreId}`));
-        if (!res.ok) {
-          throw new Error("HTTP error " + res.status);
-        }
+        const docRef = doc(db, "whatsapp_sessions", window.currentStoreId);
+        await setDoc(docRef, {
+          action: "generate",
+          status: 'connecting',
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+        
         window.checkWhatsappStatus();
-        if (window.whatsappInterval) clearInterval(window.whatsappInterval);
-        window.whatsappInterval = setInterval(window.checkWhatsappStatus, 5000);
       } catch (e) {
-        console.error("Failed to load whatsapp qr", e);
+        console.error("Failed to load whatsapp qr in Firestore", e);
         // Hide spinner and restore disconnected container
         const statusCont = document.getElementById('whatsapp-status-container');
         if (statusCont) statusCont.classList.add('hidden');
@@ -1169,14 +1182,13 @@ window.copyStoreLink = function() {
       if (!confirm("Tem certeza que deseja desconectar o WhatsApp?")) return;
       
       try {
-        await fetch(getApiUrl(`/api/whatsapp/logout`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storeId: window.currentStoreId })
-        });
-        window.checkWhatsappStatus();
+        const docRef = doc(db, "whatsapp_sessions", window.currentStoreId);
+        await setDoc(docRef, {
+          action: "logout",
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
       } catch (e) {
-        console.error("Failed to logout whatsapp", e);
+        console.error("Failed to logout whatsapp in Firestore", e);
       }
     };
 
@@ -1330,8 +1342,6 @@ window.copyStoreLink = function() {
 
         // Initialize Whatsapp
         window.checkWhatsappStatus();
-        if (window.whatsappInterval) clearInterval(window.whatsappInterval);
-        window.whatsappInterval = setInterval(window.checkWhatsappStatus, 5000);
 
         // Fetch Profile
         loadRestaurantProfileData();
