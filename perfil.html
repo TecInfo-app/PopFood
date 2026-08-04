@@ -1626,6 +1626,22 @@ window.copyStoreLink = function() {
           (document.getElementById('profile-mostrar-indisponiveis') || {}).checked = profileData.mostrarIndisponiveis !== false; // Default to true
           (document.getElementById('whatsapp-bot-active') || {}).checked = profileData.whatsappBotPaused !== true;
           
+          // Whatsapp Bot admin visibility control
+          const isWhatsappBotEnabled = profileData.whatsappBotEnabled === true || profileData.whatsappBotEnabled === 'true';
+          const btnWhatsapp = document.getElementById('menu-btn-whatsapp');
+          if (btnWhatsapp) {
+            if (isWhatsappBotEnabled) {
+              btnWhatsapp.classList.remove('hidden');
+            } else {
+              btnWhatsapp.classList.add('hidden');
+              // If current active tab is whatsapp, switch to cadastro
+              const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
+              if (lastTab === 'whatsapp') {
+                window.switchTab('cadastro');
+              }
+            }
+          }
+          
           const destaquesTipo = profileData.destaquesTipo || 'mais_pedidos';
           const radioToSelect = document.querySelector(`input[name="profile-destaques-tipo"][value="${destaquesTipo}"]`);
           if(radioToSelect) radioToSelect.checked = true;
