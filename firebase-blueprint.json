@@ -207,6 +207,18 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "storeId", "title", "body", "scheduledFor", "status", "createdAt"]
+    },
+    "whatsapp_session": {
+      "title": "WhatsappSession",
+      "description": "WhatsApp Bot connection session status and command actions",
+      "type": "object",
+      "properties": {
+        "connected": { "type": "boolean" },
+        "qr": { "type": "string", "description": "Base64 representation of the connection QR code" },
+        "status": { "type": "string", "enum": ["connecting", "qr_ready", "connected", "disconnected"] },
+        "action": { "type": "string", "enum": ["generate", "logout", null] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "firestore": {
@@ -245,6 +257,10 @@
     "/scheduled_notifications/{notificationId}": {
       "schema": "scheduled_notification",
       "description": "Scheduled campaigns processed server-side"
+    },
+    "/whatsapp_sessions/{storeId}": {
+      "schema": "whatsapp_session",
+      "description": "WhatsApp Bot connection status, QR code stream, and command action listener"
     }
   }
 }

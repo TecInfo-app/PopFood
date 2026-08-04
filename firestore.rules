@@ -61,5 +61,10 @@ service cloud.firestore {
     match /scheduled_notifications/{notificationId} {
       allow read, write: if true;
     }
+
+    // Sessões do WhatsApp Bot
+    match /whatsapp_sessions/{storeId} {
+      allow read, write: if true;
+    }
   }
 }
