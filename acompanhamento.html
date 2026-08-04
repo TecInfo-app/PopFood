@@ -810,12 +810,65 @@
         console.warn("Could not load restaurant Profile information: ", err);
       }
 
+      // Check for direct order ID in URL params (e.g. from WhatsApp bot)
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlOrderId = urlParams.get("order") || urlParams.get("orderId") || urlParams.get("id");
+      const urlPhone = urlParams.get("phone");
+
+      if (urlOrderId) {
+        try {
+          const directSnap = await getDoc(doc(db, COLLECTIONS.orders, urlOrderId));
+          if (directSnap.exists()) {
+            const ordData = directSnap.data();
+            const phone = ordData.customer?.phone || urlPhone || localPhone;
+            if (phone) {
+              localStorage.setItem('popfood_last_phone', phone);
+            }
+            localStorage.setItem('popfood_last_order_id', urlOrderId);
+            startDirectOrderTracker(urlOrderId, ordData);
+            return;
+          }
+        } catch (err) {
+          console.warn("Direct order tracking lookup error:", err);
+        }
+      }
+
+      if (urlPhone) {
+        localStorage.setItem('popfood_last_phone', urlPhone);
+        (document.getElementById('login-phone-field') || {}).value = urlPhone;
+        startOnSnapshotOrderTracker(urlPhone, urlOrderId || savedOrderId);
+        return;
+      }
+
       if (localPhone) {
         (document.getElementById('login-phone-field') || {}).value = localPhone;
         // Verify active tracking
         startOnSnapshotOrderTracker(localPhone, savedOrderId);
       }
     };
+
+    function startDirectOrderTracker(orderId, initialData = null) {
+      document.getElementById('tracker-login-panel').classList.add('hidden');
+      document.getElementById('tracker-active-panel').classList.remove('hidden');
+
+      if (initialData) {
+        currentTrackOrder = { id: orderId, ...initialData };
+        drawActiveTrackDetails(currentTrackOrder);
+      }
+
+      onSnapshot(doc(db, COLLECTIONS.orders, orderId), (docSnap) => {
+        if (docSnap.exists()) {
+          const targetOrder = { id: docSnap.id, ...docSnap.data() };
+          if (currentTrackOrder && currentTrackOrder.id === targetOrder.id && currentTrackOrder.status !== targetOrder.status) {
+            triggerStatusNotification(targetOrder, currentTrackOrder.status);
+          }
+          currentTrackOrder = targetOrder;
+          drawActiveTrackDetails(targetOrder);
+        }
+      }, (err) => {
+        console.error("Direct tracker error: ", err);
+      });
+    }
 
     window.startTrackingByPhone = function() {
       const phoneInput = document.getElementById('login-phone-field').value.replace(/\D/g, '');
