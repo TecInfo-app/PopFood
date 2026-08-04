@@ -259,22 +259,45 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
     return;
   }
 
+  // Render template helpers
+  function renderTemplate(template, profile, storeId) {
+    const name = profile.name || 'Nosso Restaurante';
+    const description = profile.description || 'A melhor comida da região!';
+    const openTime = profile.openTime || '--:--';
+    const closeTime = profile.closeTime || '--:--';
+    
+    const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const operatingDays = (profile.operatingDays || [])
+      .map(d => typeof d === 'number' ? (dayNames[d] || d) : d)
+      .join(', ');
+
+    const customBaseUrl = profile.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
+    const normalizedBaseUrl = customBaseUrl.endsWith('/') ? customBaseUrl.slice(0, -1) : customBaseUrl;
+    const link = `${normalizedBaseUrl}/cliente.html?store=${storeId}`;
+
+    return template
+      .replace(/{name}/g, name)
+      .replace(/{description}/g, description)
+      .replace(/{openTime}/g, openTime)
+      .replace(/{closeTime}/g, closeTime)
+      .replace(/{operatingDays}/g, operatingDays)
+      .replace(/{link}/g, link);
+  }
+
   const lowerText = text.toLowerCase();
 
   // 1. O bordão da loja e mensagem de boas-vindas
   if (lowerText === 'ola' || lowerText === 'olá' || lowerText === 'oi' || lowerText === 'menu') {
-    const welcome = `Olá! Bem-vindo(a) ao *${profile.name || 'Nosso Restaurante'}*! 🍔🍕\n_${profile.description || 'A melhor comida da região!'}_`;
-    const options = `\n\nDigite o número da opção desejada:\n1️⃣ *Cardápio*\n2️⃣ *Horário de Funcionamento*\n3️⃣ *Fazer Pedido*\n4️⃣ *Status do Pedido*`;
-    await sock.sendMessage(senderId, { text: welcome + options });
+    const welcomeTemplate = profile.whatsappWelcome || `Olá! Bem-vindo(a) ao *{name}*! 🍔🍕\n_{description}_\n\nDigite o número da opção desejada:\n1️⃣ *Cardápio*\n2️⃣ *Horário de Funcionamento*\n3️⃣ *Fazer Pedido*\n4️⃣ *Status do Pedido*`;
+    const reply = renderTemplate(welcomeTemplate, profile, storeId);
+    await sock.sendMessage(senderId, { text: reply });
     return;
   }
 
   // 2. Os horários de funcionamento da loja
   if (lowerText === '2' || lowerText.includes('horario') || lowerText.includes('horário')) {
-    const openTime = profile.openTime || '--:--';
-    const closeTime = profile.closeTime || '--:--';
-    const days = (profile.operatingDays || []).join(', ');
-    const reply = `🕒 *Nosso horário de funcionamento:*\nDas ${openTime} às ${closeTime}\nDias: ${days}`;
+    const hoursTemplate = profile.whatsappHours || `🕒 *Nosso horário de funcionamento:*\nDas {openTime} às {closeTime}\nDias: {operatingDays}`;
+    const reply = renderTemplate(hoursTemplate, profile, storeId);
     await sock.sendMessage(senderId, { text: reply });
     return;
   }
@@ -311,17 +334,16 @@ async function handleIncomingMessage(storeId, sock, senderId, text) {
 
   // 4. Um comando para o cliente receber o link da página web para finalizar o pedido
   if (lowerText === '3' || lowerText.includes('pedido') || lowerText.includes('fazer pedido')) {
-    // Determine the base URL (if deployed, it would be the app URL, otherwise fallback)
-    const baseUrl = process.env.VITE_APP_URL || 'https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app';
-    const link = `${baseUrl}/cliente.html?store=${storeId}`;
-    const reply = `🛒 *Pronto para pedir?*\nAcesse nosso site para montar seu pedido com facilidade e segurança:\n👉 ${link}`;
+    const orderTemplate = profile.whatsappOrder || `🛒 *Pronto para pedir?*\nAcesse nosso site para montar seu pedido com facilidade e segurança:\n👉 {link}`;
+    const reply = renderTemplate(orderTemplate, profile, storeId);
     await sock.sendMessage(senderId, { text: reply });
     return;
   }
 
   // 5. Uma forma de o cliente consultar o status do pedido dele
   if (lowerText === '4' || lowerText.includes('status')) {
-    const reply = `🔎 *Status do Pedido:*\nPor favor, acesse o link de acompanhamento que foi enviado no seu e-mail ou visualize direto pelo nosso site através do botão "Acompanhar Pedido".\n\nSe você sabe o ID do pedido, digite *status #SEU_ID* (ex: status #abc123)`;
+    const statusTemplate = profile.whatsappStatus || `🔎 *Status do Pedido:*\nPor favor, acesse o link de acompanhamento que foi enviado no seu e-mail ou visualize direto pelo nosso site através do botão "Acompanhar Pedido".\n\nSe você sabe o ID do pedido, digite *status #SEU_ID* (ex: status #abc123)`;
+    const reply = renderTemplate(statusTemplate, profile, storeId);
     await sock.sendMessage(senderId, { text: reply });
     return;
   }

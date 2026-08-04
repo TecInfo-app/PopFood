@@ -1060,6 +1060,71 @@ window.copyStoreLink = function() {
         </div>
       </div>
     </div>
+
+    <!-- CONFIGURAÇÃO DE MENSAGENS PERSONALIZADAS -->
+    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6 text-left">
+      <div class="border-b border-gray-100 pb-4">
+        <h3 class="font-display font-bold text-sm text-gray-800 flex items-center gap-2">
+          <span>💬</span> Configuração das Mensagens do Robô
+        </h3>
+        <p class="text-[10px] text-gray-400 font-medium">Personalize os textos automáticos enviados pelo robô aos seus clientes.</p>
+      </div>
+
+      <!-- PLACEHOLDERS LEGEND -->
+      <div class="p-4 bg-slate-900 text-slate-300 rounded-2xl border border-slate-800 text-[10px] space-y-2">
+        <p class="font-bold text-white font-display flex items-center gap-1.5">
+          <span>💡</span> Variáveis disponíveis para uso nas mensagens:
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 font-medium">
+          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{name}</code> : Nome da sua loja</div>
+          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{description}</code> : Descrição da sua loja</div>
+          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{openTime}</code> : Horário de abertura</div>
+          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{closeTime}</code> : Horário de fechamento</div>
+          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{operatingDays}</code> : Dias de funcionamento</div>
+          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{link}</code> : Link do cardápio online</div>
+        </div>
+        <p class="text-[9px] text-gray-400 mt-1">Dica: Use asteriscos para deixar textos em negrito no WhatsApp (ex: *texto*).</p>
+      </div>
+
+      <div class="space-y-4">
+        <!-- BASE LINK CONFIGURATION -->
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">Link de Destino do Cardápio (GitHub ou Próprio) 🌐</label>
+          <input type="url" id="whatsapp-link-url" placeholder="Ex: https://tecinfo-app.github.io/PopFood" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none">
+          <p class="text-[9px] text-gray-400">Por padrão, apontamos para <strong class="text-gray-600">https://tecinfo-app.github.io/PopFood</strong>. O robô irá gerar o link completo de pedidos para cada cliente usando este endereço.</p>
+        </div>
+
+        <!-- WELCOME MESSAGE -->
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">1. Mensagem de Boas-Vindas / Menu Principal 🍟</label>
+          <textarea id="whatsapp-welcome-msg" rows="4" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva a mensagem de boas-vindas..."></textarea>
+        </div>
+
+        <!-- HOURS MESSAGE -->
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">2. Mensagem de Horários de Funcionamento 🕒</label>
+          <textarea id="whatsapp-hours-msg" rows="3" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre seus horários..."></textarea>
+        </div>
+
+        <!-- MAKE ORDER MESSAGE -->
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">3. Mensagem para Fazer Pedidos (Link do Cardápio) 🛒</label>
+          <textarea id="whatsapp-order-msg" rows="3" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre o link do pedido..."></textarea>
+        </div>
+
+        <!-- CHECK STATUS MESSAGE -->
+        <div class="space-y-1">
+          <label class="block text-[10px] font-bold text-gray-500 uppercase">4. Mensagem para Consulta de Status de Pedido 🔎</label>
+          <textarea id="whatsapp-status-msg" rows="4" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre como consultar o status do pedido..."></textarea>
+        </div>
+      </div>
+
+      <div class="pt-2">
+        <button id="btn-save-whatsapp-config" onclick="saveWhatsappBotConfig()" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 px-4 text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5">
+          <span>Salvar Mensagens do Robô 💾</span>
+        </button>
+      </div>
+    </div>
   </div>
 
   <script type="module">
@@ -1278,6 +1343,54 @@ window.copyStoreLink = function() {
         console.error("Erro ao alterar status do robô", e);
         window.customAlert ? window.customAlert("Erro ao alterar status do robô.") : alert("Erro ao alterar status do robô.");
         document.getElementById('whatsapp-bot-active').checked = !isActive; // revert
+      }
+    };
+
+    window.saveWhatsappBotConfig = async function() {
+      if (!window.currentStoreId) return;
+      const linkUrl = document.getElementById('whatsapp-link-url').value.trim();
+      const welcome = document.getElementById('whatsapp-welcome-msg').value;
+      const hours = document.getElementById('whatsapp-hours-msg').value;
+      const order = document.getElementById('whatsapp-order-msg').value;
+      const status = document.getElementById('whatsapp-status-msg').value;
+      
+      const btn = document.getElementById('btn-save-whatsapp-config');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Salvando...';
+      }
+
+      try {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
+          whatsappLinkUrl: linkUrl,
+          whatsappWelcome: welcome,
+          whatsappHours: hours,
+          whatsappOrder: order,
+          whatsappStatus: status,
+          storeId: window.currentStoreId
+        }, { merge: true });
+
+        if (btn) {
+          btn.textContent = "✅ Configurações Salvas!";
+          btn.classList.remove('bg-brand-primary', 'hover:bg-orange-600');
+          btn.classList.add('bg-green-500', 'hover:bg-green-600');
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = 'Salvar Mensagens do Robô 💾';
+            btn.classList.remove('bg-green-500', 'hover:bg-green-600');
+            btn.classList.add('bg-brand-primary', 'hover:bg-orange-600');
+          }, 3000);
+        }
+        
+        // Reload local data
+        loadRestaurantProfileData();
+      } catch (err) {
+        console.error("Saving whatsapp config error: ", err);
+        window.customAlert ? window.customAlert("Erro ao salvar configurações do WhatsApp: " + err.message) : alert("Erro ao salvar configurações do WhatsApp: " + err.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Salvar Mensagens do Robô 💾';
+        }
       }
     };
 
@@ -1625,6 +1738,13 @@ window.copyStoreLink = function() {
           (document.getElementById('profile-destaques-ativo') || {}).checked = profileData.destaquesAtivo === true;
           (document.getElementById('profile-mostrar-indisponiveis') || {}).checked = profileData.mostrarIndisponiveis !== false; // Default to true
           (document.getElementById('whatsapp-bot-active') || {}).checked = profileData.whatsappBotPaused !== true;
+          
+          // Populate custom whatsapp bot settings
+          (document.getElementById('whatsapp-link-url') || {}).value = profileData.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
+          (document.getElementById('whatsapp-welcome-msg') || {}).value = profileData.whatsappWelcome || 'Olá! Bem-vindo(a) ao *{name}*! 🍔🍕\n_{description}_\n\nDigite o número da opção desejada:\n1️⃣ *Cardápio*\n2️⃣ *Horário de Funcionamento*\n3️⃣ *Fazer Pedido*\n4️⃣ *Status do Pedido*';
+          (document.getElementById('whatsapp-hours-msg') || {}).value = profileData.whatsappHours || '🕒 *Nosso horário de funcionamento:*\nDas {openTime} às {closeTime}\nDias: {operatingDays}';
+          (document.getElementById('whatsapp-order-msg') || {}).value = profileData.whatsappOrder || '🛒 *Pronto para pedir?*\nAcesse nosso site para montar seu pedido com facilidade e segurança:\n👉 {link}';
+          (document.getElementById('whatsapp-status-msg') || {}).value = profileData.whatsappStatus || '🔎 *Status do Pedido:*\nPor favor, acesse o link de acompanhamento que foi enviado no seu e-mail ou visualize direto pelo nosso site através do botão "Acompanhar Pedido".\n\nSe você sabe o ID do pedido, digite *status #SEU_ID* (ex: status #abc123)';
           
           // Whatsapp Bot admin visibility control
           const isWhatsappBotEnabled = profileData.whatsappBotEnabled === true || profileData.whatsappBotEnabled === 'true';
