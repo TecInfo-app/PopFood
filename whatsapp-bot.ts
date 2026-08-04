@@ -2,9 +2,23 @@ import makeWASocket, { useMultiFileAuthState, DisconnectReason, fetchLatestBaile
 import QRCode from 'qrcode';
 import { getFirestore, doc, getDoc, collection, query, where, getDocs, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import pino from 'pino';
+import fs from 'fs';
+import path from 'path';
 
 const sessions = new Map();
 let db;
+
+function clearAuthDirectory(storeId) {
+  const dirPath = path.join(process.cwd(), `baileys_auth_info_${storeId}`);
+  if (fs.existsSync(dirPath)) {
+    try {
+      fs.rmSync(dirPath, { recursive: true, force: true });
+      console.log(`[WhatsApp] Cleared auth directory: ${dirPath}`);
+    } catch (err) {
+      console.error(`[WhatsApp] Failed to delete auth directory ${dirPath}:`, err);
+    }
+  }
+}
 
 async function updateWhatsappDocInFirestore(storeId, data) {
   if (!db) return;
@@ -70,6 +84,10 @@ export async function getWhatsappQr(storeId) {
     }
     sessions.delete(storeId);
   }
+  
+  // Clean up any old invalid credentials folder so Baileys is forced to generate a new QR code
+  clearAuthDirectory(storeId);
+
   // Create new session
   return await startWhatsappSession(storeId);
 }
@@ -96,6 +114,9 @@ export async function stopWhatsappSession(storeId) {
     }
     sessions.delete(storeId);
   }
+  // Clear directory just in case Baileys logout didn't fully delete it
+  clearAuthDirectory(storeId);
+
   await updateWhatsappDocInFirestore(storeId, {
     connected: false,
     qr: null,
@@ -167,18 +188,37 @@ async function startWhatsappSession(storeId) {
       if (connection === 'close') {
         sessionState.connected = false;
         sessionState.qr = null;
-        await updateWhatsappDocInFirestore(storeId, {
-          connected: false,
-          qr: null,
-          status: 'disconnected'
-        });
-        const shouldReconnect = (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-        if (shouldReconnect) {
-          setTimeout(() => {
-             startWhatsappSession(storeId).catch(console.error);
-          }, 2000);
-        } else {
+        
+        const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
+        console.log(`[WhatsApp] Connection closed for store ${storeId}. Status code: ${statusCode}. Error:`, lastDisconnect?.error);
+
+        // If logged out or the session is invalidated/bad (e.g. 401, 403, 500, 411), stop reconnecting and clear files
+        const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+        const isBadSession = statusCode === 401 || statusCode === 403 || statusCode === 500 || statusCode === 411;
+
+        if (isLoggedOut || isBadSession) {
+          console.log(`[WhatsApp] Session logged out or bad for store ${storeId}. Clearing auth directory.`);
           sessions.delete(storeId);
+          clearAuthDirectory(storeId);
+          await updateWhatsappDocInFirestore(storeId, {
+            connected: false,
+            qr: null,
+            status: 'disconnected'
+          });
+        } else {
+          // It's a temporary connection drop. Try to reconnect after a delay.
+          await updateWhatsappDocInFirestore(storeId, {
+            connected: false,
+            qr: null,
+            status: 'disconnected'
+          });
+          
+          setTimeout(() => {
+            // Only reconnect if the session still exists in our Map and hasn't been deleted
+            if (sessions.has(storeId)) {
+              startWhatsappSession(storeId).catch(console.error);
+            }
+          }, 5000);
         }
       } else if (connection === 'open') {
         sessionState.connected = true;
