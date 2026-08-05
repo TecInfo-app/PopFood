@@ -9,102 +9,6 @@ const sessions = new Map();
 const reconnectTimers = new Map();
 let db;
 
-interface CachedProfile {
-  profile: any;
-  fetchedAt: number;
-}
-interface CachedCoupons {
-  coupons: any[];
-  fetchedAt: number;
-}
-interface CachedOrders {
-  orders: any[];
-  fetchedAt: number;
-}
-
-const profileCache = new Map<string, CachedProfile>();
-const couponsCache = new Map<string, CachedCoupons>();
-const ordersCache = new Map<string, CachedOrders>();
-
-const PROFILE_CACHE_TTL_MS = 60000; // 1 minute
-const COUPONS_CACHE_TTL_MS = 300000; // 5 minutes
-const ORDERS_CACHE_TTL_MS = 15000; // 15 seconds
-
-async function getRestaurantProfileWithCache(storeId: string): Promise<any | null> {
-  const cached = profileCache.get(storeId);
-  const now = Date.now();
-  if (cached && (now - cached.fetchedAt < PROFILE_CACHE_TTL_MS)) {
-    console.log(`[Cache Hit] Using cached profile for store ${storeId}`);
-    return cached.profile;
-  }
-
-  console.log(`[Cache Miss] Fetching profile from Firestore for store ${storeId}`);
-  const profileRef = doc(db, "restaurantProfile", storeId);
-  const profileSnap = await getDoc(profileRef);
-  if (!profileSnap.exists()) {
-    return null;
-  }
-  const profile = profileSnap.data();
-  profileCache.set(storeId, {
-    profile,
-    fetchedAt: now
-  });
-  return profile;
-}
-
-async function getStoreCouponsWithCache(storeId: string): Promise<any[]> {
-  const cached = couponsCache.get(storeId);
-  const now = Date.now();
-  if (cached && (now - cached.fetchedAt < COUPONS_CACHE_TTL_MS)) {
-    console.log(`[Cache Hit] Using cached coupons for store ${storeId}`);
-    return cached.coupons;
-  }
-
-  console.log(`[Cache Miss] Fetching coupons from Firestore for store ${storeId}`);
-  const couponsRef = collection(db, "coupons");
-  const q = query(couponsRef, where("storeId", "==", storeId));
-  const qSnap = await getDocs(q);
-
-  const coupons: any[] = [];
-  qSnap.forEach(docSnap => {
-    const c = docSnap.data();
-    if (c.active) coupons.push(c);
-  });
-
-  couponsCache.set(storeId, {
-    coupons,
-    fetchedAt: now
-  });
-
-  return coupons;
-}
-
-async function getStoreOrdersWithCache(storeId: string): Promise<any[]> {
-  const cached = ordersCache.get(storeId);
-  const now = Date.now();
-  if (cached && (now - cached.fetchedAt < ORDERS_CACHE_TTL_MS)) {
-    console.log(`[Cache Hit] Using cached orders for store ${storeId}`);
-    return cached.orders;
-  }
-
-  console.log(`[Cache Miss] Fetching orders from Firestore for store ${storeId}`);
-  const ordersRef = collection(db, "orders");
-  const q = query(ordersRef, where("storeId", "==", storeId));
-  const qSnap = await getDocs(q);
-
-  const orders: any[] = [];
-  qSnap.forEach(d => {
-    orders.push({ id: d.id, ...d.data() });
-  });
-
-  ordersCache.set(storeId, {
-    orders,
-    fetchedAt: now
-  });
-
-  return orders;
-}
-
 function clearAuthDirectory(storeId) {
   const dirPath = path.join(process.cwd(), `baileys_auth_info_${storeId}`);
   if (fs.existsSync(dirPath)) {
@@ -567,10 +471,24 @@ async function findOrdersByCustomer(storeId: string, senderId: string, altSender
   if (senderVariants.length === 0) return [];
 
   try {
-    const docs = await getStoreOrdersWithCache(storeId);
+    const ordersRef = collection(db, "orders");
+    const q = query(ordersRef, where("storeId", "==", storeId));
+    const qSnap = await getDocs(q);
+
+    let docs = qSnap.docs;
+
+    // Fallback: If no orders found with strict storeId match, try getting all orders for the store
+    if (docs.length === 0) {
+      const allSnap = await getDocs(ordersRef);
+      docs = allSnap.docs.filter(d => {
+        const o = d.data();
+        return !o.storeId || o.storeId === storeId || String(o.storeId).toLowerCase() === String(storeId).toLowerCase();
+      });
+    }
 
     const matchedOrders: any[] = [];
-    for (const o of docs) {
+    for (const d of docs) {
+      const o = d.data();
       const phoneCandidates = [
         o.customer?.phone,
         o.customer?.telefone,
@@ -592,7 +510,7 @@ async function findOrdersByCustomer(storeId: string, senderId: string, altSender
       }
 
       if (matched) {
-        matchedOrders.push(o);
+        matchedOrders.push({ id: d.id, ...o });
       }
     }
 
@@ -674,15 +592,20 @@ async function findOrderByIdOrNumber(storeId: string, text: string): Promise<any
     } catch (e) {}
   }
 
-  // 2. Query orders for the store using the cached store orders
+  // 2. Query orders for the store if direct lookup misses
   try {
-    const docs = await getStoreOrdersWithCache(storeId);
+    const ordersRef = collection(db, "orders");
+    const qSnap = await getDocs(ordersRef);
 
-    for (const o of docs) {
-      const orderId = (o.id || '').toString().toUpperCase();
+    for (const d of qSnap.docs) {
+      const o = d.data();
+      if (o.storeId && o.storeId !== storeId && String(o.storeId).toLowerCase() !== String(storeId).toLowerCase()) {
+        continue;
+      }
+      const orderId = (o.id || d.id || '').toString().toUpperCase();
       for (const cand of uniqueCandidates) {
         if (orderId === cand || orderId.endsWith(cand) || cand.endsWith(orderId)) {
-          return o;
+          return { id: d.id, ...o };
         }
       }
     }
@@ -782,9 +705,11 @@ async function handleIncomingMessage(storeId: string, sock: any, senderId: strin
     return;
   }
 
-  // Fetch store profile (using cache to reduce Firestore reads)
-  const profile = await getRestaurantProfileWithCache(storeId);
-  if (!profile) return;
+  // Fetch store profile
+  const profileRef = doc(db, "restaurantProfile", storeId);
+  const profileSnap = await getDoc(profileRef);
+  if (!profileSnap.exists()) return;
+  const profile = profileSnap.data();
 
   if (profile.whatsappBotPaused) {
     return;
@@ -953,16 +878,37 @@ async function handleIncomingMessage(storeId: string, sock: any, senderId: strin
     return;
   }
 
-  // 3. Cardápio atualizado (Envia o link do cardápio online com fotos ao invés da lista de texto, reduzindo drasticamente as leituras do Firestore)
+  // 3. Cardápio atualizado (buscando os dados direto do nosso banco)
   if (lowerText === '1' || lowerText.includes('cardapio') || lowerText.includes('cardápio') || lowerText.includes('produtos') || lowerText.includes('catalogo') || lowerText.includes('catálogo')) {
-    const customBaseUrl = profile.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
-    const normalizedBaseUrl = customBaseUrl.endsWith('/') ? customBaseUrl.slice(0, -1) : customBaseUrl;
-    const link = `${normalizedBaseUrl}/cliente.html?store=${storeId}`;
+    const productsRef = collection(db, "products");
+    const q = query(productsRef, where("storeId", "==", storeId));
+    const qSnap = await getDocs(q);
     
-    const menuText = `📋 *Nosso Cardápio Online* 🍔🍕\n\n` +
-                     `Para visualizar nosso cardápio completo com fotos, adicionais, escolher as opções do seu jeito e fazer seu pedido com facilidade, acesse nosso link:\n\n` +
-                     `👉 *${link}*\n\n` +
-                     `💡 _É rápido, seguro e prático!_`;
+    let menuText = `📋 *Nosso Cardápio:*\n\n`;
+    const categories: Record<string, any[]> = {};
+    qSnap.forEach(docSnap => {
+      const p = docSnap.data();
+      const cat = p.category || 'Geral';
+      if (!categories[cat]) categories[cat] = [];
+      categories[cat].push(p);
+    });
+
+    for (const [cat, items] of Object.entries(categories)) {
+      menuText += `*${cat.toUpperCase()}*\n`;
+      items.forEach(item => {
+        menuText += `- ${item.name}: R$ ${Number(item.price || 0).toFixed(2).replace('.', ',')}\n`;
+      });
+      menuText += `\n`;
+    }
+    
+    if (Object.keys(categories).length === 0) {
+      menuText = "Desculpe, nosso cardápio está sendo atualizado no momento.";
+    } else {
+      const customBaseUrl = profile.whatsappLinkUrl || 'https://tecinfo-app.github.io/PopFood';
+      const normalizedBaseUrl = customBaseUrl.endsWith('/') ? customBaseUrl.slice(0, -1) : customBaseUrl;
+      const link = `${normalizedBaseUrl}/cliente.html?store=${storeId}`;
+      menuText += `👉 *Peça online com fotos e adicionais:* \n${link}`;
+    }
 
     await sock.sendMessage(senderId, { text: menuText });
     return;
@@ -976,9 +922,17 @@ async function handleIncomingMessage(storeId: string, sock: any, senderId: strin
     return;
   }
 
-  // 5. Cupons (com uso de cache para evitar leituras excessivas do banco)
+  // 5. Cupons
   if (lowerText === '5' || lowerText.includes('cupons') || lowerText.includes('cupom') || lowerText.includes('promocao') || lowerText.includes('promoção')) {
-    const activeCoupons = await getStoreCouponsWithCache(storeId);
+    const couponsRef = collection(db, "coupons");
+    const q = query(couponsRef, where("storeId", "==", storeId));
+    const qSnap = await getDocs(q);
+    
+    let activeCoupons = [];
+    qSnap.forEach(docSnap => {
+      const c = docSnap.data();
+      if (c.active) activeCoupons.push(c);
+    });
 
     if (activeCoupons.length === 0) {
       await sock.sendMessage(senderId, { text: "🎫 *Cupons de Desconto*\n\nNo momento não temos cupons promocionais ativos. Fique de olho em nossas redes sociais para novidades!" });
