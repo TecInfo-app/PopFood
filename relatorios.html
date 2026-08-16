@@ -477,6 +477,35 @@ window.copyStoreLink = function() {
       }
     }
 
+    // Helpers for precise Local Date handling without UTC timezone skew
+    function formatLocalDateInput(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function parseLocalDateStart(dateStr) {
+      if (!dateStr) return null;
+      const parts = dateStr.split('-').map(Number);
+      if (parts.length < 3 || isNaN(parts[0])) return null;
+      return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+    }
+
+    function parseLocalDateEnd(dateStr) {
+      if (!dateStr) return null;
+      const parts = dateStr.split('-').map(Number);
+      if (parts.length < 3 || isNaN(parts[0])) return null;
+      return new Date(parts[0], parts[1] - 1, parts[2], 23, 59, 59, 999);
+    }
+
+    function formatLocalDateKey(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
     // Filter selectors range switcher
     window.selectTimeRangeFilter = function(rangeType) {
       activeRangeFilter = rangeType;
@@ -494,6 +523,12 @@ window.copyStoreLink = function() {
       const pickerRow = document.getElementById('custom-date-selectors');
       if (rangeType === 'custom') {
         pickerRow.classList.remove('hidden');
+        const startInput = document.getElementById('date-start');
+        const endInput = document.getElementById('date-end');
+        const todayStr = formatLocalDateInput(new Date());
+        if (!startInput.value) startInput.value = todayStr;
+        if (!endInput.value) endInput.value = todayStr;
+        executeCustomDateFilterQuery();
       } else {
         pickerRow.classList.add('hidden');
         triggerReportingProcessing(rangeType);
@@ -501,15 +536,28 @@ window.copyStoreLink = function() {
     }
 
     window.executeCustomDateFilterQuery = function() {
-      const start = document.getElementById('date-start').value;
-      const end = document.getElementById('date-end').value;
+      const startVal = document.getElementById('date-start').value;
+      const endVal = document.getElementById('date-end').value;
 
-      if (!start || !end) {
+      if (!startVal || !endVal) {
         alert("🔒 Por favor, preencha ambas datas inicial e final!");
         return;
       }
 
-      triggerReportingProcessing('custom', new Date(start), new Date(end));
+      const customStart = parseLocalDateStart(startVal);
+      const customEnd = parseLocalDateEnd(endVal);
+
+      if (!customStart || !customEnd) {
+        alert("Data inválida. Verifique os valores preenchidos.");
+        return;
+      }
+
+      if (customStart > customEnd) {
+        alert("A data inicial não pode ser maior que a data final.");
+        return;
+      }
+
+      triggerReportingProcessing('custom', customStart, customEnd);
     }
 
     // Deep processing metrics filter allocations with full integrity
@@ -529,13 +577,13 @@ window.copyStoreLink = function() {
       let filteredOrders = globalOrdersListForReports.filter(order => {
         // Exclude cancelled/pendente/preparing from cash inflows (only finished deliveries sum)
         if (order.status !== 'Entregue') return false;
+        if (!order.createdAt) return false;
 
         const orderDateObj = new Date(order.createdAt);
-        if (rangeType === 'custom') {
-          // Adjust bounds
-          const customE = new Date(optCustomEnd);
-          customE.setHours(23,59,59,999);
-          return orderDateObj >= optCustomStart && orderDateObj <= customE;
+        if (isNaN(orderDateObj.getTime())) return false;
+
+        if (rangeType === 'custom' && optCustomStart && optCustomEnd) {
+          return orderDateObj >= optCustomStart && orderDateObj <= optCustomEnd;
         }
 
         return orderDateObj >= borderLimitDate;
@@ -574,6 +622,7 @@ window.copyStoreLink = function() {
       const productsMap = {};
 
       orders.forEach(order => {
+        if (!Array.isArray(order.items)) return;
         order.items.forEach(item => {
           if (!productsMap[item.id]) {
             productsMap[item.id] = {
@@ -632,29 +681,33 @@ window.copyStoreLink = function() {
       const now = new Date();
       let iterationsCount = 7;
       
-      if (rangeType === 'hoje') iterationsCount = 1;
-      else if (rangeType === '30d') iterationsCount = 15; // summarize bi-daily for spacing elegance
-      else if (rangeType === 'custom' && customStart && customEnd) {
-        const diffTime = Math.abs(customEnd - customStart);
-        iterationsCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      if (rangeType === 'hoje') {
+        iterationsCount = 1;
+      } else if (rangeType === '30d') {
+        iterationsCount = 15; // summarize bi-daily for spacing elegance
+      } else if (rangeType === 'custom' && customStart && customEnd) {
+        const diffTime = Math.abs(customEnd.getTime() - customStart.getTime());
+        iterationsCount = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        if (iterationsCount < 1) iterationsCount = 1;
         if (iterationsCount > 30) iterationsCount = 30; // safety ceiling
       }
 
+      const baseDate = (rangeType === 'custom' && customEnd) ? new Date(customEnd) : new Date(now);
+
       for (let i = iterationsCount - 1; i >= 0; i--) {
-        const day = new Date();
-        if (rangeType === 'custom') {
-          day.setDate(customEnd.getDate() - i);
-        } else {
-          day.setDate(now.getDate() - i);
-        }
-        const key = day.toISOString().slice(0,10);
+        const day = new Date(baseDate);
+        day.setDate(baseDate.getDate() - i);
+        const key = formatLocalDateKey(day);
         dailySalesMap[key] = { label: day.toLocaleDateString('pt-BR', {day: 'numeric', month: 'short'}), profit: 0 };
         datesToAnalyze.push(key);
       }
 
       // Aggregate values
       orders.forEach(o => {
-        const orderDayKey = o.createdAt.slice(0,10);
+        if (!o.createdAt) return;
+        const oDate = new Date(o.createdAt);
+        if (isNaN(oDate.getTime())) return;
+        const orderDayKey = formatLocalDateKey(oDate);
         if (dailySalesMap[orderDayKey]) {
           dailySalesMap[orderDayKey].profit += (o.total || 0);
         }
@@ -718,6 +771,7 @@ window.copyStoreLink = function() {
 
       const catCounterMap = {};
       orders.forEach(o => {
+        if (!Array.isArray(o.items)) return;
         o.items.forEach(it => {
           if (!catCounterMap[it.categoryId]) {
             catCounterMap[it.categoryId] = 0;
@@ -770,12 +824,15 @@ window.copyStoreLink = function() {
 
       const activeList = globalOrdersListForReports.filter(order => {
         if (order.status !== 'Entregue') return false;
+        if (!order.createdAt) return false;
         
         const dObj = new Date(order.createdAt);
+        if (isNaN(dObj.getTime())) return false;
+
         if (activeRangeFilter === 'custom') {
-          const s = new Date(document.getElementById('date-start').value);
-          const e = new Date(document.getElementById('date-end').value);
-          e.setHours(23,59,59,999);
+          const s = parseLocalDateStart(document.getElementById('date-start').value);
+          const e = parseLocalDateEnd(document.getElementById('date-end').value);
+          if (!s || !e) return false;
           return dObj >= s && dObj <= e;
         }
 
@@ -791,8 +848,8 @@ window.copyStoreLink = function() {
       csv += "ID Pedido,Data,Cliente,Forma Pagamento,Subtotal (R$),Taxa Entrega (R$),Desconto (R$),Total Faturado (R$)\n";
 
       activeList.forEach(order => {
-        const clientName = `"${order.customer.name.replace(/"/g, '""')}"`;
-        const line = `${order.id},${order.date},${clientName},${order.paymentMethod},${order.subtotal.toFixed(2)},${order.deliveryFee.toFixed(2)},${(order.desconto || 0).toFixed(2)},${order.total.toFixed(2)}\n`;
+        const clientName = `"${(order.customer?.name || '').replace(/"/g, '""')}"`;
+        const line = `${order.id},${order.date || ''},${clientName},${order.paymentMethod || ''},${(order.subtotal || 0).toFixed(2)},${(order.deliveryFee || 0).toFixed(2)},${(order.desconto || 0).toFixed(2)},${(order.total || 0).toFixed(2)}\n`;
         csv += line;
       });
 
