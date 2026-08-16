@@ -668,9 +668,30 @@
   </div>
 
   <script type="module">
-    import { db, auth, Timestamp, COLLECTIONS, collection, query, where, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from './firebase-config.js';
+    import { db, auth, Timestamp, COLLECTIONS, collection, query, where, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, increment } from './firebase-config.js';
 
     window.currentStoreId = null;
+
+    // Helper to increment menuVersion atomically whenever catalog changes
+    async function bumpMenuVersion() {
+      if (!window.currentStoreId) return;
+      try {
+        const profileRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+        await updateDoc(profileRef, {
+          menuVersion: increment(1),
+          menuUpdatedAt: new Date().toISOString()
+        });
+      } catch (e) {
+        try {
+          await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
+            menuVersion: Date.now(),
+            menuUpdatedAt: new Date().toISOString()
+          }, { merge: true });
+        } catch (err) {
+          console.warn("Could not bump menu version:", err);
+        }
+      }
+    }
 
     // App state
     let activeCategories = [];
@@ -856,6 +877,7 @@ storeId: window.currentStoreId
         }
 
         alert("🎉 Cardápio importado com sucesso no Firebase!");
+        bumpMenuVersion();
         refreshManagementDatabases();
       } catch (err) {
         console.error("Erro importando cardápio: ", err);
@@ -1410,6 +1432,7 @@ storeId: window.currentStoreId
         await updateDoc(doc(db, COLLECTIONS.categories, current.id), { order: current.order });
         await updateDoc(doc(db, COLLECTIONS.categories, other.id), { order: other.order });
         
+        bumpMenuVersion();
         refreshManagementDatabases();
       } catch (err) {
         console.error("Sorting transition error: ", err);
@@ -1435,6 +1458,7 @@ storeId: window.currentStoreId
 
         await setDoc(doc(db, COLLECTIONS.categories, catId), block);
         (document.getElementById('new-category-name') || {}).value = '';
+        bumpMenuVersion();
         refreshManagementDatabases();
       } catch(err) {
         console.error("Creating category fail: ", err);
@@ -1447,6 +1471,7 @@ storeId: window.currentStoreId
 
       try {
         await deleteDoc(doc(db, COLLECTIONS.categories, catId));
+        bumpMenuVersion();
         refreshManagementDatabases();
       } catch (err) {
         console.error("Excluir categoria fail: ", err);
@@ -1615,6 +1640,7 @@ storeId: window.currentStoreId
       try {
         await setDoc(doc(db, COLLECTIONS.products, prdId), productBlock, { merge: true });
         toggleProductFormModal(false);
+        bumpMenuVersion();
         refreshManagementDatabases();
       } catch (err) {
         console.error("Setting product fail: ", err);
@@ -1627,6 +1653,7 @@ storeId: window.currentStoreId
         await updateDoc(doc(db, COLLECTIONS.products, prdId), {
           paused: !isCurrentlyPaused
         });
+        bumpMenuVersion();
         refreshManagementDatabases();
       } catch(err) {
         console.error("Pause toggle prd error: ", err);
@@ -1640,6 +1667,7 @@ storeId: window.currentStoreId
       try {
         await deleteDoc(doc(db, COLLECTIONS.products, prdId));
         await deleteDoc(doc(db, COLLECTIONS.complements, prdId));
+        bumpMenuVersion();
         refreshManagementDatabases();
       } catch(err) {
         console.error("Deleting catalog products fail: ", err);
@@ -1681,6 +1709,7 @@ storeId: window.currentStoreId
           await setDoc(doc(db, COLLECTIONS.complements, newPrdId), compData);
         }
 
+        bumpMenuVersion();
         refreshManagementDatabases();
       } catch (err) {
         console.error("Erro ao duplicar produto: ", err);
@@ -1898,6 +1927,7 @@ storeId: window.currentStoreId
          // Uncheck all and hide toolbar
          document.querySelectorAll('.product-selection-checkbox').forEach(cb => cb.checked = false);
          updateSelectedProductsCount();
+         bumpMenuVersion();
          drawProductsCatalogViewer(document.getElementById('product-search-bar').value);
       } catch (e) {
          console.error("Erro na ação em massa:", e);
@@ -1920,6 +1950,7 @@ storeId: window.currentStoreId
          // Uncheck all and hide toolbar
          document.querySelectorAll('.product-selection-checkbox').forEach(cb => cb.checked = false);
          updateSelectedProductsCount();
+         bumpMenuVersion();
          // The snapshot listener will trigger and redraw automatically, but we can redraw manually too
          // drawProductsCatalogViewer(document.getElementById('product-search-bar').value);
       } catch (e) {
@@ -1957,6 +1988,7 @@ storeId: window.currentStoreId
       try {
         await updateDoc(doc(db, COLLECTIONS.products, prd.id), { order: prd.order });
         await updateDoc(doc(db, COLLECTIONS.products, other.id), { order: other.order });
+        bumpMenuVersion();
       } catch (err) {
         console.error("Erro ao reordenar produtos: ", err);
       }
@@ -2012,6 +2044,7 @@ storeId: window.currentStoreId
           compsListArr[targetIdx] = temp;
           
           await updateDoc(compRef, { groups: compsListArr });
+          bumpMenuVersion();
           drawProductComplementsStructure();
         }
       } catch (err) {
@@ -2187,6 +2220,7 @@ storeId: window.currentStoreId
 
         data.groups.push(newGroup);
         await setDoc(docRef, data);
+        bumpMenuVersion();
 
         (document.getElementById('comp-new-group-name') || {}).value = '';
         (document.getElementById('comp-new-group-desc') || {}).value = '';
@@ -2212,6 +2246,7 @@ storeId: window.currentStoreId
           const data = compSnap.data();
           data.groups.splice(index, 1);
           await setDoc(docRef, data);
+          bumpMenuVersion();
           drawProductComplementsStructure();
         }
       } catch (err) {
@@ -2259,6 +2294,7 @@ storeId: window.currentStoreId
           const data = compSnap.data();
           data.groups[groupIdx].options[optIdx].image = base64;
           await setDoc(docRef, data);
+          bumpMenuVersion();
           drawProductComplementsStructure();
         }
       } catch (e) {
@@ -2333,6 +2369,7 @@ storeId: window.currentStoreId
           });
 
           await setDoc(docRef, data);
+          bumpMenuVersion();
 
           optNameField.value = '';
           optPDVField.value = '';
@@ -2421,6 +2458,7 @@ storeId: window.currentStoreId
         group.maxSelection = newMax;
 
         await setDoc(docRef, data);
+        bumpMenuVersion();
         
         toggleEditComplementGroupModal(false);
         drawProductComplementsStructure();
@@ -2462,6 +2500,7 @@ storeId: window.currentStoreId
         opt.description = newDesc;
 
         await setDoc(docRef, data);
+        bumpMenuVersion();
         drawProductComplementsStructure();
       } catch (err) {
         console.error("Edit complement option fail: ", err);
@@ -2477,6 +2516,7 @@ storeId: window.currentStoreId
           const data = compSnap.data();
           data.groups[groupIdx].options[optIdx].paused = !isCurrentlyPaused;
           await setDoc(docRef, data);
+          bumpMenuVersion();
           drawProductComplementsStructure();
         }
       } catch (err) {
@@ -2493,6 +2533,7 @@ storeId: window.currentStoreId
           const data = compSnap.data();
           data.groups[groupIdx].options.splice(optIdx, 1);
           await setDoc(docRef, data);
+          bumpMenuVersion();
           drawProductComplementsStructure();
         }
       } catch (err) {

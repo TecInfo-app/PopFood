@@ -3115,8 +3115,9 @@
           }
         }
 
+        prefillCatalogFromCache();
         await loadProfileAndBanners();
-        setupCatalogListeners();
+        setupCatalogCache();
         refreshCartOverview();
         fetchRestaurantRatings(); // Load ratings asynchronous
 
@@ -3673,6 +3674,10 @@
 
                 checkAndShowStoreHoursStatus();
 
+                // Check menu version and sync from Firestore if changed
+                const serverMenuVersion = restaurantProfile.menuVersion || 1;
+                checkAndSyncMenuVersion(serverMenuVersion);
+
                 // Sync Loyalty displays
                 if (typeof window.updateLoyaltyCatalogBannerUI === "function") {
                   window.updateLoyaltyCatalogBannerUI();
@@ -4208,36 +4213,147 @@
         });
       }
 
-      // Load menu categories AND active catalog products real-time
-      function setupCatalogListeners() {
-        // Categories Listener
-        const categoriesRef = query(
-          collection(db, COLLECTIONS.categories),
-          where("storeId", "==", window.currentStoreId),
-        );
-        onSnapshot(categoriesRef, (categoriesSnap) => {
-          categoriesList = [];
-          categoriesSnap.forEach((doc) => {
-            categoriesList.push({ id: doc.id, ...doc.data() });
-          });
-          categoriesList.sort((a, b) => (a.order || 0) - (b.order || 0));
-          renderCategoryFilterTabs();
-          renderCatalogItems(); // Refresh catalog UI
-        });
+      // ==========================================
+      // CACHE LOCAL & OTIMIZAÇÃO DE LEITURAS FIRESTORE
+      // ==========================================
+      function getMenuCacheKey() {
+        return "popfood_menu_cache_" + (window.currentStoreId || "default");
+      }
 
-        // Products Listener
-        const productsRef = query(
-          collection(db, COLLECTIONS.products),
-          where("storeId", "==", window.currentStoreId),
-        );
-        onSnapshot(productsRef, (productsSnap) => {
-          productsList = [];
-          productsSnap.forEach((docSnap) => {
-            productsList.push({ id: docSnap.id, ...docSnap.data() });
+      function getCachedMenuData() {
+        try {
+          const raw = localStorage.getItem(getMenuCacheKey());
+          if (!raw) return null;
+          return JSON.parse(raw);
+        } catch (e) {
+          console.warn("[Menu Cache] Falha ao ler cache local:", e);
+          return null;
+        }
+      }
+
+      function saveCachedMenuData(data) {
+        try {
+          localStorage.setItem(getMenuCacheKey(), JSON.stringify(data));
+        } catch (e) {
+          console.warn("[Menu Cache] Falha ao salvar cache (quota excedida?):", e);
+        }
+      }
+
+      let isSyncingCatalog = false;
+      let currentLoadedMenuVersion = null;
+
+      // Pré-carregamento imediato do cache local para renderização instantânea (0ms)
+      function prefillCatalogFromCache() {
+        const cached = getCachedMenuData();
+        if (
+          cached &&
+          Array.isArray(cached.categories) &&
+          Array.isArray(cached.products) &&
+          cached.categories.length > 0
+        ) {
+          categoriesList = cached.categories;
+          productsList = cached.products;
+          currentLoadedMenuVersion = cached.version || 0;
+          renderCategoryFilterTabs();
+          renderCatalogItems();
+          console.log(`[Menu Cache] Cardápio carregado instantaneamente do cache local (v${currentLoadedMenuVersion}).`);
+        }
+      }
+
+      // Sincroniza cardápio do Firestore (categorias e produtos) apenas quando a versão difere
+      async function syncCatalogFromServer(targetVersion) {
+        if (!window.currentStoreId || isSyncingCatalog) return;
+        isSyncingCatalog = true;
+
+        try {
+          console.log(`[Menu Cache] Atualizando cardápio do Firestore (v${targetVersion})...`);
+
+          // 1 Leitura para buscar categorias da loja
+          const categoriesRef = query(
+            collection(db, COLLECTIONS.categories),
+            where("storeId", "==", window.currentStoreId),
+          );
+          const categoriesSnap = await getDocs(categoriesRef);
+          const newCats = [];
+          categoriesSnap.forEach((doc) => {
+            newCats.push({ id: doc.id, ...doc.data() });
           });
-          productsList.sort((a, b) => (a.order || 0) - (b.order || 0));
-          renderCatalogItems(); // Refresh catalog UI
-        });
+          newCats.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+          // 1 Leitura para buscar produtos da loja
+          const productsRef = query(
+            collection(db, COLLECTIONS.products),
+            where("storeId", "==", window.currentStoreId),
+          );
+          const productsSnap = await getDocs(productsRef);
+          const newProds = [];
+          productsSnap.forEach((docSnap) => {
+            newProds.push({ id: docSnap.id, ...docSnap.data() });
+          });
+          newProds.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+          categoriesList = newCats;
+          productsList = newProds;
+          currentLoadedMenuVersion = targetVersion;
+
+          // Manter complementos já em cache caso ainda sejam válidos
+          const cached = getCachedMenuData();
+          const complementsCache =
+            cached && cached.version === targetVersion && cached.complements
+              ? cached.complements
+              : {};
+
+          saveCachedMenuData({
+            version: targetVersion,
+            categories: newCats,
+            products: newProds,
+            complements: complementsCache,
+            savedAt: new Date().toISOString(),
+          });
+
+          renderCategoryFilterTabs();
+          renderCatalogItems();
+          console.log(`[Menu Cache] Cardápio sincronizado com sucesso e salvo no cache local (v${targetVersion}).`);
+        } catch (err) {
+          console.error("[Menu Cache] Erro ao sincronizar cardápio do Firestore:", err);
+        } finally {
+          isSyncingCatalog = false;
+        }
+      }
+
+      function checkAndSyncMenuVersion(serverVersion) {
+        const targetV = serverVersion || 1;
+        const cached = getCachedMenuData();
+
+        if (cached && cached.version === targetV && categoriesList.length > 0) {
+          currentLoadedMenuVersion = targetV;
+          console.log(`[Menu Cache] Cardápio já está atualizado (v${targetV}). Zero leituras adicionais consumidas!`);
+          return;
+        }
+
+        if (
+          cached &&
+          cached.version === targetV &&
+          Array.isArray(cached.categories) &&
+          Array.isArray(cached.products)
+        ) {
+          categoriesList = cached.categories;
+          productsList = cached.products;
+          currentLoadedMenuVersion = targetV;
+          renderCategoryFilterTabs();
+          renderCatalogItems();
+          console.log(`[Menu Cache] Cardápio sincronizado via cache local (v${targetV}). Zero leituras consumidas!`);
+          return;
+        }
+
+        syncCatalogFromServer(targetV);
+      }
+
+      function setupCatalogCache() {
+        // Se já tivermos o restaurantProfile carregado, checamos a versão
+        if (restaurantProfile && restaurantProfile.menuVersion) {
+          checkAndSyncMenuVersion(restaurantProfile.menuVersion);
+        }
       }
 
       // Setup Category selection tabs/pills
@@ -4857,21 +4973,42 @@
           modalOrig.classList.add("hidden");
         }
 
-        // Query database complements for current selected prd
+        // Query complements for current selected product (Cache-first)
         const compContainer = document.getElementById("modal-complements");
         compContainer.innerHTML = "";
 
         try {
-          const compRef = doc(db, COLLECTIONS.complements, prod.id);
-          const compSnap = await getDoc(compRef);
-
+          let compData = null;
+          const cachedMenu = getCachedMenuData();
           if (
-            compSnap.exists() &&
-            compSnap.data().groups &&
-            compSnap.data().groups.length > 0
+            cachedMenu &&
+            cachedMenu.complements &&
+            cachedMenu.complements[prod.id] !== undefined
           ) {
-            const compData = compSnap.data().groups;
+            compData = cachedMenu.complements[prod.id];
+          } else {
+            const compRef = doc(db, COLLECTIONS.complements, prod.id);
+            const compSnap = await getDoc(compRef);
 
+            if (
+              compSnap.exists() &&
+              compSnap.data().groups &&
+              compSnap.data().groups.length > 0
+            ) {
+              compData = compSnap.data().groups;
+            } else {
+              compData = [];
+            }
+
+            // Armazena no cache local de complementos
+            if (cachedMenu) {
+              if (!cachedMenu.complements) cachedMenu.complements = {};
+              cachedMenu.complements[prod.id] = compData;
+              saveCachedMenuData(cachedMenu);
+            }
+          }
+
+          if (compData && compData.length > 0) {
             compData.forEach((group, groupIdx) => {
               const groupDiv = document.createElement("div");
               groupDiv.className =

@@ -13,7 +13,8 @@ import {
   orderBy, 
   onSnapshot,
   Timestamp,
-  arrayUnion 
+  arrayUnion,
+  increment 
 } from 'firebase/firestore';
 import { 
   getAuth,
@@ -242,6 +243,7 @@ export {
   orderBy,
   onSnapshot,
   arrayUnion,
+  increment,
 
   // Auth APIs
   signInWithEmailAndPassword,
