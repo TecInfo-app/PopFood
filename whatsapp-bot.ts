@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 
 const sessions = new Map();
+const startingLocks = new Map<string, Promise<any>>();
 const reconnectTimers = new Map();
 let db;
 
@@ -251,200 +252,240 @@ export async function stopWhatsappSession(storeId) {
 }
 
 async function startWhatsappSession(storeId) {
-  // Clear any pending reconnect timer for this store
-  if (reconnectTimers.has(storeId)) {
-    clearTimeout(reconnectTimers.get(storeId));
-    reconnectTimers.delete(storeId);
+  // If a session is already starting for this store, wait for it
+  if (startingLocks.has(storeId)) {
+    return startingLocks.get(storeId);
   }
 
-  // Clean up any existing socket for this store if one exists
-  const existingSession = sessions.get(storeId);
-  if (existingSession && existingSession.sock) {
-    try {
-      (existingSession.sock.ev as any).removeAllListeners?.();
-      existingSession.sock.end(undefined);
-    } catch (e) {}
-  }
-
-  // Set initial status to connecting in Firestore
-  await updateWhatsappDocInFirestore(storeId, {
-    connected: false,
-    qr: null,
-    status: 'connecting'
-  });
-
-  const { state, saveCreds } = await useMultiFileAuthState(`baileys_auth_info_${storeId}`);
-  let version: any = [2, 3000, 1017531234];
-  try {
-    const v = await fetchLatestBaileysVersion();
-    if (v && v.version) {
-      version = v.version;
+  const startPromise = (async () => {
+    // Clear any pending reconnect timer for this store
+    if (reconnectTimers.has(storeId)) {
+      clearTimeout(reconnectTimers.get(storeId));
+      reconnectTimers.delete(storeId);
     }
-  } catch (e) {}
-  
-  const sock = makeWASocket({
-    version,
-    printQRInTerminal: false,
-    auth: state,
-    browser: Browsers.ubuntu('Chrome'),
-    syncFullHistory: false,
-    markOnlineOnConnect: false,
-    keepAliveIntervalMs: 30000,
-    connectTimeoutMs: 60000,
-    defaultQueryTimeoutMs: 60000,
-    retryRequestDelayMs: 2000,
-    maxMsgRetryCount: 5,
-    shouldIgnoreJid: (jid) => jid.includes('status@broadcast') || jid.includes('newsletter'),
-    getMessage: async () => ({ conversation: '' }),
-    logger: pino({ level: 'silent' })
-  });
 
-  const sessionState: any = {
-    sock,
-    qr: null,
-    connected: false,
-    initialPromise: null
-  };
-  sessions.set(storeId, sessionState);
-  sock.ev.on('creds.update', saveCreds);
+    // Clean up any existing socket for this store if one exists
+    const existingSession = sessions.get(storeId);
+    if (existingSession && existingSession.sock) {
+      try {
+        (existingSession.sock.ev as any).removeAllListeners?.('connection.update');
+        (existingSession.sock.ev as any).removeAllListeners?.('creds.update');
+        (existingSession.sock.ev as any).removeAllListeners?.('messages.upsert');
+        (existingSession.sock.ev as any).removeAllListeners?.();
+        existingSession.sock.end(undefined);
+      } catch (e) {}
+    }
 
-  sessionState.initialPromise = new Promise((resolve) => {
-    let resolved = false;
-    setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        resolve({ status: 'connecting' });
+    // Set initial status to connecting in Firestore
+    await updateWhatsappDocInFirestore(storeId, {
+      connected: false,
+      qr: null,
+      status: 'connecting'
+    });
+
+    const { state, saveCreds } = await useMultiFileAuthState(`baileys_auth_info_${storeId}`);
+    let version: any = [2, 3000, 1017531234];
+    try {
+      const v = await fetchLatestBaileysVersion();
+      if (v && v.version) {
+        version = v.version;
       }
-    }, 3000);
+    } catch (e) {}
+    
+    const sock = makeWASocket({
+      version,
+      printQRInTerminal: false,
+      auth: state,
+      browser: Browsers.ubuntu('Chrome'),
+      syncFullHistory: false,
+      markOnlineOnConnect: false,
+      keepAliveIntervalMs: 30000,
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000,
+      retryRequestDelayMs: 2000,
+      maxMsgRetryCount: 5,
+      shouldIgnoreJid: (jid) => jid.includes('status@broadcast') || jid.includes('newsletter'),
+      getMessage: async () => ({ conversation: '' }),
+      logger: pino({ level: 'silent' })
+    });
 
-    sock.ev.on('connection.update', async (update) => {
-      const { connection, lastDisconnect, qr } = update;
-      
-      if (qr) {
-        sessionState.qr = await QRCode.toDataURL(qr);
-        await updateWhatsappDocInFirestore(storeId, {
-          connected: false,
-          qr: sessionState.qr,
-          status: 'qr_ready'
-        });
+    const sessionState: any = {
+      sock,
+      qr: null,
+      connected: false,
+      initialPromise: null
+    };
+    sessions.set(storeId, sessionState);
+    sock.ev.on('creds.update', saveCreds);
+
+    sessionState.initialPromise = new Promise((resolve) => {
+      let resolved = false;
+      setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          resolve({ qr: sessionState.qr });
+          resolve({ status: 'connecting' });
         }
-      }
+      }, 3000);
 
-      if (connection === 'close') {
-        const wasConnected = sessionState.connected === true;
-        sessionState.connected = false;
-        sessionState.qr = null;
+      sock.ev.on('connection.update', async (update) => {
+        // Ensure this update belongs to the current active socket instance
+        const currentSession = sessions.get(storeId);
+        if (!currentSession || currentSession.sock !== sock) {
+          return;
+        }
+
+        const { connection, lastDisconnect, qr } = update;
         
-        const errObj = lastDisconnect?.error as any;
-        const statusCode = errObj?.output?.statusCode || errObj?.statusCode;
-        const errMsg = String(errObj?.message || errObj || '');
+        if (qr) {
+          sessionState.qr = await QRCode.toDataURL(qr);
+          await updateWhatsappDocInFirestore(storeId, {
+            connected: false,
+            qr: sessionState.qr,
+            status: 'qr_ready'
+          });
+          if (!resolved) {
+            resolved = true;
+            resolve({ qr: sessionState.qr });
+          }
+        }
 
-        // DisconnectReason.restartRequired (515) occurs during normal login / authentication stream transitions
-        const isRestartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515 || errMsg.includes('515') || errMsg.includes('restart required');
-        if (isRestartRequired) {
-          console.log(`[WhatsApp] Stream restart required (515) for store ${storeId}. Reconnecting session...`);
+        if (connection === 'close') {
+          const wasConnected = sessionState.connected === true;
+          sessionState.connected = false;
+          sessionState.qr = null;
+          
+          const errObj = lastDisconnect?.error as any;
+          const statusCode = errObj?.output?.statusCode || errObj?.statusCode;
+          const errMsg = String(errObj?.message || errObj || '');
+          const isConflict = errMsg.toLowerCase().includes('conflict') || statusCode === 440 || statusCode === DisconnectReason.connectionReplaced;
+
+          // DisconnectReason.restartRequired (515) occurs during normal login / authentication stream transitions
+          const isRestartRequired = statusCode === DisconnectReason.restartRequired || statusCode === 515 || errMsg.includes('515') || errMsg.includes('restart required');
+          if (isRestartRequired) {
+            console.log(`[WhatsApp] Stream restart required (515) for store ${storeId}. Reconnecting session...`);
+            try {
+              (sock.ev as any).removeAllListeners?.();
+              sock.end(undefined);
+            } catch (e) {}
+            
+            if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
+            const t = setTimeout(() => {
+              reconnectTimers.delete(storeId);
+              startWhatsappSession(storeId).catch(console.error);
+            }, 1500);
+            reconnectTimers.set(storeId, t);
+            return;
+          }
+
+          console.log(`[WhatsApp] Connection closed for store ${storeId}. Status code: ${statusCode}. Was connected: ${wasConnected}. Reason: ${errMsg}`);
+
+          // Only permanently clear session if explicitly logged out (and NOT just a temporary stream conflict) or if QR timed out before scanning
+          const isLoggedOut = (statusCode === DisconnectReason.loggedOut || statusCode === 401) && !isConflict;
+          const isQrTimeout = !wasConnected && (statusCode === DisconnectReason.timedOut || statusCode === 408);
+
+          // Teardown the closed socket instance
           try {
             (sock.ev as any).removeAllListeners?.();
             sock.end(undefined);
           } catch (e) {}
-          
-          if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
-          const t = setTimeout(() => {
-            reconnectTimers.delete(storeId);
-            startWhatsappSession(storeId).catch(console.error);
-          }, 1500);
-          reconnectTimers.set(storeId, t);
-          return;
+
+          if (isLoggedOut || isQrTimeout) {
+            console.log(`[WhatsApp] Session permanently closed (isLoggedOut: ${isLoggedOut}, isQrTimeout: ${isQrTimeout}) for store ${storeId}. Clearing auth directory.`);
+            sessions.delete(storeId);
+            clearAuthDirectory(storeId);
+            await updateWhatsappDocInFirestore(storeId, {
+              connected: false,
+              qr: null,
+              status: 'disconnected'
+            });
+          } else if (isConflict) {
+            // Stream conflict (duplicate socket or other WhatsApp Web tab). Back off cleanly and auto-reconnect
+            console.log(`[WhatsApp] Stream conflict detected for store ${storeId}. Re-establishing clean connection in 4s...`);
+            await updateWhatsappDocInFirestore(storeId, {
+              connected: false,
+              qr: null,
+              status: 'connecting'
+            });
+
+            if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
+            const t = setTimeout(() => {
+              reconnectTimers.delete(storeId);
+              startWhatsappSession(storeId).catch(console.error);
+            }, 4000);
+            reconnectTimers.set(storeId, t);
+          } else {
+            // It's a temporary connection drop (network drop, socket timeout, 503 stream error, etc). Reconnect automatically!
+            console.log(`[WhatsApp] Temporary disconnect (code: ${statusCode}) for store ${storeId}. Auto-reconnecting in 3s...`);
+            await updateWhatsappDocInFirestore(storeId, {
+              connected: false,
+              qr: null,
+              status: 'connecting'
+            });
+            
+            if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
+            const t = setTimeout(() => {
+              reconnectTimers.delete(storeId);
+              startWhatsappSession(storeId).catch(console.error);
+            }, 3000);
+            reconnectTimers.set(storeId, t);
+          }
+        } else if (connection === 'open') {
+          sessionState.connected = true;
+          sessionState.qr = null;
+          await updateWhatsappDocInFirestore(storeId, {
+            connected: true,
+            qr: null,
+            status: 'connected'
+          });
+          if (!resolved) {
+            resolved = true;
+            resolve({ connected: true });
+          }
+          console.log(`WhatsApp connected for store ${storeId}`);
         }
+      });
+    });
 
-        console.log(`[WhatsApp] Connection closed for store ${storeId}. Status code: ${statusCode}. Was connected: ${wasConnected}. Reason: ${errMsg}`);
-
-        // Only permanently clear session if explicitly logged out or if QR timed out before scanning
-        const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
-        const isQrTimeout = !wasConnected && (statusCode === DisconnectReason.timedOut || statusCode === 408);
-
-        // Teardown the closed socket instance
+    sock.ev.on('messages.upsert', async (m) => {
+      if (m.type !== 'notify') return;
+      for (const msg of (m.messages || [])) {
         try {
-          (sock.ev as any).removeAllListeners?.();
-          sock.end(undefined);
-        } catch (e) {}
-
-        if (isLoggedOut || isQrTimeout) {
-          console.log(`[WhatsApp] Session permanently closed (isLoggedOut: ${isLoggedOut}, isQrTimeout: ${isQrTimeout}) for store ${storeId}. Clearing auth directory.`);
-          sessions.delete(storeId);
-          clearAuthDirectory(storeId);
-          await updateWhatsappDocInFirestore(storeId, {
-            connected: false,
-            qr: null,
-            status: 'disconnected'
-          });
-        } else {
-          // It's a temporary connection drop (network drop, socket timeout, 503 stream error, etc). Reconnect automatically!
-          console.log(`[WhatsApp] Temporary disconnect (code: ${statusCode}) for store ${storeId}. Auto-reconnecting in 3s...`);
-          await updateWhatsappDocInFirestore(storeId, {
-            connected: false,
-            qr: null,
-            status: 'connecting'
-          });
+          if (!msg.message || msg.key.fromMe) continue;
+          const senderId = msg.key.remoteJid || '';
+          const participantId = msg.key.participant || (msg as any).participant || (msg.key as any).participantAlt || (msg.key as any).remoteJidAlt || '';
           
-          if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
-          const t = setTimeout(() => {
-            reconnectTimers.delete(storeId);
-            startWhatsappSession(storeId).catch(console.error);
-          }, 3000);
-          reconnectTimers.set(storeId, t);
+          const text = 
+            msg.message.conversation ||
+            msg.message.extendedTextMessage?.text ||
+            msg.message.imageMessage?.caption ||
+            msg.message.videoMessage?.caption ||
+            msg.message.documentMessage?.caption ||
+            msg.message.buttonsResponseMessage?.selectedButtonId ||
+            msg.message.buttonsResponseMessage?.selectedDisplayText ||
+            msg.message.listResponseMessage?.singleSelectReply?.selectedRowId ||
+            msg.message.listResponseMessage?.title ||
+            msg.message.templateButtonReplyMessage?.selectedId ||
+            msg.message.templateButtonReplyMessage?.selectedDisplayText ||
+            msg.message.interactiveResponseMessage?.body?.text ||
+            '';
+
+          await handleIncomingMessage(storeId, sock, senderId, text.trim(), participantId, msg);
+        } catch (msgErr) {
+          console.error(`[WhatsApp Bot] Error processing incoming message for ${storeId}:`, msgErr);
         }
-      } else if (connection === 'open') {
-        sessionState.connected = true;
-        sessionState.qr = null;
-        await updateWhatsappDocInFirestore(storeId, {
-          connected: true,
-          qr: null,
-          status: 'connected'
-        });
-        if (!resolved) {
-          resolved = true;
-          resolve({ connected: true });
-        }
-        console.log(`WhatsApp connected for store ${storeId}`);
       }
     });
-  });
 
-  sock.ev.on('messages.upsert', async (m) => {
-    if (m.type !== 'notify') return;
-    for (const msg of (m.messages || [])) {
-      try {
-        if (!msg.message || msg.key.fromMe) continue;
-        const senderId = msg.key.remoteJid || '';
-        const participantId = msg.key.participant || (msg as any).participant || (msg.key as any).participantAlt || (msg.key as any).remoteJidAlt || '';
-        
-        const text = 
-          msg.message.conversation ||
-          msg.message.extendedTextMessage?.text ||
-          msg.message.imageMessage?.caption ||
-          msg.message.videoMessage?.caption ||
-          msg.message.documentMessage?.caption ||
-          msg.message.buttonsResponseMessage?.selectedButtonId ||
-          msg.message.buttonsResponseMessage?.selectedDisplayText ||
-          msg.message.listResponseMessage?.singleSelectReply?.selectedRowId ||
-          msg.message.listResponseMessage?.title ||
-          msg.message.templateButtonReplyMessage?.selectedId ||
-          msg.message.templateButtonReplyMessage?.selectedDisplayText ||
-          msg.message.interactiveResponseMessage?.body?.text ||
-          '';
+    return sessionState.initialPromise;
+  })();
 
-        await handleIncomingMessage(storeId, sock, senderId, text.trim(), participantId, msg);
-      } catch (msgErr) {
-        console.error(`[WhatsApp Bot] Error processing incoming message for ${storeId}:`, msgErr);
-      }
-    }
-  });
-
-  return sessionState.initialPromise;
+  startingLocks.set(storeId, startPromise);
+  try {
+    const result = await startPromise;
+    return result;
+  } finally {
+    startingLocks.delete(storeId);
+  }
 }
 
 // Comprehensive Brazilian & international phone extraction and variation helper
