@@ -1519,7 +1519,8 @@
             const status = currentTrackOrder.status || "Pendente";
             const orderTotal = `R$ ${(currentTrackOrder.total || 0).toFixed(2).replace('.', ',')}`;
             const customerName = currentTrackOrder.customer?.name ? currentTrackOrder.customer.name.split(' ')[0] : 'Cliente';
-            const isDelivery = currentTrackOrder.deliveryMethod === 'delivery';
+            const isPickupOrder = currentTrackOrder.customer?.type === 'pickup' || currentTrackOrder.isPickup || currentTrackOrder.deliveryMethod === 'pickup';
+            const isDelivery = !isPickupOrder && currentTrackOrder.deliveryMethod !== 'pickup';
             const timeInfo = currentTrackOrder.preparationTime ? `A previsão é de aproximadamente **${currentTrackOrder.preparationTime} minutos**.` : '';
             const storeName = restaurantProfile?.name || "Nossa Loja";
             const shortOrderId = currentTrackOrder.id ? currentTrackOrder.id.slice(-6).toUpperCase() : "";
@@ -1546,37 +1547,43 @@
             }
             // 2. STATUS & DELIVERY FORECAST
             else if (lowerText.includes("status") || lowerText.includes("onde") || lowerText.includes("cadê") || lowerText.includes("demorar") || lowerText.includes("tempo") || lowerText.includes("previsão") || lowerText.includes("espera") || lowerText.includes("chegar") || lowerText.includes("rastrear")) {
-               if (status === "Pendente") {
+               const rawStatus = (status || "").trim();
+               const isDispatchedOrReady = rawStatus.toLowerCase() === "saiu para entrega" || rawStatus.toLowerCase() === "pronto p/ retirada" || rawStatus.toLowerCase() === "pronto";
+
+               if (rawStatus === "Pendente") {
                  reply = `Claro, posso verificar isso para você! 🔍 Seu pedido **#${shortOrderId}** está sendo analisado pela nossa equipe. ${timeInfo} Assim que for aceito, começaremos a prepará-lo com muito carinho! 👨‍🍳🍔`;
-               } else if (status === "Preparando") {
-                 reply = `Seu pedido está sendo preparado com muito carinho pela nossa cozinha! 🍳👨‍🍳 ${timeInfo} Em breve ele será enviado!`;
-               } else if (status === "Saiu para Entrega") {
+               } else if (rawStatus === "Preparando") {
+                 reply = `Seu pedido está sendo preparado com muito carinho pela nossa cozinha! 🍳👨‍🍳 ${timeInfo} Em breve ele estará pronto!`;
+               } else if (isDispatchedOrReady && isPickupOrder) {
+                 reply = `Seu pedido **#${shortOrderId}** já está pronto para retirada em nosso balcão! 🛍️ Pode vir retirar quando desejar. Te esperamos!`;
+               } else if (isDispatchedOrReady && !isPickupOrder) {
                  reply = `Seu pedido já saiu para entrega! 🛵 O motoboy está a caminho e deve chegar em aproximadamente **${currentTrackOrder.preparationTime || '15'} minutos**. Fique de olho no seu portão ou portaria! 😉🎉`;
-               } else if (status === "Pronto p/ Retirada") {
-                 reply = `Seu pedido **#${shortOrderId}** já está prontinho para retirada em nosso balcão! 🛍️ Pode vir buscar quando desejar. Te esperamos!`;
-               } else if (status === "Entregue") {
-                 reply = `Seu pedido **#${shortOrderId}** consta como entregue/finalizado! Espero que tenha gostado da refeição. Se puder, não esqueça de nos avaliar com estrelas na tela inicial! ⭐🍽️`;
-               } else if (status === "Cancelado") {
+               } else if (rawStatus === "Entregue") {
+                 reply = isPickupOrder
+                   ? `Seu pedido **#${shortOrderId}** consta como retirado/finalizado! Espero que tenha gostado da refeição. Se puder, não esqueça de nos avaliar com estrelas na tela inicial! ⭐🍽️`
+                   : `Seu pedido **#${shortOrderId}** consta como entregue/finalizado! Espero que tenha gostado da refeição. Se puder, não esqueça de nos avaliar com estrelas na tela inicial! ⭐🍽️`;
+               } else if (rawStatus === "Cancelado") {
                  reply = `Este pedido **#${shortOrderId}** consta como cancelado em nosso sistema. Para qualquer esclarecimento, digite **'0'** para falar com um atendente.`;
                } else {
-                 reply = `O status atual do seu pedido **#${shortOrderId}** é: **${status}**. Se precisar de mais informações, digite **'0'** para falar com a gente!`;
+                 const displayStatus = (isPickupOrder && rawStatus === "Saiu para entrega") ? "Pronto p/ Retirada" : rawStatus;
+                 reply = `O status atual do seu pedido **#${shortOrderId}** é: **${displayStatus}**. Se precisar de mais informações, digite **'0'** para falar com a gente!`;
                }
             } 
             // 3. PROBLEMS & DELAYS
             else if (lowerText.includes("atraso") || lowerText.includes("atrasou") || lowerText.includes("demora") || lowerText.includes("demorando")) {
-               reply = `Peço sinceras desculpas pela demora! 🙏 Tivemos uma demanda de pedidos maior do que o esperado agora, mas seu pedido já está na fase final de preparo ou em trânsito. Vou verificar imediatamente com a equipe de entregas para agilizar o processo para você! 🛵💨`;
+               reply = `Peço sinceras desculpas pela demora! 🙏 Tivemos uma demanda de pedidos maior do que o esperado agora, mas seu pedido já está na fase final de preparo ou em trânsito. Vou verificar imediatamente com a equipe para agilizar o processo para você! 🛵💨`;
             }
             else if (lowerText.includes("errado") || lowerText.includes("incompleto") || lowerText.includes("faltou") || lowerText.includes("faltando") || lowerText.includes("reclamar") || lowerText.includes("problema")) {
                reply = `Sinto muitíssimo por isso! 😔 Essa não é a experiência que queremos oferecer a você. Pode me enviar uma foto ou uma descrição do item que veio incorreto ou faltou? Vou acionar a gerência agora mesmo para resolvermos isso, seja com o envio do item faltante ou com o estorno/reembolso imediato! 🛠️💼`;
             }
             // 4. PAYMENTS & CHANGE
             else if (lowerText.includes("pagamento") || lowerText.includes("pix") || lowerText.includes("cartão") || lowerText.includes("cartao") || lowerText.includes("dinheiro") || lowerText.includes("troco") || lowerText.includes("debito") || lowerText.includes("credito")) {
-               reply = `Aceitamos cartões de crédito/débito (Visa, Mastercard, Elo), Pix e dinheiro na entrega. 💳💵 Você pode selecionar a opção no momento de finalizar o pedido.\n\nPara o seu pedido atual, a forma de pagamento selecionada foi: **${currentTrackOrder.paymentMethod || 'Não informada'}**.\nO valor total a pagar é: **${orderTotal}**.`;
+               reply = `Aceitamos cartões de crédito/débito (Visa, Mastercard, Elo), Pix e dinheiro na entrega/retirada. 💳💵 Você pode selecionar a opção no momento de finalizar o pedido.\n\nPara o seu pedido atual, a forma de pagamento selecionada foi: **${currentTrackOrder.paymentMethod || 'Não informada'}**.\nO valor total a pagar é: **${orderTotal}**.`;
             }
             // 5. CANCELLATION
             else if (lowerText.includes("cancelar") || lowerText.includes("cancelamento") || lowerText.includes("desistir")) {
-               if (status === "Preparando" || status === "Saiu para Entrega" || status === "Entregue") {
-                 reply = `Entendo o seu desejo de cancelar. No entanto, como o seu pedido **#${shortOrderId}** já está em preparação avançada ou saiu para entrega, podem haver restrições para o cancelamento automático. ⚠️ Por favor, digite **'0'** para falar com um atendente ou ligue para a loja para verificarmos a possibilidade.`;
+               if (status === "Preparando" || status === "Saiu para Entrega" || status === "Saiu para entrega" || status === "Entregue") {
+                 reply = `Entendo o seu desejo de cancelar. No entanto, como o seu pedido **#${shortOrderId}** já está em preparação avançada, pronto ou a caminho, podem haver restrições para o cancelamento automático. ⚠️ Por favor, digite **'0'** para falar com um atendente ou ligue para a loja para verificarmos a possibilidade.`;
                } else {
                  reply = `Pedido **#${shortOrderId}** cancelado com sucesso. O reembolso será processado automaticamente pelo meio de pagamento utilizado! 💸`;
                }
@@ -1589,9 +1596,45 @@
                   reply = `Seu pedido está marcado para **Retirada** direto em nosso balcão! 🛍️\nPrevisão de preparo: **${currentTrackOrder.preparationTime || '30'} minutos**. Assim que estiver pronto, avisaremos aqui!`;
                }
             }
-            // 7. COUPONS & PROMOTIONS
+            // 7. COUPONS & PROMOTIONS (Busca dinâmica dos cupons ativos da loja)
             else if (lowerText.includes("cupom") || lowerText.includes("cupons") || lowerText.includes("desconto") || lowerText.includes("promoção") || lowerText.includes("promocao") || lowerText.includes("oferta")) {
-               reply = `No momento temos ativo o cupom **PRIMEIRACOMPRA** que dá 10% de desconto na sua primeira compra! 🎉 Aproveite e use na finalização do seu pedido! 😉🏷_`;
+               try {
+                 const storeId = window.currentStoreId || currentTrackOrder.storeId;
+                 const now = new Date();
+                 const couponsSnap = await getDocs(
+                   query(
+                     collection(db, COLLECTIONS.coupons),
+                     where("storeId", "==", storeId)
+                   )
+                 );
+
+                 const activeCoupons = [];
+                 couponsSnap.forEach((docSnap) => {
+                   const c = docSnap.data();
+                   if (!c.active) return;
+                   if (c.expiry) {
+                     const exp = new Date(c.expiry);
+                     if (exp < now) return;
+                   }
+                   activeCoupons.push(c);
+                 });
+
+                 if (activeCoupons.length > 0) {
+                   const couponLines = activeCoupons.map((c) => {
+                     const desc = c.type === "percentual" ? `${c.value}% de desconto` : `R$ ${parseFloat(c.value).toFixed(2).replace('.', ',')} de desconto`;
+                     const minStr = c.minValue && parseFloat(c.minValue) > 0 ? ` (pedidos a partir de R$ ${parseFloat(c.minValue).toFixed(2).replace('.', ',')})` : '';
+                     const condStr = c.firstOrderOnly ? " — *Exclusivo para 1º pedido*" : (c.automatic ? " — *Desconto automático*" : "");
+                     return `🏷️ **${c.code}**: ${desc}${minStr}${condStr}`;
+                   }).join("\n");
+
+                   reply = `No momento temos os seguintes cupons ativos na loja:\n\n${couponLines}\n\nAproveite e aplique no seu carrinho antes de fechar o pedido! 🎉🍔`;
+                 } else {
+                   reply = `No momento não temos cupons promocionais ativos disponíveis, mas fique de olho nas nossas ofertas do cardápio e no nosso programa de fidelidade! ⭐🍔`;
+                 }
+               } catch (cErr) {
+                 console.error("Erro ao buscar cupons para auto-resposta:", cErr);
+                 reply = `Para conferir nossos cupons promocionais e ofertas exclusivas, confira as opções na tela inicial da loja ou no seu carrinho de compras! 🏷️✨`;
+               }
             }
             // 8. GREETINGS & WELCOME
             else if (lowerText.includes("oi") || lowerText.includes("olá") || lowerText.includes("ola") || lowerText.includes("boa noite") || lowerText.includes("boa tarde") || lowerText.includes("bom dia") || lowerText.includes("começar")) {
