@@ -861,6 +861,148 @@ window.copyStoreLink = function() {
         </div>
       </div>
 
+      <!-- TAB: WHATSAPP BOT -->
+      <div id="tab-whatsapp" class="space-y-6 hidden">
+        <!-- HEADER CARD -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 text-left">
+          <div class="flex items-center justify-between flex-wrap gap-4 border-b border-gray-100 pb-4">
+            <div class="flex items-center gap-2.5">
+              <span class="text-2xl">🤖</span>
+              <div>
+                <h2 class="font-display font-bold text-xl text-slate-800">WhatsApp Bot</h2>
+                <p class="text-xs text-gray-500 font-medium">Automatize o atendimento e permita pedidos pelo WhatsApp.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <div id="whatsapp-status-container" class="p-4 rounded-xl bg-gray-50 border border-gray-200 text-center">
+              <p class="text-sm text-gray-600 font-semibold mb-2">Verificando status do WhatsApp...</p>
+              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+              <button type="button" onclick="forceResetWhatsapp()" class="mt-2 bg-white text-red-600 font-bold py-1.5 px-3 rounded text-xs hover:bg-red-50 transition-colors border border-red-200 shadow-sm">
+                Forçar Reset (Se estiver travado)
+              </button>
+            </div>
+
+            <!-- Toggle Pause/Active (Always Visible) -->
+            <div class="w-full max-w-sm bg-white p-4 rounded-xl border border-emerald-100 flex items-center justify-between mx-auto shadow-sm">
+              <div class="text-left">
+                <h4 class="font-bold text-slate-800 text-sm">Robô Automático</h4>
+                <p class="text-[10px] text-gray-500 leading-tight mt-0.5">Pause o robô para atendimento humano.</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="whatsapp-bot-active" class="sr-only peer" onchange="toggleWhatsappBot(this.checked)">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+              </label>
+            </div>
+
+            <div id="whatsapp-disconnected-container" class="hidden p-6 rounded-xl bg-white border border-gray-200 flex flex-col items-center text-center">
+              <div class="w-12 h-12 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm border border-gray-200">📱</div>
+              <h3 class="font-bold text-slate-800 mb-1">WhatsApp Desconectado</h3>
+              <p class="text-xs text-gray-500 text-center mb-4 max-w-sm leading-relaxed">O robô de atendimento automático está desligado. Clique no botão abaixo para gerar um QR Code e conectar seu WhatsApp.</p>
+              <button type="button" onclick="loadWhatsappQr()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-colors shadow-sm cursor-pointer">
+                Gerar QR Code de Conexão 🚀
+              </button>
+            </div>
+
+            <div id="whatsapp-qr-container" class="hidden p-4 rounded-xl bg-white border border-gray-200 flex flex-col items-center">
+              <h3 class="font-bold text-slate-800 mb-2">Conectar WhatsApp</h3>
+              <p class="text-xs text-gray-500 text-center mb-4 max-w-sm">Escaneie o QR Code abaixo com seu WhatsApp para ativar o robô automático. O robô responderá com seu cardápio, horário e link do app.</p>
+              <img id="whatsapp-qr-image" src="" alt="WhatsApp QR Code" class="w-64 h-64 bg-gray-100 rounded-xl mb-4 p-2 border border-gray-200 object-contain shadow-sm">
+              <button type="button" onclick="loadWhatsappQr()" class="bg-emerald-50 text-emerald-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-emerald-100 transition-colors border border-emerald-200">
+                Gerar Novo QR Code
+              </button>
+            </div>
+
+            <div id="whatsapp-connected-container" class="hidden p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col items-center">
+              <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm border border-emerald-200">✅</div>
+              <h3 class="font-bold text-emerald-800 mb-1">WhatsApp Conectado!</h3>
+              <p class="text-xs text-emerald-600/80 text-center mb-4 max-w-sm">A sessão do WhatsApp está conectada.</p>
+              
+              <button type="button" onclick="logoutWhatsapp()" class="bg-white text-red-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-red-50 transition-colors border border-red-200 shadow-sm">
+                Desconectar WhatsApp
+              </button>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
+              <h4 class="font-bold text-blue-800 text-sm mb-2 flex items-center gap-1.5"><i data-lucide="info" class="w-4 h-4"></i> Como funciona?</h4>
+              <ul class="text-xs text-blue-700 space-y-1.5 list-disc pl-4">
+                <li>O robô enviará uma mensagem de boas-vindas automática com o menu.</li>
+                <li>Enviará os horários de funcionamento configurados.</li>
+                <li>Enviará o cardápio atualizado do seu app.</li>
+                <li>Enviará o link do site para o cliente finalizar o pedido sozinho.</li>
+                <li>Permite consultar o status do pedido em tempo real.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONFIGURAÇÃO DE MENSAGENS PERSONALIZADAS -->
+        <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6 text-left">
+          <div class="border-b border-gray-100 pb-4">
+            <h3 class="font-display font-bold text-sm text-gray-800 flex items-center gap-2">
+              <span>💬</span> Configuração das Mensagens do Robô
+            </h3>
+            <p class="text-[10px] text-gray-400 font-medium">Personalize os textos automáticos enviados pelo robô aos seus clientes.</p>
+          </div>
+
+          <!-- PLACEHOLDERS LEGEND -->
+          <div class="p-4 bg-slate-900 text-slate-300 rounded-2xl border border-slate-800 text-[10px] space-y-2">
+            <p class="font-bold text-white font-display flex items-center gap-1.5">
+              <span>💡</span> Variáveis disponíveis para uso nas mensagens:
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 font-medium">
+              <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{name}</code> : Nome da sua loja</div>
+              <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{description}</code> : Descrição da sua loja</div>
+              <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{openTime}</code> : Horário de abertura</div>
+              <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{closeTime}</code> : Horário de fechamento</div>
+              <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{operatingDays}</code> : Dias de funcionamento</div>
+              <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{link}</code> : Link do cardápio online</div>
+            </div>
+            <p class="text-[9px] text-gray-400 mt-1">Dica: Use asteriscos para deixar textos em negrito no WhatsApp (ex: *texto*).</p>
+          </div>
+
+          <div class="space-y-4">
+            <!-- BASE LINK CONFIGURATION -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">Link de Destino do Cardápio (GitHub ou Próprio) 🌐</label>
+              <input type="url" id="whatsapp-link-url" placeholder="Ex: https://tecinfo-app.github.io/PopFood" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none">
+              <p class="text-[9px] text-gray-400">Por padrão, apontamos para <strong class="text-gray-600">https://tecinfo-app.github.io/PopFood</strong>. O robô irá gerar o link completo de pedidos para cada cliente usando este endereço.</p>
+            </div>
+
+            <!-- WELCOME MESSAGE -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">1. Mensagem de Boas-Vindas / Menu Principal 🍟</label>
+              <textarea id="whatsapp-welcome-msg" rows="4" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva a mensagem de boas-vindas..."></textarea>
+            </div>
+
+            <!-- HOURS MESSAGE -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">2. Mensagem de Horários de Funcionamento 🕒</label>
+              <textarea id="whatsapp-hours-msg" rows="3" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre seus horários..."></textarea>
+            </div>
+
+            <!-- MAKE ORDER MESSAGE -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">3. Mensagem para Fazer Pedidos (Link do Cardápio) 🛒</label>
+              <textarea id="whatsapp-order-msg" rows="3" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre o link do pedido..."></textarea>
+            </div>
+
+            <!-- CHECK STATUS MESSAGE -->
+            <div class="space-y-1">
+              <label class="block text-[10px] font-bold text-gray-500 uppercase">4. Mensagem para Consulta de Status de Pedido 🔎</label>
+              <textarea id="whatsapp-status-msg" rows="4" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre como consultar o status do pedido..."></textarea>
+            </div>
+          </div>
+
+          <div class="pt-2">
+            <button id="btn-save-whatsapp-config" onclick="saveWhatsappBotConfig()" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 px-4 text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5">
+              <span>Salvar Mensagens do Robô 💾</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </main>
@@ -985,148 +1127,6 @@ window.copyStoreLink = function() {
           <button type="submit" id="notification-submit-btn" class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 rounded-xl text-xs shadow-md transition-all cursor-pointer">Disparar Agora 🚀</button>
         </div>
       </form>
-    </div>
-  </div>
-
-  <!-- TAB: WHATSAPP BOT -->
-  <div id="tab-whatsapp" class="space-y-6 hidden absolute top-0 left-0 w-full z-10 bg-gray-50/50" style="position: static;">
-    <!-- HEADER CARD -->
-    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 text-left">
-      <div class="flex items-center justify-between flex-wrap gap-4 border-b border-gray-100 pb-4">
-        <div class="flex items-center gap-2.5">
-          <span class="text-2xl">🤖</span>
-          <div>
-            <h2 class="font-display font-bold text-xl text-slate-800">WhatsApp Bot</h2>
-            <p class="text-xs text-gray-500 font-medium">Automatize o atendimento e permita pedidos pelo WhatsApp.</p>
-          </div>
-        </div>
-      </div>
-      
-      <div class="space-y-4">
-        <div id="whatsapp-status-container" class="p-4 rounded-xl bg-gray-50 border border-gray-200 text-center">
-          <p class="text-sm text-gray-600 font-semibold mb-2">Verificando status do WhatsApp...</p>
-          <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <button type="button" onclick="forceResetWhatsapp()" class="mt-2 bg-white text-red-600 font-bold py-1.5 px-3 rounded text-xs hover:bg-red-50 transition-colors border border-red-200 shadow-sm">
-            Forçar Reset (Se estiver travado)
-          </button>
-        </div>
-
-        <!-- Toggle Pause/Active (Always Visible) -->
-        <div class="w-full max-w-sm bg-white p-4 rounded-xl border border-emerald-100 flex items-center justify-between mx-auto shadow-sm">
-          <div class="text-left">
-            <h4 class="font-bold text-slate-800 text-sm">Robô Automático</h4>
-            <p class="text-[10px] text-gray-500 leading-tight mt-0.5">Pause o robô para atendimento humano.</p>
-          </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="whatsapp-bot-active" class="sr-only peer" onchange="toggleWhatsappBot(this.checked)">
-            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
-          </label>
-        </div>
-
-        <div id="whatsapp-disconnected-container" class="hidden p-6 rounded-xl bg-white border border-gray-200 flex flex-col items-center text-center">
-          <div class="w-12 h-12 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm border border-gray-200">📱</div>
-          <h3 class="font-bold text-slate-800 mb-1">WhatsApp Desconectado</h3>
-          <p class="text-xs text-gray-500 text-center mb-4 max-w-sm leading-relaxed">O robô de atendimento automático está desligado. Clique no botão abaixo para gerar um QR Code e conectar seu WhatsApp.</p>
-          <button type="button" onclick="loadWhatsappQr()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-colors shadow-sm cursor-pointer">
-            Gerar QR Code de Conexão 🚀
-          </button>
-        </div>
-
-        <div id="whatsapp-qr-container" class="hidden p-4 rounded-xl bg-white border border-gray-200 flex flex-col items-center">
-          <h3 class="font-bold text-slate-800 mb-2">Conectar WhatsApp</h3>
-          <p class="text-xs text-gray-500 text-center mb-4 max-w-sm">Escaneie o QR Code abaixo com seu WhatsApp para ativar o robô automático. O robô responderá com seu cardápio, horário e link do app.</p>
-          <img id="whatsapp-qr-image" src="" alt="WhatsApp QR Code" class="w-64 h-64 bg-gray-100 rounded-xl mb-4 p-2 border border-gray-200 object-contain shadow-sm">
-          <button type="button" onclick="loadWhatsappQr()" class="bg-emerald-50 text-emerald-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-emerald-100 transition-colors border border-emerald-200">
-            Gerar Novo QR Code
-          </button>
-        </div>
-
-        <div id="whatsapp-connected-container" class="hidden p-4 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col items-center">
-          <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm border border-emerald-200">✅</div>
-          <h3 class="font-bold text-emerald-800 mb-1">WhatsApp Conectado!</h3>
-          <p class="text-xs text-emerald-600/80 text-center mb-4 max-w-sm">A sessão do WhatsApp está conectada.</p>
-          
-          <button type="button" onclick="logoutWhatsapp()" class="bg-white text-red-600 font-bold py-2 px-4 rounded-lg text-xs hover:bg-red-50 transition-colors border border-red-200 shadow-sm">
-            Desconectar WhatsApp
-          </button>
-        </div>
-        
-        <div class="bg-blue-50 p-4 rounded-xl border border-blue-100">
-          <h4 class="font-bold text-blue-800 text-sm mb-2 flex items-center gap-1.5"><i data-lucide="info" class="w-4 h-4"></i> Como funciona?</h4>
-          <ul class="text-xs text-blue-700 space-y-1.5 list-disc pl-4">
-            <li>O robô enviará uma mensagem de boas-vindas automática com o menu.</li>
-            <li>Enviará os horários de funcionamento configurados.</li>
-            <li>Enviará o cardápio atualizado do seu app.</li>
-            <li>Enviará o link do site para o cliente finalizar o pedido sozinho.</li>
-            <li>Permite consultar o status do pedido em tempo real.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-
-    <!-- CONFIGURAÇÃO DE MENSAGENS PERSONALIZADAS -->
-    <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-6 text-left">
-      <div class="border-b border-gray-100 pb-4">
-        <h3 class="font-display font-bold text-sm text-gray-800 flex items-center gap-2">
-          <span>💬</span> Configuração das Mensagens do Robô
-        </h3>
-        <p class="text-[10px] text-gray-400 font-medium">Personalize os textos automáticos enviados pelo robô aos seus clientes.</p>
-      </div>
-
-      <!-- PLACEHOLDERS LEGEND -->
-      <div class="p-4 bg-slate-900 text-slate-300 rounded-2xl border border-slate-800 text-[10px] space-y-2">
-        <p class="font-bold text-white font-display flex items-center gap-1.5">
-          <span>💡</span> Variáveis disponíveis para uso nas mensagens:
-        </p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 font-medium">
-          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{name}</code> : Nome da sua loja</div>
-          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{description}</code> : Descrição da sua loja</div>
-          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{openTime}</code> : Horário de abertura</div>
-          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{closeTime}</code> : Horário de fechamento</div>
-          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{operatingDays}</code> : Dias de funcionamento</div>
-          <div><code class="text-amber-400 bg-slate-800 px-1 py-0.5 rounded">{link}</code> : Link do cardápio online</div>
-        </div>
-        <p class="text-[9px] text-gray-400 mt-1">Dica: Use asteriscos para deixar textos em negrito no WhatsApp (ex: *texto*).</p>
-      </div>
-
-      <div class="space-y-4">
-        <!-- BASE LINK CONFIGURATION -->
-        <div class="space-y-1">
-          <label class="block text-[10px] font-bold text-gray-500 uppercase">Link de Destino do Cardápio (GitHub ou Próprio) 🌐</label>
-          <input type="url" id="whatsapp-link-url" placeholder="Ex: https://tecinfo-app.github.io/PopFood" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none">
-          <p class="text-[9px] text-gray-400">Por padrão, apontamos para <strong class="text-gray-600">https://tecinfo-app.github.io/PopFood</strong>. O robô irá gerar o link completo de pedidos para cada cliente usando este endereço.</p>
-        </div>
-
-        <!-- WELCOME MESSAGE -->
-        <div class="space-y-1">
-          <label class="block text-[10px] font-bold text-gray-500 uppercase">1. Mensagem de Boas-Vindas / Menu Principal 🍟</label>
-          <textarea id="whatsapp-welcome-msg" rows="4" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva a mensagem de boas-vindas..."></textarea>
-        </div>
-
-        <!-- HOURS MESSAGE -->
-        <div class="space-y-1">
-          <label class="block text-[10px] font-bold text-gray-500 uppercase">2. Mensagem de Horários de Funcionamento 🕒</label>
-          <textarea id="whatsapp-hours-msg" rows="3" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre seus horários..."></textarea>
-        </div>
-
-        <!-- MAKE ORDER MESSAGE -->
-        <div class="space-y-1">
-          <label class="block text-[10px] font-bold text-gray-500 uppercase">3. Mensagem para Fazer Pedidos (Link do Cardápio) 🛒</label>
-          <textarea id="whatsapp-order-msg" rows="3" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre o link do pedido..."></textarea>
-        </div>
-
-        <!-- CHECK STATUS MESSAGE -->
-        <div class="space-y-1">
-          <label class="block text-[10px] font-bold text-gray-500 uppercase">4. Mensagem para Consulta de Status de Pedido 🔎</label>
-          <textarea id="whatsapp-status-msg" rows="4" class="w-full text-xs p-2.5 border border-gray-200 rounded-lg focus:outline-none resize-y font-mono text-slate-700 leading-relaxed" placeholder="Escreva sobre como consultar o status do pedido..."></textarea>
-        </div>
-      </div>
-
-      <div class="pt-2">
-        <button id="btn-save-whatsapp-config" onclick="saveWhatsappBotConfig()" class="w-full bg-brand-primary hover:bg-orange-600 text-white font-bold py-3 px-4 text-xs rounded-xl shadow-md transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5">
-          <span>Salvar Mensagens do Robô 💾</span>
-        </button>
-      </div>
     </div>
   </div>
 
