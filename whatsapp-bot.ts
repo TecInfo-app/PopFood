@@ -8,6 +8,7 @@ import path from 'path';
 const sessions = new Map();
 const startingLocks = new Map<string, Promise<any>>();
 const reconnectTimers = new Map();
+const conflictAttempts = new Map<string, number>();
 let db;
 
 interface CachedProfile {
@@ -391,6 +392,7 @@ async function startWhatsappSession(storeId) {
 
           if (isLoggedOut || isQrTimeout) {
             console.log(`[WhatsApp] Session permanently closed (isLoggedOut: ${isLoggedOut}, isQrTimeout: ${isQrTimeout}) for store ${storeId}. Clearing auth directory.`);
+            conflictAttempts.delete(storeId);
             sessions.delete(storeId);
             clearAuthDirectory(storeId);
             await updateWhatsappDocInFirestore(storeId, {
@@ -399,20 +401,35 @@ async function startWhatsappSession(storeId) {
               status: 'disconnected'
             });
           } else if (isConflict) {
-            // Stream conflict (duplicate socket or other WhatsApp Web tab). Back off cleanly and auto-reconnect
-            console.log(`[WhatsApp] Stream conflict detected for store ${storeId}. Re-establishing clean connection in 4s...`);
-            await updateWhatsappDocInFirestore(storeId, {
-              connected: false,
-              qr: null,
-              status: 'connecting'
-            });
+            const currentAttempts = (conflictAttempts.get(storeId) || 0) + 1;
+            conflictAttempts.set(storeId, currentAttempts);
 
-            if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
-            const t = setTimeout(() => {
-              reconnectTimers.delete(storeId);
-              startWhatsappSession(storeId).catch(console.error);
-            }, 4000);
-            reconnectTimers.set(storeId, t);
+            if (currentAttempts > 2) {
+              console.log(`[WhatsApp] Session replaced on another device/browser tab for store ${storeId}. Stopping reconnection attempts.`);
+              conflictAttempts.delete(storeId);
+              sessions.delete(storeId);
+              clearAuthDirectory(storeId);
+              await updateWhatsappDocInFirestore(storeId, {
+                connected: false,
+                qr: null,
+                status: 'disconnected'
+              });
+            } else {
+              // Stream conflict (duplicate socket or other WhatsApp Web tab). Back off cleanly and auto-reconnect once
+              console.log(`[WhatsApp] Stream conflict detected for store ${storeId} (attempt ${currentAttempts}/2). Re-establishing clean connection in 4s...`);
+              await updateWhatsappDocInFirestore(storeId, {
+                connected: false,
+                qr: null,
+                status: 'connecting'
+              });
+
+              if (reconnectTimers.has(storeId)) clearTimeout(reconnectTimers.get(storeId));
+              const t = setTimeout(() => {
+                reconnectTimers.delete(storeId);
+                startWhatsappSession(storeId).catch(console.error);
+              }, 4000);
+              reconnectTimers.set(storeId, t);
+            }
           } else {
             // It's a temporary connection drop (network drop, socket timeout, 503 stream error, etc). Reconnect automatically!
             console.log(`[WhatsApp] Temporary disconnect (code: ${statusCode}) for store ${storeId}. Auto-reconnecting in 3s...`);
@@ -430,6 +447,7 @@ async function startWhatsappSession(storeId) {
             reconnectTimers.set(storeId, t);
           }
         } else if (connection === 'open') {
+          conflictAttempts.delete(storeId);
           sessionState.connected = true;
           sessionState.qr = null;
           await updateWhatsappDocInFirestore(storeId, {
