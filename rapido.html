@@ -537,19 +537,6 @@
             </p>
           </div>
 
-          <!-- Order General Notes -->
-          <div class="space-y-1.5">
-            <label class="block text-xs font-extrabold uppercase text-slate-700">
-              📝 Observações Gerais do Pedido (Opcional):
-            </label>
-            <input
-              type="text"
-              id="checkout-order-notes"
-              placeholder="Ex: Trazer guardanapos extras, entregar tudo junto..."
-              class="w-full text-xs font-semibold p-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:border-amber-500"
-            />
-          </div>
-
           <!-- Payment Options -->
           <div class="space-y-3" id="checkout-payment-section">
             <div class="flex items-center justify-between">
@@ -1249,30 +1236,20 @@
                 ${priceFormatted}
               </span>
 
-              ${hasComplements ? `
+              ${currentQty > 0 ? `
+                <div class="flex items-center bg-amber-100 border border-amber-300 rounded-xl p-0.5 shadow-xs">
+                  <button type="button" onclick="updateTotemQty('${prod.id}', -1)" class="w-7 h-7 bg-white text-slate-950 font-black text-sm rounded-lg flex items-center justify-center active:scale-90">-</button>
+                  <span class="w-7 text-center font-black text-xs text-slate-950">${currentQty}</span>
+                  <button type="button" onclick="openComplementsModal('${prod.id}')" class="w-7 h-7 bg-amber-500 text-slate-950 font-black text-sm rounded-lg flex items-center justify-center active:scale-90" title="Adicionar">+</button>
+                </div>
+              ` : `
                 <button
                   type="button"
                   onclick="openComplementsModal('${prod.id}')"
-                  class="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
+                  class="px-3.5 py-2 ${hasComplements ? 'bg-amber-500 hover:bg-amber-400 text-slate-950' : 'bg-slate-900 hover:bg-black text-white'} font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
                 >
-                  + Opções
+                  ${hasComplements ? '+ Opções' : '+ Adicionar'}
                 </button>
-              ` : `
-                ${currentQty > 0 ? `
-                  <div class="flex items-center bg-amber-100 border border-amber-300 rounded-xl p-0.5 shadow-xs">
-                    <button type="button" onclick="updateTotemQty('${prod.id}', -1)" class="w-7 h-7 bg-white text-slate-950 font-black text-sm rounded-lg flex items-center justify-center active:scale-90">-</button>
-                    <span class="w-7 text-center font-black text-xs text-slate-950">${currentQty}</span>
-                    <button type="button" onclick="updateTotemQty('${prod.id}', 1)" class="w-7 h-7 bg-amber-500 text-slate-950 font-black text-sm rounded-lg flex items-center justify-center active:scale-90">+</button>
-                  </div>
-                ` : `
-                  <button
-                    type="button"
-                    onclick="updateTotemQty('${prod.id}', 1)"
-                    class="px-3.5 py-2 bg-slate-900 hover:bg-black text-white font-black text-xs rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer"
-                  >
-                    + Adicionar
-                  </button>
-                `}
               `}
             </div>
           </div>
@@ -1280,12 +1257,7 @@
       }
 
       window.handleTotemProdClick = function(prodId) {
-        const hasComplements = complementsMap[prodId] && complementsMap[prodId].groups && complementsMap[prodId].groups.length > 0;
-        if (hasComplements) {
-          openComplementsModal(prodId);
-        } else {
-          updateTotemQty(prodId, 1);
-        }
+        openComplementsModal(prodId);
       };
 
       window.updateTotemQty = function(prodId, delta) {
@@ -1313,7 +1285,7 @@
         renderTotemProductsGrid();
       };
 
-      // COMPLEMENTS MODAL HANDLERS
+      // COMPLEMENTS / CUSTOMIZATION MODAL HANDLERS
       window.openComplementsModal = function(prodId) {
         const prod = productsList.find(p => p.id === prodId);
         if (!prod) return;
@@ -1378,6 +1350,20 @@
             `;
             body.appendChild(groupDiv);
           });
+        } else {
+          if (prod.description) {
+            body.innerHTML = `
+              <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+                <p class="text-xs text-slate-600 font-medium leading-relaxed">${prod.description}</p>
+              </div>
+            `;
+          } else {
+            body.innerHTML = `
+              <div class="py-1 text-center">
+                <p class="text-xs text-slate-500 font-medium">Defina a quantidade e adicione sua observação abaixo caso desejar.</p>
+              </div>
+            `;
+          }
         }
 
         updateCompModalTotal();
@@ -1612,8 +1598,6 @@
         btn.innerHTML = `<span>⏳ Enviando Pedido...</span>`;
 
         try {
-          const generalOrderNotes = document.getElementById("checkout-order-notes")?.value.trim() || "";
-
           let newCartTotal = 0;
           const newItems = totemCart.map(item => {
             const itemTotal = item.price * item.quantity;
@@ -1659,11 +1643,6 @@
             // Mantém a forma de pagamento já cadastrada para a mesa
             const fixedPayment = activeTableOrderDoc.paymentMethod || selectedPayment;
 
-            let updatedNotes = activeTableOrderDoc.notes || "";
-            if (generalOrderNotes) {
-              updatedNotes = updatedNotes ? `${updatedNotes} | Adição: ${generalOrderNotes}` : generalOrderNotes;
-            }
-
             const orderRef = doc(db, COLLECTIONS.orders, finalOrderId);
             await updateDoc(orderRef, {
               items: mergedItems,
@@ -1671,7 +1650,6 @@
               subtotal: updatedTotal,
               total: updatedTotal,
               paymentMethod: fixedPayment,
-              notes: updatedNotes,
               deviceSessionId: myDeviceSessionId,
               status: "Pendente", // Alerta cozinha para novos itens
               updatedAt: new Date().toISOString(),
@@ -1705,7 +1683,7 @@
               paymentApproved: false,
               paymentStatus: "Pendente",
               troco: trocoVal,
-              notes: generalOrderNotes,
+              notes: "",
               items: newItems,
               lastAddedItems: newItems, // For printing
               subtotal: newCartTotal,
@@ -1737,10 +1715,6 @@
               console.error("Error updating stock/count", e);
             }
           }
-
-          // Clear notes input
-          const generalNotesEl = document.getElementById("checkout-order-notes");
-          if (generalNotesEl) generalNotesEl.value = "";
 
           // Show Success Screen
           closeTotemCheckoutModal();
