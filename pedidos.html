@@ -2019,16 +2019,34 @@ window.copyStoreLink = function() {
                 }
               });
 
-              // Look if there are document creations or updates where state was introduced as "Pendente"
+              // Look if there are document creations or updates where state was introduced as "Pendente" or new items added to a table
               newlyPendenteOrders = incomingOrders.filter((order) => {
-                const isPendente = order.status === "Pendente";
-                // Check if this Pendente order was not already in our global list AS Pendente
                 const oldOrderInfo = globalOrdersList.find(
                   (g) => g.id === order.id,
                 );
+                const isPendente = order.status === "Pendente";
                 const isFreshPendente =
                   !oldOrderInfo || oldOrderInfo.status !== "Pendente";
-                return isPendente && isFreshPendente;
+
+                const customerObj = order.customer || order.client || {};
+                const isMesa =
+                  customerObj.type === "Mesa" ||
+                  (customerObj.address &&
+                    customerObj.address.toLowerCase().includes("mesa")) ||
+                  (order.origin && order.origin.includes("Mesa"));
+                const hasNewItemsCount =
+                  oldOrderInfo &&
+                  (order.items || []).length > (oldOrderInfo.items || []).length;
+                const hasNewAdditions =
+                  isMesa &&
+                  (hasNewItemsCount ||
+                    (order.updatedAt &&
+                      oldOrderInfo &&
+                      oldOrderInfo.updatedAt !== order.updatedAt &&
+                      order.lastAddedItems &&
+                      order.lastAddedItems.length > 0));
+
+                return (isPendente && isFreshPendente) || hasNewAdditions;
               });
 
               if (newlyPendenteOrders.length > 0) {
@@ -2051,23 +2069,36 @@ window.copyStoreLink = function() {
               triggerNewOrderAlert();
 
               if (autoPrintSetting && newlyPendenteOrders.length > 0) {
-                // Avoid duplicate automatic prints
+                // Avoid duplicate automatic prints by tracking unique batch key
                 const printedOrders = JSON.parse(
                   localStorage.getItem("popfood_printed_orders") || "[]",
                 );
 
                 newlyPendenteOrders.forEach((newPendente) => {
-                  if (!printedOrders.includes(newPendente.id)) {
-                    const customerObj = newPendente.customer || newPendente.client || {};
-                    const isMesa = customerObj.type === "Mesa" || (customerObj.address && customerObj.address.toLowerCase().includes("mesa"));
-                    const hasNewItems = newPendente.lastAddedItems && newPendente.lastAddedItems.length > 0;
-                    
-                    window.triggerThermalComandaPrint(newPendente, isMesa && hasNewItems);
-                    printedOrders.push(newPendente.id);
+                  const customerObj =
+                    newPendente.customer || newPendente.client || {};
+                  const isMesa =
+                    customerObj.type === "Mesa" ||
+                    (customerObj.address &&
+                      customerObj.address.toLowerCase().includes("mesa")) ||
+                    (newPendente.origin && newPendente.origin.includes("Mesa"));
+                  const hasNewItems =
+                    newPendente.lastAddedItems &&
+                    newPendente.lastAddedItems.length > 0;
+
+                  // Unique print key per update or item addition
+                  const printBatchKey = `${newPendente.id}_${newPendente.updatedAt || (newPendente.items ? newPendente.items.length : "1")}`;
+
+                  if (!printedOrders.includes(printBatchKey)) {
+                    window.triggerThermalComandaPrint(
+                      newPendente,
+                      isMesa && hasNewItems,
+                    );
+                    printedOrders.push(printBatchKey);
                   }
                 });
 
-                // Keep only last 100 printed orders to prevent localstorage bloat
+                // Keep only last 100 printed items to prevent localstorage bloat
                 if (printedOrders.length > 100) {
                   printedOrders.splice(0, printedOrders.length - 100);
                 }
@@ -2299,16 +2330,24 @@ window.copyStoreLink = function() {
           .map((i) => `${i.quantity}x ${i.name}`)
           .join(", ");
         const customerObj = order.customer || order.client || {};
-        const isMesa = customerObj.type === "Mesa" || (customerObj.address && customerObj.address.toLowerCase().includes("mesa"));
+        const isMesa =
+          customerObj.type === "Mesa" ||
+          (customerObj.address &&
+            customerObj.address.toLowerCase().includes("mesa")) ||
+          (order.origin && order.origin.includes("Mesa"));
         const hasNewItems = order.lastAddedItems && order.lastAddedItems.length > 0;
-        const isPickup = customerObj.type === "pickup" || customerObj.type === "Retirada" || customerObj.type === "Mesa" || order.isPickup;
+        const isPickup =
+          customerObj.type === "pickup" ||
+          customerObj.type === "Retirada" ||
+          isMesa ||
+          order.isPickup;
         let displayStatus = order.status;
         if (isPickup && order.status === "Saiu para entrega") {
-          displayStatus = customerObj.type === "Mesa" ? "Mesa Ativa" : "Pronto p/ Retirada";
+          displayStatus = isMesa ? "Mesa Ativa" : "Pronto p/ Retirada";
         }
 
         const addressLine = isPickup
-          ? `<span class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 text-[10px] inline-flex items-center gap-1 border border-indigo-100 rounded">🏪 ${customerObj.type === "Mesa" ? (customerObj.number || customerObj.address || "Mesa") : "Retirada no Local"}</span>`
+          ? `<span class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 text-[10px] inline-flex items-center gap-1 border border-indigo-100 rounded">🏪 ${isMesa ? (customerObj.number || customerObj.address || "Mesa") : "Retirada no Local"}</span>`
           : `<p class="text-[11px] text-gray-400 line-clamp-1">📍 ${customerObj.address || "Endereço não informado"}</p>`;
 
         const headerLayout =
@@ -2337,33 +2376,26 @@ window.copyStoreLink = function() {
         </div>
         
         <div class="${actionsLayout}">
-          <!-- Print -->
-          ${isMesa && hasNewItems ? `
-            <button onclick="triggerThermalComandaPrintById('${order.id}', false)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-[11px] font-semibold ${btnFull}" title="Imprimir Comanda Completa">
-              🖨️ Geral
-            </button>
-            <button onclick="triggerThermalComandaPrintById('${order.id}', true)" class="bg-orange-100 hover:bg-orange-200 text-orange-850 px-2.5 py-1.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-[11px] font-bold ${btnFull} flex items-center gap-1" title="Imprimir Apenas Novos Itens">
-              ⚡🖨️ Novos
-            </button>
-          ` : `
-            <button onclick="triggerThermalComandaPrintById('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Imprimir Comanda">
-              🖨️
-            </button>
-          `}
+          <!-- Print (Single button) -->
+          <button onclick="triggerThermalComandaPrintById('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Imprimir Comanda">
+            🖨️
+          </button>
 
-          <!-- Uber Direct -->
+          <!-- Uber Direct (Somente para Delivery externo, nunca para Mesa) -->
           ${
-            order.uberTrackingUrl
-              ? `
-              <a href="${order.uberTrackingUrl}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull} flex items-center justify-center gap-1" title="Acompanhar Entrega Uber">
-                📍 <span class="font-bold sm:hidden">Rastreio</span>
-              </a>
-              `
-              : `
-              <button onclick="solicitarUberDirect('${order.id}')" class="bg-black hover:bg-slate-800 text-white p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Chamar Uber Direct">
-                🚗
-              </button>
-              `
+            !isMesa
+              ? (order.uberTrackingUrl
+                  ? `
+                  <a href="${order.uberTrackingUrl}" target="_blank" class="bg-green-600 hover:bg-green-700 text-white p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull} flex items-center justify-center gap-1" title="Acompanhar Entrega Uber">
+                    📍 <span class="font-bold sm:hidden">Rastreio</span>
+                  </a>
+                  `
+                  : `
+                  <button onclick="solicitarUberDirect('${order.id}')" class="bg-black hover:bg-slate-800 text-white p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Chamar Uber Direct">
+                    🚗
+                  </button>
+                  `)
+              : ""
           }
           
           ${
@@ -2377,10 +2409,26 @@ window.copyStoreLink = function() {
           }
 
           ${
-            order.status === "Preparando"
+            order.status === "Preparando" || (isMesa && order.status === "Saiu para entrega")
+              ? (isMesa
+                  ? `
+                <button onclick="receberMesaOrder('${order.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xs ${btnFull}">
+                  💵 Receber
+                </button>
+              `
+                  : `
+                <button onclick="changeOrderStatus('${order.id}', 'Saiu para entrega')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
+                  ${isPickup ? "🛍️ Pronto" : "🏍️ Despachar"}
+                </button>
+              `)
+              : ""
+          }
+
+          ${
+            !isMesa && order.status === "Saiu para entrega"
               ? `
-            <button onclick="changeOrderStatus('${order.id}', 'Saiu para entrega')" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
-              ${isPickup ? "🛍️ Pronto" : "🏍️ Despachar"}
+            <button onclick="changeOrderStatus('${order.id}', 'Entregue')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
+              ✅ ${isPickup ? "Entregue" : "Finalizar"}
             </button>
           `
               : ""
@@ -2390,6 +2438,53 @@ window.copyStoreLink = function() {
 
         return card;
       }
+
+      // Função para dar baixa e receber mesa
+      window.receberMesaOrder = async function (orderId) {
+        const order = globalOrdersList.find((o) => o.id === orderId);
+        if (!order) return;
+
+        const customerObj = order.customer || order.client || {};
+        const mesaIdent =
+          customerObj.number || customerObj.address || "Mesa";
+        const clientName = customerObj.name || "Cliente";
+        const totalVal = order.total || 0;
+        const totalFormatted = totalVal.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        });
+
+        const confirmMsg = `Deseja dar baixa e RECEBER o pagamento da ${mesaIdent} (${clientName})?\n\nValor Total: ${totalFormatted}\n\nO pedido será marcado como concluído e movido para Finalizados.`;
+        const ok = await window.customConfirm(confirmMsg);
+        if (!ok) return;
+
+        try {
+          const orderRef = doc(db, COLLECTIONS.orders, orderId);
+          await updateDoc(orderRef, {
+            status: "Entregue",
+            isPaid: true,
+            paymentStatus: "Aprovado",
+            closedAt: new Date().toISOString(),
+            finishedAt: new Date().toISOString(),
+          });
+
+          // Fechar modal de detalhes se estiver aberto
+          toggleDetailsModal(false);
+
+          if (order.fcmToken && window.notifyOrderUpdate) {
+            await window.notifyOrderUpdate(
+              orderId,
+              "Entregue",
+              order.fcmToken,
+              order.shortId,
+              true,
+            );
+          }
+        } catch (err) {
+          console.error("Erro ao receber mesa:", err);
+          alert("Erro ao receber mesa: " + err.message);
+        }
+      };
 
       // Global Push Notification Sender helper
       window.notifyOrderUpdate = async function(orderId, nextState, fcmToken, shortId, isPickup) {
@@ -2688,12 +2783,18 @@ window.copyStoreLink = function() {
           `Pedido #${order.id}`;
         (document.getElementById("modal-lbl-date") || {}).textContent = order.date;
 
-        const isPickup = order.customer && order.customer.type === "pickup";
+        const customerObj = order.customer || order.client || {};
+        const isMesa =
+          customerObj.type === "Mesa" ||
+          (customerObj.address &&
+            customerObj.address.toLowerCase().includes("mesa")) ||
+          (order.origin && order.origin.includes("Mesa"));
+        const isPickup = customerObj.type === "pickup" || isMesa || order.isPickup;
         const badge = document.getElementById("modal-lbl-status");
 
         let displayStatus = order.status;
         if (isPickup && order.status === "Saiu para entrega") {
-          displayStatus = "Pronto p/ Retirada";
+          displayStatus = isMesa ? "Mesa Ativa" : "Pronto p/ Retirada";
         }
 
         badge.textContent = displayStatus;
@@ -2711,27 +2812,30 @@ window.copyStoreLink = function() {
 
         // Client details
         (document.getElementById("modal-lbl-name") || {}).textContent =
-          order.customer.name;
+          customerObj.name || "Cliente";
         (document.getElementById("modal-lbl-phone") || {}).textContent =
-          order.customer.phone;
+          customerObj.phone || "Sem telefone";
 
         const addressLabelEl = document.getElementById("modal-title-address");
         if (addressLabelEl) {
-          addressLabelEl.textContent = isPickup
-            ? "Tipo/Retirada:"
-            : "Endereço:";
+          addressLabelEl.textContent = isMesa
+            ? "Mesa / Local:"
+            : (isPickup ? "Tipo/Retirada:" : "Endereço:");
         }
 
-        if (isPickup) {
+        if (isMesa) {
+          (document.getElementById("modal-lbl-address") || {}).textContent =
+            `🍽️ ${customerObj.number || customerObj.address || "Mesa"}`;
+        } else if (isPickup) {
           (document.getElementById("modal-lbl-address") || {}).textContent =
             "Retirada no Restaurante (Vou buscar)";
         } else {
-          if (order.customer && order.customer.cep) {
+          if (customerObj.cep) {
             (document.getElementById("modal-lbl-address") || {}).textContent =
-              `${order.customer.address} (CEP: ${order.customer.cep})`;
+              `${customerObj.address} (CEP: ${customerObj.cep})`;
           } else {
             (document.getElementById("modal-lbl-address") || {}).textContent =
-              order.customer ? order.customer.address : "Não informado";
+              customerObj.address || "Não informado";
           }
         }
 
@@ -2800,7 +2904,7 @@ window.copyStoreLink = function() {
         const uberLink = document.getElementById("modal-lbl-uber-link");
         const uberPin = document.getElementById("modal-lbl-uber-pin");
         if (uberRow) {
-          if (order.uberTrackingUrl || order.deliveryPin) {
+          if (!isMesa && (order.uberTrackingUrl || order.deliveryPin)) {
             uberRow.classList.remove("hidden");
             if (order.uberTrackingUrl) {
               uberLink.parentElement.classList.remove("hidden");
@@ -2937,10 +3041,24 @@ window.copyStoreLink = function() {
           changeOrderStatus(order.id, "Preparando");
           toggleDetailsModal(false);
         };
-        btnDes.onclick = () => {
-          changeOrderStatus(order.id, "Saiu para entrega");
-          toggleDetailsModal(false);
-        };
+
+        if (isMesa) {
+          btnDes.innerHTML = "💵 Receber Mesa";
+          btnDes.className =
+            "flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs transition-colors cursor-pointer shadow-xs";
+          btnDes.onclick = () => {
+            receberMesaOrder(order.id);
+          };
+        } else {
+          btnDes.innerHTML = isPickup ? "🛍️ Pronto p/ Retirada" : "🏍️ Despachar Pedido";
+          btnDes.className =
+            "flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer";
+          btnDes.onclick = () => {
+            changeOrderStatus(order.id, "Saiu para entrega");
+            toggleDetailsModal(false);
+          };
+        }
+
         btnCan.onclick = async () => {
           const can = await window.customConfirm(
             "Deseja realmente cancelar este pedido de forma irreversível?",
@@ -3047,6 +3165,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           btnDes.classList.remove("hidden");
           btnCan.classList.remove("hidden");
         } else if (order.status === "Saiu para entrega") {
+          if (isMesa) {
+            btnDes.classList.remove("hidden");
+          }
           btnCan.classList.remove("hidden");
         }
 
@@ -3492,8 +3613,19 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           estimatedTimeStr = estDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
         }
         
-        const isPickup = order.customer && order.customer.type === "pickup";
-        const predictionLabel = isPickup ? "Retirada prevista:" : "Entrega prevista:";
+        const customerObj = order.customer || order.client || {};
+        const isMesa =
+          customerObj.type === "Mesa" ||
+          (customerObj.address &&
+            customerObj.address.toLowerCase().includes("mesa")) ||
+          (order.origin && order.origin.includes("Mesa"));
+        const mesaIdentifier = customerObj.number || customerObj.address || "MESA";
+        const isPickup = customerObj.type === "pickup" || isMesa;
+        const predictionLabel = isMesa
+          ? "Pedido em mesa:"
+          : isPickup
+            ? "Retirada prevista:"
+            : "Entrega prevista:";
 
         // Payment status & modes calculation
         const isOnlinePaid = ["abacatepay", "asaas", "mercadopago", "stripe"].includes(order.paymentProvider) || 
@@ -3550,9 +3682,11 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           detailsText += `Primeiro pedido!\n`;
         }
         
-        detailsText += `\n${order.customer ? order.customer.name.toUpperCase() : "NOME NÃO DEFINIDO"}\n`;
-        detailsText += `${order.customer ? order.customer.phone : "SEM WHATSAPP"} ${order.customer?.id ? `ID: ${order.customer.id}` : ""}\n`;
-        if (order.customer && order.customer.type !== "pickup" && order.customer.address) {
+        detailsText += `\n${customerObj.name ? customerObj.name.toUpperCase() : "NOME NÃO DEFINIDO"}\n`;
+        detailsText += `${customerObj.phone ? customerObj.phone : "SEM WHATSAPP"} ${customerObj?.id ? `ID: ${customerObj.id}` : ""}\n`;
+        if (isMesa) {
+          detailsText += `*** ${mesaIdentifier.toUpperCase()} ***\n`;
+        } else if (order.customer && order.customer.type !== "pickup" && order.customer.address) {
           detailsText += `END: ${order.customer.address.toUpperCase()}\n`;
           if (order.customer.complement) detailsText += `COMP: ${order.customer.complement.toUpperCase()}\n`;
           if (order.customer.reference) detailsText += `REF: ${order.customer.reference.toUpperCase()}\n`;
@@ -3794,27 +3928,35 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           
           <!-- CUSTOMER -->
           <div style="font-weight: 900; margin-top: 8px; font-size: ${headerFontSize};">
-            ${order.customer ? order.customer.name.toUpperCase() : "NOME NÃO DEFINIDO"}
+            ${customerObj.name ? customerObj.name.toUpperCase() : "NOME NÃO DEFINIDO"}
           </div>
           <div style="margin-top: 2px;">
-            ${order.customer ? order.customer.phone : "SEM WHATSAPP"} ${order.customer?.id ? `ID: ${order.customer.id}` : ""}
+            ${customerObj.phone ? customerObj.phone : "SEM WHATSAPP"} ${customerObj?.id ? `ID: ${customerObj.id}` : ""}
           </div>
           
-          <!-- ADDRESS FOR DELIVERY -->
-          ${order.customer && order.customer.type !== "pickup" && order.customer.address 
-            ? `
-              <div style="margin-top: 4px; border: 1px solid black; padding: 4px; line-height: 1.2;">
-                ENDEREÇO: ${order.customer.address.toUpperCase()}
-                ${order.customer.complement ? `<br>COMP: ${order.customer.complement.toUpperCase()}` : ""}
-                ${order.customer.reference ? `<br>REF: ${order.customer.reference.toUpperCase()}` : ""}
-                ${order.customer.cep ? `<br>CEP: ${order.customer.cep}` : ""}
-              </div>
-            `
-            : `
-              <div style="margin-top: 4px; border: 1px solid black; padding: 4px; text-align: center;">
-                RETIRADA NO LOCAL
-              </div>
-            `
+          <!-- ADDRESS FOR DELIVERY OR TABLE -->
+          ${
+            isMesa
+              ? `
+                <div style="margin-top: 4px; border: 2px solid black; padding: 6px; text-align: center; font-size: ${headerFontSize}; font-weight: 900;">
+                  🍽️ ${mesaIdentifier.toUpperCase()}
+                </div>
+              `
+              : (order.customer && order.customer.type !== "pickup" && order.customer.address 
+                ? `
+                  <div style="margin-top: 4px; border: 1px solid black; padding: 4px; line-height: 1.2;">
+                    ENDEREÇO: ${order.customer.address.toUpperCase()}
+                    ${order.customer.complement ? `<br>COMP: ${order.customer.complement.toUpperCase()}` : ""}
+                    ${order.customer.reference ? `<br>REF: ${order.customer.reference.toUpperCase()}` : ""}
+                    ${order.customer.cep ? `<br>CEP: ${order.customer.cep}` : ""}
+                  </div>
+                `
+                : `
+                  <div style="margin-top: 4px; border: 1px solid black; padding: 4px; text-align: center;">
+                    RETIRADA NO LOCAL
+                  </div>
+                `
+              )
           }
           
           <!-- dashed separator -->
