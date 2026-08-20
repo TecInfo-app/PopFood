@@ -103,39 +103,23 @@
             Seja Bem-Vindo! 🍔
           </h2>
           <p class="text-base sm:text-xl text-slate-300 font-medium max-w-lg mx-auto">
-            Onde você deseja consumir o seu pedido hoje?
+            Faça seu pedido de forma simples e rápida!
           </p>
         </div>
 
-        <!-- Big Option Cards (Comer no Local vs Retirada) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pt-4">
-          <!-- Comer no Local / Mesa -->
-          <button
-            type="button"
-            onclick="selectWelcomeMethod('Mesa')"
-            class="touch-active p-6 sm:p-8 rounded-3xl bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-amber-400 text-white transition-all flex flex-col items-center justify-center text-center gap-3 cursor-pointer shadow-2xl group"
-          >
-            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-4xl sm:text-5xl shadow-lg group-hover:scale-110 transition-transform">
-              🍴
-            </div>
-            <div>
-              <h3 class="font-display font-black text-xl sm:text-2xl text-white">Comer no Local</h3>
-              <p class="text-xs sm:text-sm text-amber-200/80 font-medium mt-1">Mesa ou Comanda no Salão</p>
-            </div>
-          </button>
-
-          <!-- Para Levar / Retirada -->
+        <!-- Big Action Button ("FAÇA SEU PEDIDO") -->
+        <div class="max-w-md mx-auto pt-4">
           <button
             type="button"
             onclick="selectWelcomeMethod('Retirada')"
-            class="touch-active p-6 sm:p-8 rounded-3xl bg-white/10 hover:bg-white/20 border-2 border-white/20 hover:border-amber-400 text-white transition-all flex flex-col items-center justify-center text-center gap-3 cursor-pointer shadow-2xl group"
+            class="w-full touch-active p-8 rounded-3xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:brightness-110 text-slate-950 transition-all flex flex-col items-center justify-center text-center gap-3 cursor-pointer shadow-2xl group border-2 border-amber-300"
           >
-            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-4xl sm:text-5xl shadow-lg group-hover:scale-110 transition-transform">
-              🛍️
+            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-950 text-amber-400 flex items-center justify-center text-4xl sm:text-5xl shadow-lg group-hover:scale-110 transition-transform border border-amber-400/40">
+              🍔
             </div>
             <div>
-              <h3 class="font-display font-black text-xl sm:text-2xl text-white">Para Levar</h3>
-              <p class="text-xs sm:text-sm text-emerald-200/80 font-medium mt-1">Retirada Rápida no Balcão</p>
+              <h3 class="font-display font-black text-2xl sm:text-3xl text-slate-950">FAÇA SEU PEDIDO</h3>
+              <p class="text-xs sm:text-sm text-slate-900 font-extrabold mt-1">Toque aqui para ver o cardápio</p>
             </div>
           </button>
         </div>
@@ -176,12 +160,15 @@
       <div class="max-w-md mx-auto w-full my-auto space-y-8 bg-slate-800/90 border border-slate-700/80 p-8 rounded-3xl shadow-2xl backdrop-blur-md">
         
         <div class="text-center space-y-2">
-          <span class="text-4xl">👋</span>
+          <div id="cust-info-mesa-badge" class="hidden inline-block bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider mb-1">
+            📍 Mesa 01
+          </div>
+          <span class="text-4xl block">👋</span>
           <h2 class="font-display font-black text-2xl sm:text-3xl text-white">
             Como podemos te chamar?
           </h2>
           <p class="text-xs sm:text-sm text-slate-400 font-medium">
-            Seus dados ajudam a identificar seu pedido quando estiver pronto!
+            Informe seu nome e WhatsApp para iniciar seu pedido e comanda.
           </p>
         </div>
 
@@ -192,7 +179,7 @@
               type="text"
               id="customer-input-name"
               placeholder="Ex: João Silva"
-              value="Cliente Balcão"
+              value=""
               class="w-full text-base font-bold p-4 bg-slate-900 border border-slate-600 rounded-2xl text-white focus:outline-none focus:border-amber-400"
             />
           </div>
@@ -223,7 +210,7 @@
             onclick="backToStepWelcome()"
             class="w-full py-3 bg-transparent hover:bg-slate-700/50 text-slate-400 hover:text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
           >
-            ← Voltar para seleção de modalidade
+            ← Voltar ao Início
           </button>
         </div>
       </div>
@@ -268,10 +255,10 @@
             </button>
             <button
               type="button"
-              onclick="backToStepWelcome()"
+              onclick="logoutOrResetSession()"
               class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer active:scale-95"
             >
-              🔄 Voltar Início
+              🚪 Sair da Mesa
             </button>
           </div>
         </div>
@@ -881,6 +868,22 @@
       function goToStepCustomerInfo() {
         document.getElementById("step-welcome").classList.add("hidden");
         document.getElementById("step-customer-info").classList.remove("hidden");
+
+        const mesaBadge = document.getElementById("cust-info-mesa-badge");
+        if (selectedMethod === "Mesa" && selectedMesaNum) {
+          if (mesaBadge) {
+            mesaBadge.textContent = `📍 ${selectedMesaNum}`;
+            mesaBadge.classList.remove("hidden");
+          }
+          const savedName = localStorage.getItem(`popfood_mesa_name_${currentStoreId}_${selectedMesaNum}`);
+          const savedPhone = localStorage.getItem(`popfood_mesa_phone_${currentStoreId}_${selectedMesaNum}`);
+          const nameIn = document.getElementById("customer-input-name");
+          const phoneIn = document.getElementById("customer-input-phone");
+          if (savedName && nameIn) nameIn.value = savedName;
+          if (savedPhone && phoneIn) phoneIn.value = savedPhone;
+        } else {
+          if (mesaBadge) mesaBadge.classList.add("hidden");
+        }
       }
 
       window.backToStepWelcome = function() {
@@ -893,8 +896,14 @@
       // STEP 2: CUSTOMER INFO -> GO TO MENU
       window.proceedToTotemMenu = async function() {
         const nameVal = document.getElementById("customer-input-name")?.value.trim();
-        customerName = nameVal || "Cliente Balcão";
+        customerName = nameVal || (selectedMethod === "Mesa" ? "Cliente Mesa" : "Cliente Balcão");
         customerPhone = document.getElementById("customer-input-phone")?.value.trim() || "";
+
+        // Save session in localStorage so customer remains logged in on this mesa
+        if (selectedMethod === "Mesa" && selectedMesaNum) {
+          localStorage.setItem(`popfood_mesa_name_${currentStoreId}_${selectedMesaNum}`, customerName);
+          localStorage.setItem(`popfood_mesa_phone_${currentStoreId}_${selectedMesaNum}`, customerPhone);
+        }
 
         // Update Kiosk Header
         document.getElementById("kiosk-header-method").textContent = selectedMethod === "Mesa" ? selectedMesaNum : "🛍️ PARA LEVAR";
@@ -1524,17 +1533,51 @@
       window.resetTotemToStart = function() {
         if (succCountdownInterval) clearInterval(succCountdownInterval);
         document.getElementById("step-success").classList.add("hidden");
+
+        // IF CUSTOMER IS ON A MESA OR HAS ACTIVE SESSION, REMAIN LOGGED IN
+        if (customerName && customerName !== "Cliente Balcão") {
+          totemCart = [];
+          updateTotemCartUI();
+          document.getElementById("step-totem-menu").classList.remove("hidden");
+          checkAndLoadOpenTableTab();
+          return;
+        }
+
         document.getElementById("step-customer-info").classList.add("hidden");
         document.getElementById("step-totem-menu").classList.add("hidden");
         document.getElementById("welcome-mesa-box").classList.add("hidden");
 
         // Reset inputs
         const nameIn = document.getElementById("customer-input-name");
-        if (nameIn) nameIn.value = "Cliente Balcão";
+        if (nameIn) nameIn.value = "";
         const phoneIn = document.getElementById("customer-input-phone");
         if (phoneIn) phoneIn.value = "";
 
         totemCart = [];
+        document.getElementById("step-welcome").classList.remove("hidden");
+      };
+
+      window.logoutOrResetSession = function() {
+        if (succCountdownInterval) clearInterval(succCountdownInterval);
+        if (selectedMethod === "Mesa" && selectedMesaNum) {
+          localStorage.removeItem(`popfood_mesa_name_${currentStoreId}_${selectedMesaNum}`);
+          localStorage.removeItem(`popfood_mesa_phone_${currentStoreId}_${selectedMesaNum}`);
+        }
+        customerName = "";
+        customerPhone = "";
+        totemCart = [];
+        activeTableOrderDoc = null;
+
+        document.getElementById("step-success").classList.add("hidden");
+        document.getElementById("step-customer-info").classList.add("hidden");
+        document.getElementById("step-totem-menu").classList.add("hidden");
+        document.getElementById("welcome-mesa-box").classList.add("hidden");
+
+        const nameIn = document.getElementById("customer-input-name");
+        if (nameIn) nameIn.value = "";
+        const phoneIn = document.getElementById("customer-input-phone");
+        if (phoneIn) phoneIn.value = "";
+
         document.getElementById("step-welcome").classList.remove("hidden");
       };
 
