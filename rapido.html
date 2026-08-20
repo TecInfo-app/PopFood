@@ -111,7 +111,7 @@
         <div class="max-w-md mx-auto pt-4">
           <button
             type="button"
-            onclick="selectWelcomeMethod('Retirada')"
+            onclick="selectWelcomeMethod('Start')"
             class="w-full touch-active p-8 rounded-3xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:brightness-110 text-slate-950 transition-all flex flex-col items-center justify-center text-center gap-3 cursor-pointer shadow-2xl group border-2 border-amber-300"
           >
             <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-slate-950 text-amber-400 flex items-center justify-center text-4xl sm:text-5xl shadow-lg group-hover:scale-110 transition-transform border border-amber-400/40">
@@ -173,6 +173,16 @@
         </div>
 
         <div class="space-y-4">
+          <div id="cust-info-mesa-field" class="hidden">
+            <label class="block text-xs font-extrabold uppercase text-amber-400 mb-1.5">Mesa ou Comanda (Opcional):</label>
+            <input
+              type="text"
+              id="customer-input-mesa"
+              placeholder="Ex: Mesa 05 ou Balcão"
+              class="w-full text-base font-bold p-4 bg-slate-900 border border-slate-600 rounded-2xl text-white focus:outline-none focus:border-amber-400"
+            />
+          </div>
+
           <div>
             <label class="block text-xs font-extrabold uppercase text-amber-400 mb-1.5">Seu Nome / Apelido:*</label>
             <input
@@ -767,10 +777,13 @@
 
           qSnap.forEach(docSnap => {
             const data = docSnap.data();
-            const orderMesa = data.client?.number || data.client?.address || "";
+            const orderMesa = data.client?.number || data.client?.address || data.customer?.number || data.customer?.address || "";
             const isClosed = data.status === "Cancelado" || data.status === "Finalizado" || data.isPaid === true;
 
-            if (!isClosed && orderMesa.toLowerCase() === selectedMesaNum.toLowerCase()) {
+            const cleanTarget = selectedMesaNum.toLowerCase().replace(/mesa\s*/i, "").trim();
+            const cleanOrder = orderMesa.toLowerCase().replace(/mesa\s*/i, "").trim();
+
+            if (!isClosed && (orderMesa.toLowerCase() === selectedMesaNum.toLowerCase() || (cleanTarget && cleanTarget === cleanOrder))) {
               foundDoc = { id: docSnap.id, ...data };
             }
           });
@@ -847,20 +860,29 @@
 
       // STEP 1: WELCOME ACTIONS
       window.selectWelcomeMethod = function(method) {
-        selectedMethod = method;
-        const mesaBox = document.getElementById("welcome-mesa-box");
+        const urlParams = new URLSearchParams(window.location.search);
+        let mesaParam = urlParams.get("mesa") || urlParams.get("table");
 
-        if (method === "Mesa") {
-          mesaBox.classList.remove("hidden");
-        } else {
-          mesaBox.classList.add("hidden");
+        if (mesaParam) {
+          selectedMethod = "Mesa";
+          let cleanMesa = mesaParam.trim();
+          selectedMesaNum = cleanMesa.toLowerCase().startsWith("mesa") ? cleanMesa : `Mesa ${cleanMesa}`;
+        } else if (method === "Mesa") {
+          selectedMethod = "Mesa";
+          const mesaBox = document.getElementById("welcome-mesa-box");
+          if (mesaBox) mesaBox.classList.remove("hidden");
+          return;
+        } else if (selectedMethod !== "Mesa") {
+          selectedMethod = "Retirada";
           selectedMesaNum = "Para Levar (Balcão)";
-          goToStepCustomerInfo();
         }
+
+        goToStepCustomerInfo();
       };
 
       window.confirmWelcomeMesa = function() {
         const val = document.getElementById("input-welcome-mesa")?.value.trim();
+        selectedMethod = "Mesa";
         selectedMesaNum = val || "Mesa 01";
         goToStepCustomerInfo();
       };
@@ -869,12 +891,25 @@
         document.getElementById("step-welcome").classList.add("hidden");
         document.getElementById("step-customer-info").classList.remove("hidden");
 
+        const urlParams = new URLSearchParams(window.location.search);
+        let mesaParam = urlParams.get("mesa") || urlParams.get("table");
+        if (mesaParam) {
+          selectedMethod = "Mesa";
+          let cleanMesa = mesaParam.trim();
+          selectedMesaNum = cleanMesa.toLowerCase().startsWith("mesa") ? cleanMesa : `Mesa ${cleanMesa}`;
+        }
+
         const mesaBadge = document.getElementById("cust-info-mesa-badge");
+        const mesaField = document.getElementById("cust-info-mesa-field");
+        const mesaInput = document.getElementById("customer-input-mesa");
+
         if (selectedMethod === "Mesa" && selectedMesaNum) {
           if (mesaBadge) {
             mesaBadge.textContent = `📍 ${selectedMesaNum}`;
             mesaBadge.classList.remove("hidden");
           }
+          if (mesaField) mesaField.classList.add("hidden");
+
           const savedName = localStorage.getItem(`popfood_mesa_name_${currentStoreId}_${selectedMesaNum}`);
           const savedPhone = localStorage.getItem(`popfood_mesa_phone_${currentStoreId}_${selectedMesaNum}`);
           const nameIn = document.getElementById("customer-input-name");
@@ -883,6 +918,12 @@
           if (savedPhone && phoneIn) phoneIn.value = savedPhone;
         } else {
           if (mesaBadge) mesaBadge.classList.add("hidden");
+          if (mesaField) {
+            mesaField.classList.remove("hidden");
+            if (mesaInput) {
+              mesaInput.value = (selectedMesaNum && selectedMesaNum !== "Para Levar (Balcão)") ? selectedMesaNum : "";
+            }
+          }
         }
       }
 
@@ -896,8 +937,16 @@
       // STEP 2: CUSTOMER INFO -> GO TO MENU
       window.proceedToTotemMenu = async function() {
         const nameVal = document.getElementById("customer-input-name")?.value.trim();
+        const phoneVal = document.getElementById("customer-input-phone")?.value.trim() || "";
+        const mesaInputVal = document.getElementById("customer-input-mesa")?.value.trim();
+
+        if (mesaInputVal) {
+          selectedMethod = "Mesa";
+          selectedMesaNum = mesaInputVal.toLowerCase().startsWith("mesa") ? mesaInputVal : `Mesa ${mesaInputVal}`;
+        }
+
         customerName = nameVal || (selectedMethod === "Mesa" ? "Cliente Mesa" : "Cliente Balcão");
-        customerPhone = document.getElementById("customer-input-phone")?.value.trim() || "";
+        customerPhone = phoneVal;
 
         // Save session in localStorage so customer remains logged in on this mesa
         if (selectedMethod === "Mesa" && selectedMesaNum) {
