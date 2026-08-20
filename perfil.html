@@ -2120,9 +2120,9 @@ window.copyStoreLink = function() {
           const btnWhatsapp = document.getElementById('menu-btn-whatsapp');
           if (btnWhatsapp) {
             if (isWhatsappBotEnabled) {
-              btnWhatsapp.classList.remove('hidden');
+              btnWhatsapp.style.display = '';
             } else {
-              btnWhatsapp.classList.add('hidden');
+              btnWhatsapp.style.display = 'none';
               // If current active tab is whatsapp, switch to cadastro
               const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
               if (lastTab === 'whatsapp') {
@@ -2136,9 +2136,9 @@ window.copyStoreLink = function() {
           const btnRapido = document.getElementById('menu-btn-rapido');
           if (btnRapido) {
             if (isTotemEnabled) {
-              btnRapido.classList.remove('hidden');
+              btnRapido.style.display = '';
             } else {
-              btnRapido.classList.add('hidden');
+              btnRapido.style.display = 'none';
               // If current active tab is rapido, switch to cadastro
               const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
               if (lastTab === 'rapido') {
