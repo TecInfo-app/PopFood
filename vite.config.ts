@@ -22,6 +22,7 @@ export default defineConfig(() => {
           motoboy: path.resolve(__dirname, 'motoboy.html'),
           pedidos: path.resolve(__dirname, 'pedidos.html'),
           perfil: path.resolve(__dirname, 'perfil.html'),
+          rapido: path.resolve(__dirname, 'rapido.html'),
           relatorios: path.resolve(__dirname, 'relatorios.html'),
           superadmin: path.resolve(__dirname, 'superadmin.html'),
         }

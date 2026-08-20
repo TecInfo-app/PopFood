@@ -16,15 +16,33 @@
 </script>
 <script>
 window.copyStoreLink = function() {
-      if (!window.currentStoreId) return;
+      const storeId = window.currentStoreId || new URLSearchParams(window.location.search).get("store") || localStorage.getItem('popfood_custom_store_id') || 'cia-do-chopp';
       const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
-      const link = `${window.location.origin}${basePath}/cliente.html?store=${window.currentStoreId}`;
+      const link = `${window.location.origin}${basePath}/cliente.html?store=${encodeURIComponent(storeId)}`;
       navigator.clipboard.writeText(link).then(() => {
         window.customAlert ? window.customAlert("Link do seu cardápio copiado!") : alert("Link copiado!");
       }).catch(err => {
         console.error('Falha ao copiar', err);
         window.customAlert ? window.customAlert("Não foi possível copiar automaticamente. Use este link: " + link) : alert("Use este link: " + link);
       });
+    };
+
+window.copyRapidoLink = function() {
+      const storeId = window.currentStoreId || new URLSearchParams(window.location.search).get("store") || localStorage.getItem('popfood_custom_store_id') || 'cia-do-chopp';
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      const link = `${window.location.origin}${basePath}/rapido.html?store=${encodeURIComponent(storeId)}`;
+      navigator.clipboard.writeText(link).then(() => {
+        window.customAlert ? window.customAlert("⚡ Link do Pedido Rápido (Totem) copiado com sucesso!") : alert("Link do Pedido Rápido copiado!");
+      }).catch(err => {
+        console.error('Falha ao copiar', err);
+        window.customAlert ? window.customAlert("Não foi possível copiar automaticamente. Use este link: " + link) : alert("Use este link: " + link);
+      });
+    };
+
+window.openMesaQrCodeModal = function() {
+      const storeId = window.currentStoreId || new URLSearchParams(window.location.search).get("store") || localStorage.getItem('popfood_custom_store_id') || 'cia-do-chopp';
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      window.location.href = `${basePath}/perfil.html?store=${encodeURIComponent(storeId)}#rapido`;
     };
 </script>
   <link rel="icon" type="image/png" href="favicon.png" />

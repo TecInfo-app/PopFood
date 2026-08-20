@@ -265,19 +265,10 @@
 
         <!-- Quick Access actions on right -->
         <div class="flex items-center gap-2">
-          <button onclick="window.openMesaQrCodeModal()" class="text-[11px] font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer" title="Gerar e Imprimir QR Codes das Mesas">
-            <span>🔲 QR Codes Mesas</span>
-          </button>
-          <button onclick="window.copyQuickOrderLink()" class="text-[11px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer" title="Copiar link do Totem Touch Pedido Rápido">
-            ⚡ <span class="hidden md:inline">Link Pedido Rápido</span>
-          </button>
           <button onclick="window.copyStoreLink()" class="text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
             <span class="hidden md:inline">Link Cliente</span>
           </button>
-          <a id="btn-view-touch" href="rapido.html" target="_blank" class="text-[11px] font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5" title="Abrir tela de Autoatendimento / Pedido Rápido">
-            <span>📱 Pedido Rápido</span>
-          </a>
           <a id="btn-view-cardapio" href="cliente.html" target="_blank" class="text-[11px] font-bold text-brand-secondary bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
             <span class="hidden md:inline">Ver Cardápio</span>
@@ -684,38 +675,6 @@
         <button onclick="document.getElementById('invoice-modal').classList.add('hidden')" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center transition-all shadow-3xs cursor-pointer">
           Fechar
         </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: QR CODES DE MESAS -->
-  <div id="mesa-qrcode-modal" class="fixed inset-0 bg-black/70 z-[70] flex items-center justify-center p-4 hidden backdrop-blur-xs">
-    <div class="bg-white rounded-3xl w-full max-w-2xl p-6 shadow-2xl flex flex-col relative text-left space-y-4 max-h-[90vh] overflow-hidden">
-      <button onclick="document.getElementById('mesa-qrcode-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 p-2 text-sm font-bold z-10 cursor-pointer">✕</button>
-
-      <div class="space-y-1">
-        <h3 class="font-display font-black text-lg text-gray-900 flex items-center gap-2">
-          <span>🔲 Gerador de QR Codes de Mesas</span>
-        </h3>
-        <p class="text-xs text-gray-500 font-medium">Gere e imprima cartões com QR Code para colar nas mesas do estabelecimento. O cliente escaneia e faz o pedido direto na comanda da mesa!</p>
-      </div>
-
-      <div class="flex flex-wrap items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200">
-        <div class="flex items-center gap-2">
-          <label class="text-xs font-bold text-gray-700">Qtd. Mesas:</label>
-          <input type="number" id="input-qr-tables-qty" value="10" min="1" max="100" class="w-16 p-2 text-xs font-black border border-gray-300 rounded-lg text-center focus:outline-none focus:border-amber-500" />
-        </div>
-        <button onclick="window.generateTableQrCodes()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs px-4 py-2 rounded-xl cursor-pointer transition-all active:scale-95 shadow-xs">
-          ⚡ Gerar QR Codes
-        </button>
-        <button onclick="window.printTableQrCodes()" class="bg-slate-900 hover:bg-black text-white font-black text-xs px-4 py-2 rounded-xl cursor-pointer transition-all active:scale-95 flex items-center gap-1.5 ml-auto shadow-md">
-          <span>𖤓 Imprimir Cartões de Mesa</span>
-        </button>
-      </div>
-
-      <!-- Container that will be printed -->
-      <div id="qr-codes-printable-grid" class="flex-grow overflow-y-auto p-4 bg-gray-100 rounded-2xl border border-gray-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        <!-- Generated Cards with QR Codes -->
       </div>
     </div>
   </div>
@@ -1266,99 +1225,6 @@ storeId: window.currentStoreId
         document.body.insertBefore(ribbon, document.body.firstChild);
       }
     }
-
-    window.copyQuickOrderLink = function() {
-      if (!window.currentStoreId) return;
-      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
-      const link = `${window.location.origin}${basePath}/rapido.html?store=${window.currentStoreId}`;
-      navigator.clipboard.writeText(link).then(() => {
-        alert("Link do Autoatendimento Touch / Pedido Rápido copiado!");
-      }).catch(err => {
-        console.error("Falha ao copiar", err);
-        alert("Não foi possível copiar automaticamente. Use este link: " + link);
-      });
-    }
-
-    window.openMesaQrCodeModal = function() {
-      const modal = document.getElementById('mesa-qrcode-modal');
-      if (modal) {
-        modal.classList.remove('hidden');
-        window.generateTableQrCodes();
-      }
-    };
-
-    window.generateTableQrCodes = function() {
-      const qty = parseInt(document.getElementById('input-qr-tables-qty')?.value || "10");
-      const grid = document.getElementById('qr-codes-printable-grid');
-      if (!grid) return;
-      grid.innerHTML = "";
-
-      const storeId = window.currentStoreId || localStorage.getItem('popfood_custom_store_id') || 'cia-do-chopp';
-      const storeName = window.currentStoreProfile?.name || storeId;
-
-      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
-      const baseUrl = `${window.location.origin}${basePath}/rapido.html`;
-
-      for (let i = 1; i <= qty; i++) {
-        const tableNum = i < 10 ? `0${i}` : `${i}`;
-        const targetUrl = `${baseUrl}?store=${encodeURIComponent(storeId)}&mesa=${i}`;
-        const qrImgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(targetUrl)}`;
-
-        const card = document.createElement('div');
-        card.className = "bg-white p-4 rounded-2xl border-2 border-slate-900 shadow-md flex flex-col items-center justify-center text-center space-y-2 break-inside-avoid print:border-2 print:border-black";
-        card.innerHTML = `
-          <div class="text-slate-900 font-display font-black text-xs uppercase tracking-wider truncate max-w-full">
-            ${storeName}
-          </div>
-          <div class="bg-amber-500 text-slate-950 px-4 py-1 rounded-full font-display font-black text-sm tracking-wide shadow-xs">
-            MESA ${tableNum}
-          </div>
-          <div class="p-2 bg-white rounded-xl border border-slate-200 shadow-inner my-1">
-            <img src="${qrImgUrl}" alt="QR Code Mesa ${tableNum}" class="w-28 h-28 object-contain" />
-          </div>
-          <p class="text-[10px] font-extrabold text-slate-700 leading-tight">
-            📱 Escaneie para pedir!
-          </p>
-        `;
-        grid.appendChild(card);
-      }
-    };
-
-    window.printTableQrCodes = function() {
-      const printableContent = document.getElementById('qr-codes-printable-grid')?.innerHTML || '';
-      const storeName = window.currentStoreProfile?.name || "PopFood";
-      const printWin = window.open('', '_blank');
-      if (!printWin) {
-        alert("Ative a permissão de popups no seu navegador para imprimir os QR Codes.");
-        return;
-      }
-      const scriptTailwind = '<' + 'script src="https://cdn.tailwindcss.com"><' + '/script>';
-      const scriptAutoPrint = '<' + 'script>window.onload = function() { setTimeout(() => { window.print(); }, 800); }<' + '/script>';
-
-      printWin.document.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>QR Codes das Mesas - ${storeName}</title>
-            ${scriptTailwind}
-            <style>
-              @media print {
-                body { padding: 10px; background: white; }
-                .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
-              }
-            </style>
-          </head>
-          <body class="p-6 bg-white">
-            <h2 class="text-xl font-black font-sans mb-4 text-center">QR Codes das Mesas - ${storeName}</h2>
-            <div class="grid grid-cols-3 gap-4">
-              ${printableContent}
-            </div>
-            ${scriptAutoPrint}
-          </body>
-        </html>
-      `);
-      printWin.document.close();
-    };
 
     window.copyStoreLink = function() {
       if (!window.currentStoreId) return;
