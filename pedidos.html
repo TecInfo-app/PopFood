@@ -1969,7 +1969,28 @@ window.copyStoreLink = function() {
             const incomingOrders = [];
 
             snapshot.forEach((docSnap) => {
-              incomingOrders.push({ id: docSnap.id, ...docSnap.data() });
+              const data = docSnap.data();
+              const rawCustomer = data.customer || data.client || {};
+              const normalizedCustomer = {
+                name: rawCustomer.name || data.customerName || "Cliente",
+                phone: rawCustomer.phone || data.customerPhone || "Sem telefone",
+                address: rawCustomer.address || rawCustomer.number || data.customerAddress || (rawCustomer.type === "Mesa" ? (rawCustomer.number || "Mesa") : "Balcão / Retirada"),
+                number: rawCustomer.number || "",
+                bairro: rawCustomer.bairro || "",
+                type: rawCustomer.type || (data.isPickup ? "pickup" : "delivery"),
+                cep: rawCustomer.cep || "",
+                complement: rawCustomer.complement || "",
+                reference: rawCustomer.reference || "",
+                latitude: rawCustomer.latitude || null,
+                longitude: rawCustomer.longitude || null
+              };
+
+              incomingOrders.push({
+                id: docSnap.id,
+                ...data,
+                customer: normalizedCustomer,
+                date: data.date || (data.createdAt ? (typeof data.createdAt === 'string' ? data.createdAt : new Date(data.createdAt.seconds ? data.createdAt.seconds * 1000 : data.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})) : 'Hoje')
+              });
             });
 
             // Sort orders in memory to prevent requiring Firestore composite indexes
@@ -2273,15 +2294,16 @@ window.copyStoreLink = function() {
         const itemsOverview = order.items
           .map((i) => `${i.quantity}x ${i.name}`)
           .join(", ");
-        const isPickup = order.customer && order.customer.type === "pickup";
+        const customerObj = order.customer || order.client || {};
+        const isPickup = customerObj.type === "pickup" || customerObj.type === "Retirada" || customerObj.type === "Mesa" || order.isPickup;
         let displayStatus = order.status;
         if (isPickup && order.status === "Saiu para entrega") {
-          displayStatus = "Pronto p/ Retirada";
+          displayStatus = customerObj.type === "Mesa" ? "Mesa Ativa" : "Pronto p/ Retirada";
         }
 
         const addressLine = isPickup
-          ? `<span class="bg-indigo-55 rounded bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 text-[10px] inline-flex items-center gap-1 border border-indigo-100">🏪 Retirada no Local</span>`
-          : `<p class="text-[11px] text-gray-400 line-clamp-1">📍 ${order.customer.address}</p>`;
+          ? `<span class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 text-[10px] inline-flex items-center gap-1 border border-indigo-100 rounded">🏪 ${customerObj.type === "Mesa" ? (customerObj.number || customerObj.address || "Mesa") : "Retirada no Local"}</span>`
+          : `<p class="text-[11px] text-gray-400 line-clamp-1">📍 ${customerObj.address || "Endereço não informado"}</p>`;
 
         const headerLayout =
           currentLayout === "list" ? "flex-grow space-y-1.5" : "space-y-2";
@@ -2303,7 +2325,7 @@ window.copyStoreLink = function() {
             <h4 class="font-display font-bold text-sm text-gray-800 flex items-center gap-2">Pedido #${order.id} ${chatIndicator}</h4>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusColor}">${displayStatus}</span>
           </div>
-          <p class="text-[11px] text-gray-400 font-medium">🕒 ${order.date} | 👤 ${order.customer.name}</p>
+          <p class="text-[11px] text-gray-400 font-medium">🕒 ${order.date || ''} | 👤 ${(order.customer || order.client || {}).name || 'Cliente'}</p>
           <p class="text-xs text-gray-600 font-semibold line-clamp-2 capitalize">${itemsOverview}</p>
           ${addressLine}
         </div>
