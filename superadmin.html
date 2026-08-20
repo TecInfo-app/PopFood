@@ -320,14 +320,25 @@
           </div>
         </div>
 
-        <div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
-          <div class="space-y-0.5">
-            <h4 class="text-xs font-bold text-emerald-900">Serviço WhatsApp Bot</h4>
-            <p class="text-[9px] text-emerald-600 font-semibold">Liberar o menu do WhatsApp Bot no perfil do restaurante</p>
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
+            <div class="space-y-0.5">
+              <h4 class="text-xs font-bold text-emerald-900">Serviço WhatsApp Bot</h4>
+              <p class="text-[9px] text-emerald-600 font-semibold">Liberar o menu do WhatsApp Bot no perfil do restaurante</p>
+            </div>
+            <label class="flex items-center cursor-pointer">
+              <input type="checkbox" id="new-store-whatsapp-bot" class="w-4.5 h-4.5 text-emerald-600 rounded-lg focus:ring-emerald-500 border-gray-300">
+            </label>
           </div>
-          <label class="flex items-center cursor-pointer">
-            <input type="checkbox" id="new-store-whatsapp-bot" class="w-4.5 h-4.5 text-emerald-600 rounded-lg focus:ring-emerald-500 border-gray-300">
-          </label>
+          <div class="p-3 bg-purple-50 border border-purple-100 rounded-xl flex items-center justify-between">
+            <div class="space-y-0.5">
+              <h4 class="text-xs font-bold text-purple-900">Serviço Pedido Rápido / Totem</h4>
+              <p class="text-[9px] text-purple-600 font-semibold">Liberar o menu do Totem no perfil</p>
+            </div>
+            <label class="flex items-center cursor-pointer">
+              <input type="checkbox" id="new-store-totem-enabled" class="w-4.5 h-4.5 text-purple-600 rounded-lg focus:ring-purple-500 border-gray-300">
+            </label>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
@@ -380,14 +391,25 @@
           </div>
         </div>
 
-        <div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
-          <div class="space-y-0.5">
-            <h4 class="text-xs font-bold text-emerald-900">Serviço WhatsApp Bot</h4>
-            <p class="text-[9px] text-emerald-600 font-semibold">Liberar o menu do WhatsApp Bot no perfil do restaurante</p>
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <div class="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
+            <div class="space-y-0.5">
+              <h4 class="text-xs font-bold text-emerald-900">Serviço WhatsApp Bot</h4>
+              <p class="text-[9px] text-emerald-600 font-semibold">Liberar o menu do WhatsApp Bot no perfil do restaurante</p>
+            </div>
+            <label class="flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-store-whatsapp-bot" class="w-4.5 h-4.5 text-emerald-600 rounded-lg focus:ring-emerald-500 border-gray-300">
+            </label>
           </div>
-          <label class="flex items-center cursor-pointer">
-            <input type="checkbox" id="edit-store-whatsapp-bot" class="w-4.5 h-4.5 text-emerald-600 rounded-lg focus:ring-emerald-500 border-gray-300">
-          </label>
+          <div class="p-3 bg-purple-50 border border-purple-100 rounded-xl flex items-center justify-between">
+            <div class="space-y-0.5">
+              <h4 class="text-xs font-bold text-purple-900">Serviço Pedido Rápido / Totem</h4>
+              <p class="text-[9px] text-purple-600 font-semibold">Liberar o menu do Totem de Autoatendimento no perfil</p>
+            </div>
+            <label class="flex items-center cursor-pointer">
+              <input type="checkbox" id="edit-store-totem-enabled" class="w-4.5 h-4.5 text-purple-600 rounded-lg focus:ring-purple-500 border-gray-300">
+            </label>
+          </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
@@ -1255,6 +1277,7 @@
         longitude: -46.633308,
         createdAt: new Date().toISOString(),
         whatsappBotEnabled: document.getElementById('new-store-whatsapp-bot').checked,
+        totemEnabled: document.getElementById('new-store-totem-enabled').checked,
         deliveryRates: {
           "1": 5.0,
           "2": 6.5,
@@ -1320,6 +1343,11 @@
         whatsappBotCb.checked = store.whatsappBotEnabled === true || store.whatsappBotEnabled === 'true';
       }
 
+      const totemCb = document.getElementById('edit-store-totem-enabled');
+      if (totemCb) {
+        totemCb.checked = store.totemEnabled === true || store.totemEnabled === 'true';
+      }
+
       toggleEditStoreModal(true);
     }
 
@@ -1332,6 +1360,7 @@
       const adminEmail = document.getElementById('edit-store-email').value.trim().toLowerCase();
       const adminPassword = document.getElementById('edit-store-password').value.trim();
       const whatsappBotEnabled = document.getElementById('edit-store-whatsapp-bot').checked;
+      const totemEnabled = document.getElementById('edit-store-totem-enabled').checked;
 
       try {
         await setDoc(doc(db, COLLECTIONS.restaurantProfile, storeId), {
@@ -1341,6 +1370,7 @@
           adminEmail: adminEmail,
           adminPassword: adminPassword,
           whatsappBotEnabled: whatsappBotEnabled,
+          totemEnabled: totemEnabled,
           updatedAt: new Date().toISOString()
         }, { merge: true });
 

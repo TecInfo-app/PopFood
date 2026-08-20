@@ -1302,6 +1302,17 @@ storeId: window.currentStoreId
           const monthlyFee = profileData.monthlyFee;
           const pixKey = profileData.pixKey;
 
+          // Toggle Totem Box on Dashboard
+          const isTotemEnabled = profileData.totemEnabled === true || profileData.totemEnabled === 'true';
+          const btnViewTouchContainer = document.getElementById('btn-view-touch') ? document.getElementById('btn-view-touch').closest('div.bg-gradient-to-br') : null;
+          if (btnViewTouchContainer) {
+            if (isTotemEnabled) {
+              btnViewTouchContainer.classList.remove('hidden');
+            } else {
+              btnViewTouchContainer.classList.add('hidden');
+            }
+          }
+
           const noticeEl = document.getElementById('store-billing-notice');
           if (billingDay && monthlyFee && pixKey && noticeEl) {
             const today = new Date();

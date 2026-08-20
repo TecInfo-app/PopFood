@@ -2130,6 +2130,22 @@ window.copyStoreLink = function() {
               }
             }
           }
+
+          // Totem / Pedido Rápido admin visibility control
+          const isTotemEnabled = profileData.totemEnabled === true || profileData.totemEnabled === 'true';
+          const btnRapido = document.getElementById('menu-btn-rapido');
+          if (btnRapido) {
+            if (isTotemEnabled) {
+              btnRapido.classList.remove('hidden');
+            } else {
+              btnRapido.classList.add('hidden');
+              // If current active tab is rapido, switch to cadastro
+              const lastTab = localStorage.getItem('popfood_admin_last_tab') || 'cadastro';
+              if (lastTab === 'rapido') {
+                window.switchTab('cadastro');
+              }
+            }
+          }
           
           const destaquesTipo = profileData.destaquesTipo || 'mais_pedidos';
           const radioToSelect = document.querySelector(`input[name="profile-destaques-tipo"][value="${destaquesTipo}"]`);

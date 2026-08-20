@@ -123,27 +123,6 @@
             </div>
           </button>
         </div>
-
-        <!-- Mesa Number Selector Modal / Row (If Mesa is clicked) -->
-        <div id="welcome-mesa-box" class="hidden bg-slate-800/90 border border-slate-700 p-5 rounded-3xl backdrop-blur-md space-y-3 max-w-md mx-auto animate-in zoom-in-95 duration-200">
-          <label class="block text-sm font-extrabold text-amber-300">Informe o Número da sua Mesa ou Comanda:</label>
-          <div class="flex items-center gap-2">
-            <input
-              type="text"
-              id="input-welcome-mesa"
-              value="Mesa 01"
-              placeholder="Ex: Mesa 05, Comanda 12"
-              class="w-full text-center text-lg font-black p-3 bg-slate-900 border border-amber-500/50 rounded-2xl text-white focus:outline-none focus:border-amber-400"
-            />
-          </div>
-          <button
-            type="button"
-            onclick="confirmWelcomeMesa()"
-            class="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-black text-base rounded-2xl shadow-lg active:scale-95 transition-all cursor-pointer"
-          >
-            Continuar ➔
-          </button>
-        </div>
       </div>
 
       <!-- Footer Touch Instructions -->
@@ -229,16 +208,6 @@
         </div>
 
         <div class="space-y-4">
-          <div id="cust-info-mesa-field" class="hidden">
-            <label class="block text-xs font-extrabold uppercase text-amber-400 mb-1.5">Mesa ou Comanda (Opcional):</label>
-            <input
-              type="text"
-              id="customer-input-mesa"
-              placeholder="Ex: Mesa 05 ou Balcão"
-              class="w-full text-base font-bold p-4 bg-slate-900 border border-slate-600 rounded-2xl text-white focus:outline-none focus:border-amber-400"
-            />
-          </div>
-
           <div>
             <label class="block text-xs font-extrabold uppercase text-amber-400 mb-1.5">Seu Nome / Apelido:*</label>
             <input
@@ -833,9 +802,6 @@
           const urlParams = new URLSearchParams(window.location.search);
           if (urlParams.get("mesa") || urlParams.get("table")) {
             document.getElementById("step-welcome").classList.add("hidden");
-            const inputWelcomeMesa = document.getElementById("input-welcome-mesa");
-            if (inputWelcomeMesa) inputWelcomeMesa.value = selectedMesaNum;
-            document.getElementById("welcome-mesa-box").classList.remove("hidden");
             await goToStepCustomerInfo();
           }
 
@@ -986,12 +952,7 @@
           selectedMethod = "Mesa";
           let cleanMesa = mesaParam.trim();
           selectedMesaNum = cleanMesa.toLowerCase().startsWith("mesa") ? cleanMesa : `Mesa ${cleanMesa}`;
-        } else if (method === "Mesa") {
-          selectedMethod = "Mesa";
-          const mesaBox = document.getElementById("welcome-mesa-box");
-          if (mesaBox) mesaBox.classList.remove("hidden");
-          return;
-        } else if (selectedMethod !== "Mesa") {
+        } else {
           selectedMethod = "Retirada";
           selectedMesaNum = "Para Levar (Balcão)";
         }
@@ -999,14 +960,18 @@
         await goToStepCustomerInfo();
       };
 
-      window.confirmWelcomeMesa = async function() {
-        const val = document.getElementById("input-welcome-mesa")?.value.trim();
-        selectedMethod = "Mesa";
-        selectedMesaNum = val || "Mesa 01";
-        await goToStepCustomerInfo();
-      };
-
       async function goToStepCustomerInfo() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let mesaParam = urlParams.get("mesa") || urlParams.get("table");
+        if (mesaParam) {
+          selectedMethod = "Mesa";
+          let cleanMesa = mesaParam.trim();
+          selectedMesaNum = cleanMesa.toLowerCase().startsWith("mesa") ? cleanMesa : `Mesa ${cleanMesa}`;
+        } else {
+          selectedMethod = "Retirada";
+          selectedMesaNum = "Para Levar (Balcão)";
+        }
+
         // Se for mesa, verificar se já está ocupada por outro cliente
         if (selectedMethod === "Mesa" && selectedMesaNum) {
           const tabStatus = await checkAndLoadOpenTableTab();
@@ -1025,24 +990,13 @@
         document.getElementById("step-welcome").classList.add("hidden");
         document.getElementById("step-customer-info").classList.remove("hidden");
 
-        const urlParams = new URLSearchParams(window.location.search);
-        let mesaParam = urlParams.get("mesa") || urlParams.get("table");
-        if (mesaParam) {
-          selectedMethod = "Mesa";
-          let cleanMesa = mesaParam.trim();
-          selectedMesaNum = cleanMesa.toLowerCase().startsWith("mesa") ? cleanMesa : `Mesa ${cleanMesa}`;
-        }
-
         const mesaBadge = document.getElementById("cust-info-mesa-badge");
-        const mesaField = document.getElementById("cust-info-mesa-field");
-        const mesaInput = document.getElementById("customer-input-mesa");
 
         if (selectedMethod === "Mesa" && selectedMesaNum) {
           if (mesaBadge) {
             mesaBadge.textContent = `📍 ${selectedMesaNum}`;
             mesaBadge.classList.remove("hidden");
           }
-          if (mesaField) mesaField.classList.add("hidden");
 
           const savedName = localStorage.getItem(`popfood_mesa_name_${currentStoreId}_${selectedMesaNum}`);
           const savedPhone = localStorage.getItem(`popfood_mesa_phone_${currentStoreId}_${selectedMesaNum}`);
@@ -1052,19 +1006,12 @@
           if (savedPhone && phoneIn) phoneIn.value = savedPhone;
         } else {
           if (mesaBadge) mesaBadge.classList.add("hidden");
-          if (mesaField) {
-            mesaField.classList.remove("hidden");
-            if (mesaInput) {
-              mesaInput.value = (selectedMesaNum && selectedMesaNum !== "Para Levar (Balcão)") ? selectedMesaNum : "";
-            }
-          }
         }
       }
 
       window.backToStepWelcome = function() {
         document.getElementById("step-customer-info").classList.add("hidden");
         document.getElementById("step-totem-menu").classList.add("hidden");
-        document.getElementById("welcome-mesa-box").classList.add("hidden");
         document.getElementById("step-welcome").classList.remove("hidden");
       };
 
@@ -1072,12 +1019,6 @@
       window.proceedToTotemMenu = async function() {
         const nameVal = document.getElementById("customer-input-name")?.value.trim();
         const phoneVal = document.getElementById("customer-input-phone")?.value.trim() || "";
-        const mesaInputVal = document.getElementById("customer-input-mesa")?.value.trim();
-
-        if (mesaInputVal) {
-          selectedMethod = "Mesa";
-          selectedMesaNum = mesaInputVal.toLowerCase().startsWith("mesa") ? mesaInputVal : `Mesa ${mesaInputVal}`;
-        }
 
         customerName = nameVal || (selectedMethod === "Mesa" ? "Cliente Mesa" : "Cliente Balcão");
         customerPhone = phoneVal;
