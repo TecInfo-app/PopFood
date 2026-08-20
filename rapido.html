@@ -154,6 +154,62 @@
 
 
     <!-- ========================================== -->
+    <!-- STEP: MESA OCCUPIED BLOCK SCREEN -->
+    <!-- ========================================== -->
+    <div id="step-mesa-blocked" class="hidden min-h-screen flex flex-col justify-between bg-slate-900 text-white p-6 sm:p-10 relative">
+      <div class="max-w-md mx-auto w-full my-auto space-y-6 bg-slate-800/95 border border-amber-500/40 p-8 rounded-3xl shadow-2xl backdrop-blur-md text-center">
+        
+        <div class="w-20 h-20 bg-amber-500/20 border-2 border-amber-500 text-amber-400 rounded-full flex items-center justify-center text-4xl mx-auto shadow-inner">
+          🔒
+        </div>
+
+        <div class="space-y-2">
+          <div id="blocked-mesa-badge" class="inline-block bg-amber-500 text-slate-950 text-xs font-black px-4 py-1 rounded-full uppercase tracking-wider">
+            MESA 01
+          </div>
+          <h2 class="font-display font-black text-2xl text-white">
+            Mesa em Atendimento
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
+            Esta mesa já possui uma comanda ativa aberta no momento por outro cliente.
+          </p>
+        </div>
+
+        <div class="bg-slate-900/90 p-4 rounded-2xl border border-slate-700 text-left space-y-2 text-xs">
+          <div class="flex items-center gap-2 text-amber-300 font-bold">
+            <span>ℹ️</span>
+            <span>O que fazer?</span>
+          </div>
+          <p class="text-slate-400 leading-relaxed">
+            • Se você já está nesta mesa e trocou de aparelho ou limpou os dados, solicite ao garçom ou ao caixa para liberar o acesso.
+          </p>
+          <p class="text-slate-400 leading-relaxed">
+            • Assim que a conta da mesa for recebida pelo estabelecimento, a mesa será liberada automaticamente para novos clientes.
+          </p>
+        </div>
+
+        <div class="pt-2 space-y-3">
+          <button
+            type="button"
+            onclick="window.location.reload()"
+            class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-black text-base rounded-2xl shadow-lg active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <span>🔄 Verificar Novamente</span>
+          </button>
+
+          <a
+            id="btn-switch-to-balcao"
+            href="javascript:void(0)"
+            onclick="switchBlockedToBalcao()"
+            class="block w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-bold text-xs rounded-xl transition-all cursor-pointer text-center border border-slate-700"
+          >
+            🛍️ Fazer Pedido para Retirada no Balcão
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
     <!-- STEP 2: CUSTOMER IDENTIFICATION (INFORMAÇÕES) -->
     <!-- ========================================== -->
     <div id="step-customer-info" class="hidden min-h-screen flex flex-col justify-between bg-slate-900 text-white p-6 sm:p-10 relative">
@@ -404,6 +460,19 @@
           <!-- Dynamically populated -->
         </div>
 
+        <!-- Notes / Observações do Item -->
+        <div class="px-4 py-3 bg-slate-50 border-t border-slate-200">
+          <label class="block text-[11px] font-extrabold uppercase text-slate-600 mb-1">
+            ✍️ Alguma observação para este item? (Opcional)
+          </label>
+          <input
+            type="text"
+            id="comp-modal-notes"
+            placeholder="Ex: Sem cebola, gelo e limão à parte, bem passado..."
+            class="w-full text-xs font-semibold p-2.5 bg-white border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:border-amber-500"
+          />
+        </div>
+
         <!-- Modal Footer -->
         <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
           <div class="flex items-center border border-slate-300 bg-white rounded-2xl p-1 shadow-xs">
@@ -468,11 +537,29 @@
             </p>
           </div>
 
+          <!-- Order General Notes -->
+          <div class="space-y-1.5">
+            <label class="block text-xs font-extrabold uppercase text-slate-700">
+              📝 Observações Gerais do Pedido (Opcional):
+            </label>
+            <input
+              type="text"
+              id="checkout-order-notes"
+              placeholder="Ex: Trazer guardanapos extras, entregar tudo junto..."
+              class="w-full text-xs font-semibold p-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
           <!-- Payment Options -->
-          <div class="space-y-3">
-            <h3 class="font-display font-black text-sm text-slate-800">💳 Escolha a Forma de Pagamento:</h3>
+          <div class="space-y-3" id="checkout-payment-section">
+            <div class="flex items-center justify-between">
+              <h3 class="font-display font-black text-sm text-slate-800">💳 Forma de Pagamento:</h3>
+              <span id="checkout-payment-mesa-badge" class="hidden text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-md">
+                🔒 Fixada para esta Mesa
+              </span>
+            </div>
             
-            <div class="grid grid-cols-3 gap-2 sm:gap-3">
+            <div id="checkout-payment-options-grid" class="grid grid-cols-3 gap-2 sm:gap-3">
               <button
                 type="button"
                 id="pay-btn-pix"
@@ -678,6 +765,16 @@
       let currentCompQty = 1;
       let succCountdownInterval = null;
 
+      // CLIENT UNIQUE DEVICE SESSION ID (Para travar a mesa para o cliente que a abriu)
+      function getDeviceSessionId() {
+        let sid = localStorage.getItem("popfood_device_session_id");
+        if (!sid) {
+          sid = "dev_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now();
+          localStorage.setItem("popfood_device_session_id", sid);
+        }
+        return sid;
+      }
+
       // INIT STORE & TABLE FROM URL
       function initStore() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -692,7 +789,12 @@
           selectedMethod = "Mesa";
           let cleanMesa = mesaParam.trim();
           selectedMesaNum = cleanMesa.toLowerCase().startsWith("mesa") ? cleanMesa : `Mesa ${cleanMesa}`;
-          console.log("QR Code Mesa detected from URL:", selectedMesaNum);
+          console.log("QR Code Mesa detectado da URL:", selectedMesaNum);
+        } else {
+          // Quando acessado pelo Link do Pedido Rápido / Totem sem QR de mesa, o padrão é Retirada / Balcão
+          selectedMethod = "Retirada";
+          selectedMesaNum = "Retirada (Balcão)";
+          console.log("Pedido Rápido (Totem / Autoatendimento) - Identificado como Retirada / Balcão");
         }
       }
 
@@ -740,14 +842,14 @@
             complementsMap[d.id] = d.data();
           });
 
-          // Check if Mesa parameter was present in URL -> Auto jump to Customer Info
+          // Check if Mesa parameter was present in URL -> Auto jump to Customer Info / Verification
           const urlParams = new URLSearchParams(window.location.search);
           if (urlParams.get("mesa") || urlParams.get("table")) {
             document.getElementById("step-welcome").classList.add("hidden");
             const inputWelcomeMesa = document.getElementById("input-welcome-mesa");
             if (inputWelcomeMesa) inputWelcomeMesa.value = selectedMesaNum;
             document.getElementById("welcome-mesa-box").classList.remove("hidden");
-            goToStepCustomerInfo();
+            await goToStepCustomerInfo();
           }
 
         } catch (err) {
@@ -755,13 +857,22 @@
         }
       }
 
-      // CHECK IF THERE IS AN OPEN TABLE TAB IN FIRESTORE
+      // SWITCH BLOCKED SCREEN TO BALCAO
+      window.switchBlockedToBalcao = function() {
+        selectedMethod = "Retirada";
+        selectedMesaNum = "Retirada (Balcão)";
+        document.getElementById("step-mesa-blocked").classList.add("hidden");
+        document.getElementById("step-welcome").classList.add("hidden");
+        goToStepCustomerInfo();
+      };
+
+      // CHECK IF THERE IS AN OPEN TABLE TAB IN FIRESTORE & LOCK FOR OTHER DEVICES
       async function checkAndLoadOpenTableTab() {
         if (selectedMethod !== "Mesa" || !currentStoreId || !selectedMesaNum) {
           document.getElementById("totem-open-tab-banner").classList.add("hidden");
           document.getElementById("btn-kiosk-view-tab").classList.add("hidden");
           activeTableOrderDoc = null;
-          return;
+          return { exists: false, isMyDevice: true };
         }
 
         try {
@@ -778,7 +889,8 @@
           qSnap.forEach(docSnap => {
             const data = docSnap.data();
             const orderMesa = data.client?.number || data.client?.address || data.customer?.number || data.customer?.address || "";
-            const isClosed = data.status === "Cancelado" || data.status === "Finalizado" || data.isPaid === true;
+            // Status finalizados ou cancelados liberam a mesa
+            const isClosed = data.status === "Cancelado" || data.status === "Entregue" || data.status === "Finalizado" || data.isPaid === true;
 
             const cleanTarget = selectedMesaNum.toLowerCase().replace(/mesa\s*/i, "").trim();
             const cleanOrder = orderMesa.toLowerCase().replace(/mesa\s*/i, "").trim();
@@ -791,6 +903,20 @@
           activeTableOrderDoc = foundDoc;
 
           if (activeTableOrderDoc) {
+            const myDevId = getDeviceSessionId();
+            const docDevId = activeTableOrderDoc.deviceSessionId || activeTableOrderDoc.client?.deviceSessionId;
+            const savedMesaId = localStorage.getItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`);
+
+            // Se a mesa está aberta em outro aparelho e não é o mesmo dispositivo/sessão
+            const isMyDevice = (!docDevId && (!savedMesaId || savedMesaId === activeTableOrderDoc.id)) || 
+                               (docDevId === myDevId) || 
+                               (savedMesaId === activeTableOrderDoc.id);
+
+            // Reutilizar o método de pagamento já definido para a mesa
+            if (activeTableOrderDoc.paymentMethod) {
+              selectedPayment = activeTableOrderDoc.paymentMethod;
+            }
+
             const totalVal = activeTableOrderDoc.total || 0;
             const itemsCount = (activeTableOrderDoc.items || []).reduce((acc, i) => acc + (i.quantity || 1), 0);
 
@@ -800,12 +926,16 @@
 
             document.getElementById("totem-open-tab-banner").classList.remove("hidden");
             document.getElementById("btn-kiosk-view-tab").classList.remove("hidden");
+
+            return { exists: true, isMyDevice, doc: activeTableOrderDoc };
           } else {
             document.getElementById("totem-open-tab-banner").classList.add("hidden");
             document.getElementById("btn-kiosk-view-tab").classList.add("hidden");
+            return { exists: false, isMyDevice: true };
           }
         } catch (err) {
           console.warn("Could not check open table tab:", err);
+          return { exists: false, isMyDevice: true };
         }
       }
 
@@ -832,6 +962,7 @@
             const complementsText = item.complements && item.complements.length > 0 
               ? item.complements.map(c => c.optionName || c.name).join(", ")
               : "";
+            const itemNotes = item.notes ? `<p class="text-[10px] text-orange-600 font-bold italic">Obs: "${item.notes}"</p>` : "";
 
             const row = document.createElement("div");
             row.className = "p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-2";
@@ -841,6 +972,7 @@
                   ${item.quantity || 1}x ${item.name}
                 </h4>
                 ${complementsText ? `<p class="text-[10px] text-slate-500 font-bold">+ ${complementsText}</p>` : ''}
+                ${itemNotes}
               </div>
               <p class="font-black text-xs text-amber-600 shrink-0">
                 ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -859,7 +991,7 @@
       };
 
       // STEP 1: WELCOME ACTIONS
-      window.selectWelcomeMethod = function(method) {
+      window.selectWelcomeMethod = async function(method) {
         const urlParams = new URLSearchParams(window.location.search);
         let mesaParam = urlParams.get("mesa") || urlParams.get("table");
 
@@ -877,17 +1009,32 @@
           selectedMesaNum = "Para Levar (Balcão)";
         }
 
-        goToStepCustomerInfo();
+        await goToStepCustomerInfo();
       };
 
-      window.confirmWelcomeMesa = function() {
+      window.confirmWelcomeMesa = async function() {
         const val = document.getElementById("input-welcome-mesa")?.value.trim();
         selectedMethod = "Mesa";
         selectedMesaNum = val || "Mesa 01";
-        goToStepCustomerInfo();
+        await goToStepCustomerInfo();
       };
 
-      function goToStepCustomerInfo() {
+      async function goToStepCustomerInfo() {
+        // Se for mesa, verificar se já está ocupada por outro cliente
+        if (selectedMethod === "Mesa" && selectedMesaNum) {
+          const tabStatus = await checkAndLoadOpenTableTab();
+          if (tabStatus.exists && !tabStatus.isMyDevice) {
+            // Mesa bloqueada para outro usuário
+            document.getElementById("step-welcome").classList.add("hidden");
+            document.getElementById("step-customer-info").classList.add("hidden");
+            document.getElementById("step-totem-menu").classList.add("hidden");
+            document.getElementById("blocked-mesa-badge").textContent = selectedMesaNum.toUpperCase();
+            document.getElementById("step-mesa-blocked").classList.remove("hidden");
+            return;
+          }
+        }
+
+        document.getElementById("step-mesa-blocked").classList.add("hidden");
         document.getElementById("step-welcome").classList.add("hidden");
         document.getElementById("step-customer-info").classList.remove("hidden");
 
@@ -1179,6 +1326,9 @@
         document.getElementById("comp-modal-title").textContent = prod.name;
         document.getElementById("comp-modal-price").textContent = (prod.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+        const notesInput = document.getElementById("comp-modal-notes");
+        if (notesInput) notesInput.value = "";
+
         const imgEl = document.getElementById("comp-modal-img");
         if (prod.image) {
           imgEl.src = prod.image;
@@ -1303,11 +1453,14 @@
         let unitPrice = currentEditingProd.price || 0;
         complements.forEach(c => unitPrice += (c.price || 0));
 
+        const itemNotes = document.getElementById("comp-modal-notes")?.value.trim() || "";
+
         totemCart.push({
           productId: currentEditingProd.id,
           product: currentEditingProd,
           quantity: currentCompQty,
           complements: complements,
+          notes: itemNotes,
           price: unitPrice
         });
 
@@ -1360,6 +1513,9 @@
           const complementsText = item.complements && item.complements.length > 0 
             ? item.complements.map(c => c.optionName).join(", ")
             : "";
+          const itemNotesText = item.notes 
+            ? `<p class="text-[10px] text-orange-600 font-bold italic truncate">Obs: "${item.notes}"</p>` 
+            : "";
 
           const row = document.createElement("div");
           row.className = "flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200 gap-2";
@@ -1369,6 +1525,7 @@
                 ${item.product.name}
               </h4>
               ${complementsText ? `<p class="text-[10px] text-slate-500 font-bold truncate">+ ${complementsText}</p>` : ''}
+              ${itemNotesText}
               <p class="text-xs font-black text-amber-600 mt-0.5">
                 ${itemTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
@@ -1387,6 +1544,20 @@
         document.getElementById("checkout-total-val").textContent = subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         document.getElementById("checkout-modal-method-lbl").textContent = selectedMethod === "Mesa" ? selectedMesaNum : "Para Levar (Balcão)";
         document.getElementById("checkout-customer-summary").textContent = `Nome: ${customerName} ${customerPhone ? ' • Tel: ' + customerPhone : ''}`;
+
+        // Se já existe comanda aberta na mesa com forma de pagamento selecionada, fixar e destacar
+        const mesaBadge = document.getElementById("checkout-payment-mesa-badge");
+        if (selectedMethod === "Mesa" && activeTableOrderDoc && activeTableOrderDoc.paymentMethod) {
+          selectedPayment = activeTableOrderDoc.paymentMethod;
+          if (mesaBadge) {
+            mesaBadge.textContent = `🔒 Fixada (${selectedPayment})`;
+            mesaBadge.classList.remove("hidden");
+          }
+        } else {
+          if (mesaBadge) mesaBadge.classList.add("hidden");
+        }
+
+        selectTotemPayment(selectedPayment || "Pix");
 
         modal.classList.remove("hidden");
       };
@@ -1441,6 +1612,8 @@
         btn.innerHTML = `<span>⏳ Enviando Pedido...</span>`;
 
         try {
+          const generalOrderNotes = document.getElementById("checkout-order-notes")?.value.trim() || "";
+
           let newCartTotal = 0;
           const newItems = totemCart.map(item => {
             const itemTotal = item.price * item.quantity;
@@ -1451,17 +1624,28 @@
               quantity: item.quantity,
               price: item.price,
               complements: item.complements || [],
-              notes: "",
+              notes: item.notes || "",
               totalItemPrice: itemTotal,
               addedAt: new Date().toISOString()
             };
           });
 
           // Check if there is an active open order for this table
-          await checkAndLoadOpenTableTab();
+          const tabStatus = await checkAndLoadOpenTableTab();
+
+          // Validação extra: se a mesa foi bloqueada por outro dispositivo
+          if (selectedMethod === "Mesa" && tabStatus.exists && !tabStatus.isMyDevice) {
+            alert("⚠️ Esta mesa está em atendimento por outro cliente no momento. Não é possível enviar itens.");
+            closeTotemCheckoutModal();
+            document.getElementById("step-totem-menu").classList.add("hidden");
+            document.getElementById("blocked-mesa-badge").textContent = selectedMesaNum.toUpperCase();
+            document.getElementById("step-mesa-blocked").classList.remove("hidden");
+            return;
+          }
 
           let finalOrderId = null;
           let isExistingUpdate = false;
+          const myDeviceSessionId = getDeviceSessionId();
 
           if (selectedMethod === "Mesa" && activeTableOrderDoc) {
             // MERGE WITH EXISTING TABLE ORDER
@@ -1472,16 +1656,29 @@
             const mergedItems = [...existingItems, ...newItems];
             const updatedTotal = (activeTableOrderDoc.total || 0) + newCartTotal;
 
+            // Mantém a forma de pagamento já cadastrada para a mesa
+            const fixedPayment = activeTableOrderDoc.paymentMethod || selectedPayment;
+
+            let updatedNotes = activeTableOrderDoc.notes || "";
+            if (generalOrderNotes) {
+              updatedNotes = updatedNotes ? `${updatedNotes} | Adição: ${generalOrderNotes}` : generalOrderNotes;
+            }
+
             const orderRef = doc(db, COLLECTIONS.orders, finalOrderId);
             await updateDoc(orderRef, {
               items: mergedItems,
-              lastAddedItems: newItems, // Crucial: contains only newly added items for kitchen printing
+              lastAddedItems: newItems, // Contém apenas novos itens adicionados para impressão na cozinha
               subtotal: updatedTotal,
               total: updatedTotal,
-              status: "Pendente", // Alert kitchen for newly added items
+              paymentMethod: fixedPayment,
+              notes: updatedNotes,
+              deviceSessionId: myDeviceSessionId,
+              status: "Pendente", // Alerta cozinha para novos itens
               updatedAt: new Date().toISOString(),
               origin: "Totem Touch - Adição de Mesa"
             });
+
+            localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`, finalOrderId);
 
           } else {
             // CREATE NEW ORDER DOCUMENT
@@ -1499,13 +1696,16 @@
                 address: selectedMethod === "Mesa" ? selectedMesaNum : "Balcão (Retirada)",
                 number: selectedMethod === "Mesa" ? selectedMesaNum : "Balcão",
                 bairro: "Salão",
-                type: selectedMethod === "Mesa" ? "Mesa" : "Retirada"
+                type: selectedMethod === "Mesa" ? "Mesa" : "Retirada",
+                deviceSessionId: myDeviceSessionId
               },
+              deviceSessionId: myDeviceSessionId,
               paymentMethod: selectedPayment,
               isPaid: false,
               paymentApproved: false,
               paymentStatus: "Pendente",
               troco: trocoVal,
+              notes: generalOrderNotes,
               items: newItems,
               lastAddedItems: newItems, // For printing
               subtotal: newCartTotal,
@@ -1513,11 +1713,15 @@
               desconto: 0,
               total: newCartTotal,
               status: "Pendente",
-              origin: "Totem Pedido Rápido Touch",
+              origin: selectedMethod === "Mesa" ? "Totem Touch - Mesa" : "Totem Pedido Rápido Touch",
               storeId: currentStoreId
             };
 
             await setDoc(doc(db, COLLECTIONS.orders, orderId), orderDocument);
+
+            if (selectedMethod === "Mesa") {
+              localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`, orderId);
+            }
           }
 
           // Update product orderCounts
@@ -1533,6 +1737,10 @@
               console.error("Error updating stock/count", e);
             }
           }
+
+          // Clear notes input
+          const generalNotesEl = document.getElementById("checkout-order-notes");
+          if (generalNotesEl) generalNotesEl.value = "";
 
           // Show Success Screen
           closeTotemCheckoutModal();

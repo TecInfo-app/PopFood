@@ -2018,6 +2018,11 @@ window.openMesaQrCodeModal = function() {
               return tB - tA;
             });
 
+            // Store merchant-action timestamps to suppress self-notifications
+            if (!window._merchantActionOrderTimestamps) {
+              window._merchantActionOrderTimestamps = {};
+            }
+
             // Detect if there is a new "Pendente" order to play notification sound
             let newlyPendenteOrders = [];
             let hasNewMessage = false;
@@ -2042,6 +2047,13 @@ window.openMesaQrCodeModal = function() {
                 const oldOrderInfo = globalOrdersList.find(
                   (g) => g.id === order.id,
                 );
+
+                // Ignore updates that originated from the merchant's own action (e.g. deleting an item)
+                const lastMerchantAction = window._merchantActionOrderTimestamps[order.id];
+                if (lastMerchantAction && Date.now() - lastMerchantAction < 8000) {
+                  return false;
+                }
+
                 const isPendente = order.status === "Pendente";
                 const isFreshPendente =
                   !oldOrderInfo || oldOrderInfo.status !== "Pendente";
@@ -2052,19 +2064,18 @@ window.openMesaQrCodeModal = function() {
                   (customerObj.address &&
                     customerObj.address.toLowerCase().includes("mesa")) ||
                   (order.origin && order.origin.includes("Mesa"));
-                const hasNewItemsCount =
-                  oldOrderInfo &&
-                  (order.items || []).length > (oldOrderInfo.items || []).length;
+
+                const oldCount = (oldOrderInfo?.items || []).length;
+                const newCount = (order.items || []).length;
+                // Only count as new additions if the number of items strictly increased
+                const hasNewItemsCount = oldCount > 0 && newCount > oldCount;
                 const hasNewAdditions =
                   isMesa &&
-                  (hasNewItemsCount ||
-                    (order.updatedAt &&
-                      oldOrderInfo &&
-                      oldOrderInfo.updatedAt !== order.updatedAt &&
-                      order.lastAddedItems &&
-                      order.lastAddedItems.length > 0));
+                  hasNewItemsCount &&
+                  order.lastAddedItems &&
+                  order.lastAddedItems.length > 0;
 
-                return (isPendente && isFreshPendente) || hasNewAdditions;
+                return (isPendente && isFreshPendente && !oldOrderInfo) || hasNewAdditions;
               });
 
               if (newlyPendenteOrders.length > 0) {
@@ -2501,6 +2512,87 @@ window.openMesaQrCodeModal = function() {
         } catch (err) {
           console.error("Erro ao receber mesa:", err);
           alert("Erro ao receber mesa: " + err.message);
+        }
+      };
+
+      // Função para remover/cancelar item individual de comanda de mesa
+      window.removeMesaOrderItem = async function (orderId, itemIndex) {
+        const order = globalOrdersList.find((o) => o.id === orderId);
+        if (!order || !order.items || !order.items[itemIndex]) {
+          alert("Item não encontrado no pedido.");
+          return;
+        }
+
+        const itemToRemove = order.items[itemIndex];
+        const itemName = itemToRemove.name || "Item";
+        const itemQty = itemToRemove.quantity || 1;
+        const itemTotal = (itemToRemove.totalItemPrice !== undefined ? itemToRemove.totalItemPrice : (itemToRemove.price || 0)) * itemQty;
+        const itemTotalFormatted = itemTotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+        const confirmMsg = `⚠️ Deseja realmente EXCLUIR este item da comanda?\n\n• Item: ${itemQty}x ${itemName}\n• Valor: ${itemTotalFormatted}\n\nO valor total da mesa será recalculado automaticamente.`;
+        const ok = await window.customConfirm(confirmMsg);
+        if (!ok) return;
+
+        try {
+          // Record that this merchant on this machine modified this order to suppress self-notifications
+          if (!window._merchantActionOrderTimestamps) {
+            window._merchantActionOrderTimestamps = {};
+          }
+          window._merchantActionOrderTimestamps[orderId] = Date.now();
+
+          const newItems = [...order.items];
+          newItems.splice(itemIndex, 1);
+
+          if (newItems.length === 0) {
+            const cancelOrderOk = await window.customConfirm(
+              "Este era o único item da comanda. Deseja CANCELAR o pedido da mesa por completo?"
+            );
+            if (cancelOrderOk) {
+              const orderRef = doc(db, COLLECTIONS.orders, orderId);
+              await updateDoc(orderRef, {
+                status: "Cancelado",
+                cancelReason: "Todos os itens foram excluídos pelo lojista",
+                lastAddedItems: [],
+                updatedAt: new Date().toISOString()
+              });
+              toggleDetailsModal(false);
+              return;
+            }
+          }
+
+          // Recalcular subtotal e total
+          let newSubtotal = 0;
+          newItems.forEach((it) => {
+            const unitPrice = it.totalItemPrice !== undefined ? it.totalItemPrice : (it.price || 0);
+            const q = it.quantity || 1;
+            newSubtotal += unitPrice * q;
+          });
+
+          const deliveryFee = order.deliveryFee || 0;
+          const desconto = order.desconto || 0;
+          const newTotal = Math.max(0, newSubtotal + deliveryFee - desconto);
+
+          const orderRef = doc(db, COLLECTIONS.orders, orderId);
+          await updateDoc(orderRef, {
+            items: newItems,
+            lastAddedItems: [], // Clear any previous additions flag
+            subtotal: newSubtotal,
+            total: newTotal,
+            updatedAt: new Date().toISOString()
+          });
+
+          // Atualizar o objeto localmente para re-renderizar o modal imediatamente
+          order.items = newItems;
+          order.lastAddedItems = [];
+          order.subtotal = newSubtotal;
+          order.total = newTotal;
+
+          showOrderDetailsDrawer(orderId);
+
+          console.log(`Item #${itemIndex} (${itemName}) removido da comanda ${orderId}`);
+        } catch (err) {
+          console.error("Erro ao remover item da comanda de mesa:", err);
+          alert("Erro ao excluir item: " + err.message);
         }
       };
 
@@ -2973,10 +3065,10 @@ window.openMesaQrCodeModal = function() {
         const container = document.getElementById("modal-items-container");
         container.innerHTML = "";
 
-        order.items.forEach((item) => {
+        order.items.forEach((item, itemIdx) => {
           const row = document.createElement("div");
           row.className =
-            "flex justify-between text-xs border-b border-gray-50 pb-2";
+            "flex justify-between items-center text-xs border-b border-gray-50 pb-2 gap-2";
 
           let compText = "";
           if (item.complements && item.complements.length > 0) {
@@ -3029,13 +3121,26 @@ window.openMesaQrCodeModal = function() {
             ? `<div class="text-[9px] text-orange-500 italic mt-0.5">Obs: "${item.notes}"</div>`
             : "";
 
+          const itemUnitPrice = item.totalItemPrice !== undefined ? item.totalItemPrice : (item.price || 0);
+          const itemTotalFormatted = (itemUnitPrice * (item.quantity || 1)).toFixed(2).replace(".", ",");
+
+          // Se for comanda de Mesa e o pedido não estiver finalizado/cancelado, permite exclusão do item
+          const canDeleteMesaItem = isMesa && order.status !== "Entregue" && order.status !== "Cancelado";
+
           row.innerHTML = `
-          <div>
+          <div class="flex-grow">
             <div class="font-bold text-gray-700 capitalize">${item.quantity}x ${item.name}</div>
             ${compText}
             ${notesText}
           </div>
-          <span class="font-semibold text-gray-700">R$ ${(item.totalItemPrice * item.quantity).toFixed(2).replace(".", ",")}</span>
+          <div class="flex items-center gap-2 shrink-0">
+            <span class="font-semibold text-gray-700">R$ ${itemTotalFormatted}</span>
+            ${
+              canDeleteMesaItem
+                ? `<button type="button" onclick="window.removeMesaOrderItem('${order.id}', ${itemIdx})" class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors cursor-pointer text-xs font-bold" title="Excluir este item da mesa">🗑️</button>`
+                : ''
+            }
+          </div>
         `;
           container.appendChild(row);
         });
