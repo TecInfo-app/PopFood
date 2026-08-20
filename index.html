@@ -303,10 +303,22 @@
         </div>
 
         <!-- Add category forms -->
-        <div class="flex gap-2">
-          <input type="text" id="new-category-name" placeholder="Ex: Bebidas, Hambúrgueres" class="flex-grow text-xs p-2.5 border border-gray-200 rounded-lg focus:border-orange-400 focus:outline-none transition-all">
-          <button onclick="createNewCategory()" class="bg-gray-800 hover:bg-gray-950 text-white font-semibold py-2.5 px-3.5 text-xs rounded-lg transition-colors cursor-pointer">+</button>
+        <div class="space-y-2">
+          <div class="flex gap-2 items-center">
+            <label for="new-category-image-file" class="w-10 h-10 rounded-full border-2 border-dashed border-gray-300 hover:border-brand-primary flex items-center justify-center cursor-pointer overflow-hidden shrink-0 bg-gray-50 relative group transition-all" title="Escolher Foto da Categoria">
+              <img id="new-category-image-preview" class="w-full h-full object-cover hidden" />
+              <span id="new-category-image-icon" class="text-gray-400 group-hover:text-brand-primary text-xs">📷</span>
+            </label>
+            <input type="file" id="new-category-image-file" accept="image/*" onchange="handleNewCategoryImageSelected(event)" class="hidden" />
+
+            <input type="text" id="new-category-name" placeholder="Ex: Bebidas, Hambúrgueres" class="flex-grow text-xs p-2.5 border border-gray-200 rounded-lg focus:border-orange-400 focus:outline-none transition-all">
+            <button onclick="createNewCategory()" class="bg-gray-800 hover:bg-gray-950 text-white font-bold py-2.5 px-3 text-xs rounded-lg transition-colors cursor-pointer shrink-0">+ Criar</button>
+          </div>
+          <p class="text-[10px] text-gray-400 font-medium">💡 Clique na câmera 📷 para definir uma foto para a nova categoria.</p>
         </div>
+
+        <!-- Hidden file input for changing existing category image -->
+        <input type="file" id="change-category-image-file" accept="image/*" class="hidden" onchange="handleCategorySpecificImageSelected(event)" />
 
         <!-- List columns categories sorting buttons -->
         <div id="categories-sort-list" class="space-y-2 max-h-96 overflow-y-auto">
@@ -1389,6 +1401,105 @@ storeId: window.currentStoreId
       triggerProductsSearchFilter();
     }
 
+    let newCategorySelectedImageBase64 = null;
+    let targetCategoryIdForImageUpdate = null;
+
+    function compressImageFileToDataUrl(file, maxWidth = 300, maxHeight = 300, quality = 0.85) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+            if (width > height) {
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              }
+            } else {
+              if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL("image/jpeg", quality);
+            resolve(dataUrl);
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.handleNewCategoryImageSelected = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        newCategorySelectedImageBase64 = await compressImageFileToDataUrl(file, 300, 300);
+        const prev = document.getElementById('new-category-image-preview');
+        const icon = document.getElementById('new-category-image-icon');
+        if (prev && icon) {
+          prev.src = newCategorySelectedImageBase64;
+          prev.classList.remove('hidden');
+          icon.classList.add('hidden');
+        }
+      } catch (err) {
+        console.error("Error compressing category image:", err);
+      }
+    };
+
+    window.triggerCategoryImageUpload = function(catId) {
+      targetCategoryIdForImageUpdate = catId;
+      const fileIn = document.getElementById('change-category-image-file');
+      if (fileIn) {
+        fileIn.value = '';
+        fileIn.click();
+      }
+    };
+
+    window.handleCategorySpecificImageSelected = async function(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file || !targetCategoryIdForImageUpdate) return;
+      try {
+        const dataUrl = await compressImageFileToDataUrl(file, 300, 300);
+        await updateDoc(doc(db, COLLECTIONS.categories, targetCategoryIdForImageUpdate), {
+          image: dataUrl
+        });
+        bumpMenuVersion();
+        refreshManagementDatabases();
+      } catch(err) {
+        console.error("Error updating category image:", err);
+        alert("Erro ao salvar imagem da categoria: " + err.message);
+      } finally {
+        targetCategoryIdForImageUpdate = null;
+      }
+    };
+
+    window.editCategoryNameModal = async function(catId) {
+      const cat = activeCategories.find(c => c.id === catId);
+      if (!cat) return;
+      const newName = prompt("Digite o novo nome da categoria:", cat.name);
+      if (newName && newName.trim() && newName.trim() !== cat.name) {
+        try {
+          await updateDoc(doc(db, COLLECTIONS.categories, catId), {
+            name: newName.trim()
+          });
+          bumpMenuVersion();
+          refreshManagementDatabases();
+        } catch(err) {
+          console.error("Error renaming category:", err);
+        }
+      }
+    };
+
     // Category CRUD list builder
     function renderCategoriesManager() {
       const container = document.getElementById('categories-sort-list');
@@ -1399,14 +1510,24 @@ storeId: window.currentStoreId
 
       activeCategories.forEach((cat, idx) => {
         const item = document.createElement('div');
-        item.className = "bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center justify-between shadow-2xs";
+        item.className = "bg-gray-50 p-2.5 rounded-xl border border-gray-100 flex items-center justify-between shadow-2xs gap-2";
         
+        const catImgSrc = cat.image || "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=100&auto=format&fit=crop&q=80";
+
         item.innerHTML = `
-          <div class="flex-grow pr-4">
-            <span class="text-xs font-bold text-gray-800 block capitalize">${cat.name}</span>
-            <span class="block text-[9px] text-gray-400 font-semibold font-mono">Ordem: ${cat.order || 0}</span>
+          <div class="flex items-center gap-2 flex-grow min-w-0">
+            <div class="relative group cursor-pointer shrink-0" onclick="triggerCategoryImageUpload('${cat.id}')" title="Clique para alterar a foto">
+              <img src="${catImgSrc}" class="w-10 h-10 rounded-full object-cover border border-gray-200 group-hover:opacity-80 transition-opacity shadow-2xs" />
+              <div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-[10px]">📷</div>
+            </div>
+            <div class="flex-grow min-w-0">
+              <span class="text-xs font-bold text-gray-800 block capitalize truncate">${cat.name}</span>
+              <span class="block text-[9px] text-gray-400 font-semibold font-mono">Ordem: ${cat.order || 0}</span>
+            </div>
           </div>
-          <div class="flex items-center gap-1.5 flex-shrink-0">
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <button onclick="triggerCategoryImageUpload('${cat.id}')" class="px-2 py-1.5 bg-white hover:bg-orange-50 text-gray-700 hover:text-brand-primary text-[10px] font-bold rounded-lg border border-gray-200 transition-colors cursor-pointer flex items-center gap-1" title="Alterar Foto">📷 Foto</button>
+            <button onclick="editCategoryNameModal('${cat.id}')" class="w-7 h-7 bg-white text-gray-650 hover:text-brand-primary text-xs font-semibold rounded-md border border-gray-100 flex items-center justify-center cursor-pointer" title="Editar Nome">✏️</button>
             <button onclick="moveCategorySorting(${idx}, -1)" class="w-7 h-7 bg-white text-gray-650 hover:text-brand-primary text-xs font-semibold rounded-md border border-gray-100 flex items-center justify-center cursor-pointer">▲</button>
             <button onclick="moveCategorySorting(${idx}, 1)" class="w-7 h-7 bg-white text-gray-650 hover:text-brand-primary text-xs font-semibold rounded-md border border-gray-100 flex items-center justify-center cursor-pointer">▼</button>
             <button onclick="deleteCategoryAction('${cat.id}')" class="w-7 h-7 bg-red-100 text-brand-danger hover:bg-red-200 text-xs font-bold rounded-md flex items-center justify-center cursor-pointer">✕</button>
@@ -1450,14 +1571,25 @@ storeId: window.currentStoreId
         const block = {
           id: catId,
           name: nameIn,
+          image: newCategorySelectedImageBase64 || "",
           order: nextOrderIndex,
-          createdAt: new Date().toISOString()
-        ,
-storeId: window.currentStoreId
-};
+          createdAt: new Date().toISOString(),
+          storeId: window.currentStoreId
+        };
 
         await setDoc(doc(db, COLLECTIONS.categories, catId), block);
         (document.getElementById('new-category-name') || {}).value = '';
+        newCategorySelectedImageBase64 = null;
+        const prev = document.getElementById('new-category-image-preview');
+        const icon = document.getElementById('new-category-image-icon');
+        if (prev && icon) {
+          prev.classList.add('hidden');
+          prev.src = '';
+          icon.classList.remove('hidden');
+        }
+        const fileInput = document.getElementById('new-category-image-file');
+        if (fileInput) fileInput.value = '';
+
         bumpMenuVersion();
         refreshManagementDatabases();
       } catch(err) {
