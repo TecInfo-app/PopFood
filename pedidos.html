@@ -2454,10 +2454,10 @@ window.openMesaQrCodeModal = function() {
           }
 
           ${
-            !isMesa && order.status === "Saiu para entrega"
+            !isMesa && order.status === "Saiu para entrega" && isPickup
               ? `
             <button onclick="changeOrderStatus('${order.id}', 'Entregue')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
-              ✅ ${isPickup ? "Entregue" : "Finalizar"}
+              ✅ Entregue
             </button>
           `
               : ""
@@ -3173,13 +3173,23 @@ window.openMesaQrCodeModal = function() {
             receberMesaOrder(order.id);
           };
         } else {
-          btnDes.innerHTML = isPickup ? "🛍️ Pronto p/ Retirada" : "🏍️ Despachar Pedido";
-          btnDes.className =
-            "flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer";
-          btnDes.onclick = () => {
-            changeOrderStatus(order.id, "Saiu para entrega");
-            toggleDetailsModal(false);
-          };
+          if (order.status === "Saiu para entrega" && isPickup) {
+            btnDes.innerHTML = "✅ Entregue";
+            btnDes.className =
+              "flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs transition-colors cursor-pointer shadow-xs";
+            btnDes.onclick = () => {
+              changeOrderStatus(order.id, "Entregue");
+              toggleDetailsModal(false);
+            };
+          } else {
+            btnDes.innerHTML = isPickup ? "🛍️ Pronto p/ Retirada" : "🏍️ Despachar Pedido";
+            btnDes.className =
+              "flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer";
+            btnDes.onclick = () => {
+              changeOrderStatus(order.id, "Saiu para entrega");
+              toggleDetailsModal(false);
+            };
+          }
         }
 
         btnCan.onclick = async () => {
@@ -3288,7 +3298,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           btnDes.classList.remove("hidden");
           btnCan.classList.remove("hidden");
         } else if (order.status === "Saiu para entrega") {
-          if (isMesa) {
+          if (isMesa || isPickup) {
             btnDes.classList.remove("hidden");
           }
           btnCan.classList.remove("hidden");
