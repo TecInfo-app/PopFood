@@ -2058,7 +2058,11 @@ window.copyStoreLink = function() {
 
                 newlyPendenteOrders.forEach((newPendente) => {
                   if (!printedOrders.includes(newPendente.id)) {
-                    window.triggerThermalComandaPrint(newPendente);
+                    const customerObj = newPendente.customer || newPendente.client || {};
+                    const isMesa = customerObj.type === "Mesa" || (customerObj.address && customerObj.address.toLowerCase().includes("mesa"));
+                    const hasNewItems = newPendente.lastAddedItems && newPendente.lastAddedItems.length > 0;
+                    
+                    window.triggerThermalComandaPrint(newPendente, isMesa && hasNewItems);
                     printedOrders.push(newPendente.id);
                   }
                 });
@@ -2295,6 +2299,8 @@ window.copyStoreLink = function() {
           .map((i) => `${i.quantity}x ${i.name}`)
           .join(", ");
         const customerObj = order.customer || order.client || {};
+        const isMesa = customerObj.type === "Mesa" || (customerObj.address && customerObj.address.toLowerCase().includes("mesa"));
+        const hasNewItems = order.lastAddedItems && order.lastAddedItems.length > 0;
         const isPickup = customerObj.type === "pickup" || customerObj.type === "Retirada" || customerObj.type === "Mesa" || order.isPickup;
         let displayStatus = order.status;
         if (isPickup && order.status === "Saiu para entrega") {
@@ -2332,9 +2338,18 @@ window.copyStoreLink = function() {
         
         <div class="${actionsLayout}">
           <!-- Print -->
-          <button onclick="triggerThermalComandaPrintById('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Imprimir Comanda">
-            🖨️
-          </button>
+          ${isMesa && hasNewItems ? `
+            <button onclick="triggerThermalComandaPrintById('${order.id}', false)" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-[11px] font-semibold ${btnFull}" title="Imprimir Comanda Completa">
+              🖨️ Geral
+            </button>
+            <button onclick="triggerThermalComandaPrintById('${order.id}', true)" class="bg-orange-100 hover:bg-orange-200 text-orange-850 px-2.5 py-1.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-[11px] font-bold ${btnFull} flex items-center gap-1" title="Imprimir Apenas Novos Itens">
+              ⚡🖨️ Novos
+            </button>
+          ` : `
+            <button onclick="triggerThermalComandaPrintById('${order.id}')" class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-xs ${btnFull}" title="Imprimir Comanda">
+              🖨️
+            </button>
+          `}
 
           <!-- Uber Direct -->
           ${
@@ -3378,12 +3393,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
       }
 
-      window.triggerThermalComandaPrintById = function (orderId) {
+      window.triggerThermalComandaPrintById = function (orderId, printOnlyNew = false) {
         const order = globalOrdersList.find((o) => o.id === orderId);
-        if (order) window.triggerThermalComandaPrint(order);
+        if (order) window.triggerThermalComandaPrint(order, printOnlyNew);
       };
 
-      window.triggerThermalComandaPrint = function (order) {
+      window.triggerThermalComandaPrint = function (order, printOnlyNew = false) {
         const parent = document.getElementById("receipt-print-layout");
         parent.innerHTML = "";
 
@@ -3454,6 +3469,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
 
         // 1. Calculations & Dynamic Formatting Variables
+        const itemsToPrint = (printOnlyNew && order.lastAddedItems && order.lastAddedItems.length > 0)
+          ? order.lastAddedItems
+          : order.items;
         const shortId = order.sequence || order.number || order.id.slice(-4).toUpperCase();
         
         let estimatedTimeStr = "";
@@ -3517,7 +3535,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         let textReceipt = "";
         textReceipt += centerText((order.source || order.canal || order.channel || "POPFOOD SITE").toUpperCase());
         textReceipt += centerText(storeName.toUpperCase());
-        textReceipt += centerText("EXPEDICAO");
+        textReceipt += centerText(printOnlyNew ? "ADICAO DE ITENS" : "EXPEDICAO");
         textReceipt += makeDivider("-");
         textReceipt += centerText(shortId);
         textReceipt += makeDivider("-");
@@ -3543,9 +3561,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           detailsText += `*** RETIRADA NO LOCAL ***\n`;
         }
         detailsText += makeDivider("-");
-        detailsText += `ITENS DO PEDIDO (${order.items.length})\n`;
+        detailsText += `${printOnlyNew ? "ITENS ADICIONADOS" : "ITENS DO PEDIDO"} (${itemsToPrint.length})\n`;
         
-        order.items.forEach((item) => {
+        itemsToPrint.forEach((item) => {
           const qty = item.quantity || 1;
           const name = item.name.toUpperCase();
           const itemTotal = (item.totalItemPrice || item.price || 0) * qty;
@@ -3625,14 +3643,14 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
         detailsText += makeDivider("-");
         
-        detailsText += formatLine("Valor total do pedido:", `R$ ${subtotal.toFixed(2).replace(".", ",")}`);
+        detailsText += formatLine(printOnlyNew ? "Subtotal Acumulado:" : "Valor total do pedido:", `R$ ${subtotal.toFixed(2).replace(".", ",")}`);
         detailsText += formatLine("Taxa de entrega:", `R$ ${deliveryFee.toFixed(2).replace(".", ",")}`);
         if (discount > 0) {
           detailsText += formatLine("Desconto / Incentivos:", `-R$ ${discount.toFixed(2).replace(".", ",")}`);
         }
-        detailsText += formatLine("Valor final do pedido:", `R$ ${total.toFixed(2).replace(".", ",")}`);
+        detailsText += formatLine(printOnlyNew ? "Total Geral da Mesa:" : "Valor final do pedido:", `R$ ${total.toFixed(2).replace(".", ",")}`);
         detailsText += makeDivider("-");
-        detailsText += formatLine("Cobrar do cliente:", `R$ ${toCollect.toFixed(2).replace(".", ",")}`);
+        detailsText += formatLine(printOnlyNew ? "Cobrar da Mesa:" : "Cobrar do cliente:", `R$ ${toCollect.toFixed(2).replace(".", ",")}`);
         detailsText += makeDivider("-");
         detailsText += `CPF na nota: ${order.cpf || order.customer?.cpf || "NÃO INFORMADO"}\n`;
         detailsText += makeDivider("-");
@@ -3650,7 +3668,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         const orderFontSize = printWidth === "58" ? "36px" : "44px";
         
         let itemsHtml = "";
-        order.items.forEach((item) => {
+        itemsToPrint.forEach((item) => {
           const qty = item.quantity || 1;
           const name = item.name.toUpperCase();
           const itemTotal = (item.totalItemPrice || item.price || 0) * qty;
@@ -3741,7 +3759,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             ${storeName.toUpperCase()}
           </div>
           <div style="text-align: center; font-size: ${headerFontSize}; font-weight: bold; letter-spacing: 2px; margin-bottom: 6px;">
-            EXPEDICAO
+            ${printOnlyNew ? "ADIÇÃO DE ITENS" : "EXPEDICAO"}
           </div>
           
           <!-- dashed separator -->
@@ -3804,7 +3822,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           
           <!-- ITEMS -->
           <div style="font-size: ${headerFontSize}; font-weight: bold; margin-bottom: 4px;">
-            ITENS DO PEDIDO (${order.items.length})
+            ${printOnlyNew ? "ITENS ADICIONADOS" : `ITENS DO PEDIDO (${order.items.length})`}
           </div>
           ${itemsHtml}
           
@@ -3833,7 +3851,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           
           <!-- TOTALS -->
           <div style="display: flex; justify-content: space-between; margin-top: 3px;">
-            <span>Valor total do pedido:</span>
+            <span>${printOnlyNew ? "Subtotal Acumulado:" : "Valor total do pedido:"}</span>
             <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${subtotal.toFixed(2).replace(".", ",")}</span>
           </div>
           <div style="display: flex; justify-content: space-between; margin-top: 3px;">
@@ -3842,7 +3860,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           </div>
           ${discountHtml}
           <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 3px;">
-            <span>Valor final do pedido:</span>
+            <span>${printOnlyNew ? "Total Geral da Mesa:" : "Valor final do pedido:"}</span>
             <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${total.toFixed(2).replace(".", ",")}</span>
           </div>
           
@@ -3851,7 +3869,7 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           
           <!-- COBRAR DO CLIENTE (CRITICAL HIGHLIGHT) -->
           <div style="display: flex; justify-content: space-between; font-weight: 900; border: 1.5px solid black; padding: 6px; margin: 8px 0; background: #eee;">
-            <span>COBRAR DO CLIENTE:</span>
+            <span>${printOnlyNew ? "COBRAR DA MESA:" : "COBRAR DO CLIENTE:"}</span>
             <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${toCollect.toFixed(2).replace(".", ",")}</span>
           </div>
           
