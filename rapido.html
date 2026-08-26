@@ -1339,6 +1339,31 @@
         updateCompModalTotal();
       };
 
+      window.changeTotemCompQty = function(groupIndex, optName, optPrice, delta, maxAllowed, spanId) {
+        if (!currentCompSelections[groupIndex]) currentCompSelections[groupIndex] = [];
+        const selArr = currentCompSelections[groupIndex];
+        const currentTotal = selArr.length;
+        
+        if (delta > 0) {
+          if (currentTotal >= maxAllowed) {
+            // max items limit reached
+            return;
+          }
+          selArr.push({ groupIndex, optionName: optName, price: optPrice });
+        } else {
+          // remove one instance of this option
+          const idx = selArr.findIndex(i => i.optionName === optName);
+          if (idx > -1) selArr.splice(idx, 1);
+        }
+        
+        // count instances of this option
+        const optionCount = selArr.filter(i => i.optionName === optName).length;
+        const countEl = document.getElementById(spanId);
+        if(countEl) countEl.textContent = optionCount;
+
+        updateCompModalTotal();
+      };
+
       function updateCompModalTotal() {
         if (!currentEditingProd) return;
         let unitPrice = currentEditingProd.price || 0;
@@ -1363,7 +1388,7 @@
           for (let gIdx = 0; gIdx < compDoc.groups.length; gIdx++) {
             const g = compDoc.groups[gIdx];
             const chosen = currentCompSelections[gIdx] || [];
-            if (g.required && chosen.length < (g.min || 1)) {
+            if (g.isMandatory && chosen.length < (g.minSelection || 1)) {
               alert(`Por favor, selecione as opções em: ${g.name}`);
               return;
             }
