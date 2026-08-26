@@ -1261,9 +1261,9 @@
             const groupDiv = document.createElement("div");
             groupDiv.className = "pt-3 first:pt-0 space-y-2";
 
-            const isReq = group.required;
-            const minSel = group.min || (isReq ? 1 : 0);
-            const maxSel = group.max || 1;
+            const isReq = group.isMandatory;
+            const minSel = group.minSelection || (isReq ? 1 : 0);
+            const maxSel = group.maxSelection || 1;
 
             groupDiv.innerHTML = `
               <div>
@@ -1273,20 +1273,39 @@
                 </p>
               </div>
               <div class="space-y-1.5 pt-1">
-                ${(group.options || []).map((opt, oIdx) => `
-                  <label class="flex items-center justify-between p-3 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer transition-colors active:scale-[0.99]">
-                    <div class="flex items-center gap-2.5">
-                      <input 
-                        type="${maxSel === 1 ? 'radio' : 'checkbox'}" 
-                        name="comp-group-${gIdx}" 
-                        onchange="toggleCompOption(${gIdx}, '${opt.name}', ${opt.price || 0}, ${maxSel})"
-                        class="w-4 h-4 text-amber-600 rounded"
-                      />
-                      <span class="text-xs font-bold text-slate-800">${opt.name}</span>
-                    </div>
-                    ${opt.price ? `<span class="text-xs font-black text-amber-600">+${(opt.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>` : ''}
-                  </label>
-                `).join('')}
+                ${(group.options || []).map((opt, oIdx) => {
+                  if (maxSel > 1) {
+                    const optId = `comp-qty-${gIdx}-${oIdx}`;
+                    return `
+                      <div class="flex items-center justify-between p-3 rounded-2xl border border-slate-200 bg-slate-50">
+                        <div class="flex items-center gap-2.5">
+                          <span class="text-xs font-bold text-slate-800">${opt.name}</span>
+                          ${opt.price ? `<span class="text-xs font-black text-amber-600">+${(opt.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>` : ''}
+                        </div>
+                        <div class="flex items-center bg-white border border-slate-200 rounded-xl p-0.5 shadow-2xs shrink-0">
+                          <button type="button" onclick="changeTotemCompQty(${gIdx}, '${opt.name}', ${opt.price || 0}, -1, ${maxSel}, '${optId}')" class="w-7 h-7 bg-slate-100 text-slate-800 font-black text-xs rounded-lg flex items-center justify-center active:scale-90 cursor-pointer">-</button>
+                          <span id="${optId}" class="w-6 text-center font-black text-xs text-slate-900">0</span>
+                          <button type="button" onclick="changeTotemCompQty(${gIdx}, '${opt.name}', ${opt.price || 0}, 1, ${maxSel}, '${optId}')" class="w-7 h-7 bg-slate-900 text-white font-black text-xs rounded-lg flex items-center justify-center active:scale-90 cursor-pointer">+</button>
+                        </div>
+                      </div>
+                    `;
+                  } else {
+                    return `
+                      <label class="flex items-center justify-between p-3 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-amber-50 cursor-pointer transition-colors active:scale-[0.99]">
+                        <div class="flex items-center gap-2.5">
+                          <input 
+                            type="radio" 
+                            name="comp-group-${gIdx}" 
+                            onchange="toggleCompOption(${gIdx}, '${opt.name}', ${opt.price || 0}, ${maxSel})"
+                            class="w-4 h-4 text-amber-600 rounded"
+                          />
+                          <span class="text-xs font-bold text-slate-800">${opt.name}</span>
+                        </div>
+                        ${opt.price ? `<span class="text-xs font-black text-amber-600">+${(opt.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>` : ''}
+                      </label>
+                    `;
+                  }
+                }).join('')}
               </div>
             `;
             body.appendChild(groupDiv);
