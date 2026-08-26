@@ -591,6 +591,18 @@
         const ordersSnap = await getDocs(collection(db, COLLECTIONS.orders));
         let totalOrdersCount = ordersSnap.size;
 
+        const storeOrderCounts = {};
+        ordersSnap.forEach(doc => {
+           const data = doc.data();
+           const sid = data.storeId || "main";
+           storeOrderCounts[sid] = (storeOrderCounts[sid] || 0) + 1;
+        });
+
+        loadedStores = loadedStores.map(store => ({
+           ...store,
+           totalOrdersCount: storeOrderCounts[store.id] || 0
+        }));
+
         // 3. Fetch overall clients
         const clientsSnap = await getDocs(collection(db, COLLECTIONS.clients));
         let totalClientsCount = clientsSnap.size;
@@ -665,6 +677,7 @@
             <p class="text-[11px] text-gray-400 mt-1 line-clamp-1 font-semibold">📞 ${store.phone || 'Sem WhatsApp'}</p>
             ${store.adminEmail ? `<p class="text-[10px] text-gray-600 mt-1.5"><span class="font-extrabold text-orange-500 text-[9px] uppercase tracking-wider">🔐 Acesso:</span> <span class="font-mono font-bold text-slate-800">${store.adminEmail}</span> / <span class="font-mono text-slate-700">${store.adminPassword}</span></p>` : ''}
             <p class="text-[10px] text-gray-400 mt-1 line-clamp-1">📍 ${store.address || 'Sem endereço'}</p>
+            <p class="text-[10px] text-gray-400 mt-1 line-clamp-1">📦 Pedidos da Loja: <strong class="text-gray-600">${store.totalOrdersCount || 0}</strong></p>
             
             <div class="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[10px]">
               <span class="text-gray-400">Horário: <strong class="text-gray-600">${store.openTime || '18:00'} às ${store.closeTime || '23:00'}</strong></span>
