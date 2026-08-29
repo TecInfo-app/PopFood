@@ -473,10 +473,10 @@ window.openMesaQrCodeModal = function() {
 
         // Perform programmatic cross check validation to structure actual spending and counters (LTV calculation)
         globalClientsList = clientsArr.map(client => {
-          const clientPhone = (client.phone || "").replace(/\D/g, '');
+          const clientPhone = String(client.phone || "").replace(/\D/g, '');
           if (!clientPhone) return null;
           const matchingOrders = ordersArr.filter(o => {
-            const orderPhone = (o.customer && o.customer.phone || "").replace(/\D/g, '');
+            const orderPhone = String(o.customer && o.customer.phone || "").replace(/\D/g, '');
             return orderPhone === clientPhone && o.status !== "Cancelado";
           });
 
@@ -530,8 +530,8 @@ window.openMesaQrCodeModal = function() {
       let matching = globalClientsList;
       if (searchQuery) {
         matching = globalClientsList.filter(c => 
-          c.name.toLowerCase().includes(searchQuery) ||
-          c.phone.toLowerCase().includes(searchQuery) ||
+          String(c.name || '').toLowerCase().includes(searchQuery) ||
+          String(c.phone || '').toLowerCase().includes(searchQuery) ||
           (c.address && c.address.toLowerCase().includes(searchQuery))
         );
       }
@@ -569,8 +569,8 @@ window.openMesaQrCodeModal = function() {
             ${(() => {
               if (!restaurantProfile || !restaurantProfile.loyaltyActive) return '<span class="text-gray-300 italic text-[10px]">Inativo</span>';
               const minOrders = restaurantProfile.loyaltyMinOrders || 3;
-              const cleanPhone = client.phone.replace(/\D/g, '');
-              const allC = globalOrdersListForCrm.filter(o => o.customer.phone.replace(/\D/g, '') === cleanPhone);
+              const cleanPhone = String(client.phone || '').replace(/\D/g, '');
+              const allC = globalOrdersListForCrm.filter(o => String((o.customer && o.customer.phone) || '').replace(/\D/g, '') === cleanPhone);
               
               const completedWithoutLoyalty = allC.filter(o => o.status === "Entregue" && !(o.descontoFidelidade > 0 || o.fidelidadeAtivo === true)).length;
               const redeemedCount = allC.filter(o => o.status !== "Cancelado" && (o.descontoFidelidade > 0 || o.fidelidadeAtivo === true)).length;
@@ -620,7 +620,7 @@ window.openMesaQrCodeModal = function() {
 
     // Open detailed histories drawer
     window.openClientOrdersHistoryDrawer = function(phone) {
-      const client = globalClientsList.find(c => c.phone.replace(/\D/g, '') === phone.replace(/\D/g, ''));
+      const client = globalClientsList.find(c => String(c.phone || '').replace(/\D/g, '') === String(phone || '').replace(/\D/g, ''));
       if (!client) return;
 
       (document.getElementById('crm-lbl-client-name') || {}).textContent = client.name;
@@ -631,8 +631,8 @@ window.openMesaQrCodeModal = function() {
       historyParent.innerHTML = '';
 
       // Find matching client orders
-      const cleanTargetPhone = phone.replace(/\D/g, '');
-      const clientOrders = globalOrdersListForCrm.filter(o => o.customer.phone.replace(/\D/g, '') === cleanTargetPhone);
+      const cleanTargetPhone = String(phone || '').replace(/\D/g, '');
+      const clientOrders = globalOrdersListForCrm.filter(o => String((o.customer && o.customer.phone) || '').replace(/\D/g, '') === cleanTargetPhone);
 
       if (clientOrders.length === 0) {
         historyParent.innerHTML = `<div class="text-center py-6 text-xs text-gray-400">Nenhum pedido efetuado no histórico deste cliente.</div>`;
@@ -687,7 +687,7 @@ window.openMesaQrCodeModal = function() {
 
       globalClientsList.forEach(c => {
         const addressEscaped = c.address ? `"${c.address.replace(/"/g, '""')}"` : 'N/A';
-        const nameEscaped = `"${c.name.replace(/"/g, '""')}"`;
+        const nameEscaped = `"${String(c.name || 'Sem Nome').replace(/"/g, '""')}"`;
         const spentVal = (c.totalSpent || 0).toFixed(2);
         
         const line = `${nameEscaped},${c.phone},${c.cep || ''},${addressEscaped},${c.totalOrders || 0},${spentVal}\n`;
