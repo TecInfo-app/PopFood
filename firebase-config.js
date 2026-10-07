@@ -1,6 +1,9 @@
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, 
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
   collection, 
   doc, 
   getDoc, 
@@ -11,6 +14,8 @@ import {
   query, 
   where, 
   orderBy, 
+  limit,
+  limitToLast,
   onSnapshot,
   Timestamp,
   arrayUnion,
@@ -36,7 +41,22 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+
+let db;
+if (typeof window !== 'undefined') {
+  try {
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
+  } catch (e) {
+    db = getFirestore(app);
+  }
+} else {
+  db = getFirestore(app);
+}
+
 const auth = getAuth(app);
 
 let messaging = null;
@@ -241,6 +261,8 @@ export {
   query,
   where,
   orderBy,
+  limit,
+  limitToLast,
   onSnapshot,
   arrayUnion,
   increment,

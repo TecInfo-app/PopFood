@@ -3677,35 +3677,33 @@
             },
           );
 
-          // Listen to logo separately
+          // Load logo with cache
           const hLogo = document.getElementById("header-restaurant-logo");
-          onSnapshot(
+          getDoc(
             doc(
               db,
               COLLECTIONS.restaurantProfile,
               window.currentStoreId + "_logo",
-            ),
-            (logoSnap) => {
-              if (logoSnap.exists()) {
-                const logoVal = logoSnap.data().logo;
-                if (hLogo) {
-                  if (logoVal) {
-                    hLogo.src = logoVal;
-                    hLogo.classList.remove("hidden");
-                  } else {
-                    hLogo.classList.add("hidden");
-                  }
+            )
+          ).then((logoSnap) => {
+            if (logoSnap.exists()) {
+              const logoVal = logoSnap.data().logo;
+              if (hLogo) {
+                if (logoVal) {
+                  hLogo.src = logoVal;
+                  hLogo.classList.remove("hidden");
+                } else {
+                  hLogo.classList.add("hidden");
                 }
-              } else {
-                if (hLogo) hLogo.classList.add("hidden");
               }
-            },
-            (logoErr) => {
-              console.error("Error syncing logo:", logoErr);
-            },
-          );
+            } else {
+              if (hLogo) hLogo.classList.add("hidden");
+            }
+          }).catch((logoErr) => {
+            console.warn("Notice loading logo:", logoErr);
+          });
 
-          // Listen to individual banners in parallel
+          // Load individual banners in parallel
           const bannerDocs = [
             window.currentStoreId + "_banner0",
             window.currentStoreId + "_banner1",
@@ -3852,26 +3850,28 @@
             }
           }
 
-          bannerDocs.forEach((docId, index) => {
-            onSnapshot(
-              doc(db, COLLECTIONS.restaurantProfile, docId),
-              (bSnap) => {
-                if (bSnap.exists()) {
-                  const data = bSnap.data();
-                  if (data && data.banner) {
-                    bannerVals[index] = { banner: data.banner, linkUrl: data.linkUrl || "" };
+          Promise.all(
+            bannerDocs.map((docId, index) =>
+              getDoc(doc(db, COLLECTIONS.restaurantProfile, docId))
+                .then((bSnap) => {
+                  if (bSnap.exists()) {
+                    const data = bSnap.data();
+                    if (data && data.banner) {
+                      bannerVals[index] = { banner: data.banner, linkUrl: data.linkUrl || "" };
+                    } else {
+                      bannerVals[index] = null;
+                    }
                   } else {
                     bannerVals[index] = null;
                   }
-                } else {
+                })
+                .catch((bErr) => {
+                  console.warn(`Notice loading banner${index}:`, bErr);
                   bannerVals[index] = null;
-                }
-                renderBannersCarousel();
-              },
-              (bErr) => {
-                console.error(`Error loading banner${index}:`, bErr);
-              },
-            );
+                })
+            )
+          ).then(() => {
+            renderBannersCarousel();
           });
         } catch (err) {
           console.error("Error setting up profile sync: ", err);
