@@ -48,10 +48,17 @@ if (typeof window !== 'undefined') {
     db = initializeFirestore(app, {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
-      })
+      }),
+      experimentalAutoDetectLongPolling: true
     });
   } catch (e) {
-    db = getFirestore(app);
+    try {
+      db = initializeFirestore(app, {
+        experimentalAutoDetectLongPolling: true
+      });
+    } catch (e2) {
+      db = getFirestore(app);
+    }
   }
 } else {
   db = getFirestore(app);
