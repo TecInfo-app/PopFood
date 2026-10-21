@@ -184,10 +184,10 @@
           <div class="flex items-center gap-3">
             <img
               id="header-restaurant-logo"
-              src=""
               alt="logo"
-              class="w-10 h-10 rounded-full object-cover cursor-pointer hover:scale-105 transition-transform"
+              class="hidden w-10 h-10 rounded-full object-cover cursor-pointer hover:scale-105 transition-transform"
               onclick="toggleRestaurantInfoModal(true)"
+              onerror="this.classList.add('hidden')"
             />
             <div>
               <h1
@@ -2012,6 +2012,27 @@
         where,
       } from "./firebase-config.js";
 
+      // Application State & Environment
+      let backendHost = "";
+      const alternateBackendHost =
+        "https://ais-dev-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app";
+      if (
+        window.location.hostname.includes("github.io") ||
+        window.location.hostname.includes("127.0.0.1") ||
+        window.location.hostname.includes("localhost")
+      ) {
+        backendHost =
+          "https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app";
+      }
+
+      let restaurantProfile = null;
+      let categoriesList = [];
+      let productsList = [];
+      let activeCategory = "all";
+      let bannerInterval = null;
+      let currentBannerIdx = 0;
+      let bannerVals = [null, null, null];
+
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./firebase-messaging-sw.js')
           .then(function(registration) {
@@ -2039,12 +2060,6 @@
 
         // Initialize FCM Client to capture active subscription token without active orders
         setupFCMClient();
-
-        // INSTANT LOAD FOR MOBILE BROWSERS:
-        // 1. Instantly render from local cache if available (0ms)
-        prefillCatalogFromCache();
-        // 2. Fetch full catalog from lightweight server API in parallel (<150ms)
-        bootstrapStoreCatalog();
       }
 
       // FCM Implementation
@@ -2242,18 +2257,7 @@
         }
       };
 
-      // Application State Variables
-      let backendHost = "";
-      const alternateBackendHost =
-        "https://ais-dev-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app";
-      if (
-        window.location.hostname.includes("github.io") ||
-        window.location.hostname.includes("127.0.0.1") ||
-        window.location.hostname.includes("localhost")
-      ) {
-        backendHost =
-          "https://ais-pre-huiqzqgxqhno7p52tquz6q-756386363755.us-east1.run.app";
-      }
+
 
       // Helper for CORS-safe requests using fallbacks and open proxies
       async function makeProxySafeRequest(url, method, headers, body) {
@@ -2815,12 +2819,7 @@
         }
       };
 
-      let restaurantProfile = null;
-      let categoriesList = [];
-      let productsList = [];
-      let activeCategory = "all";
-      let bannerInterval = null;
-      let currentBannerIdx = 0;
+
 
       // Selections and details dialog
       let currentSelectedProduct = null;
@@ -3568,7 +3567,6 @@
       `;
       }
 
-      const bannerVals = [null, null, null];
 
       function renderBannersCarousel() {
         const bannersDiv = document.getElementById("banners-container");
@@ -3725,7 +3723,12 @@
         const hLogo = document.getElementById("header-restaurant-logo");
         if (hLogo) {
           if (data.logo) {
-            hLogo.src = data.logo;
+            let logoSrc = data.logo;
+            if (logoSrc.startsWith("/api/") && backendHost) {
+              logoSrc = backendHost + logoSrc;
+            }
+            hLogo.src = logoSrc;
+            hLogo.setAttribute("data-loaded", "true");
             hLogo.classList.remove("hidden");
           } else {
             hLogo.classList.add("hidden");
@@ -3737,14 +3740,26 @@
           bannerVals[0] = data.banners[0] || null;
           bannerVals[1] = data.banners[1] || null;
           bannerVals[2] = data.banners[2] || null;
+          bannerVals.forEach((b) => {
+            if (b && typeof b.banner === "string" && b.banner.startsWith("/api/") && backendHost) {
+              b.banner = backendHost + b.banner;
+            }
+          });
           renderBannersCarousel();
         }
 
         checkAndShowStoreHoursStatus();
 
         if (Array.isArray(data.categories) && Array.isArray(data.products)) {
+          const normalizedProducts = data.products.map((p) => {
+            if (p && typeof p.image === "string" && p.image.startsWith("/api/") && backendHost) {
+              return { ...p, image: backendHost + p.image };
+            }
+            return p;
+          });
+
           categoriesList = data.categories;
-          productsList = data.products;
+          productsList = normalizedProducts;
           currentLoadedMenuVersion = data.version || restaurantProfile.menuVersion || 1;
           hasCatalogLoaded = true;
 
@@ -3754,7 +3769,7 @@
           saveCachedMenuData({
             version: currentLoadedMenuVersion,
             categories: data.categories,
-            products: data.products,
+            products: normalizedProducts,
             complements: complementsCache,
             savedAt: new Date().toISOString()
           });
@@ -3785,7 +3800,8 @@
         loadProfileAndBanners();
 
         try {
-          const res = await fetch(`/api/store-catalog?storeId=${encodeURIComponent(window.currentStoreId)}`);
+          const apiBase = backendHost || "";
+          const res = await fetch(`${apiBase}/api/store-catalog?storeId=${encodeURIComponent(window.currentStoreId)}`);
           if (res.ok) {
             const data = await res.json();
             if (data && data.success) {
@@ -3903,7 +3919,7 @@
 
           // Load logo with cache if not already set
           const hLogo = document.getElementById("header-restaurant-logo");
-          if (!hLogo || !hLogo.src) {
+          if (hLogo && !hLogo.getAttribute("data-loaded")) {
             getDoc(
               doc(
                 db,
@@ -3917,6 +3933,7 @@
                   if (hLogo) {
                     if (logoVal) {
                       hLogo.src = logoVal;
+                      hLogo.setAttribute("data-loaded", "true");
                       hLogo.classList.remove("hidden");
                     } else {
                       hLogo.classList.add("hidden");
@@ -3938,7 +3955,7 @@
             window.currentStoreId + "_banner2",
           ];
 
-          if (!bannerVals[0] && !bannerVals[1] && !bannerVals[2]) {
+          if (!bannerVals || (!bannerVals[0] && !bannerVals[1] && !bannerVals[2])) {
             Promise.all(
               bannerDocs.map((docId, index) =>
                 getDoc(doc(db, COLLECTIONS.restaurantProfile, docId))
@@ -4305,7 +4322,24 @@
         try {
           localStorage.setItem(getMenuCacheKey(), JSON.stringify(data));
         } catch (e) {
-          console.warn("[Menu Cache] Falha ao salvar cache (quota excedida?):", e);
+          console.warn("[Menu Cache] Falha ao salvar cache completo (quota excedida?):", e);
+          try {
+            if (data && Array.isArray(data.products)) {
+              // Salva versão compacta sem base64 pesado para caber confortavelmente nos 5MB do navegador
+              const compactProducts = data.products.map((p) => {
+                if (p && typeof p.image === "string" && p.image.startsWith("data:")) {
+                  const { image, ...rest } = p;
+                  return rest;
+                }
+                return p;
+              });
+              const compactData = { ...data, products: compactProducts };
+              localStorage.setItem(getMenuCacheKey(), JSON.stringify(compactData));
+              console.log("[Menu Cache] Cache salvo em modo compacto.");
+            }
+          } catch (compactErr) {
+            console.warn("[Menu Cache] Não foi possível salvar nem em modo compacto:", compactErr);
+          }
         }
       }
 
@@ -4424,11 +4458,13 @@
       }
 
       function setupCatalogCache() {
-        // Se já tivermos o restaurantProfile carregado, checamos a versão
-        if (restaurantProfile && restaurantProfile.menuVersion) {
-          checkAndSyncMenuVersion(restaurantProfile.menuVersion);
+        if (window.currentStoreId) {
+          prefillCatalogFromCache();
+          bootstrapStoreCatalog();
         }
       }
+
+      setupCatalogCache();
 
       function getCategoryFallbackImage(categoryName) {
         if (!categoryName) return "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&auto=format&fit=crop&q=80";
