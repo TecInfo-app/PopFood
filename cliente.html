@@ -19,6 +19,8 @@
       (function() {
         const urlParams = new URLSearchParams(window.location.search);
         const storeId = urlParams.get("store");
+        const link = document.createElement("link");
+        link.rel = "manifest";
         if (storeId) {
           const manifest = {
             name: "PopFood",
@@ -42,11 +44,11 @@
             ]
           };
           const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-          const manifestURL = URL.createObjectURL(blob);
-          document.write(`<link rel="manifest" href="${manifestURL}" />`);
+          link.href = URL.createObjectURL(blob);
         } else {
-          document.write('<link rel="manifest" href="manifest.json" />');
+          link.href = "manifest.json";
         }
+        document.head.appendChild(link);
       })();
     </script>
     <link rel="icon" type="image/png" href="favicon.png" />
@@ -58,9 +60,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script src="https://js.stripe.com/v3/"></script>
+    <script defer src="https://js.stripe.com/v3/"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.9.0/jsrsasign-all-min.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -2038,6 +2039,12 @@
 
         // Initialize FCM Client to capture active subscription token without active orders
         setupFCMClient();
+
+        // INSTANT LOAD FOR MOBILE BROWSERS:
+        // 1. Instantly render from local cache if available (0ms)
+        prefillCatalogFromCache();
+        // 2. Fetch full catalog from lightweight server API in parallel (<150ms)
+        bootstrapStoreCatalog();
       }
 
       // FCM Implementation
@@ -3092,9 +3099,9 @@
           }
         }
 
-        prefillCatalogFromCache();
-        await loadProfileAndBanners();
-        setupCatalogCache();
+        if (!hasCatalogLoaded) {
+          bootstrapStoreCatalog();
+        }
         refreshCartOverview();
         fetchRestaurantRatings(); // Load ratings asynchronous
 
@@ -3561,9 +3568,244 @@
       `;
       }
 
-      let profileTimeout = null;
+      const bannerVals = [null, null, null];
 
-      // Load active restaurant profile banner settings
+      function renderBannersCarousel() {
+        const bannersDiv = document.getElementById("banners-container");
+        if (!bannersDiv) return;
+
+        if (bannerInterval) {
+          clearInterval(bannerInterval);
+          bannerInterval = null;
+        }
+        bannersDiv.innerHTML = "";
+        const activeBanners = bannerVals.filter((v) => v);
+
+        if (activeBanners.length === 0) {
+          bannersDiv.classList.add("hidden");
+        } else if (activeBanners.length === 1) {
+          bannersDiv.classList.remove("hidden");
+          let item = activeBanners[0];
+          let b64 = typeof item === "string" ? item : item.banner;
+          let linkUrl = typeof item === "string" ? "" : item.linkUrl || "";
+
+          let imgHtml = `<img src="${b64}" class="w-full h-full object-cover select-none">`;
+          if (linkUrl) {
+            bannersDiv.innerHTML = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-full h-full block cursor-pointer">${imgHtml}</a>`;
+          } else {
+            bannersDiv.innerHTML = `<div class="w-full h-full">${imgHtml}</div>`;
+          }
+        } else {
+          bannersDiv.classList.remove("hidden");
+          let trackHtml = activeBanners
+            .map((item) => {
+              let b64 = typeof item === "string" ? item : item.banner;
+              let linkUrl = typeof item === "string" ? "" : item.linkUrl || "";
+              let imgHtml = `<img src="${b64}" class="w-full h-full object-cover select-none">`;
+              if (linkUrl) {
+                imgHtml = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-full h-full block cursor-pointer">${imgHtml}</a>`;
+              }
+              return `
+              <div class="flex-shrink-0 w-full h-full">
+                ${imgHtml}
+              </div>
+            `;
+            })
+            .join("");
+
+          bannersDiv.innerHTML = `
+            <div id="banners-track" class="flex w-full h-full transition-transform duration-700 ease-in-out" style="transform: translateX(0%);">
+              ${trackHtml}
+            </div>
+            <button id="carousel-prev" class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 sm:group-hover:opacity-100 opacity-60 sm:opacity-0 duration-300 z-10">
+              <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <button id="carousel-next" class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 sm:group-hover:opacity-100 opacity-60 sm:opacity-0 duration-300 z-10">
+              <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+            <div id="carousel-indicators" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10"></div>
+          `;
+
+          const track = document.getElementById("banners-track");
+          const prevBtn = document.getElementById("carousel-prev");
+          const nextBtn = document.getElementById("carousel-next");
+          const indicatorsDiv = document.getElementById("carousel-indicators");
+
+          indicatorsDiv.innerHTML = activeBanners
+            .map(
+              (_, idx) => `
+            <span data-idx="${idx}" class="carousel-dot cursor-pointer transition-all duration-300 h-2 rounded-full bg-white/40 border border-black/10"></span>
+          `,
+            )
+            .join("");
+
+          currentBannerIdx = 0;
+
+          function updateSlide() {
+            if (track)
+              track.style.transform = `translateX(-${currentBannerIdx * 100}%)`;
+            const dots = indicatorsDiv.querySelectorAll(".carousel-dot");
+            dots.forEach((dot, idx) => {
+              if (idx === currentBannerIdx) {
+                dot.className =
+                  "carousel-dot cursor-pointer transition-all duration-300 h-2 w-6 rounded-full bg-white shadow-xs";
+              } else {
+                dot.className =
+                  "carousel-dot cursor-pointer transition-all duration-300 h-2 w-2 rounded-full bg-white/40 border border-black/10";
+              }
+            });
+          }
+
+          updateSlide();
+
+          indicatorsDiv.querySelectorAll(".carousel-dot").forEach((dot) => {
+            dot.addEventListener("click", (e) => {
+              currentBannerIdx = parseInt(e.target.getAttribute("data-idx"));
+              updateSlide();
+              resetTimer();
+            });
+          });
+
+          prevBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            currentBannerIdx =
+              (currentBannerIdx - 1 + activeBanners.length) % activeBanners.length;
+            updateSlide();
+            resetTimer();
+          });
+
+          nextBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            currentBannerIdx = (currentBannerIdx + 1) % activeBanners.length;
+            updateSlide();
+            resetTimer();
+          });
+
+          function startTimer() {
+            bannerInterval = setInterval(() => {
+              currentBannerIdx =
+                (currentBannerIdx + 1) % activeBanners.length;
+              updateSlide();
+            }, 10000);
+          }
+
+          function resetTimer() {
+            if (bannerInterval) {
+              clearInterval(bannerInterval);
+              startTimer();
+            }
+          }
+
+          startTimer();
+        }
+      }
+
+      function applyStoreCatalogData(data) {
+        if (!data || !data.profile) return;
+
+        restaurantProfile = data.profile;
+        if (restaurantProfile.suspended === true) {
+          document.body.innerHTML = `
+            <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+              <div class="bg-red-100/50 text-red-500 shadow-sm p-6 rounded-full mb-6 relative">
+                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+              </div>
+              <h1 class="text-2xl font-black font-display text-gray-800 mb-2">Loja Temporariamente Indisponível</h1>
+              <p class="text-gray-500 max-w-sm mb-8 text-sm">Desculpe, o cardápio e sistema de pedidos deste estabelecimento estão temporariamente offline.</p>
+            </div>
+          `;
+          return;
+        }
+
+        document.title = `${restaurantProfile.name} - PopFood Delivery`;
+        const hName = document.getElementById("header-restaurant-name");
+        if (hName) hName.textContent = restaurantProfile.name;
+
+        // Apply logo
+        const hLogo = document.getElementById("header-restaurant-logo");
+        if (hLogo) {
+          if (data.logo) {
+            hLogo.src = data.logo;
+            hLogo.classList.remove("hidden");
+          } else {
+            hLogo.classList.add("hidden");
+          }
+        }
+
+        // Apply banners
+        if (Array.isArray(data.banners)) {
+          bannerVals[0] = data.banners[0] || null;
+          bannerVals[1] = data.banners[1] || null;
+          bannerVals[2] = data.banners[2] || null;
+          renderBannersCarousel();
+        }
+
+        checkAndShowStoreHoursStatus();
+
+        if (Array.isArray(data.categories) && Array.isArray(data.products)) {
+          categoriesList = data.categories;
+          productsList = data.products;
+          currentLoadedMenuVersion = data.version || restaurantProfile.menuVersion || 1;
+          hasCatalogLoaded = true;
+
+          // Save cleanly to localStorage (now only ~112KB without raw base64)
+          const cached = getCachedMenuData();
+          const complementsCache = cached && cached.complements ? cached.complements : {};
+          saveCachedMenuData({
+            version: currentLoadedMenuVersion,
+            categories: data.categories,
+            products: data.products,
+            complements: complementsCache,
+            savedAt: new Date().toISOString()
+          });
+
+          renderCategoryFilterTabs();
+          renderCatalogItems();
+        }
+
+        if (typeof window.updateLoyaltyCatalogBannerUI === "function") {
+          window.updateLoyaltyCatalogBannerUI();
+        }
+        if (typeof window.setupDynamicPaymentMethods === "function") {
+          window.setupDynamicPaymentMethods();
+        }
+        fetchStoreCoupons();
+        calculateReceiptTotals();
+
+        if (typeof window.calculateDistanceAndFee === "function") {
+          window.calculateDistanceAndFee(true);
+        }
+      }
+
+      // Fast initial bootstrap for mobile browsers
+      async function bootstrapStoreCatalog() {
+        if (!window.currentStoreId) return;
+
+        // Start background real-time listener for live status updates
+        loadProfileAndBanners();
+
+        try {
+          const res = await fetch(`/api/store-catalog?storeId=${encodeURIComponent(window.currentStoreId)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.success) {
+              applyStoreCatalogData(data);
+              return;
+            }
+          }
+        } catch (apiErr) {
+          console.warn("[Catalog Bootstrap] Erro ao carregar da API do servidor, usando fallback:", apiErr);
+        }
+
+        // Fallback: If API was unavailable, sync directly from Firestore
+        if (restaurantProfile && restaurantProfile.menuVersion) {
+          checkAndSyncMenuVersion(restaurantProfile.menuVersion);
+        } else {
+          syncCatalogFromServer(1);
+        }
+      }
+
+      // Load active restaurant profile banner settings (real-time background listener)
       async function loadProfileAndBanners() {
         try {
           const profileRef = doc(
@@ -3577,99 +3819,81 @@
             profileRef,
             (snap) => {
               if (!snap.exists()) {
-                console.warn("[Profile Load] Snapshot does not exist yet. Waiting for server response...");
-                // Start a safe 7 seconds timeout to allow slow connection recovery
-                if (!profileTimeout) {
-                  profileTimeout = setTimeout(() => {
-                    if (!restaurantProfile) {
-                      document.body.innerHTML = `
-                        <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-                          <div class="bg-gray-200 text-gray-500 shadow-sm p-6 rounded-full mb-6 relative">
-                            <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                          </div>
-                          <h1 class="text-2xl font-black font-display text-gray-800 mb-2">Loja Indisponível</h1>
-                          <p class="text-gray-500 max-w-sm mb-8 text-sm">Este estabelecimento não existe mais ou foi removido da plataforma, ou sua conexão está muito instável. Por favor, tente recarregar.</p>
-                          <button onclick="window.location.reload()" class="mt-4 bg-brand-primary text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:bg-orange-600 transition-all">Recarregar Página</button>
-                        </div>
-                      `;
-                    }
-                  }, 7000);
+                console.warn("[Profile Load] Snapshot does not exist yet.");
+                if (!snap.metadata.fromCache && !restaurantProfile) {
+                  document.body.innerHTML = `
+                    <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+                      <div class="bg-gray-200 text-gray-500 shadow-sm p-6 rounded-full mb-6 relative">
+                        <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                      </div>
+                      <h1 class="text-2xl font-black font-display text-gray-800 mb-2">Loja Indisponível</h1>
+                      <p class="text-gray-500 max-w-sm mb-8 text-sm">Este estabelecimento não existe mais ou foi removido da plataforma.</p>
+                      <button onclick="window.location.reload()" class="mt-4 bg-brand-primary text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:bg-orange-600 transition-all">Recarregar Página</button>
+                    </div>
+                  `;
                 }
                 return;
               }
 
-              if (snap.exists()) {
-                // Clear safety timeout since profile loaded successfully
-                if (profileTimeout) {
-                  clearTimeout(profileTimeout);
-                  profileTimeout = null;
-                }
+              restaurantProfile = snap.data();
 
-                restaurantProfile = snap.data();
-
-                if (restaurantProfile.suspended === true) {
-                  document.body.innerHTML = `
-                <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-                  <div class="bg-red-100/50 text-red-500 shadow-sm p-6 rounded-full mb-6 relative">
-                    <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+              if (restaurantProfile.suspended === true) {
+                document.body.innerHTML = `
+                  <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+                    <div class="bg-red-100/50 text-red-500 shadow-sm p-6 rounded-full mb-6 relative">
+                      <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <h1 class="text-2xl font-black font-display text-gray-800 mb-2">Loja Temporariamente Indisponível</h1>
+                    <p class="text-gray-500 max-w-sm mb-8 text-sm">Desculpe, o cardápio e sistema de pedidos deste estabelecimento estão temporariamente offline.</p>
                   </div>
-                  <h1 class="text-2xl font-black font-display text-gray-800 mb-2">Loja Temporariamente Indisponível</h1>
-                  <p class="text-gray-500 max-w-sm mb-8 text-sm">Desculpe, o cardápio e sistema de pedidos deste estabelecimento estão temporariamente offline.</p>
-                </div>
-              `;
-                  return;
-                }
-                document.title = `${restaurantProfile.name} - PopFood Delivery`;
+                `;
+                return;
+              }
+              document.title = `${restaurantProfile.name} - PopFood Delivery`;
 
-                // Initialize Stripe if public key exists
-                if (restaurantProfile.stripePublicKey && !stripe) {
-                  stripe = Stripe(restaurantProfile.stripePublicKey);
-                  const elements = stripe.elements();
-                  cardElement = elements.create("card", {
-                    style: {
-                      base: {
-                        fontSize: "14px",
-                        color: "#32325d",
-                        "::placeholder": { color: "#aab7c4" },
-                      },
-                      invalid: { color: "#fa755a", iconColor: "#fa755a" },
+              if (restaurantProfile.stripePublicKey && !stripe && typeof Stripe === "function") {
+                stripe = Stripe(restaurantProfile.stripePublicKey);
+                const elements = stripe.elements();
+                cardElement = elements.create("card", {
+                  style: {
+                    base: {
+                      fontSize: "14px",
+                      color: "#32325d",
+                      "::placeholder": { color: "#aab7c4" },
                     },
-                  });
-                  cardElement.mount("#stripe-card-element");
-                  cardElement.on("change", (event) => {
-                    const displayError =
-                      document.getElementById("stripe-card-errors");
-                    if (event.error) {
-                      displayError.textContent = event.error.message;
-                    } else {
-                      displayError.textContent = "";
-                    }
-                  });
-                }
-                const hName = document.getElementById("header-restaurant-name");
-                if (hName) hName.textContent = restaurantProfile.name;
+                    invalid: { color: "#fa755a", iconColor: "#fa755a" },
+                  },
+                });
+                cardElement.mount("#stripe-card-element");
+                cardElement.on("change", (event) => {
+                  const displayError = document.getElementById("stripe-card-errors");
+                  if (event.error) {
+                    displayError.textContent = event.error.message;
+                  } else {
+                    displayError.textContent = "";
+                  }
+                });
+              }
+              const hName = document.getElementById("header-restaurant-name");
+              if (hName) hName.textContent = restaurantProfile.name;
 
-                checkAndShowStoreHoursStatus();
+              checkAndShowStoreHoursStatus();
 
-                // Check menu version and sync from Firestore if changed
-                const serverMenuVersion = restaurantProfile.menuVersion || 1;
-                checkAndSyncMenuVersion(serverMenuVersion);
+              const serverMenuVersion = restaurantProfile.menuVersion || 1;
+              checkAndSyncMenuVersion(serverMenuVersion);
 
-                // Sync Loyalty displays
-                if (typeof window.updateLoyaltyCatalogBannerUI === "function") {
-                  window.updateLoyaltyCatalogBannerUI();
-                }
-                if (typeof window.setupDynamicPaymentMethods === "function") {
-                  window.setupDynamicPaymentMethods();
-                }
-                renderCatalogItems();
-                fetchStoreCoupons();
-                calculateReceiptTotals();
+              if (typeof window.updateLoyaltyCatalogBannerUI === "function") {
+                window.updateLoyaltyCatalogBannerUI();
+              }
+              if (typeof window.setupDynamicPaymentMethods === "function") {
+                window.setupDynamicPaymentMethods();
+              }
+              renderCatalogItems();
+              fetchStoreCoupons();
+              calculateReceiptTotals();
 
-                // Recalculate delivery fee immediately now that the profile is fully loaded
-                if (typeof window.calculateDistanceAndFee === "function") {
-                  window.calculateDistanceAndFee(true);
-                }
+              if (typeof window.calculateDistanceAndFee === "function") {
+                window.calculateDistanceAndFee(true);
               }
             },
             (err) => {
@@ -3677,202 +3901,71 @@
             },
           );
 
-          // Load logo with cache
+          // Load logo with cache if not already set
           const hLogo = document.getElementById("header-restaurant-logo");
-          getDoc(
-            doc(
-              db,
-              COLLECTIONS.restaurantProfile,
-              window.currentStoreId + "_logo",
+          if (!hLogo || !hLogo.src) {
+            getDoc(
+              doc(
+                db,
+                COLLECTIONS.restaurantProfile,
+                window.currentStoreId + "_logo",
+              ),
             )
-          ).then((logoSnap) => {
-            if (logoSnap.exists()) {
-              const logoVal = logoSnap.data().logo;
-              if (hLogo) {
-                if (logoVal) {
-                  hLogo.src = logoVal;
-                  hLogo.classList.remove("hidden");
+              .then((logoSnap) => {
+                if (logoSnap.exists()) {
+                  const logoVal = logoSnap.data().logo;
+                  if (hLogo) {
+                    if (logoVal) {
+                      hLogo.src = logoVal;
+                      hLogo.classList.remove("hidden");
+                    } else {
+                      hLogo.classList.add("hidden");
+                    }
+                  }
                 } else {
-                  hLogo.classList.add("hidden");
+                  if (hLogo) hLogo.classList.add("hidden");
                 }
-              }
-            } else {
-              if (hLogo) hLogo.classList.add("hidden");
-            }
-          }).catch((logoErr) => {
-            console.warn("Notice loading logo:", logoErr);
-          });
+              })
+              .catch((logoErr) => {
+                console.warn("Notice loading logo:", logoErr);
+              });
+          }
 
-          // Load individual banners in parallel
+          // Load individual banners in parallel if not already loaded
           const bannerDocs = [
             window.currentStoreId + "_banner0",
             window.currentStoreId + "_banner1",
             window.currentStoreId + "_banner2",
           ];
-          const bannerVals = [null, null, null];
 
-          function renderBannersCarousel() {
-            const bannersDiv = document.getElementById("banners-container");
-            if (!bannersDiv) return;
-
-            if (bannerInterval) {
-              clearInterval(bannerInterval);
-              bannerInterval = null;
-            }
-            bannersDiv.innerHTML = "";
-            const activeBanners = bannerVals.filter((v) => v);
-
-            if (activeBanners.length === 0) {
-              bannersDiv.classList.add("hidden");
-            } else if (activeBanners.length === 1) {
-              bannersDiv.classList.remove("hidden");
-              let item = activeBanners[0];
-              let b64 = typeof item === 'string' ? item : item.banner;
-              let linkUrl = typeof item === 'string' ? '' : (item.linkUrl || '');
-              
-              let imgHtml = `<img src="${b64}" class="w-full h-full object-cover select-none">`;
-              if (linkUrl) {
-                bannersDiv.innerHTML = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-full h-full block cursor-pointer">${imgHtml}</a>`;
-              } else {
-                bannersDiv.innerHTML = `<div class="w-full h-full">${imgHtml}</div>`;
-              }
-            } else {
-              bannersDiv.classList.remove("hidden");
-              let trackHtml = activeBanners
-                .map(
-                  (item) => {
-                    let b64 = typeof item === 'string' ? item : item.banner;
-                    let linkUrl = typeof item === 'string' ? '' : (item.linkUrl || '');
-                    let imgHtml = `<img src="${b64}" class="w-full h-full object-cover select-none">`;
-                    if (linkUrl) {
-                      imgHtml = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="w-full h-full block cursor-pointer">${imgHtml}</a>`;
-                    }
-                    return `
-              <div class="flex-shrink-0 w-full h-full">
-                ${imgHtml}
-              </div>
-            `;
-                  }
-                )
-                .join("");
-
-              bannersDiv.innerHTML = `
-              <div id="banners-track" class="flex w-full h-full transition-transform duration-700 ease-in-out" style="transform: translateX(0%);">
-                ${trackHtml}
-              </div>
-              <button id="carousel-prev" class="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 sm:group-hover:opacity-100 opacity-60 sm:opacity-0 duration-300 z-10">
-                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
-              </button>
-              <button id="carousel-next" class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 bg-black/30 hover:bg-black/50 text-white rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-105 active:scale-95 sm:group-hover:opacity-100 opacity-60 sm:opacity-0 duration-300 z-10">
-                <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"></path></svg>
-              </button>
-              <div id="carousel-indicators" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-10"></div>
-            `;
-
-              const track = document.getElementById("banners-track");
-              const prevBtn = document.getElementById("carousel-prev");
-              const nextBtn = document.getElementById("carousel-next");
-              const indicatorsDiv = document.getElementById(
-                "carousel-indicators",
-              );
-
-              // Draw dots
-              indicatorsDiv.innerHTML = activeBanners
-                .map(
-                  (_, idx) => `
-              <span data-idx="${idx}" class="carousel-dot cursor-pointer transition-all duration-300 h-2 rounded-full bg-white/40 border border-black/10"></span>
-            `,
-                )
-                .join("");
-
-              currentBannerIdx = 0;
-
-              function updateSlide() {
-                if (track)
-                  track.style.transform = `translateX(-${currentBannerIdx * 100}%)`;
-                const dots = indicatorsDiv.querySelectorAll(".carousel-dot");
-                dots.forEach((dot, idx) => {
-                  if (idx === currentBannerIdx) {
-                    dot.className =
-                      "carousel-dot cursor-pointer transition-all duration-300 h-2 w-6 rounded-full bg-white shadow-xs";
-                  } else {
-                    dot.className =
-                      "carousel-dot cursor-pointer transition-all duration-300 h-2 w-2 rounded-full bg-white/40 border border-black/10";
-                  }
-                });
-              }
-
-              updateSlide();
-
-              indicatorsDiv.querySelectorAll(".carousel-dot").forEach((dot) => {
-                dot.addEventListener("click", (e) => {
-                  currentBannerIdx = parseInt(
-                    e.target.getAttribute("data-idx"),
-                  );
-                  updateSlide();
-                  resetTimer();
-                });
-              });
-
-              prevBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                currentBannerIdx =
-                  (currentBannerIdx - 1 + activeBanners.length) %
-                  activeBanners.length;
-                updateSlide();
-                resetTimer();
-              });
-
-              nextBtn.addEventListener("click", (e) => {
-                e.stopPropagation();
-                currentBannerIdx =
-                  (currentBannerIdx + 1) % activeBanners.length;
-                updateSlide();
-                resetTimer();
-              });
-
-              function startTimer() {
-                bannerInterval = setInterval(() => {
-                  currentBannerIdx =
-                    (currentBannerIdx + 1) % activeBanners.length;
-                  updateSlide();
-                }, 10000); // 10 seconds rolling
-              }
-
-              function resetTimer() {
-                if (bannerInterval) {
-                  clearInterval(bannerInterval);
-                  startTimer();
-                }
-              }
-
-              startTimer();
-            }
-          }
-
-          Promise.all(
-            bannerDocs.map((docId, index) =>
-              getDoc(doc(db, COLLECTIONS.restaurantProfile, docId))
-                .then((bSnap) => {
-                  if (bSnap.exists()) {
-                    const data = bSnap.data();
-                    if (data && data.banner) {
-                      bannerVals[index] = { banner: data.banner, linkUrl: data.linkUrl || "" };
+          if (!bannerVals[0] && !bannerVals[1] && !bannerVals[2]) {
+            Promise.all(
+              bannerDocs.map((docId, index) =>
+                getDoc(doc(db, COLLECTIONS.restaurantProfile, docId))
+                  .then((bSnap) => {
+                    if (bSnap.exists()) {
+                      const data = bSnap.data();
+                      if (data && data.banner) {
+                        bannerVals[index] = {
+                          banner: data.banner,
+                          linkUrl: data.linkUrl || "",
+                        };
+                      } else {
+                        bannerVals[index] = null;
+                      }
                     } else {
                       bannerVals[index] = null;
                     }
-                  } else {
+                  })
+                  .catch((bErr) => {
+                    console.warn(`Notice loading banner${index}:`, bErr);
                     bannerVals[index] = null;
-                  }
-                })
-                .catch((bErr) => {
-                  console.warn(`Notice loading banner${index}:`, bErr);
-                  bannerVals[index] = null;
-                })
-            )
-          ).then(() => {
-            renderBannersCarousel();
-          });
+                  }),
+              ),
+            ).then(() => {
+              renderBannersCarousel();
+            });
+          }
         } catch (err) {
           console.error("Error setting up profile sync: ", err);
         }

@@ -65,6 +65,242 @@ async function startServer() {
 
   app.use(express.json());
 
+  // In-memory catalog and image cache for sub-second mobile responses and zero-cost repeated reads
+  interface CachedStoreCatalog {
+    data: any;
+    timestamp: number;
+  }
+  const storeCatalogMemoryCache = new Map<string, CachedStoreCatalog>();
+  const CATALOG_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+  const imageBufferCache = new Map<string, { buffer: Buffer; mime: string }>();
+
+  function serveImageBufferOrRedirect(raw: string | undefined | null, res: express.Response) {
+    if (!raw) return res.status(404).send("Not found");
+    if (!raw.startsWith("data:")) {
+      return res.redirect(raw);
+    }
+    const match = raw.match(/^data:([a-zA-Z0-9\/+-]+);base64,(.+)$/);
+    if (!match) return res.status(400).send("Invalid image format");
+    const mime = match[1];
+    const buffer = Buffer.from(match[2], "base64");
+    res.setHeader("Content-Type", mime);
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    return res.send(buffer);
+  }
+
+  // Fast image delivery endpoints with disk/browser caching
+  app.get("/api/product-image/:id", async (req, res) => {
+    try {
+      const id = req.params.id;
+      const cached = imageBufferCache.get(`prod_${id}`);
+      if (cached) {
+        res.setHeader("Content-Type", cached.mime);
+        res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+        return res.send(cached.buffer);
+      }
+      const dbAdmin = admin.firestore();
+      const docSnap = await dbAdmin.collection("products").doc(id).get();
+      if (!docSnap.exists) return res.status(404).send("Product not found");
+      const img = docSnap.data()?.image;
+      if (!img) return res.status(404).send("No image");
+      if (img.startsWith("data:")) {
+        const match = img.match(/^data:([a-zA-Z0-9\/+-]+);base64,(.+)$/);
+        if (match) {
+          const item = { mime: match[1], buffer: Buffer.from(match[2], "base64") };
+          if (imageBufferCache.size < 500) imageBufferCache.set(`prod_${id}`, item);
+          res.setHeader("Content-Type", item.mime);
+          res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+          return res.send(item.buffer);
+        }
+      }
+      return serveImageBufferOrRedirect(img, res);
+    } catch (e: any) {
+      console.error("Error serving product image:", e);
+      res.status(500).send("Error");
+    }
+  });
+
+  app.get("/api/logo-image/:storeId", async (req, res) => {
+    try {
+      const storeId = req.params.storeId;
+      const cached = imageBufferCache.get(`logo_${storeId}`);
+      if (cached) {
+        res.setHeader("Content-Type", cached.mime);
+        res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+        return res.send(cached.buffer);
+      }
+      const dbAdmin = admin.firestore();
+      const docSnap = await dbAdmin.collection("restaurantProfile").doc(`${storeId}_logo`).get();
+      if (!docSnap.exists) return res.status(404).send("Logo not found");
+      const logo = docSnap.data()?.logo;
+      if (logo && logo.startsWith("data:")) {
+        const match = logo.match(/^data:([a-zA-Z0-9\/+-]+);base64,(.+)$/);
+        if (match) {
+          const item = { mime: match[1], buffer: Buffer.from(match[2], "base64") };
+          imageBufferCache.set(`logo_${storeId}`, item);
+          res.setHeader("Content-Type", item.mime);
+          res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+          return res.send(item.buffer);
+        }
+      }
+      return serveImageBufferOrRedirect(logo, res);
+    } catch (e: any) {
+      console.error("Error serving logo:", e);
+      res.status(500).send("Error");
+    }
+  });
+
+  app.get("/api/banner-image/:storeId/:index", async (req, res) => {
+    try {
+      const { storeId, index } = req.params;
+      const cacheKey = `banner_${storeId}_${index}`;
+      const cached = imageBufferCache.get(cacheKey);
+      if (cached) {
+        res.setHeader("Content-Type", cached.mime);
+        res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+        return res.send(cached.buffer);
+      }
+      const dbAdmin = admin.firestore();
+      const docSnap = await dbAdmin.collection("restaurantProfile").doc(`${storeId}_banner${index}`).get();
+      if (!docSnap.exists) return res.status(404).send("Banner not found");
+      const bData = docSnap.data();
+      const raw = typeof bData?.banner === "string" ? bData.banner : (bData?.banner?.banner || "");
+      if (raw && raw.startsWith("data:")) {
+        const match = raw.match(/^data:([a-zA-Z0-9\/+-]+);base64,(.+)$/);
+        if (match) {
+          const item = { mime: match[1], buffer: Buffer.from(match[2], "base64") };
+          imageBufferCache.set(cacheKey, item);
+          res.setHeader("Content-Type", item.mime);
+          res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+          return res.send(item.buffer);
+        }
+      }
+      return serveImageBufferOrRedirect(raw, res);
+    } catch (e: any) {
+      console.error("Error serving banner:", e);
+      res.status(500).send("Error");
+    }
+  });
+
+  app.get("/api/store-catalog", async (req, res) => {
+    try {
+      const storeId = req.query.storeId as string;
+      if (!storeId) {
+        return res.status(400).json({ error: "storeId é obrigatório" });
+      }
+
+      // Check in-memory cache first
+      const cached = storeCatalogMemoryCache.get(storeId);
+      if (cached && Date.now() - cached.timestamp < CATALOG_CACHE_TTL_MS) {
+        res.setHeader("Cache-Control", "public, max-age=30");
+        return res.json(cached.data);
+      }
+
+      const dbAdmin = admin.firestore();
+
+      // Parallelize queries in the cloud datacenter
+      const [profileDoc, logoDoc, b0Doc, b1Doc, b2Doc, catsSnap, prodsSnap] = await Promise.all([
+        dbAdmin.collection("restaurantProfile").doc(storeId).get(),
+        dbAdmin.collection("restaurantProfile").doc(`${storeId}_logo`).get(),
+        dbAdmin.collection("restaurantProfile").doc(`${storeId}_banner0`).get(),
+        dbAdmin.collection("restaurantProfile").doc(`${storeId}_banner1`).get(),
+        dbAdmin.collection("restaurantProfile").doc(`${storeId}_banner2`).get(),
+        dbAdmin.collection("categories").where("storeId", "==", storeId).get(),
+        dbAdmin.collection("products").where("storeId", "==", storeId).get(),
+      ]);
+
+      if (!profileDoc.exists) {
+        return res.status(404).json({ error: "Loja não encontrada", exists: false });
+      }
+
+      const profile = { id: profileDoc.id, ...profileDoc.data() };
+      const hasLogo = logoDoc.exists && logoDoc.data()?.logo;
+      const logo = hasLogo
+        ? (logoDoc.data().logo.startsWith("data:") ? `/api/logo-image/${storeId}` : logoDoc.data().logo)
+        : null;
+      
+      const banners: any[] = [];
+      if (b0Doc.exists && b0Doc.data()?.banner) {
+        const b = b0Doc.data().banner;
+        const bStr = typeof b === "string" ? b : (b.banner || "");
+        banners.push({
+          banner: bStr.startsWith("data:") ? `/api/banner-image/${storeId}/0` : bStr,
+          linkUrl: b0Doc.data().linkUrl || ""
+        });
+      }
+      if (b1Doc.exists && b1Doc.data()?.banner) {
+        const b = b1Doc.data().banner;
+        const bStr = typeof b === "string" ? b : (b.banner || "");
+        banners.push({
+          banner: bStr.startsWith("data:") ? `/api/banner-image/${storeId}/1` : bStr,
+          linkUrl: b1Doc.data().linkUrl || ""
+        });
+      }
+      if (b2Doc.exists && b2Doc.data()?.banner) {
+        const b = b2Doc.data().banner;
+        const bStr = typeof b === "string" ? b : (b.banner || "");
+        banners.push({
+          banner: bStr.startsWith("data:") ? `/api/banner-image/${storeId}/2` : bStr,
+          linkUrl: b2Doc.data().linkUrl || ""
+        });
+      }
+
+      const categories: any[] = [];
+      catsSnap.forEach((doc) => {
+        categories.push({ id: doc.id, ...doc.data() });
+      });
+      categories.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      const products: any[] = [];
+      prodsSnap.forEach((doc) => {
+        const data = doc.data();
+        let img = data.image || "";
+        if (img && img.startsWith("data:")) {
+          img = `/api/product-image/${doc.id}`;
+        }
+        products.push({ id: doc.id, ...data, image: img });
+      });
+      products.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+      const responsePayload = {
+        success: true,
+        profile,
+        logo,
+        banners,
+        categories,
+        products,
+        version: (profile as any).menuVersion || 1,
+      };
+
+      storeCatalogMemoryCache.set(storeId, {
+        data: responsePayload,
+        timestamp: Date.now(),
+      });
+
+      res.setHeader("Cache-Control", "public, max-age=30");
+      return res.json(responsePayload);
+    } catch (error: any) {
+      console.error("Erro ao obter catálogo da loja:", error);
+      res.status(500).json({ error: "Erro interno ao carregar catálogo." });
+    }
+  });
+
+  app.post("/api/store-catalog/invalidate", (req, res) => {
+    const { storeId } = req.body;
+    if (storeId) {
+      storeCatalogMemoryCache.delete(storeId);
+      imageBufferCache.delete(`logo_${storeId}`);
+      imageBufferCache.delete(`banner_${storeId}_0`);
+      imageBufferCache.delete(`banner_${storeId}_1`);
+      imageBufferCache.delete(`banner_${storeId}_2`);
+    } else {
+      storeCatalogMemoryCache.clear();
+      imageBufferCache.clear();
+    }
+    res.json({ success: true });
+  });
+
   // API route for pushing notifications
   app.post("/api/send-notification", async (req, res) => {
     const { token, title, body, data } = req.body;

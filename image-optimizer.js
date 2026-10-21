@@ -1,4 +1,4 @@
-window.optimizeAndConvertToBase64 = function(file, maxKB = 950) {
+window.optimizeAndConvertToBase64 = function(file, maxKB = 250) {
   return new Promise((resolve, reject) => {
     if (!file) return reject("No file provided");
     
