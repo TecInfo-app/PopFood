@@ -2091,7 +2091,7 @@
           const messaging = getMessaging(app);
 
           if (!messaging) {
-            console.warn("FCM Messaging is not supported or disabled in this browser.");
+            console.info("[FCM] Notificações push não suportadas ou desativadas neste navegador.");
             return;
           }
 
@@ -3799,21 +3799,26 @@
         // Start background real-time listener for live status updates
         loadProfileAndBanners();
 
-        try {
-          const apiBase = backendHost || "";
-          const res = await fetch(`${apiBase}/api/store-catalog?storeId=${encodeURIComponent(window.currentStoreId)}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.success) {
-              applyStoreCatalogData(data);
-              return;
+        const isExternalStaticHost = window.location.hostname.includes("github.io");
+        const apiBase = backendHost || "";
+
+        // Only call server bootstrap if on the same origin or not on an external static host with preview URLs
+        if (!isExternalStaticHost && !apiBase.includes("ais-pre-")) {
+          try {
+            const res = await fetch(`${apiBase}/api/store-catalog?storeId=${encodeURIComponent(window.currentStoreId)}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.success) {
+                applyStoreCatalogData(data);
+                return;
+              }
             }
+          } catch (apiErr) {
+            // Silently fallback to Firestore sync
           }
-        } catch (apiErr) {
-          console.warn("[Catalog Bootstrap] Erro ao carregar da API do servidor, usando fallback:", apiErr);
         }
 
-        // Fallback: If API was unavailable, sync directly from Firestore
+        // Direct high-speed sync from Firestore (ideal for GitHub Pages and static deployments)
         if (restaurantProfile && restaurantProfile.menuVersion) {
           checkAndSyncMenuVersion(restaurantProfile.menuVersion);
         } else {
@@ -4319,27 +4324,33 @@
       }
 
       function saveCachedMenuData(data) {
+        if (!data) return;
         try {
-          localStorage.setItem(getMenuCacheKey(), JSON.stringify(data));
-        } catch (e) {
-          console.warn("[Menu Cache] Falha ao salvar cache completo (quota excedida?):", e);
-          try {
-            if (data && Array.isArray(data.products)) {
-              // Salva versão compacta sem base64 pesado para caber confortavelmente nos 5MB do navegador
-              const compactProducts = data.products.map((p) => {
-                if (p && typeof p.image === "string" && p.image.startsWith("data:")) {
-                  const { image, ...rest } = p;
-                  return rest;
-                }
-                return p;
-              });
-              const compactData = { ...data, products: compactProducts };
-              localStorage.setItem(getMenuCacheKey(), JSON.stringify(compactData));
-              console.log("[Menu Cache] Cache salvo em modo compacto.");
-            }
-          } catch (compactErr) {
-            console.warn("[Menu Cache] Não foi possível salvar nem em modo compacto:", compactErr);
+          const raw = JSON.stringify(data);
+          // Se for menor que 1.5MB, salva versão completa no localStorage
+          if (raw.length < 1500000) {
+            localStorage.setItem(getMenuCacheKey(), raw);
+            return;
           }
+        } catch (e) {
+          // Excedeu ou falhou na escrita completa
+        }
+
+        // Salva versão compacta (sem imagens pesadas em base64) para garantir persistência rápida e limpa
+        try {
+          if (Array.isArray(data.products)) {
+            const compactProducts = data.products.map((p) => {
+              if (p && typeof p.image === "string" && p.image.startsWith("data:")) {
+                const { image, ...rest } = p;
+                return rest;
+              }
+              return p;
+            });
+            const compactData = { ...data, products: compactProducts };
+            localStorage.setItem(getMenuCacheKey(), JSON.stringify(compactData));
+          }
+        } catch (compactErr) {
+          // localStorage indisponível ou em modo anônimo estrito
         }
       }
 
