@@ -1055,13 +1055,19 @@ window.openMesaQrCodeModal = function() {
       class="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 hidden backdrop-blur-xs"
     >
       <div
-        class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl flex flex-col space-y-4"
+        class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl flex flex-col space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-gray-800">⚙️ Impressoras Locais</h3>
+          <div class="flex items-center gap-2">
+            <span class="text-xl">⚙️</span>
+            <div>
+              <h3 class="font-bold text-gray-800 text-sm">Configuração de Impressoras</h3>
+              <p class="text-[10px] text-gray-500">Impressão direta Bluetooth ou servidor local</p>
+            </div>
+          </div>
           <button
             onclick="togglePrinterSettingsModal(false)"
-            class="text-gray-400 hover:text-gray-600"
+            class="text-gray-400 hover:text-gray-600 p-1 rounded-lg"
           >
             <svg
               class="w-5 h-5"
@@ -1078,25 +1084,90 @@ window.openMesaQrCodeModal = function() {
             </svg>
           </button>
         </div>
-        <p class="text-[10px] text-gray-500">
-          Configure múltiplos destinos de impressão para automatizar seu fluxo
-          de trabalho.
-        </p>
 
         <!-- List of Configured Printers -->
-        <div
-          id="printers-list-container"
-          class="space-y-2 max-h-[220px] overflow-y-auto pr-1"
-        >
-          <!-- List will be rendered here -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[10px] font-bold text-gray-400 uppercase">Impressoras Cadastradas</span>
+            <span id="printers-count-badge" class="text-[9px] bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded">0</span>
+          </div>
+          <div
+            id="printers-list-container"
+            class="space-y-2 max-h-[170px] overflow-y-auto pr-1"
+          >
+            <!-- List will be rendered here -->
+          </div>
         </div>
 
+        <!-- Add New Section with Tabs -->
         <div class="pt-3 border-t border-gray-100 space-y-3">
           <p class="text-[10px] font-bold text-gray-400 uppercase">
-            Adicionar Nova
+            Adicionar Nova Impressora
           </p>
 
-          <div class="space-y-2">
+          <!-- Mode switcher tabs -->
+          <div class="flex rounded-xl bg-gray-100 p-1 text-xs font-bold gap-1">
+            <button
+              type="button"
+              id="tab-btn-bluetooth"
+              onclick="switchPrinterConfigTab('bluetooth')"
+              class="flex-1 py-1.5 px-2 rounded-lg bg-white shadow-xs text-brand-primary transition-all flex items-center justify-center gap-1.5 text-[11px]"
+            >
+              <span>📱 Bluetooth (Sem PC)</span>
+            </button>
+            <button
+              type="button"
+              id="tab-btn-server"
+              onclick="switchPrinterConfigTab('server')"
+              class="flex-1 py-1.5 px-2 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5 text-[11px]"
+            >
+              <span>🖥️ Servidor PC / Node</span>
+            </button>
+          </div>
+
+          <!-- TAB CONTENT: BLUETOOTH -->
+          <div id="tab-content-bluetooth" class="space-y-3">
+            <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-900 leading-relaxed">
+              <div class="flex items-start gap-2">
+                <span class="text-base leading-none">💡</span>
+                <div>
+                  <p class="font-bold">Impressão Direta sem Computador</p>
+                  <p class="text-[10px] text-blue-700 mt-0.5">
+                    Pareie sua impressora térmica Bluetooth (portátil ou balcão). Os pedidos imprimem direto do celular, tablet ou PC!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex gap-2">
+              <select
+                id="bt-printer-width"
+                class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white font-medium"
+              >
+                <option value="58">58mm (Bobina Estreita / Portátil)</option>
+                <option value="80">80mm (Bobina Larga / Balcão)</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              id="btn-pair-bt"
+              onclick="pairBluetoothPrinter()"
+              class="w-full bg-blue-600 hover:bg-blue-700 active:scale-98 text-white py-2.5 px-4 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m0-16l6 6-6 6M12 4L6 10l6 6" />
+              </svg>
+              <span>🔍 Conectar Impressora Bluetooth</span>
+            </button>
+
+            <p class="text-[9px] text-gray-400 text-center">
+              Requer Google Chrome / Edge no Android, Windows ou Mac (HTTPS).
+            </p>
+          </div>
+
+          <!-- TAB CONTENT: SERVIDOR PC / NODE -->
+          <div id="tab-content-server" class="space-y-2 hidden">
             <input
               type="text"
               id="printer-server-url"
@@ -1111,37 +1182,40 @@ window.openMesaQrCodeModal = function() {
                 <option value="">Aguardando URL...</option>
               </select>
               <button
+                type="button"
                 onclick="fetchPrinters()"
-                class="bg-slate-100 hover:bg-slate-200 px-3 rounded-xl text-[10px] font-bold text-slate-700 transition-colors uppercase"
+                class="bg-slate-100 hover:bg-slate-200 px-3 rounded-xl text-[10px] font-bold text-slate-700 transition-colors uppercase cursor-pointer"
               >
                 Listar
               </button>
             </div>
-          </div>
 
-          <div class="flex gap-2">
-            <select
-              id="printer-width"
-              class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white"
-            >
-              <option value="58">58mm (Padrão)</option>
-              <option value="80">80mm (Grande)</option>
-            </select>
-            <button
-              onclick="addNewPrinterToList()"
-              class="bg-brand-primary hover:bg-orange-600 text-white px-4 rounded-xl text-xs font-bold transition-all shadow-sm"
-            >
-              + ADICIONAR
-            </button>
+            <div class="flex gap-2 pt-1">
+              <select
+                id="printer-width"
+                class="flex-grow text-xs p-2.5 border border-gray-200 rounded-xl focus:outline-none bg-white"
+              >
+                <option value="58">58mm (Padrão)</option>
+                <option value="80">80mm (Grande)</option>
+              </select>
+              <button
+                type="button"
+                onclick="addNewPrinterToList()"
+                class="bg-brand-primary hover:bg-orange-600 text-white px-4 rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+              >
+                + ADICIONAR
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="pt-2">
           <button
+            type="button"
             onclick="printTestPage()"
-            class="w-full bg-slate-50 border border-slate-100 text-slate-500 py-2.5 rounded-xl font-bold text-[10px] hover:bg-slate-100 transition-colors uppercase tracking-wider"
+            class="w-full bg-slate-50 border border-slate-100 text-slate-600 py-2.5 rounded-xl font-bold text-[10px] hover:bg-slate-100 active:scale-98 transition-all uppercase tracking-wider cursor-pointer flex items-center justify-center gap-1.5"
           >
-            🧪 Imprimir Página de Teste (Piloto)
+            <span>🧪 Imprimir Página de Teste (Piloto)</span>
           </button>
         </div>
       </div>
@@ -1679,8 +1753,238 @@ window.openMesaQrCodeModal = function() {
         }
       });
 
+      // Web Bluetooth Connection State
+      window._connectedBtDevice = null;
+      window._connectedBtCharacteristic = null;
+
+      // Find writable characteristic on thermal printer
+      async function getBluetoothWritableCharacteristic(device) {
+        if (!device.gatt.connected) {
+          await device.gatt.connect();
+        }
+
+        const services = await device.gatt.getPrimaryServices();
+        for (const service of services) {
+          try {
+            const characteristics = await service.getCharacteristics();
+            for (const char of characteristics) {
+              if (char.properties.write || char.properties.writeWithoutResponse) {
+                return char;
+              }
+            }
+          } catch (e) {
+            // Check next service
+          }
+        }
+        throw new Error("Não foi possível encontrar a porta de impressão Bluetooth (ESC/POS).");
+      }
+
+      // Safe packet chunking for BLE
+      async function sendBleEscPosPackets(characteristic, dataBuffer) {
+        const CHUNK_SIZE = 64; // Safe chunk size for BLE MTU
+        for (let i = 0; i < dataBuffer.length; i += CHUNK_SIZE) {
+          const chunk = dataBuffer.subarray(i, i + CHUNK_SIZE);
+          if (characteristic.properties.writeWithoutResponse) {
+            await characteristic.writeValueWithoutResponse(chunk);
+          } else {
+            await characteristic.writeValue(chunk);
+          }
+          await new Promise((resolve) => setTimeout(resolve, 20)); // 20ms pacing
+        }
+      }
+
+      // Convert receipt text into raw ESC/POS bytes with clean accent stripping
+      function formatEscPosReceiptBytes(text) {
+        // Normalize accents (ã -> a, ç -> c, é -> e) to standard clean thermal receipt ASCII
+        const cleanText = text
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^\x00-\x7F]/g, " ");
+
+        const initCmd = [0x1b, 0x40]; // ESC @ (Initialize printer)
+        const codepageCmd = [0x1b, 0x74, 0x00]; // Standard PC437
+        const bodyBytes = [];
+        for (let i = 0; i < cleanText.length; i++) {
+          bodyBytes.push(cleanText.charCodeAt(i) & 0xff);
+        }
+        // Feed 4 lines and cut paper (GS V A 16)
+        const cutCmd = [0x0a, 0x0a, 0x0a, 0x0a, 0x1d, 0x56, 0x41, 0x10];
+
+        return new Uint8Array([
+          ...initCmd,
+          ...codepageCmd,
+          ...bodyBytes,
+          ...cutCmd,
+        ]);
+      }
+
+      // Mode tab switcher in printer modal
+      window.switchPrinterConfigTab = function (tab) {
+        const btnBt = document.getElementById("tab-btn-bluetooth");
+        const btnSrv = document.getElementById("tab-btn-server");
+        const contentBt = document.getElementById("tab-content-bluetooth");
+        const contentSrv = document.getElementById("tab-content-server");
+
+        if (tab === "bluetooth") {
+          btnBt.className =
+            "flex-1 py-1.5 px-2 rounded-lg bg-white shadow-xs text-brand-primary transition-all flex items-center justify-center gap-1.5 text-[11px] font-bold";
+          btnSrv.className =
+            "flex-1 py-1.5 px-2 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5 text-[11px] font-bold";
+          contentBt.classList.remove("hidden");
+          contentSrv.classList.add("hidden");
+        } else {
+          btnSrv.className =
+            "flex-1 py-1.5 px-2 rounded-lg bg-white shadow-xs text-brand-primary transition-all flex items-center justify-center gap-1.5 text-[11px] font-bold";
+          btnBt.className =
+            "flex-1 py-1.5 px-2 rounded-lg text-gray-500 hover:text-gray-800 transition-all flex items-center justify-center gap-1.5 text-[11px] font-bold";
+          contentSrv.classList.remove("hidden");
+          contentBt.classList.add("hidden");
+        }
+      };
+
+      // Pair a new Bluetooth thermal printer
+      window.pairBluetoothPrinter = async function () {
+        if (!navigator.bluetooth) {
+          alert(
+            "⚠️ O Web Bluetooth não é suportado neste navegador ou ambiente.\n\n" +
+              "Para utilizar a impressão Bluetooth direta sem computador:\n" +
+              "1. Utilize o Google Chrome ou Microsoft Edge.\n" +
+              "2. No celular Android ou tablet, certifique-se de que o Bluetooth do aparelho está ativado.\n" +
+              "3. O site precisa estar em HTTPS.",
+          );
+          return;
+        }
+
+        const btn = document.getElementById("btn-pair-bt");
+        const origHtml = btn ? btn.innerHTML : "";
+        if (btn) {
+          btn.innerHTML = `
+            <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span>Buscando impressoras...</span>
+          `;
+          btn.disabled = true;
+        }
+
+        try {
+          const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [
+              "000018f0-0000-1000-8000-00805f9b34fb",
+              "49535343-fe7d-4ae5-8fa9-9fafd205e455",
+              "0000ff00-0000-1000-8000-00805f9b34fb",
+              "0000ae00-0000-1000-8000-00805f9b34fb",
+              "0000af00-0000-1000-8000-00805f9b34fb",
+              "0000e0ff-0000-1000-8000-00805f9b34fb",
+              "e7810a71-73ae-499d-8c15-faa9aef0c3f2",
+            ],
+          });
+
+          if (btn) {
+            btn.innerHTML = "<span>Conectando...</span>";
+          }
+
+          const characteristic =
+            await getBluetoothWritableCharacteristic(device);
+          window._connectedBtDevice = device;
+          window._connectedBtCharacteristic = characteristic;
+
+          device.addEventListener("gattserverdisconnected", () => {
+            console.warn("Impressora Bluetooth desconectada:", device.name);
+            renderPrintersList();
+          });
+
+          const widthSel = document.getElementById("bt-printer-width");
+          const width = widthSel ? widthSel.value : "58";
+          const printerName = device.name || "Impressora Bluetooth";
+
+          // Add or update in localPrinters
+          const existingIdx = localPrinters.findIndex(
+            (p) =>
+              p.type === "bluetooth" &&
+              (p.deviceId === device.id || p.name === printerName),
+          );
+          if (existingIdx >= 0) {
+            localPrinters[existingIdx].active = true;
+            localPrinters[existingIdx].width = width;
+            localPrinters[existingIdx].deviceId = device.id;
+          } else {
+            localPrinters.push({
+              type: "bluetooth",
+              name: printerName,
+              width: width,
+              active: true,
+              deviceId: device.id,
+            });
+          }
+
+          localStorage.setItem(
+            "popfood_printers_list",
+            JSON.stringify(localPrinters),
+          );
+          renderPrintersList();
+          alert(
+            `✅ Impressora "${printerName}" conectada com sucesso via Bluetooth!`,
+          );
+        } catch (err) {
+          if (err.name !== "NotFoundError") {
+            console.error("Erro Bluetooth:", err);
+            alert(
+              "Não foi possível conectar à impressora: " +
+                (err.message || err),
+            );
+          }
+        } finally {
+          if (btn) {
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+          }
+        }
+      };
+
+      // Print directly via Web Bluetooth
+      window.printViaBluetooth = async function (textReceipt, printerConfig) {
+        let char = window._connectedBtCharacteristic;
+        let dev = window._connectedBtDevice;
+
+        // Try reconnecting if disconnected
+        if (!dev || !dev.gatt?.connected || !char) {
+          if (dev) {
+            char = await getBluetoothWritableCharacteristic(dev);
+            window._connectedBtCharacteristic = char;
+          } else if (navigator.bluetooth?.getDevices) {
+            try {
+              const devices = await navigator.bluetooth.getDevices();
+              const matched = devices.find(
+                (d) =>
+                  d.id === printerConfig.deviceId ||
+                  d.name === printerConfig.name,
+              );
+              if (matched) {
+                char = await getBluetoothWritableCharacteristic(matched);
+                window._connectedBtDevice = matched;
+                window._connectedBtCharacteristic = char;
+              }
+            } catch (e) {
+              console.warn("Bluetooth getDevices fallback failed:", e);
+            }
+          }
+        }
+
+        if (!char) {
+          throw new Error(
+            `A impressora Bluetooth "${printerConfig.name || "Bluetooth"}" não está conectada no momento. Abra as configurações de impressora e clique em "Conectar Impressora Bluetooth".`,
+          );
+        }
+
+        const bytes = formatEscPosReceiptBytes(textReceipt);
+        await sendBleEscPosPackets(char, bytes);
+        console.log("Comanda impressa com sucesso via Bluetooth!");
+      };
+
       function renderPrintersList() {
         const container = document.getElementById("printers-list-container");
+        const badge = document.getElementById("printers-count-badge");
+        if (badge) badge.textContent = localPrinters.length;
         if (!container) return;
         container.innerHTML = "";
 
@@ -1693,24 +1997,32 @@ window.openMesaQrCodeModal = function() {
         localPrinters.forEach((printer, index) => {
           const item = document.createElement("div");
           const isActive = printer.active !== false;
-          item.className = `bg-slate-50 border ${isActive ? "border-brand-primary/30" : "border-slate-100 opacity-50"} rounded-xl p-3 flex items-center justify-between gap-3 group hover:border-orange-200 transition-all`;
+          const isBt = printer.type === "bluetooth";
+          const isConnected =
+            isBt && window._connectedBtDevice?.gatt?.connected;
+
+          item.className = `bg-slate-50 border ${isActive ? "border-brand-primary/30" : "border-slate-100 opacity-60"} rounded-xl p-3 flex items-center justify-between gap-3 group hover:border-orange-200 transition-all`;
           item.innerHTML = `
           <div class="flex-grow min-w-0">
-            <div class="flex items-center gap-2 mb-1">
+            <div class="flex items-center gap-2 mb-1 flex-wrap">
               <label class="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" class="sr-only peer" ${isActive ? "checked" : ""} onchange="togglePrinterActive(${index}, this.checked)">
                 <div class="w-7 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-brand-primary"></div>
               </label>
-              <p class="text-[11px] font-bold text-slate-800 truncate ${!isActive ? "line-through text-slate-400" : ""}">${printer.name || "Impressora"}</p>
-              <span class="text-[8px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">${printer.width}mm</span>
+              <div class="flex items-center gap-1.5 min-w-0">
+                <span class="text-xs">${isBt ? "📱" : "🖥️"}</span>
+                <p class="text-[11px] font-bold text-slate-800 truncate ${!isActive ? "line-through text-slate-400" : ""}">${printer.name || (isBt ? "Impressora Bluetooth" : "Impressora")}</p>
+              </div>
+              <span class="text-[8px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">${printer.width || "58"}mm</span>
+              ${isBt ? `<span class="text-[8px] ${isConnected ? "bg-emerald-50 text-emerald-600 border border-emerald-200" : "bg-blue-50 text-blue-600 border border-blue-200"} px-1.5 py-0.5 rounded font-bold">${isConnected ? "🟢 Conectada" : "🔵 Pareada"}</span>` : ""}
             </div>
-            <p class="text-[9px] text-slate-400 truncate">${printer.url}</p>
+            <p class="text-[9px] text-slate-400 truncate">${isBt ? "Bluetooth Direto (Sem PC)" : printer.url}</p>
           </div>
           <div class="flex items-center gap-1">
-            <button onclick="printSpecificTestPage(${index})" class="text-slate-300 hover:text-blue-500 transition-colors cursor-pointer p-1" title="Testar Impressão">
+            <button onclick="printSpecificTestPage(${index})" class="text-slate-400 hover:text-blue-500 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white" title="Testar Impressão">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
             </button>
-            <button onclick="removePrinter(${index})" class="text-slate-300 hover:text-red-500 transition-colors cursor-pointer p-1" title="Remover Impressora">
+            <button onclick="removePrinter(${index})" class="text-slate-400 hover:text-red-500 transition-colors cursor-pointer p-1.5 rounded-lg hover:bg-white" title="Remover Impressora">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
             </button>
           </div>
@@ -1761,7 +2073,7 @@ window.openMesaQrCodeModal = function() {
           return;
         }
 
-        localPrinters.push({ url, name, width, active: true });
+        localPrinters.push({ type: "server", url, name, width, active: true });
         localStorage.setItem(
           "popfood_printers_list",
           JSON.stringify(localPrinters),
@@ -1821,7 +2133,7 @@ window.openMesaQrCodeModal = function() {
           items: [
             {
               quantity: 1,
-              name: "item de teste",
+              name: "ITEM DE TESTE",
               price: 10,
               totalItemPrice: 10,
             },
@@ -1845,19 +2157,6 @@ window.openMesaQrCodeModal = function() {
       };
 
       window.printTestPage = function () {
-        const url = document.getElementById("printer-server-url").value.trim();
-        const name = document.getElementById("printer-select").value;
-        const width = document.getElementById("printer-width").value || "58";
-
-        if (!url) {
-          alert("Informe a URL do servidor primeiro.");
-          return;
-        }
-        if (!name) {
-          alert("Selecione uma impressora da lista primeiro.");
-          return;
-        }
-
         const mockOrder = {
           id: "TESTE",
           customer: {
@@ -1869,7 +2168,7 @@ window.openMesaQrCodeModal = function() {
           items: [
             {
               quantity: 1,
-              name: "item de teste",
+              name: "ITEM DE TESTE",
               price: 10,
               totalItemPrice: 10,
             },
@@ -1882,15 +2181,35 @@ window.openMesaQrCodeModal = function() {
           createdAt: new Date(),
         };
 
-        // Specialized test call
-        const temp = [...localPrinters];
-        localPrinters = [{ url, name, width, active: true }];
-        try {
+        // If there are active printers configured, print to them
+        const activePrinters = localPrinters.filter((p) => p.active !== false);
+        if (activePrinters.length > 0) {
           window.triggerThermalComandaPrint(mockOrder);
-          alert("Impressão de teste enviada para " + name);
-        } finally {
-          localPrinters = temp;
+          alert("Impressão de teste enviada para as impressoras ativas!");
+          return;
         }
+
+        // Fallback: check if server fields are filled
+        const url = document.getElementById("printer-server-url")?.value.trim();
+        const name = document.getElementById("printer-select")?.value;
+        const width =
+          document.getElementById("printer-width")?.value || "58";
+
+        if (url && name) {
+          const temp = [...localPrinters];
+          localPrinters = [{ url, name, width, active: true }];
+          try {
+            window.triggerThermalComandaPrint(mockOrder);
+            alert("Impressão de teste enviada para " + name);
+          } finally {
+            localPrinters = temp;
+          }
+          return;
+        }
+
+        alert(
+          "Conecte uma impressora Bluetooth ou configure um servidor local para testar a impressão.",
+        );
       };
 
       window.savePrinterSettings = function () {
@@ -4298,26 +4617,32 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             if (activePrinters.length > 0) {
               // Print to all active configured printers
               activePrinters.forEach((printer) => {
-                fetch(`${printer.url.replace(/\/$/, "")}/imprimir`, {
-                  method: "POST",
-                  body: JSON.stringify({
-                    impressora: printer.name,
-                    largura: printer.width,
-                    html: parent.innerHTML,
-                    texto: textReceipt,
-                    conteudo: textReceipt,
-                    conteudo_html: parent.innerHTML,
-                    content: textReceipt,
-                    text: textReceipt,
-                    ...order,
-                  }),
-                  headers: { "Content-Type": "application/json" },
-                }).catch((err) => {
-                  console.error(
-                    `Local printer (${printer.name}) call failed: `,
-                    err,
-                  );
-                });
+                if (printer.type === "bluetooth") {
+                  window.printViaBluetooth(textReceipt, printer).catch((err) => {
+                    console.error("Erro na impressão via Bluetooth:", err);
+                  });
+                } else if (printer.url) {
+                  fetch(`${printer.url.replace(/\/$/, "")}/imprimir`, {
+                    method: "POST",
+                    body: JSON.stringify({
+                      impressora: printer.name,
+                      largura: printer.width,
+                      html: parent.innerHTML,
+                      texto: textReceipt,
+                      conteudo: textReceipt,
+                      conteudo_html: parent.innerHTML,
+                      content: textReceipt,
+                      text: textReceipt,
+                      ...order,
+                    }),
+                    headers: { "Content-Type": "application/json" },
+                  }).catch((err) => {
+                    console.error(
+                      `Local printer (${printer.name}) call failed: `,
+                      err,
+                    );
+                  });
+                }
               });
             } else {
               // No active local printers, fallback to browser print if desired, or skip
