@@ -1139,6 +1139,24 @@ window.openMesaQrCodeModal = function() {
               </div>
             </div>
 
+            <!-- iOS Notice Banner -->
+            <div id="ios-bluetooth-notice" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-[11px] text-amber-900 leading-relaxed">
+              <div class="flex items-start gap-2">
+                <span class="text-base leading-none">📱</span>
+                <div>
+                  <p class="font-bold text-amber-950">Aviso para iPhone / iPad (iOS)</p>
+                  <p class="text-[10px] text-amber-800 mt-0.5">
+                    Por padrão da Apple, o Safari e o Google Chrome no iPhone bloqueiam conexões Bluetooth web. Para imprimir direto do iPhone via Bluetooth, abra esta tela pelo navegador gratuito <strong>Bluefy – Web BLE Browser</strong> (disponível na App Store).
+                  </p>
+                  <div class="mt-2 flex items-center gap-2">
+                    <a href="https://apps.apple.com/app/bluefy-web-ble-browser/id1492822055" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-[10px] shadow-xs transition-colors">
+                      <span>Baixar Bluefy na App Store</span> ↗
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div class="flex gap-2">
               <select
                 id="bt-printer-width"
@@ -1162,7 +1180,7 @@ window.openMesaQrCodeModal = function() {
             </button>
 
             <p class="text-[9px] text-gray-400 text-center">
-              Requer Google Chrome / Edge no Android, Windows ou Mac (HTTPS).
+              Compatível com Android, PC Windows, Mac e Linux (Google Chrome / Edge) ou iPhone / iPad (via Bluefy).
             </p>
           </div>
 
@@ -1666,6 +1684,18 @@ window.openMesaQrCodeModal = function() {
         if (show) {
           modal.classList.remove("hidden");
           renderPrintersList();
+          // Detect iOS devices
+          const isIOS =
+            /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+            (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+          const iosNotice = document.getElementById("ios-bluetooth-notice");
+          if (iosNotice) {
+            if (isIOS && !navigator.bluetooth) {
+              iosNotice.classList.remove("hidden");
+            } else {
+              iosNotice.classList.add("hidden");
+            }
+          }
         } else {
           modal.classList.add("hidden");
         }
@@ -1844,14 +1874,29 @@ window.openMesaQrCodeModal = function() {
 
       // Pair a new Bluetooth thermal printer
       window.pairBluetoothPrinter = async function () {
+        const isIOS =
+          /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
         if (!navigator.bluetooth) {
-          alert(
-            "⚠️ O Web Bluetooth não é suportado neste navegador ou ambiente.\n\n" +
-              "Para utilizar a impressão Bluetooth direta sem computador:\n" +
-              "1. Utilize o Google Chrome ou Microsoft Edge.\n" +
-              "2. No celular Android ou tablet, certifique-se de que o Bluetooth do aparelho está ativado.\n" +
-              "3. O site precisa estar em HTTPS.",
-          );
+          if (isIOS) {
+            alert(
+              "📱 ATENÇÃO - IPHONE / IPAD (iOS):\n\n" +
+                "Por política da Apple, o Safari e o Google Chrome no iPhone bloqueiam conexões Bluetooth web.\n\n" +
+                "👉 COMO CONECTAR SUA IMPRESSORA NO IPHONE:\n" +
+                "1. Abra a App Store no seu iPhone e baixe o app gratuito 'Bluefy - Web BLE Browser'.\n" +
+                "2. Abra este mesmo site pelo Bluefy.\n" +
+                "3. Pronto! O Bluefy libera o Bluetooth e a sua impressora conectará normalmente sem precisar de computador.",
+            );
+          } else {
+            alert(
+              "⚠️ O Web Bluetooth não é suportado neste navegador ou ambiente.\n\n" +
+                "Para utilizar a impressão Bluetooth direta sem computador:\n" +
+                "1. Utilize o Google Chrome ou Microsoft Edge.\n" +
+                "2. No celular Android ou tablet, certifique-se de que o Bluetooth do aparelho está ativado.\n" +
+                "3. O site precisa estar em HTTPS.",
+            );
+          }
           return;
         }
 
