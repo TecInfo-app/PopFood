@@ -1809,9 +1809,9 @@ window.openMesaQrCodeModal = function() {
         throw new Error("Não foi possível encontrar a porta de impressão Bluetooth (ESC/POS).");
       }
 
-      // Safe packet chunking for BLE
+      // Safe packet chunking for BLE (20 bytes is the universally safe BLE ATT MTU limit)
       async function sendBleEscPosPackets(characteristic, dataBuffer) {
-        const CHUNK_SIZE = 64; // Safe chunk size for BLE MTU
+        const CHUNK_SIZE = 20; // 20 bytes avoids BLE packet drop and buffer overflow
         for (let i = 0; i < dataBuffer.length; i += CHUNK_SIZE) {
           const chunk = dataBuffer.subarray(i, i + CHUNK_SIZE);
           if (characteristic.properties.writeWithoutResponse) {
@@ -1819,17 +1819,20 @@ window.openMesaQrCodeModal = function() {
           } else {
             await characteristic.writeValue(chunk);
           }
-          await new Promise((resolve) => setTimeout(resolve, 20)); // 20ms pacing
+          await new Promise((resolve) => setTimeout(resolve, 25)); // 25ms pacing allows printer processor to print and clear buffer
         }
       }
 
       // Convert receipt text into raw ESC/POS bytes with clean accent stripping
       function formatEscPosReceiptBytes(text) {
         // Normalize accents (ã -> a, ç -> c, é -> e) to standard clean thermal receipt ASCII
+        // and normalize line breaks to standard ESC/POS CR LF (\r\n)
         const cleanText = text
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
-          .replace(/[^\x00-\x7F]/g, " ");
+          .replace(/[^\x00-\x7F]/g, " ")
+          .replace(/\r\n/g, "\n")
+          .replace(/\n/g, "\r\n");
 
         const initCmd = [0x1b, 0x40]; // ESC @ (Initialize printer)
         const codepageCmd = [0x1b, 0x74, 0x00]; // Standard PC437
@@ -1838,7 +1841,7 @@ window.openMesaQrCodeModal = function() {
           bodyBytes.push(cleanText.charCodeAt(i) & 0xff);
         }
         // Feed 4 lines and cut paper (GS V A 16)
-        const cutCmd = [0x0a, 0x0a, 0x0a, 0x0a, 0x1d, 0x56, 0x41, 0x10];
+        const cutCmd = [0x0d, 0x0a, 0x0d, 0x0a, 0x0d, 0x0a, 0x0d, 0x0a, 0x1d, 0x56, 0x41, 0x10];
 
         return new Uint8Array([
           ...initCmd,
@@ -4187,10 +4190,11 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
 
         // 1. Calculations & Dynamic Formatting Variables
-        const itemsToPrint = (printOnlyNew && order.lastAddedItems && order.lastAddedItems.length > 0)
+        const rawItems = (printOnlyNew && order.lastAddedItems && order.lastAddedItems.length > 0)
           ? order.lastAddedItems
-          : order.items;
-        const shortId = order.sequence || order.number || order.id.slice(-4).toUpperCase();
+          : (order.items || order.itens || order.products || order.cart || []);
+        const itemsToPrint = Array.isArray(rawItems) ? rawItems : [];
+        const shortId = order.sequence || order.number || (order.id ? String(order.id).slice(-4).toUpperCase() : "0000");
         
         let estimatedTimeStr = "";
         if (order.estimatedDeliveryTime || order.estimatedTime) {
@@ -4210,14 +4214,21 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           estimatedTimeStr = estDate.toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' });
         }
         
-        const customerObj = order.customer || order.client || {};
+        const customerObj = order.customer || order.client || order.cliente || {};
+        const custName = (customerObj.name || order.customerName || order.clientName || order.nome || "").trim();
+        const custPhone = (customerObj.phone || order.customerPhone || order.telefone || "").trim();
+        const custAddress = (customerObj.address || order.customerAddress || order.endereco || "").trim();
+        const custComp = (customerObj.complement || order.complement || order.complemento || "").trim();
+        const custRef = (customerObj.reference || order.reference || order.referencia || "").trim();
+        const custCep = (customerObj.cep || order.cep || "").trim();
+        const custType = customerObj.type || order.deliveryType || (order.isPickup ? "pickup" : "delivery");
+
         const isMesa =
-          customerObj.type === "Mesa" ||
-          (customerObj.address &&
-            customerObj.address.toLowerCase().includes("mesa")) ||
+          custType === "Mesa" ||
+          (custAddress && custAddress.toLowerCase().includes("mesa")) ||
           (order.origin && order.origin.includes("Mesa"));
-        const mesaIdentifier = customerObj.number || customerObj.address || "MESA";
-        const isPickup = customerObj.type === "pickup" || isMesa;
+        const mesaIdentifier = customerObj.number || custAddress || "MESA";
+        const isPickup = custType === "pickup" || custType === "Retirada" || isMesa || order.isPickup;
         const predictionLabel = isMesa
           ? "Pedido em mesa:"
           : isPickup
@@ -4281,21 +4292,23 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         detailsText += `Data: ${orderDate}\n`;
         detailsText += `${predictionLabel.toUpperCase()} ${estimatedTimeStr}\n`;
         if (!isMesaAdicao) {
-          detailsText += `Localizador: ${order.id.slice(-8).toUpperCase()}\n`;
+          detailsText += `Localizador: ${String(order.id || "").slice(-8).toUpperCase()}\n`;
         }
         if (order.isFirstOrder || order.customer?.isFirstOrder) {
           detailsText += `Primeiro pedido!\n`;
         }
         
-        detailsText += `\n${customerObj.name ? customerObj.name.toUpperCase() : "NOME NÃO DEFINIDO"}\n`;
-        detailsText += `${customerObj.phone ? customerObj.phone : "SEM WHATSAPP"} ${customerObj?.id ? `ID: ${customerObj.id}` : ""}\n`;
+        detailsText += `\n${custName ? custName.toUpperCase() : "CLIENTE"}\n`;
+        if (custPhone) {
+          detailsText += `${custPhone}${customerObj?.id ? ` ID: ${customerObj.id}` : ""}\n`;
+        }
         if (isMesa) {
           detailsText += `*** ${mesaIdentifier.toUpperCase()} ***\n`;
-        } else if (order.customer && order.customer.type !== "pickup" && order.customer.address) {
-          detailsText += `END: ${order.customer.address.toUpperCase()}\n`;
-          if (order.customer.complement) detailsText += `COMP: ${order.customer.complement.toUpperCase()}\n`;
-          if (order.customer.reference) detailsText += `REF: ${order.customer.reference.toUpperCase()}\n`;
-          if (order.customer.cep) detailsText += `CEP: ${order.customer.cep}\n`;
+        } else if (custAddress && !isPickup) {
+          detailsText += `END: ${custAddress.toUpperCase()}\n`;
+          if (custComp) detailsText += `COMP: ${custComp.toUpperCase()}\n`;
+          if (custRef) detailsText += `REF: ${custRef.toUpperCase()}\n`;
+          if (custCep) detailsText += `CEP: ${custCep}\n`;
         } else {
           detailsText += `*** RETIRADA NO LOCAL ***\n`;
         }
@@ -4303,9 +4316,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         detailsText += `${printOnlyNew ? "ITENS ADICIONADOS" : "ITENS DO PEDIDO"} (${itemsToPrint.length})\n`;
         
         itemsToPrint.forEach((item) => {
-          const qty = item.quantity || 1;
-          const name = item.name.toUpperCase();
-          const itemTotal = (item.totalItemPrice || item.price || 0) * qty;
+          const qty = item.quantity || item.qtd || item.quantidade || 1;
+          const name = (item.name || item.nome || item.title || item.product?.name || "ITEM").toUpperCase();
+          const itemTotal = (item.totalItemPrice !== undefined ? item.totalItemPrice : (item.price || item.preco || 0)) * qty;
           const itemTotalStr = `R$ ${itemTotal.toFixed(2).replace(".", ",")}`;
           
           detailsText += formatLine(`${qty}x ${name}`, itemTotalStr);
@@ -4412,9 +4425,9 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         
         let itemsHtml = "";
         itemsToPrint.forEach((item) => {
-          const qty = item.quantity || 1;
-          const name = item.name.toUpperCase();
-          const itemTotal = (item.totalItemPrice || item.price || 0) * qty;
+          const qty = item.quantity || item.qtd || item.quantidade || 1;
+          const name = (item.name || item.nome || item.title || item.product?.name || "ITEM").toUpperCase();
+          const itemTotal = (item.totalItemPrice !== undefined ? item.totalItemPrice : (item.price || item.preco || 0)) * qty;
           const itemTotalStr = `R$ ${itemTotal.toFixed(2).replace(".", ",")}`;
           
           itemsHtml += `
@@ -4541,11 +4554,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           
           <!-- CUSTOMER -->
           <div style="font-weight: 900; margin-top: 8px; font-size: ${headerFontSize};">
-            ${customerObj.name ? customerObj.name.toUpperCase() : "NOME NÃO DEFINIDO"}
+            ${custName ? custName.toUpperCase() : "CLIENTE"}
           </div>
+          ${custPhone ? `
           <div style="margin-top: 2px;">
-            ${customerObj.phone ? customerObj.phone : "SEM WHATSAPP"} ${customerObj?.id ? `ID: ${customerObj.id}` : ""}
-          </div>
+            ${custPhone} ${customerObj?.id ? `ID: ${customerObj.id}` : ""}
+          </div>` : ""}
           
           <!-- ADDRESS FOR DELIVERY OR TABLE -->
           ${
@@ -4555,13 +4569,13 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
                   🍽️ ${mesaIdentifier.toUpperCase()}
                 </div>
               `
-              : (order.customer && order.customer.type !== "pickup" && order.customer.address 
+              : (custAddress && !isPickup
                 ? `
                   <div style="margin-top: 4px; border: 1px solid black; padding: 4px; line-height: 1.2;">
-                    ENDEREÇO: ${order.customer.address.toUpperCase()}
-                    ${order.customer.complement ? `<br>COMP: ${order.customer.complement.toUpperCase()}` : ""}
-                    ${order.customer.reference ? `<br>REF: ${order.customer.reference.toUpperCase()}` : ""}
-                    ${order.customer.cep ? `<br>CEP: ${order.customer.cep}` : ""}
+                    ENDEREÇO: ${custAddress.toUpperCase()}
+                    ${custComp ? `<br>COMP: ${custComp.toUpperCase()}` : ""}
+                    ${custRef ? `<br>REF: ${custRef.toUpperCase()}` : ""}
+                    ${custCep ? `<br>CEP: ${custCep}` : ""}
                   </div>
                 `
                 : `
