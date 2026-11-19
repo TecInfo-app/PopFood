@@ -17,6 +17,7 @@ import {
   limit,
   limitToLast,
   onSnapshot,
+  getCountFromServer,
   Timestamp,
   arrayUnion,
   increment 
@@ -271,6 +272,7 @@ export {
   limit,
   limitToLast,
   onSnapshot,
+  getCountFromServer,
   arrayUnion,
   increment,
 

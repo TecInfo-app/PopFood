@@ -680,7 +680,7 @@
   </div>
 
   <script type="module">
-    import { db, auth, Timestamp, COLLECTIONS, collection, query, where, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, increment } from './firebase-config.js';
+    import { db, auth, Timestamp, COLLECTIONS, collection, query, where, limit, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail, increment } from './firebase-config.js';
 
     window.currentStoreId = null;
 
@@ -1016,6 +1016,10 @@ storeId: window.currentStoreId
         let matchedStoreDoc = null;
         let matchedStoreId = null;
 
+        const mailLower = mail.toLowerCase();
+        const cachedStoreKey = `popfood_login_store_${mailLower}`;
+        const cachedStoreIdForEmail = localStorage.getItem(cachedStoreKey);
+
         // 1. Check if urlStoreId from URL matches an existing store in Firestore
         if (urlStoreId) {
           try {
@@ -1024,7 +1028,7 @@ storeId: window.currentStoreId
               const urlData = urlSnap.data();
               // Verify if this store belongs to this user/email
               const storeMail = (urlData.adminEmail || urlData.email || '').trim().toLowerCase();
-              if (!storeMail || storeMail === mail.toLowerCase() || urlData.storeId === urlStoreId) {
+              if (!storeMail || storeMail === mailLower || urlData.storeId === urlStoreId) {
                 matchedStoreDoc = urlSnap;
                 matchedStoreId = urlStoreId;
               }
@@ -1034,14 +1038,44 @@ storeId: window.currentStoreId
           }
         }
 
-        // 2. Query restaurantProfile by adminEmail (exact or case-insensitive)
+        // 1b. Check cached storeId for this email (1 direct getDoc)
+        if (!matchedStoreId && cachedStoreIdForEmail) {
+          try {
+            const cachedSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, cachedStoreIdForEmail));
+            if (cachedSnap.exists()) {
+              const cData = cachedSnap.data();
+              const storeMail = (cData.adminEmail || cData.email || cData.ownerEmail || '').trim().toLowerCase();
+              if (!storeMail || storeMail === mailLower || cachedStoreIdForEmail === loggedUser.uid) {
+                matchedStoreDoc = cachedSnap;
+                matchedStoreId = cachedSnap.id;
+              }
+            }
+          } catch (e) {
+            console.warn("Could not check cachedStoreIdForEmail:", e);
+          }
+        }
+
+        // 2. Check if a store document exists directly with user's UID (1 direct getDoc)
+        if (!matchedStoreId) {
+          try {
+            const uidSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, loggedUser.uid));
+            if (uidSnap.exists()) {
+              matchedStoreDoc = uidSnap;
+              matchedStoreId = loggedUser.uid;
+            }
+          } catch (e) {
+            console.warn("Could not check UID doc directly:", e);
+          }
+        }
+
+        // 3. Query restaurantProfile by adminEmail/email with limit(1)
         if (!matchedStoreId) {
           const profilesRef = collection(db, COLLECTIONS.restaurantProfile);
           const queriesToTry = [
-            query(profilesRef, where("adminEmail", "==", mail.toLowerCase())),
-            query(profilesRef, where("adminEmail", "==", mail)),
-            query(profilesRef, where("email", "==", mail.toLowerCase())),
-            query(profilesRef, where("email", "==", mail))
+            query(profilesRef, where("adminEmail", "==", mailLower), limit(1)),
+            ...(mail !== mailLower ? [query(profilesRef, where("adminEmail", "==", mail), limit(1))] : []),
+            query(profilesRef, where("email", "==", mailLower), limit(1)),
+            ...(mail !== mailLower ? [query(profilesRef, where("email", "==", mail), limit(1))] : [])
           ];
 
           for (const q of queriesToTry) {
@@ -1058,14 +1092,14 @@ storeId: window.currentStoreId
           }
         }
 
-        // 3. Fallback scan of all stores if query yielded no results
+        // 4. Last-resort fallback scan of all stores if direct lookups and indexed queries yielded no results
         if (!matchedStoreId) {
           try {
             const allSnap = await getDocs(collection(db, COLLECTIONS.restaurantProfile));
             for (const docSnap of allSnap.docs) {
               const d = docSnap.data();
               const storeMail = (d.adminEmail || d.email || d.ownerEmail || '').trim().toLowerCase();
-              if (storeMail && storeMail === mail.toLowerCase()) {
+              if (storeMail && storeMail === mailLower) {
                 matchedStoreDoc = docSnap;
                 matchedStoreId = docSnap.id;
                 break;
@@ -1081,19 +1115,6 @@ storeId: window.currentStoreId
           }
         }
 
-        // 4. Check if a store document exists with user's UID
-        if (!matchedStoreId) {
-          try {
-            const uidSnap = await getDoc(doc(db, COLLECTIONS.restaurantProfile, loggedUser.uid));
-            if (uidSnap.exists()) {
-              matchedStoreDoc = uidSnap;
-              matchedStoreId = loggedUser.uid;
-            }
-          } catch (e) {
-            console.warn("Could not check UID doc directly:", e);
-          }
-        }
-
         // Final decision
         if (matchedStoreDoc && matchedStoreDoc.exists()) {
           const storeData = matchedStoreDoc.data();
@@ -1105,6 +1126,7 @@ storeId: window.currentStoreId
         }
 
         const finalStoreId = matchedStoreId || urlStoreId || loggedUser.uid;
+        localStorage.setItem(cachedStoreKey, finalStoreId);
         localStorage.setItem('popfood_custom_store_id', finalStoreId);
         localStorage.setItem('popfood_custom_store_email', mail);
 

@@ -491,6 +491,7 @@
     let activeDeliveryRating = 0;
     let restaurantProfile = null;
     let hasAutoOpenedRating = false;
+    let activeTrackerUnsubscribe = null;
 
     window.toggleRatingModal = function(show) {
       const modal = document.getElementById('rating-modal');
@@ -558,14 +559,50 @@
 
       try {
         const docRef = doc(db, COLLECTIONS.orders, currentTrackOrder.id);
+        const ratingPayload = {
+          starsFood: activeFoodRating,
+          starsDelivery: activeDeliveryRating,
+          comment: commentText,
+          ratedAt: new Date().toISOString()
+        };
         await updateDoc(docRef, {
-          rating: {
-            starsFood: activeFoodRating,
-            starsDelivery: activeDeliveryRating,
-            comment: commentText,
-            ratedAt: new Date().toISOString()
-          }
+          rating: ratingPayload
         });
+
+        // Update cached ratings summary on restaurantProfile so cliente.html doesn't scan all orders
+        if (window.currentStoreId) {
+          try {
+            const profRef = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
+            const profSnap = await getDoc(profRef);
+            const existing = profSnap.exists() ? (profSnap.data().ratingsSummary || null) : null;
+            const newEntry = {
+              id: currentTrackOrder.id,
+              customerName: currentTrackOrder.customer?.name || "Anônimo",
+              ...ratingPayload
+            };
+            let updatedSummary;
+            if (existing && typeof existing.count === "number") {
+              const filteredRecent = (Array.isArray(existing.recent) ? existing.recent : []).filter(r => r.id !== currentTrackOrder.id);
+              updatedSummary = {
+                count: existing.count + 1,
+                sumFood: (existing.sumFood || 0) + activeFoodRating,
+                sumDelivery: (existing.sumDelivery || 0) + activeDeliveryRating,
+                recent: [newEntry, ...filteredRecent].slice(0, 25)
+              };
+            } else {
+              updatedSummary = {
+                count: 1,
+                sumFood: activeFoodRating,
+                sumDelivery: activeDeliveryRating,
+                recent: [newEntry]
+              };
+            }
+            await updateDoc(profRef, { ratingsSummary: updatedSummary });
+            localStorage.removeItem("popfood_ratings_cache_" + window.currentStoreId);
+          } catch (sumErr) {
+            console.warn("Could not update ratingsSummary:", sumErr);
+          }
+        }
 
         window.toggleRatingModal(false);
         const succOverlay = document.getElementById('rating-success');
@@ -856,7 +893,12 @@
         drawActiveTrackDetails(currentTrackOrder);
       }
 
-      onSnapshot(doc(db, COLLECTIONS.orders, orderId), (docSnap) => {
+      if (activeTrackerUnsubscribe) {
+        activeTrackerUnsubscribe();
+        activeTrackerUnsubscribe = null;
+      }
+
+      activeTrackerUnsubscribe = onSnapshot(doc(db, COLLECTIONS.orders, orderId), (docSnap) => {
         if (docSnap.exists()) {
           const targetOrder = { id: docSnap.id, ...docSnap.data() };
           if (currentTrackOrder && currentTrackOrder.id === targetOrder.id && currentTrackOrder.status !== targetOrder.status) {
@@ -898,26 +940,87 @@
       return false;
     }
 
-    // Launch instant Firestore listener monitoring the latest order written by customer
-    function startOnSnapshotOrderTracker(phone, orderIdInput = null) {
+    function buildPhoneSearchVariants(phone) {
+      const clean = String(phone || '').replace(/\D/g, '');
+      if (!clean) return [];
+      const variants = new Set([clean]);
+      if (clean.startsWith('55') && clean.length >= 12) {
+        const no55 = clean.slice(2);
+        variants.add(no55);
+        if (no55.length === 11 && no55[2] === '9') {
+          variants.add(no55.slice(0, 2) + no55.slice(3));
+        } else if (no55.length === 10) {
+          variants.add(no55.slice(0, 2) + '9' + no55.slice(2));
+        }
+      } else if (clean.length === 10 || clean.length === 11) {
+        variants.add('55' + clean);
+        if (clean.length === 11 && clean[2] === '9') {
+          variants.add(clean.slice(0, 2) + clean.slice(3));
+        } else if (clean.length === 10) {
+          variants.add(clean.slice(0, 2) + '9' + clean.slice(2));
+        }
+      }
+      return Array.from(variants);
+    }
+
+    // Launch instant Firestore listener monitoring only this customer's latest order (avoids full-store scan)
+    async function startOnSnapshotOrderTracker(phone, orderIdInput = null) {
       document.getElementById('tracker-login-panel').classList.add('hidden');
       document.getElementById('tracker-active-panel').classList.remove('hidden');
 
-      const colRef = query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId));
-      
-      onSnapshot(colRef, (snapshot) => {
-        let orders = [];
-        snapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          const docPhone = data.customer?.phone || data.phone || data.customerPhone || '';
-          
-          if (orderIdInput && docSnap.id === orderIdInput) {
-            orders.push({ id: docSnap.id, ...data });
-          } else if (phone && matchPhones(docPhone, phone)) {
-            orders.push({ id: docSnap.id, ...data });
-          }
-        });
+      try {
+        const ordersMap = new Map();
+        const phoneVariants = buildPhoneSearchVariants(phone);
 
+        // Query directly by customer.phone for this store (uses single-field index merge, no composite index needed)
+        if (phoneVariants.length > 0 && window.currentStoreId) {
+          const snaps = await Promise.all(
+            phoneVariants.map((variant) =>
+              getDocs(
+                query(
+                  collection(db, COLLECTIONS.orders),
+                  where("storeId", "==", window.currentStoreId),
+                  where("customer.phone", "==", variant)
+                )
+              )
+            )
+          );
+          snaps.forEach((s) => {
+            s.forEach((docSnap) => {
+              ordersMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+            });
+          });
+
+          // Fallback for orders saved with top-level customerPhone field
+          if (ordersMap.size === 0) {
+            const clean = String(phone || '').replace(/\D/g, '');
+            const topLevelSnaps = await Promise.all([
+              getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId), where("customerPhone", "==", clean))),
+              getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId), where("phone", "==", clean)))
+            ]);
+            topLevelSnaps.forEach((s) => {
+              s.forEach((docSnap) => {
+                ordersMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+              });
+            });
+          }
+        }
+
+        // Also check saved/URL orderId directly if provided and not yet in map
+        if (orderIdInput && !ordersMap.has(orderIdInput)) {
+          try {
+            const directDoc = await getDoc(doc(db, COLLECTIONS.orders, orderIdInput));
+            if (directDoc.exists()) {
+              const dData = directDoc.data();
+              const docPhone = dData.customer?.phone || dData.phone || dData.customerPhone || '';
+              if (!phone || matchPhones(docPhone, phone)) {
+                ordersMap.set(directDoc.id, { id: directDoc.id, ...dData });
+              }
+            }
+          } catch (e) {}
+        }
+
+        const orders = Array.from(ordersMap.values());
         if (orders.length === 0) {
           document.getElementById('tracker-login-panel').classList.remove('hidden');
           document.getElementById('tracker-active-panel').classList.add('hidden');
@@ -928,24 +1031,20 @@
           return;
         }
 
-        // Sort orders descending by date or choose matching id
+        // Sort orders descending by date
         orders.sort((a, b) => new Date(b.createdAt || b.date || 0).getTime() - new Date(a.createdAt || a.date || 0).getTime());
-        
+
         let targetOrder = orders[0];
         if (orderIdInput) {
           const match = orders.find(o => o.id === orderIdInput);
           if (match) targetOrder = match;
         }
 
-        if (currentTrackOrder && currentTrackOrder.id === targetOrder.id && currentTrackOrder.status !== targetOrder.status) {
-          triggerStatusNotification(targetOrder, currentTrackOrder.status);
-        }
-
-        currentTrackOrder = targetOrder;
-        drawActiveTrackDetails(targetOrder);
-      }, (err) => {
-        console.error("Tracker snapshot listeners error: ", err);
-      });
+        // Listen in real time ONLY to this single target order document (1 read per update, zero reads from other customers!)
+        startDirectOrderTracker(targetOrder.id, targetOrder);
+      } catch (err) {
+        console.error("Tracker query error: ", err);
+      }
     }
 
     // Bind values dynamically

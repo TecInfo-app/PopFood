@@ -3242,18 +3242,8 @@ window.copyStoreLink = function() {
           console.error("Failed to load subscriber clients:", e);
         }
 
-        // B. Load from orders for maximum compatibility
-        try {
-          const ordersSnap = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
-          ordersSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            if (data.fcmToken && data.fcmToken.trim() !== "") {
-              uniqueTokens.add(data.fcmToken.trim());
-            }
-          });
-        } catch (e) {
-          console.error("Failed to load subscriber orders:", e);
-        }
+        // Historical orders are intentionally NOT scanned here to save Firestore reads;
+        // FCM tokens are already persisted on clients and restaurantProfile.clientTokens/merchantTokens.
 
         // C. Load from the restaurant profile direct clientTokens list for complete reliability
         const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);
@@ -3386,7 +3376,8 @@ window.copyStoreLink = function() {
           let scheduledList = Array.isArray(pData.scheduledNotifications) ? pData.scheduledNotifications : [];
           scheduledList = scheduledList.filter(item => item.id !== id);
           await updateDoc(ref, {
-            scheduledNotifications: scheduledList
+            scheduledNotifications: scheduledList,
+            hasPendingSchedules: scheduledList.some(item => item.status === "pending")
           });
         }
         window.loadNotificationCampaigns();
@@ -3522,7 +3513,8 @@ window.copyStoreLink = function() {
           });
 
           await updateDoc(profileRef, {
-            scheduledNotifications: scheduledList
+            scheduledNotifications: scheduledList,
+            hasPendingSchedules: scheduledList.some(item => item.status === "pending")
           });
 
           alert(`Notificação agendada com sucesso! 📅\nEla será enviada de forma automatizada em: ${scheduledTime.toLocaleString('pt-BR')}`);
@@ -3579,18 +3571,7 @@ window.copyStoreLink = function() {
         console.error("Failed to load store clients", err);
       }
 
-      try {
-        // Also fetch from orders for this specific store to be 100% sure
-        const ordersSnap = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
-        ordersSnap.forEach(docSnap => {
-          const data = docSnap.data();
-          if (data.fcmToken && data.fcmToken.trim() !== "") {
-            uniqueTokens.add(data.fcmToken.trim());
-          }
-        });
-      } catch (err) {
-        console.error("Failed to load orders tokens", err);
-      }
+      // Historical orders are not scanned here; tokens come from clients + restaurantProfile.clientTokens/merchantTokens.
 
       try {
         const ref = doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId);

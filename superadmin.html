@@ -474,7 +474,7 @@
   </div>
 
   <script type="module">
-    import { db, auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, COLLECTIONS, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot } from './firebase-config.js';
+    import { db, auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, COLLECTIONS, collection, doc, getDoc, getDocs, getCountFromServer, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot } from './firebase-config.js';
 
     let loadedStores = [];
     let activeFilterKeyword = '';
@@ -511,7 +511,7 @@
         } else {
           // Verifica se a loja pertencente a este email tem permissão concedida
           const profilesRef = collection(db, COLLECTIONS.restaurantProfile);
-          const q = query(profilesRef, where("adminEmail", "==", loggedEmail));
+          const q = query(profilesRef, where("adminEmail", "==", loggedEmail), limit(1));
           const qSnap = await getDocs(q);
           
           if (!qSnap.empty) {
@@ -587,25 +587,36 @@
 
         loadedStores = allStores;
         
-        // 2. Fetch overall metrics from orders (Global collection)
-        const ordersSnap = await getDocs(collection(db, COLLECTIONS.orders));
-        let totalOrdersCount = ordersSnap.size;
+        // 2 & 3. Fetch overall metrics via server-side aggregation counts (avoids reading every order & client doc)
+        const [totalOrdersSnap, totalClientsSnap, perStoreCounts] = await Promise.all([
+          getCountFromServer(collection(db, COLLECTIONS.orders)),
+          getCountFromServer(collection(db, COLLECTIONS.clients)),
+          Promise.all(
+            loadedStores.map(async (store) => {
+              try {
+                const cSnap = await getCountFromServer(
+                  query(collection(db, COLLECTIONS.orders), where("storeId", "==", store.id))
+                );
+                return { id: store.id, count: cSnap.data().count || 0 };
+              } catch (e) {
+                return { id: store.id, count: 0 };
+              }
+            })
+          )
+        ]);
+
+        const totalOrdersCount = totalOrdersSnap.data().count || 0;
+        const totalClientsCount = totalClientsSnap.data().count || 0;
 
         const storeOrderCounts = {};
-        ordersSnap.forEach(doc => {
-           const data = doc.data();
-           const sid = data.storeId || "main";
-           storeOrderCounts[sid] = (storeOrderCounts[sid] || 0) + 1;
+        perStoreCounts.forEach(item => {
+          storeOrderCounts[item.id] = item.count;
         });
 
         loadedStores = loadedStores.map(store => ({
            ...store,
            totalOrdersCount: storeOrderCounts[store.id] || 0
         }));
-
-        // 3. Fetch overall clients
-        const clientsSnap = await getDocs(collection(db, COLLECTIONS.clients));
-        let totalClientsCount = clientsSnap.size;
 
         // Calculate and paint stats
         (document.getElementById('stat-total-stores') || {}).textContent = loadedStores.length;

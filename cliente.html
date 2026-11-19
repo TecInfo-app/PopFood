@@ -2008,6 +2008,7 @@
         arrayUnion,
         query,
         orderBy,
+        limit,
         onSnapshot,
         where,
       } from "./firebase-config.js";
@@ -2842,6 +2843,9 @@
       let loyaltyDiscountAppliedAmount = 0.0;
       let userOrdersCount = 0;
       let allRestaurantRatings = [];
+      let restaurantRatingsSummary = null;
+      let couponsLastFetchedAt = 0;
+      let couponsLastStoreId = null;
       let stripe = null;
       let cardElement = null;
 
@@ -3796,7 +3800,10 @@
       async function bootstrapStoreCatalog() {
         if (!window.currentStoreId) return;
 
-        // Start background real-time listener for live status updates
+        // Render cached catalog immediately (0ms, 0 reads) while verifying menuVersion in background
+        prefillCatalogFromCache();
+
+        // Start background real-time listener for live status updates & menuVersion check
         loadProfileAndBanners();
 
         const isExternalStaticHost = window.location.hostname.includes("github.io");
@@ -3818,11 +3825,16 @@
           }
         }
 
-        // Direct high-speed sync from Firestore (ideal for GitHub Pages and static deployments)
+        // Direct high-speed sync from Firestore: wait for loadProfileAndBanners() to resolve menuVersion
         if (restaurantProfile && restaurantProfile.menuVersion) {
           checkAndSyncMenuVersion(restaurantProfile.menuVersion);
         } else {
-          syncCatalogFromServer(1);
+          // Safety fallback only if profile hasn't loaded after 3.5s and no cache existed
+          setTimeout(() => {
+            if (!hasCatalogLoaded && !isSyncingCatalog) {
+              syncCatalogFromServer(1);
+            }
+          }, 3500);
         }
       }
 
@@ -3902,6 +3914,10 @@
 
               const serverMenuVersion = restaurantProfile.menuVersion || 1;
               checkAndSyncMenuVersion(serverMenuVersion);
+
+              if (restaurantProfile.ratingsSummary) {
+                applyRatingsSummary(restaurantProfile.ratingsSummary);
+              }
 
               if (typeof window.updateLoyaltyCatalogBannerUI === "function") {
                 window.updateLoyaltyCatalogBannerUI();
@@ -4108,19 +4124,58 @@
         }
       };
 
-      // Ratings & Reviews Logic
+      function applyRatingsSummary(summary) {
+        if (!summary || typeof summary !== "object") return;
+        restaurantRatingsSummary = {
+          count: Number(summary.count || 0),
+          sumFood: Number(summary.sumFood || 0),
+          sumDelivery: Number(summary.sumDelivery || 0),
+          recent: Array.isArray(summary.recent) ? summary.recent : [],
+        };
+        allRestaurantRatings = restaurantRatingsSummary.recent;
+        updateRatingsUI();
+      }
+
+      // Ratings & Reviews Logic (Uses profile summary & localStorage cache to avoid scanning all orders)
       async function fetchRestaurantRatings() {
+        if (!window.currentStoreId) return;
+
+        // 1. Zero-read: already loaded inside restaurantProfile
+        if (restaurantProfile && restaurantProfile.ratingsSummary) {
+          applyRatingsSummary(restaurantProfile.ratingsSummary);
+          return;
+        }
+
+        // 2. Zero-read: valid localStorage cache (12h TTL)
+        const cacheKey = "popfood_ratings_cache_" + window.currentStoreId;
+        try {
+          const cachedRaw = localStorage.getItem(cacheKey);
+          if (cachedRaw) {
+            const parsed = JSON.parse(cachedRaw);
+            if (parsed && parsed.savedAt && (Date.now() - parsed.savedAt < 12 * 60 * 60 * 1000)) {
+              applyRatingsSummary(parsed.summary);
+              return;
+            }
+          }
+        } catch (e) {}
+
+        // 3. One-time capped backfill for legacy stores without ratingsSummary
         try {
           const q = query(
             collection(db, COLLECTIONS.orders),
             where("storeId", "==", window.currentStoreId),
+            limit(250),
           );
           const snap = await getDocs(q);
 
           const ratings = [];
+          let sumFood = 0;
+          let sumDelivery = 0;
           snap.forEach((docSnap) => {
             const data = docSnap.data();
             if (data && data.rating) {
+              sumFood += data.rating.starsFood || 5;
+              sumDelivery += data.rating.starsDelivery || 5;
               ratings.push({
                 id: docSnap.id,
                 customerName: data.customer?.name || "Anônimo",
@@ -4136,8 +4191,27 @@
             return dateB - dateA;
           });
 
-          allRestaurantRatings = ratings;
-          updateRatingsUI();
+          const summary = {
+            count: ratings.length,
+            sumFood: sumFood,
+            sumDelivery: sumDelivery,
+            recent: ratings.slice(0, 25),
+          };
+
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), summary }));
+          } catch (e) {}
+
+          applyRatingsSummary(summary);
+
+          // Persist ratingsSummary on restaurantProfile once so future visitors spend 0 extra reads
+          try {
+            await updateDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
+              ratingsSummary: summary,
+            });
+          } catch (persistErr) {
+            console.warn("Could not persist ratingsSummary cache:", persistErr);
+          }
         } catch (err) {
           console.warn("Could not load ratings list: ", err);
         }
@@ -4148,32 +4222,41 @@
         const lblAvg = document.getElementById("header-lbl-avg-rating");
         const lblTotal = document.getElementById("header-lbl-total-ratings");
 
-        if (allRestaurantRatings.length === 0) {
-          badge.classList.add("hidden");
+        const totalCount = restaurantRatingsSummary
+          ? restaurantRatingsSummary.count
+          : allRestaurantRatings.length;
+
+        if (!totalCount || totalCount === 0) {
+          if (badge) badge.classList.add("hidden");
           return;
         }
 
-        badge.classList.remove("hidden");
+        if (badge) badge.classList.remove("hidden");
 
         let sumFood = 0;
         let sumDeliv = 0;
-        allRestaurantRatings.forEach((r) => {
-          sumFood += r.starsFood || 5;
-          sumDeliv += r.starsDelivery || 5;
-        });
+        if (restaurantRatingsSummary && restaurantRatingsSummary.count > 0) {
+          sumFood = restaurantRatingsSummary.sumFood || 0;
+          sumDeliv = restaurantRatingsSummary.sumDelivery || 0;
+        } else {
+          allRestaurantRatings.forEach((r) => {
+            sumFood += r.starsFood || 5;
+            sumDeliv += r.starsDelivery || 5;
+          });
+        }
 
-        const avgFood = sumFood / allRestaurantRatings.length;
-        const avgDeliv = sumDeliv / allRestaurantRatings.length;
+        const avgFood = sumFood / totalCount;
+        const avgDeliv = sumDeliv / totalCount;
         const globalAvg = (avgFood + avgDeliv) / 2;
 
-        lblAvg.textContent = globalAvg.toFixed(1);
-        lblTotal.textContent = `(${allRestaurantRatings.length})`;
+        if (lblAvg) lblAvg.textContent = globalAvg.toFixed(1);
+        if (lblTotal) lblTotal.textContent = `(${totalCount})`;
 
         // Update Modal stats too
         (document.getElementById("modal-avg-score") || {}).textContent =
           globalAvg.toFixed(1);
         (document.getElementById("modal-total-count") || {}).textContent =
-          `${allRestaurantRatings.length} avaliações`;
+          `${totalCount} avaliações`;
 
         const foodBar = document.getElementById("bar-food-stars");
         const delivBar = document.getElementById("bar-delivery-stars");
@@ -7065,7 +7148,8 @@
               query(
                 collection(db, COLLECTIONS.orders),
                 where("customerPhone", "==", cachedPhone.replace(/\D/g, "")),
-                where("storeId", "==", window.currentStoreId)
+                where("storeId", "==", window.currentStoreId),
+                limit(1),
               )
             );
             if (!ordersSnap.empty) {
@@ -7378,8 +7462,18 @@
         }
       };
 
-      async function fetchStoreCoupons() {
+      async function fetchStoreCoupons(force = false) {
         if (typeof db === "undefined" || !window.currentStoreId) return;
+        const now = Date.now();
+        if (
+          !force &&
+          couponsLastStoreId === window.currentStoreId &&
+          now - couponsLastFetchedAt < 5 * 60 * 1000
+        ) {
+          return;
+        }
+        couponsLastStoreId = window.currentStoreId;
+        couponsLastFetchedAt = now;
         try {
           const qSnap = await getDocs(
             query(

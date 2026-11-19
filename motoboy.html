@@ -257,7 +257,7 @@
   </div>
 
   <script type="module">
-    import { db, Timestamp, COLLECTIONS, doc, getDoc, getDocs, collection, query, where, onSnapshot, updateDoc } from './firebase-config.js';
+    import { db, Timestamp, COLLECTIONS, doc, getDoc, getDocs, collection, query, where, limit, onSnapshot, updateDoc } from './firebase-config.js';
 
     const urlStoreId = new URLSearchParams(window.location.search).get('store');
     window.currentStoreId = urlStoreId;
@@ -338,17 +338,49 @@
       searchInputBox.blur();
 
       try {
-        // Query active orders (Pendente, Preparando, Saiu para entrega) or recently edited
-        const ordersSnapshot = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
+        // Query ONLY active orders first (avoids reading entire historical orders collection)
+        const activeStatuses = ["Preparando", "Saiu para entrega", "Pendente"];
+        const activeSnaps = await Promise.all(
+          activeStatuses.map(st =>
+            getDocs(
+              query(
+                collection(db, COLLECTIONS.orders),
+                where("storeId", "==", window.currentStoreId),
+                where("status", "==", st)
+              )
+            )
+          )
+        );
+
         let results = [];
-        
-        ordersSnapshot.forEach(docSnap => {
-          const id = docSnap.id;
-          const orderData = docSnap.data();
-          if (id.toUpperCase().endsWith(queryValue)) {
-            results.push({ id, ...orderData });
-          }
+        activeSnaps.forEach(ordersSnapshot => {
+          ordersSnapshot.forEach(docSnap => {
+            const id = docSnap.id;
+            const orderData = docSnap.data();
+            if (id.toUpperCase().endsWith(queryValue)) {
+              results.push({ id, ...orderData });
+            }
+          });
         });
+
+        // Fallback to recent delivered orders only if not found among active orders
+        if (results.length === 0) {
+          const deliveredSnap = await getDocs(
+            query(
+              collection(db, COLLECTIONS.orders),
+              where("storeId", "==", window.currentStoreId),
+              where("status", "==", "Entregue"),
+              limit(50)
+            )
+          );
+          deliveredSnap.forEach(docSnap => {
+            const id = docSnap.id;
+            const orderData = docSnap.data();
+            if (id.toUpperCase().endsWith(queryValue)) {
+              results.push({ id, ...orderData });
+            }
+          });
+        }
 
         if (results.length === 0) {
           feedbackEl.classList.remove('hidden');

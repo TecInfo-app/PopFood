@@ -692,16 +692,27 @@ window.openMesaQrCodeModal = function() {
 
             <!-- SUBSECTION: FINALIZED orders (Entregue, Cancelado) -->
             <div class="space-y-4">
-              <h3
-                class="font-display font-semibold text-sm text-gray-500 flex items-center gap-2"
-              >
-                <span>✅ Histórico Finalizados</span>
-                <span
-                  id="finish-pipes-count"
-                  class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md text-[10px] font-bold"
-                  >0</span
+              <div class="flex items-center justify-between gap-2 flex-wrap">
+                <h3
+                  class="font-display font-semibold text-sm text-gray-500 flex items-center gap-2"
                 >
-              </h3>
+                  <span>✅ Histórico Finalizados</span>
+                  <span
+                    id="finish-pipes-count"
+                    class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-md text-[10px] font-bold"
+                    >0</span
+                  >
+                </h3>
+                <button
+                  type="button"
+                  id="btn-sync-finished"
+                  onclick="syncFinishedOrdersFromServer()"
+                  class="text-[11px] font-semibold text-gray-500 hover:text-orange-600 bg-white hover:bg-orange-50 border border-gray-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                  title="Buscar pedidos finalizados nas últimas 6 horas em outros aparelhos"
+                >
+                  🔄 Sincronizar Finalizados
+                </button>
+              </div>
 
               <div id="archived-orders-grid" class="space-y-4">
                 <!-- Populated dynamically -->
@@ -1349,6 +1360,8 @@ window.openMesaQrCodeModal = function() {
         orderBy,
         onSnapshot,
         getDoc,
+        getDocs,
+        limit,
         updateDoc,
         onAuthStateChanged,
         where,
@@ -2347,206 +2360,407 @@ window.openMesaQrCodeModal = function() {
           autoPrintSetting ? "🖨️ Impressão Auto: ON" : "🖨️ Impressão Auto: OFF";
       };
 
-      // Connect real-time snap on Firestore database orders
-      function startRealtimeOrdersPipeline() {
-        const q = query(
-          collection(db, COLLECTIONS.orders),
-          where("storeId", "==", window.currentStoreId),
+      const ACTIVE_ORDER_STATUSES = ["Pendente", "Preparando", "Saiu para entrega"];
+      let activeOrderListeners = [];
+      let statusBuckets = {
+        "Pendente": new Map(),
+        "Preparando": new Map(),
+        "Saiu para entrega": new Map(),
+      };
+      let loadedStatusBuckets = new Set();
+      let recentFinishedOrdersMap = new Map();
+      let pendingLeftOrderTimers = new Map();
+      let currentModalOrderUnsub = null;
+
+      function getOrderTimestampMs(order) {
+        if (!order || !order.createdAt) return 0;
+        if (typeof order.createdAt === "object" && typeof order.createdAt.seconds === "number") {
+          return order.createdAt.seconds * 1000;
+        }
+        if (typeof order.createdAt === "object" && typeof order.createdAt.toDate === "function") {
+          return order.createdAt.toDate().getTime();
+        }
+        const parsed = new Date(order.createdAt).getTime();
+        return isNaN(parsed) ? 0 : parsed;
+      }
+
+      function normalizeOrderSnapshot(docSnap) {
+        const data = typeof docSnap.data === "function" ? docSnap.data() : docSnap;
+        const id = docSnap.id;
+        const rawCustomer = data.customer || data.client || {};
+        const normalizedCustomer = {
+          name: rawCustomer.name || data.customerName || "Cliente",
+          phone: rawCustomer.phone || data.customerPhone || "Sem telefone",
+          address: rawCustomer.address || rawCustomer.number || data.customerAddress || (rawCustomer.type === "Mesa" ? (rawCustomer.number || "Mesa") : "Balcão / Retirada"),
+          number: rawCustomer.number || "",
+          bairro: rawCustomer.bairro || "",
+          type: rawCustomer.type || (data.isPickup ? "pickup" : "delivery"),
+          cep: rawCustomer.cep || "",
+          complement: rawCustomer.complement || "",
+          reference: rawCustomer.reference || "",
+          latitude: rawCustomer.latitude || null,
+          longitude: rawCustomer.longitude || null
+        };
+
+        return {
+          id,
+          ...data,
+          customer: normalizedCustomer,
+          date: data.date || (data.createdAt ? (typeof data.createdAt === 'string' ? data.createdAt : new Date(data.createdAt.seconds ? data.createdAt.seconds * 1000 : data.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})) : 'Hoje')
+        };
+      }
+
+      function getFinishedCacheKey() {
+        return `popfood_recent_finished_${window.currentStoreId || "default"}`;
+      }
+
+      function saveRecentFinishedCache() {
+        try {
+          const sixHoursAgo = Date.now() - (6 * 60 * 60 * 1000);
+          const listToSave = [];
+          recentFinishedOrdersMap.forEach((order, id) => {
+            if (getOrderTimestampMs(order) >= sixHoursAgo) {
+              listToSave.push(order);
+            } else {
+              recentFinishedOrdersMap.delete(id);
+            }
+          });
+          localStorage.setItem(getFinishedCacheKey(), JSON.stringify(listToSave.slice(0, 60)));
+        } catch (e) {
+          console.warn("Could not save recent finished orders cache:", e);
+        }
+      }
+
+      function loadRecentFinishedCache() {
+        recentFinishedOrdersMap.clear();
+        try {
+          const raw = localStorage.getItem(getFinishedCacheKey());
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return;
+          const sixHoursAgo = Date.now() - (6 * 60 * 60 * 1000);
+          parsed.forEach((order) => {
+            if (order && order.id && getOrderTimestampMs(order) >= sixHoursAgo) {
+              recentFinishedOrdersMap.set(order.id, order);
+            }
+          });
+        } catch (e) {
+          console.warn("Could not load recent finished orders cache:", e);
+        }
+      }
+
+      function rememberFinishedOrder(order) {
+        if (!order || !order.id) return;
+        const sixHoursAgo = Date.now() - (6 * 60 * 60 * 1000);
+        if (getOrderTimestampMs(order) >= sixHoursAgo) {
+          recentFinishedOrdersMap.set(order.id, order);
+          saveRecentFinishedCache();
+        }
+      }
+
+      function processCombinedOrdersState() {
+        if (loadedStatusBuckets.size < ACTIVE_ORDER_STATUSES.length) {
+          return;
+        }
+
+        const prevOrdersSnapshot = [...globalOrdersList];
+        const prevActiveIds = new Set(
+          prevOrdersSnapshot
+            .filter((o) => ACTIVE_ORDER_STATUSES.includes(o.status))
+            .map((o) => o.id),
         );
 
-        onSnapshot(
-          q,
-          (snapshot) => {
-            let hasNewPendente = false;
-            const incomingOrders = [];
+        const combinedMap = new Map();
 
-            snapshot.forEach((docSnap) => {
-              const data = docSnap.data();
-              const rawCustomer = data.customer || data.client || {};
-              const normalizedCustomer = {
-                name: rawCustomer.name || data.customerName || "Cliente",
-                phone: rawCustomer.phone || data.customerPhone || "Sem telefone",
-                address: rawCustomer.address || rawCustomer.number || data.customerAddress || (rawCustomer.type === "Mesa" ? (rawCustomer.number || "Mesa") : "Balcão / Retirada"),
-                number: rawCustomer.number || "",
-                bairro: rawCustomer.bairro || "",
-                type: rawCustomer.type || (data.isPickup ? "pickup" : "delivery"),
-                cep: rawCustomer.cep || "",
-                complement: rawCustomer.complement || "",
-                reference: rawCustomer.reference || "",
-                latitude: rawCustomer.latitude || null,
-                longitude: rawCustomer.longitude || null
-              };
-
-              incomingOrders.push({
-                id: docSnap.id,
-                ...data,
-                customer: normalizedCustomer,
-                date: data.date || (data.createdAt ? (typeof data.createdAt === 'string' ? data.createdAt : new Date(data.createdAt.seconds ? data.createdAt.seconds * 1000 : data.createdAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})) : 'Hoje')
-              });
-            });
-
-            // Sort orders in memory to prevent requiring Firestore composite indexes
-            incomingOrders.sort((a, b) => {
-              const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-              const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-              return tB - tA;
-            });
-
-            // Store merchant-action timestamps to suppress self-notifications
-            if (!window._merchantActionOrderTimestamps) {
-              window._merchantActionOrderTimestamps = {};
+        // 1. Add active buckets first (authoritative real-time state)
+        ACTIVE_ORDER_STATUSES.forEach((st) => {
+          statusBuckets[st].forEach((order, id) => {
+            combinedMap.set(id, order);
+            if (recentFinishedOrdersMap.has(id)) {
+              recentFinishedOrdersMap.delete(id);
             }
+            if (pendingLeftOrderTimers.has(id)) {
+              clearTimeout(pendingLeftOrderTimers.get(id));
+              pendingLeftOrderTimers.delete(id);
+            }
+          });
+        });
 
-            // Detect if there is a new "Pendente" order to play notification sound
-            let newlyPendenteOrders = [];
-            let hasNewMessage = false;
-
-            if (firstLoadDone) {
-              incomingOrders.forEach((order) => {
-                const oldOrderInfo = globalOrdersList.find((g) => g.id === order.id);
-                if (oldOrderInfo) {
-                  const newMessagesCount = (order.chatMessages || []).length;
-                  const oldMessagesCount = (oldOrderInfo.chatMessages || []).length;
-                  if (newMessagesCount > oldMessagesCount) {
-                    const lastMsg = order.chatMessages[newMessagesCount - 1];
-                    if (lastMsg.sender === 'customer') {
-                      hasNewMessage = true;
+        // 2. Detect active orders that left all active buckets (e.g. finished by motoboy or another device)
+        if (firstLoadDone) {
+          prevActiveIds.forEach((leftId) => {
+            if (!combinedMap.has(leftId) && !recentFinishedOrdersMap.has(leftId) && !pendingLeftOrderTimers.has(leftId)) {
+              const prevOrder = prevOrdersSnapshot.find((o) => o.id === leftId);
+              if (prevOrder) {
+                // Tentatively keep until confirmed (avoids UI flicker between bucket transitions)
+                combinedMap.set(leftId, prevOrder);
+              }
+              const timerId = setTimeout(async () => {
+                pendingLeftOrderTimers.delete(leftId);
+                const stillActive = ACTIVE_ORDER_STATUSES.some((st) => statusBuckets[st].has(leftId));
+                if (stillActive || recentFinishedOrdersMap.has(leftId)) return;
+                try {
+                  const snap = await getDoc(doc(db, COLLECTIONS.orders, leftId));
+                  if (snap.exists()) {
+                    const normalized = normalizeOrderSnapshot(snap);
+                    if (normalized.status === "Entregue" || normalized.status === "Cancelado") {
+                      rememberFinishedOrder(normalized);
                     }
                   }
+                } catch (e) {
+                  console.warn("Could not verify transitioned order:", leftId, e);
                 }
+                processCombinedOrdersState();
+              }, 900);
+              pendingLeftOrderTimers.set(leftId, timerId);
+            }
+          });
+        }
+
+        // 3. Merge recently finished orders (last 6h)
+        const sixHoursAgo = Date.now() - (6 * 60 * 60 * 1000);
+        recentFinishedOrdersMap.forEach((order, id) => {
+          if (getOrderTimestampMs(order) < sixHoursAgo) {
+            recentFinishedOrdersMap.delete(id);
+          } else if (!combinedMap.has(id)) {
+            combinedMap.set(id, order);
+          }
+        });
+
+        const incomingOrders = Array.from(combinedMap.values());
+
+        // Sort orders in memory to prevent requiring Firestore composite indexes
+        incomingOrders.sort((a, b) => getOrderTimestampMs(b) - getOrderTimestampMs(a));
+
+        // Store merchant-action timestamps to suppress self-notifications
+        if (!window._merchantActionOrderTimestamps) {
+          window._merchantActionOrderTimestamps = {};
+        }
+
+        let hasNewPendente = false;
+        let newlyPendenteOrders = [];
+        let hasNewMessage = false;
+
+        if (firstLoadDone) {
+          incomingOrders.forEach((order) => {
+            const oldOrderInfo = prevOrdersSnapshot.find((g) => g.id === order.id);
+            if (oldOrderInfo) {
+              const newMessagesCount = (order.chatMessages || []).length;
+              const oldMessagesCount = (oldOrderInfo.chatMessages || []).length;
+              if (newMessagesCount > oldMessagesCount) {
+                const lastMsg = order.chatMessages[newMessagesCount - 1];
+                if (lastMsg.sender === 'customer') {
+                  hasNewMessage = true;
+                }
+              }
+            }
+          });
+
+          // Look if there are document creations or updates where state was introduced as "Pendente" or new items added to a table
+          newlyPendenteOrders = incomingOrders.filter((order) => {
+            const oldOrderInfo = prevOrdersSnapshot.find((g) => g.id === order.id);
+
+            // Ignore updates that originated from the merchant's own action (e.g. deleting an item)
+            const lastMerchantAction = window._merchantActionOrderTimestamps[order.id];
+            if (lastMerchantAction && Date.now() - lastMerchantAction < 8000) {
+              return false;
+            }
+
+            const isPendente = order.status === "Pendente";
+            const isFreshPendente = !oldOrderInfo || oldOrderInfo.status !== "Pendente";
+
+            const customerObj = order.customer || order.client || {};
+            const isMesa =
+              customerObj.type === "Mesa" ||
+              (customerObj.address &&
+                customerObj.address.toLowerCase().includes("mesa")) ||
+              (order.origin && order.origin.includes("Mesa"));
+
+            const oldCount = (oldOrderInfo?.items || []).length;
+            const newCount = (order.items || []).length;
+            const hasNewItemsCount = oldCount > 0 && newCount > oldCount;
+            const hasNewAdditions =
+              isMesa &&
+              hasNewItemsCount &&
+              order.lastAddedItems &&
+              order.lastAddedItems.length > 0;
+
+            return (isPendente && isFreshPendente && !oldOrderInfo) || hasNewAdditions;
+          });
+
+          if (newlyPendenteOrders.length > 0) {
+            hasNewPendente = true;
+          }
+        }
+
+        globalOrdersList = incomingOrders;
+        firstLoadDone = true;
+
+        if (typeof checkAndTriggerAutoAcceptance === "function") {
+          checkAndTriggerAutoAcceptance();
+        }
+
+        if (hasNewMessage) {
+          triggerNewMessageAlert();
+        }
+
+        if (hasNewPendente) {
+          triggerNewOrderAlert();
+
+          if (autoPrintSetting && newlyPendenteOrders.length > 0) {
+            const printedOrders = JSON.parse(
+              localStorage.getItem("popfood_printed_orders") || "[]",
+            );
+
+            newlyPendenteOrders.forEach((newPendente) => {
+              const customerObj = newPendente.customer || newPendente.client || {};
+              const isMesa =
+                customerObj.type === "Mesa" ||
+                (customerObj.address &&
+                  customerObj.address.toLowerCase().includes("mesa")) ||
+                (newPendente.origin && newPendente.origin.includes("Mesa"));
+              const hasNewItems =
+                newPendente.lastAddedItems &&
+                newPendente.lastAddedItems.length > 0;
+
+              const printBatchKey = `${newPendente.id}_${newPendente.updatedAt || (newPendente.items ? newPendente.items.length : "1")}`;
+
+              if (!printedOrders.includes(printBatchKey)) {
+                window.triggerThermalComandaPrint(
+                  newPendente,
+                  isMesa && hasNewItems,
+                );
+                printedOrders.push(printBatchKey);
+              }
+            });
+
+            if (printedOrders.length > 100) {
+              printedOrders.splice(0, printedOrders.length - 100);
+            }
+
+            localStorage.setItem(
+              "popfood_printed_orders",
+              JSON.stringify(printedOrders),
+            );
+          }
+        }
+
+        renderVisualOrdersGrid();
+
+        // Refresh modal chat if open
+        if (currentOrderViewedId) {
+          const modal = document.getElementById("details-modal");
+          if (modal && !modal.classList.contains("hidden")) {
+            const order = globalOrdersList.find((o) => o.id === currentOrderViewedId);
+            if (order) {
+              const contentChat = document.getElementById('modal-content-chat');
+              if (order.hasUnreadCustomerMessage && !contentChat.classList.contains('hidden')) {
+                try {
+                  const docRef = doc(db, COLLECTIONS.orders, order.id);
+                  updateDoc(docRef, { hasUnreadCustomerMessage: false });
+                } catch(e) { console.error(e); }
+              }
+
+              const chatBadge = document.getElementById('modal-tab-chat-badge');
+              if (order.hasUnreadCustomerMessage && contentChat.classList.contains('hidden')) {
+                chatBadge.classList.remove('hidden');
+              } else {
+                chatBadge.classList.add('hidden');
+              }
+
+              renderStoreChatMessages();
+            }
+          }
+        }
+      }
+
+      window.syncFinishedOrdersFromServer = async function () {
+        if (!window.currentStoreId) return;
+        const btn = document.getElementById("btn-sync-finished");
+        const origLabel = btn ? btn.innerHTML : "";
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = "⏳ Buscando...";
+        }
+        try {
+          const sixHoursAgo = Date.now() - (6 * 60 * 60 * 1000);
+          const finishedStatuses = ["Entregue", "Cancelado"];
+          const snaps = await Promise.all(
+            finishedStatuses.map((st) =>
+              getDocs(
+                query(
+                  collection(db, COLLECTIONS.orders),
+                  where("storeId", "==", window.currentStoreId),
+                  where("status", "==", st),
+                  limit(40),
+                ),
+              ),
+            ),
+          );
+          snaps.forEach((snap) => {
+            snap.forEach((docSnap) => {
+              const normalized = normalizeOrderSnapshot(docSnap);
+              if (getOrderTimestampMs(normalized) >= sixHoursAgo) {
+                recentFinishedOrdersMap.set(normalized.id, normalized);
+              }
+            });
+          });
+          saveRecentFinishedCache();
+          processCombinedOrdersState();
+        } catch (err) {
+          console.error("Erro ao sincronizar finalizados:", err);
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origLabel || "🔄 Sincronizar Finalizados";
+          }
+        }
+      };
+
+      // Connect real-time snaps ONLY on active Firestore order statuses (avoids scanning full order history)
+      function startRealtimeOrdersPipeline() {
+        activeOrderListeners.forEach((unsub) => {
+          try { unsub(); } catch (e) {}
+        });
+        activeOrderListeners = [];
+        pendingLeftOrderTimers.forEach((timerId) => clearTimeout(timerId));
+        pendingLeftOrderTimers.clear();
+
+        firstLoadDone = false;
+        loadedStatusBuckets.clear();
+        statusBuckets = {
+          "Pendente": new Map(),
+          "Preparando": new Map(),
+          "Saiu para entrega": new Map(),
+        };
+
+        loadRecentFinishedCache();
+
+        ACTIVE_ORDER_STATUSES.forEach((statusName) => {
+          const q = query(
+            collection(db, COLLECTIONS.orders),
+            where("storeId", "==", window.currentStoreId),
+            where("status", "==", statusName),
+          );
+
+          const unsub = onSnapshot(
+            q,
+            (snapshot) => {
+              const nextBucket = new Map();
+              snapshot.forEach((docSnap) => {
+                const normalized = normalizeOrderSnapshot(docSnap);
+                nextBucket.set(normalized.id, normalized);
               });
-
-              // Look if there are document creations or updates where state was introduced as "Pendente" or new items added to a table
-              newlyPendenteOrders = incomingOrders.filter((order) => {
-                const oldOrderInfo = globalOrdersList.find(
-                  (g) => g.id === order.id,
-                );
-
-                // Ignore updates that originated from the merchant's own action (e.g. deleting an item)
-                const lastMerchantAction = window._merchantActionOrderTimestamps[order.id];
-                if (lastMerchantAction && Date.now() - lastMerchantAction < 8000) {
-                  return false;
-                }
-
-                const isPendente = order.status === "Pendente";
-                const isFreshPendente =
-                  !oldOrderInfo || oldOrderInfo.status !== "Pendente";
-
-                const customerObj = order.customer || order.client || {};
-                const isMesa =
-                  customerObj.type === "Mesa" ||
-                  (customerObj.address &&
-                    customerObj.address.toLowerCase().includes("mesa")) ||
-                  (order.origin && order.origin.includes("Mesa"));
-
-                const oldCount = (oldOrderInfo?.items || []).length;
-                const newCount = (order.items || []).length;
-                // Only count as new additions if the number of items strictly increased
-                const hasNewItemsCount = oldCount > 0 && newCount > oldCount;
-                const hasNewAdditions =
-                  isMesa &&
-                  hasNewItemsCount &&
-                  order.lastAddedItems &&
-                  order.lastAddedItems.length > 0;
-
-                return (isPendente && isFreshPendente && !oldOrderInfo) || hasNewAdditions;
-              });
-
-              if (newlyPendenteOrders.length > 0) {
-                hasNewPendente = true;
-              }
-            }
-
-            globalOrdersList = incomingOrders;
-            firstLoadDone = true;
-
-            if (typeof checkAndTriggerAutoAcceptance === "function") {
-              checkAndTriggerAutoAcceptance();
-            }
-
-            if (hasNewMessage) {
-              triggerNewMessageAlert();
-            }
-
-            if (hasNewPendente) {
-              triggerNewOrderAlert();
-
-              if (autoPrintSetting && newlyPendenteOrders.length > 0) {
-                // Avoid duplicate automatic prints by tracking unique batch key
-                const printedOrders = JSON.parse(
-                  localStorage.getItem("popfood_printed_orders") || "[]",
-                );
-
-                newlyPendenteOrders.forEach((newPendente) => {
-                  const customerObj =
-                    newPendente.customer || newPendente.client || {};
-                  const isMesa =
-                    customerObj.type === "Mesa" ||
-                    (customerObj.address &&
-                      customerObj.address.toLowerCase().includes("mesa")) ||
-                    (newPendente.origin && newPendente.origin.includes("Mesa"));
-                  const hasNewItems =
-                    newPendente.lastAddedItems &&
-                    newPendente.lastAddedItems.length > 0;
-
-                  // Unique print key per update or item addition
-                  const printBatchKey = `${newPendente.id}_${newPendente.updatedAt || (newPendente.items ? newPendente.items.length : "1")}`;
-
-                  if (!printedOrders.includes(printBatchKey)) {
-                    window.triggerThermalComandaPrint(
-                      newPendente,
-                      isMesa && hasNewItems,
-                    );
-                    printedOrders.push(printBatchKey);
-                  }
-                });
-
-                // Keep only last 100 printed items to prevent localstorage bloat
-                if (printedOrders.length > 100) {
-                  printedOrders.splice(0, printedOrders.length - 100);
-                }
-
-                localStorage.setItem(
-                  "popfood_printed_orders",
-                  JSON.stringify(printedOrders),
-                );
-              }
-            }
-
-            renderVisualOrdersGrid();
-
-            // Refresh modal chat if open
-            if (currentOrderViewedId) {
-              const modal = document.getElementById("details-modal");
-              if (modal && !modal.classList.contains("hidden")) {
-                const order = globalOrdersList.find((o) => o.id === currentOrderViewedId);
-                if (order) {
-                  // Mark unread as read if on chat tab
-                  const contentChat = document.getElementById('modal-content-chat');
-                  if (order.hasUnreadCustomerMessage && !contentChat.classList.contains('hidden')) {
-                    try {
-                      const docRef = doc(db, COLLECTIONS.orders, order.id);
-                      updateDoc(docRef, { hasUnreadCustomerMessage: false });
-                    } catch(e) { console.error(e); }
-                  }
-                  
-                  // Update tab badge
-                  const chatBadge = document.getElementById('modal-tab-chat-badge');
-                  if (order.hasUnreadCustomerMessage && contentChat.classList.contains('hidden')) {
-                    chatBadge.classList.remove('hidden');
-                  } else {
-                    chatBadge.classList.add('hidden');
-                  }
-                  
-                  renderStoreChatMessages();
-                }
-              }
-            }
-          },
-          (err) => {
-            console.error("Listening synchronization orders error: ", err);
-          },
-        );
+              statusBuckets[statusName] = nextBucket;
+              loadedStatusBuckets.add(statusName);
+              processCombinedOrdersState();
+            },
+            (err) => {
+              console.error(`Listening synchronization orders (${statusName}) error:`, err);
+            },
+          );
+          activeOrderListeners.push(unsub);
+        });
       }
 
       // State filter switches
@@ -2964,6 +3178,15 @@ window.openMesaQrCodeModal = function() {
             finishedAt: new Date().toISOString(),
           });
 
+          rememberFinishedOrder({
+            ...order,
+            status: "Entregue",
+            isPaid: true,
+            paymentStatus: "Aprovado",
+            closedAt: new Date().toISOString(),
+            finishedAt: new Date().toISOString(),
+          });
+
           // Fechar modal de detalhes se estiver aberto
           toggleDetailsModal(false);
 
@@ -3167,6 +3390,13 @@ window.openMesaQrCodeModal = function() {
           }
 
           await updateDoc(orderRef, updatePayload);
+
+          if (nextState === "Entregue" || nextState === "Cancelado") {
+            const existingOrder = globalOrdersList.find((o) => o.id === orderId);
+            if (existingOrder) {
+              rememberFinishedOrder({ ...existingOrder, ...updatePayload });
+            }
+          }
           
           // Send Push Notification if FCM token exists
           await window.notifyOrderUpdate(orderId, nextState, fcmToken, orderNumber, isPickup);
@@ -3322,6 +3552,10 @@ window.openMesaQrCodeModal = function() {
           document.body.classList.add("overflow-hidden");
         } else {
           currentOrderViewedId = null;
+          if (currentModalOrderUnsub) {
+            try { currentModalOrderUnsub(); } catch (e) {}
+            currentModalOrderUnsub = null;
+          }
           box.classList.add("scale-95");
           setTimeout(() => {
             modal.classList.add("hidden");
@@ -3336,6 +3570,24 @@ window.openMesaQrCodeModal = function() {
         currentOrderViewedId = orderId;
         const order = globalOrdersList.find((o) => o.id === orderId);
         if (!order) return;
+
+        // If viewing a finished order (not tracked by active listeners), attach a temporary single-doc listener for chat/rating updates while modal is open
+        if (currentModalOrderUnsub) {
+          try { currentModalOrderUnsub(); } catch (e) {}
+          currentModalOrderUnsub = null;
+        }
+        if (order.status === "Entregue" || order.status === "Cancelado") {
+          currentModalOrderUnsub = onSnapshot(doc(db, COLLECTIONS.orders, orderId), (snap) => {
+            if (!snap.exists()) return;
+            const refreshed = normalizeOrderSnapshot(snap);
+            rememberFinishedOrder(refreshed);
+            const idx = globalOrdersList.findIndex((o) => o.id === orderId);
+            if (idx !== -1) globalOrdersList[idx] = refreshed;
+            if (currentOrderViewedId === orderId) {
+              renderStoreChatMessages();
+            }
+          });
+        }
 
         // Reset to details tab
         switchModalTab('details');

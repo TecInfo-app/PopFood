@@ -964,45 +964,68 @@ async function startServer() {
     return app._router.handle(req, res, () => {});
   });
 
-  // Background processor for Scheduled Notifications
+  // One-time startup sweep so any legacy pending schedules get flagged with hasPendingSchedules = true
+  setTimeout(async () => {
+    try {
+      const dbAdmin = admin.firestore();
+      const snap = await dbAdmin.collection("restaurantProfile").get();
+      for (const docSnap of snap.docs) {
+        const d = docSnap.data();
+        const hasPending = Array.isArray(d?.scheduledNotifications) &&
+          d.scheduledNotifications.some((s: any) => s?.status === "pending");
+        if (hasPending && d?.hasPendingSchedules !== true) {
+          await docSnap.ref.update({ hasPendingSchedules: true });
+        }
+      }
+    } catch (err) {
+      console.warn("[Scheduler] Startup migration check skipped:", err);
+    }
+  }, 15000);
+
+  // Background processor for Scheduled Notifications (queries ONLY stores with pending schedules)
   setInterval(async () => {
     try {
       const now = new Date();
       const dbAdmin = admin.firestore();
-      
-      // Query all restaurant profiles to check for scheduled notifications
-      const profilesSnap = await dbAdmin.collection("restaurantProfile").get();
+
+      // Query ONLY profiles flagged with pending scheduled notifications (0 doc reads when idle)
+      const profilesSnap = await dbAdmin
+        .collection("restaurantProfile")
+        .where("hasPendingSchedules", "==", true)
+        .get();
       if (profilesSnap.empty) return;
 
       for (const profileDoc of profilesSnap.docs) {
         const storeId = profileDoc.id;
         const pData = profileDoc.data();
         if (!pData || !Array.isArray(pData.scheduledNotifications) || pData.scheduledNotifications.length === 0) {
+          await dbAdmin.collection("restaurantProfile").doc(storeId).update({
+            hasPendingSchedules: false
+          });
           continue;
         }
 
         let scheduledNotifications = [...pData.scheduledNotifications];
         let campaignsList = Array.isArray(pData.campaigns) ? [...pData.campaigns] : [];
-        let updated = false;
 
         for (let i = 0; i < scheduledNotifications.length; i++) {
           const sched = scheduledNotifications[i];
-          
+
           // Check if it is pending and due
           if (sched.status === "pending" && new Date(sched.scheduledFor) <= now) {
             console.log(`[Scheduler] Processando disparo agendado ${sched.id}: "${sched.title}" da loja ${storeId}`);
-            
+
             // Mark as sending to avoid race conditions
             sched.status = "sending";
             sched.processedAt = new Date().toISOString();
-            updated = true;
-            
+
             // Update immediately on DB
             await dbAdmin.collection("restaurantProfile").doc(storeId).update({
-              scheduledNotifications: scheduledNotifications
+              scheduledNotifications: scheduledNotifications,
+              hasPendingSchedules: scheduledNotifications.some((s: any) => s.status === "pending")
             });
 
-            // Collect all target FCM tokens for this store
+            // Collect all target FCM tokens for this store (from clients + profile tokens, skipping full orders scan)
             const uniqueTokens = new Set<string>();
 
             // 1. Fetch from clients collection where storeId == storeId
@@ -1020,22 +1043,7 @@ async function startServer() {
               console.error(`[Scheduler] Erro ao carregar clients da loja ${storeId}:`, err);
             }
 
-            // 2. Fetch from orders collection where storeId == storeId
-            try {
-              const ordersSnap = await dbAdmin.collection("orders")
-                .where("storeId", "==", storeId)
-                .get();
-              ordersSnap.forEach(orderDoc => {
-                const data = orderDoc.data();
-                if (data.fcmToken && typeof data.fcmToken === 'string' && data.fcmToken.trim() !== "") {
-                  uniqueTokens.add(data.fcmToken.trim());
-                }
-              });
-            } catch (err) {
-              console.error(`[Scheduler] Erro ao carregar orders da loja ${storeId}:`, err);
-            }
-
-            // 3. Fetch from profile tokens
+            // 2. Fetch from profile tokens
             if (Array.isArray(pData.clientTokens)) {
               pData.clientTokens.forEach((tok: any) => {
                 if (tok && typeof tok === 'string' && tok.trim() !== "") {
@@ -1091,10 +1099,11 @@ async function startServer() {
               targetCount: tokens.length
             });
 
-            // Update profile
+            // Update profile and refresh pending flag
             await dbAdmin.collection("restaurantProfile").doc(storeId).update({
               scheduledNotifications: scheduledNotifications,
-              campaigns: campaignsList
+              campaigns: campaignsList,
+              hasPendingSchedules: scheduledNotifications.some((s: any) => s.status === "pending")
             });
 
             console.log(`[Scheduler] Campanha agendada ${sched.id} enviada e movida para histórico da loja ${storeId}.`);

@@ -243,9 +243,14 @@ window.openMesaQrCodeModal = function() {
         <button onclick="executeCustomDateFilterQuery()" class="bg-gray-800 text-white py-2 px-3 hover:bg-gray-900 rounded-lg text-xs font-semibold cursor-pointer">Filtrar</button>
       </div>
 
-      <button onclick="exportTransactionsReportToCsv()" class="bg-gray-800 hover:bg-gray-950 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer self-end sm:self-auto w-full sm:w-auto">
-        <span>📥 Exportar Vendas CSV</span>
-      </button>
+      <div class="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end">
+        <button onclick="loadMasterReportingRegisters(true)" class="bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 font-bold py-2.5 px-3.5 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors" title="Atualizar dados do banco agora">
+          <span>🔄 Atualizar</span>
+        </button>
+        <button onclick="exportTransactionsReportToCsv()" class="bg-gray-800 hover:bg-gray-950 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer flex-1 sm:flex-initial">
+          <span>📥 Exportar Vendas CSV</span>
+        </button>
+      </div>
     </section>
 
     <!-- CORE ANALYTICS METRIC STATUSES STRIP -->
@@ -470,22 +475,55 @@ window.openMesaQrCodeModal = function() {
       }
     }
 
-    async function loadMasterReportingRegisters() {
+    async function loadMasterReportingRegisters(forceRefresh = false) {
+      const cacheKey = `popfood_reports_cache_${window.currentStoreId}`;
+      const CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
+      if (!forceRefresh) {
+        try {
+          const cachedRaw = sessionStorage.getItem(cacheKey);
+          if (cachedRaw) {
+            const cached = JSON.parse(cachedRaw);
+            if (cached && cached.savedAt && (Date.now() - cached.savedAt) < CACHE_TTL_MS) {
+              globalCategoriesListForReports = cached.categories || [];
+              globalProductsListForReports = cached.products || [];
+              globalOrdersListForReports = cached.orders || [];
+              triggerReportingProcessing(activeRangeFilter);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not read reports session cache:", e);
+        }
+      }
+
       try {
-        // Fetch Categories
-        const catSnap = await getDocs(query(collection(db, COLLECTIONS.categories), where("storeId", "==", window.currentStoreId)));
+        // Fetch Categories, Products and ONLY Entregue Orders in parallel
+        const [catSnap, prodSnap, ordSnap] = await Promise.all([
+          getDocs(query(collection(db, COLLECTIONS.categories), where("storeId", "==", window.currentStoreId))),
+          getDocs(query(collection(db, COLLECTIONS.products), where("storeId", "==", window.currentStoreId))),
+          getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId), where("status", "==", "Entregue")))
+        ]);
+
         globalCategoriesListForReports = [];
         catSnap.forEach(s => globalCategoriesListForReports.push({ id: s.id, ...s.data() }));
 
-        // Fetch Products
-        const prodSnap = await getDocs(query(collection(db, COLLECTIONS.products), where("storeId", "==", window.currentStoreId)));
         globalProductsListForReports = [];
         prodSnap.forEach(s => globalProductsListForReports.push({ id: s.id, ...s.data() }));
 
-        // Fetch Orders
-        const ordSnap = await getDocs(query(collection(db, COLLECTIONS.orders), where("storeId", "==", window.currentStoreId)));
         globalOrdersListForReports = [];
         ordSnap.forEach(s => globalOrdersListForReports.push({ id: s.id, ...s.data() }));
+
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({
+            savedAt: Date.now(),
+            categories: globalCategoriesListForReports,
+            products: globalProductsListForReports,
+            orders: globalOrdersListForReports
+          }));
+        } catch (storageErr) {
+          console.warn("Could not save reports session cache:", storageErr);
+        }
 
         // Execute render range
         triggerReportingProcessing(activeRangeFilter);
@@ -494,6 +532,7 @@ window.openMesaQrCodeModal = function() {
         console.error("Retrieving reporting dependencies error: ", err);
       }
     }
+    window.loadMasterReportingRegisters = loadMasterReportingRegisters;
 
     // Helpers for precise Local Date handling without UTC timezone skew
     function formatLocalDateInput(dateObj) {
