@@ -3767,14 +3767,16 @@
           currentLoadedMenuVersion = data.version || restaurantProfile.menuVersion || 1;
           hasCatalogLoaded = true;
 
-          // Save cleanly to localStorage (now only ~112KB without raw base64)
-          const cached = getCachedMenuData();
-          const complementsCache = cached && cached.complements ? cached.complements : {};
+          // Save full catalog (including all base64 images) to IndexedDB + lightweight fallback to localStorage
+          const existingComplements = Object.keys(cachedComplementsByProduct || {}).length > 0
+            ? cachedComplementsByProduct
+            : ((getCachedMenuData() && getCachedMenuData().complements) || {});
+          cachedComplementsByProduct = { ...existingComplements };
           saveCachedMenuData({
             version: currentLoadedMenuVersion,
             categories: data.categories,
             products: normalizedProducts,
-            complements: complementsCache,
+            complements: existingComplements,
             savedAt: new Date().toISOString()
           });
 
@@ -4391,8 +4393,75 @@
       // ==========================================
       // CACHE LOCAL & OTIMIZAÇÃO DE LEITURAS FIRESTORE
       // ==========================================
+      const MENU_CACHE_SCHEMA_VERSION = 2;
+      const MENU_IDB_NAME = "popfood_catalog_db";
+      const MENU_IDB_STORE = "menus";
+      let idbMenuHydrationPromise = null;
+      let idbLoadedMenuRecord = null;
+      let cachedComplementsByProduct = {};
+
       function getMenuCacheKey() {
         return "popfood_menu_cache_" + (window.currentStoreId || "default");
+      }
+
+      function openCatalogIDB() {
+        return new Promise((resolve, reject) => {
+          if (typeof indexedDB === "undefined") {
+            reject(new Error("IndexedDB unavailable"));
+            return;
+          }
+          try {
+            const req = indexedDB.open(MENU_IDB_NAME, 1);
+            req.onupgradeneeded = () => {
+              const idb = req.result;
+              if (!idb.objectStoreNames.contains(MENU_IDB_STORE)) {
+                idb.createObjectStore(MENU_IDB_STORE);
+              }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error || new Error("IndexedDB open error"));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
+
+      async function idbGetMenuCache(key) {
+        try {
+          const idb = await openCatalogIDB();
+          return await new Promise((resolve) => {
+            try {
+              const tx = idb.transaction(MENU_IDB_STORE, "readonly");
+              const store = tx.objectStore(MENU_IDB_STORE);
+              const getReq = store.get(key);
+              getReq.onsuccess = () => resolve(getReq.result || null);
+              getReq.onerror = () => resolve(null);
+            } catch (e) {
+              resolve(null);
+            }
+          });
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function idbSetMenuCache(key, value) {
+        try {
+          const idb = await openCatalogIDB();
+          return await new Promise((resolve) => {
+            try {
+              const tx = idb.transaction(MENU_IDB_STORE, "readwrite");
+              const store = tx.objectStore(MENU_IDB_STORE);
+              store.put(value, key);
+              tx.oncomplete = () => resolve(true);
+              tx.onerror = () => resolve(false);
+            } catch (e) {
+              resolve(false);
+            }
+          });
+        } catch (e) {
+          return false;
+        }
       }
 
       function getCachedMenuData() {
@@ -4408,28 +4477,42 @@
 
       function saveCachedMenuData(data) {
         if (!data) return;
+        const fullPayload = {
+          ...data,
+          cacheSchema: MENU_CACHE_SCHEMA_VERSION,
+          imagesStripped: false,
+        };
+        idbLoadedMenuRecord = fullPayload;
+
+        // 1. Persiste catálogo completo (com TODAS as imagens) no IndexedDB (sem limite de 5MB)
+        idbSetMenuCache(getMenuCacheKey(), fullPayload);
+
+        // 2. Também grava fallback no localStorage (completo se < 1.5MB, ou marcado como imagesStripped se maior)
         try {
-          const raw = JSON.stringify(data);
-          // Se for menor que 1.5MB, salva versão completa no localStorage
+          const raw = JSON.stringify(fullPayload);
           if (raw.length < 1500000) {
             localStorage.setItem(getMenuCacheKey(), raw);
             return;
           }
         } catch (e) {
-          // Excedeu ou falhou na escrita completa
+          // Excedeu ou falhou na escrita completa no localStorage
         }
 
-        // Salva versão compacta (sem imagens pesadas em base64) para garantir persistência rápida e limpa
         try {
-          if (Array.isArray(data.products)) {
-            const compactProducts = data.products.map((p) => {
+          if (Array.isArray(fullPayload.products)) {
+            const compactProducts = fullPayload.products.map((p) => {
               if (p && typeof p.image === "string" && p.image.startsWith("data:")) {
                 const { image, ...rest } = p;
                 return rest;
               }
               return p;
             });
-            const compactData = { ...data, products: compactProducts };
+            const compactData = {
+              ...fullPayload,
+              products: compactProducts,
+              cacheSchema: MENU_CACHE_SCHEMA_VERSION,
+              imagesStripped: true,
+            };
             localStorage.setItem(getMenuCacheKey(), JSON.stringify(compactData));
           }
         } catch (compactErr) {
@@ -4437,30 +4520,99 @@
         }
       }
 
+      async function saveComplementToMenuCache(prodId, compData) {
+        cachedComplementsByProduct[prodId] = compData;
+        const key = getMenuCacheKey();
+
+        // Atualiza no IndexedDB preservando todas as imagens dos produtos
+        const existingIdb = idbLoadedMenuRecord || (await idbGetMenuCache(key));
+        if (existingIdb && Array.isArray(existingIdb.products)) {
+          const updatedIdb = {
+            ...existingIdb,
+            complements: { ...(existingIdb.complements || {}), [prodId]: compData },
+          };
+          idbLoadedMenuRecord = updatedIdb;
+          await idbSetMenuCache(key, updatedIdb);
+        }
+
+        // Atualiza apenas complements no localStorage sem tocar nas imagens do IndexedDB
+        const cachedLs = getCachedMenuData();
+        if (cachedLs) {
+          cachedLs.complements = { ...(cachedLs.complements || {}), [prodId]: compData };
+          try {
+            localStorage.setItem(key, JSON.stringify(cachedLs));
+          } catch (e) {}
+        }
+      }
+
       let isSyncingCatalog = false;
       let hasCatalogLoaded = false;
       let currentLoadedMenuVersion = null;
+      let hasCompleteCachedImages = false;
 
-      // Pré-carregamento imediato do cache local para renderização instantânea (0ms)
+      function hydrateIndexedDBCatalog() {
+        if (!window.currentStoreId) return Promise.resolve(null);
+        if (idbMenuHydrationPromise) return idbMenuHydrationPromise;
+
+        const key = getMenuCacheKey();
+        idbMenuHydrationPromise = idbGetMenuCache(key).then((idbData) => {
+          if (
+            idbData &&
+            idbData.cacheSchema >= MENU_CACHE_SCHEMA_VERSION &&
+            !idbData.imagesStripped &&
+            Array.isArray(idbData.categories) &&
+            Array.isArray(idbData.products) &&
+            idbData.categories.length > 0
+          ) {
+            idbLoadedMenuRecord = idbData;
+            if (idbData.complements) {
+              cachedComplementsByProduct = { ...idbData.complements, ...cachedComplementsByProduct };
+            }
+            if (!isSyncingCatalog) {
+              categoriesList = idbData.categories;
+              productsList = idbData.products;
+              currentLoadedMenuVersion = idbData.version || 0;
+              hasCatalogLoaded = true;
+              hasCompleteCachedImages = true;
+              renderCategoryFilterTabs();
+              renderCatalogItems();
+              console.log(`[Menu Cache] Cardápio completo com imagens carregado do IndexedDB (v${currentLoadedMenuVersion}).`);
+            }
+            return idbData;
+          }
+          return null;
+        });
+        return idbMenuHydrationPromise;
+      }
+
+      // Pré-carregamento imediato do cache local para renderização instantânea
       function prefillCatalogFromCache() {
+        hydrateIndexedDBCatalog();
+
         const cached = getCachedMenuData();
         if (
           cached &&
           Array.isArray(cached.categories) &&
           Array.isArray(cached.products) &&
-          cached.categories.length > 0
+          cached.categories.length > 0 &&
+          !hasCompleteCachedImages
         ) {
+          if (cached.complements) {
+            cachedComplementsByProduct = { ...cached.complements, ...cachedComplementsByProduct };
+          }
+          const isLegacyOrStripped = !cached.cacheSchema || cached.cacheSchema < MENU_CACHE_SCHEMA_VERSION || cached.imagesStripped === true;
           categoriesList = cached.categories;
           productsList = cached.products;
           currentLoadedMenuVersion = cached.version || 0;
           hasCatalogLoaded = true;
+          hasCompleteCachedImages = !isLegacyOrStripped;
           renderCategoryFilterTabs();
           renderCatalogItems();
-          console.log(`[Menu Cache] Cardápio carregado instantaneamente do cache local (v${currentLoadedMenuVersion}).`);
+          console.log(`[Menu Cache] Pré-carregamento local (v${currentLoadedMenuVersion}${isLegacyOrStripped ? ", aguardando imagens completas" : ""}).`);
         }
       }
 
-      // Sincroniza cardápio do Firestore (categorias e produtos) apenas quando a versão difere
+      // Sincroniza cardápio do Firestore (categorias e produtos) apenas quando a versão difere ou quando faltam imagens completas
       async function syncCatalogFromServer(targetVersion) {
         if (!window.currentStoreId || isSyncingCatalog) return;
         isSyncingCatalog = true;
@@ -4496,13 +4648,18 @@
           productsList = newProds;
           currentLoadedMenuVersion = targetVersion;
           hasCatalogLoaded = true;
+          hasCompleteCachedImages = true;
 
           // Manter complementos já em cache caso ainda sejam válidos
-          const cached = getCachedMenuData();
+          const cachedLs = getCachedMenuData();
+          const sourceComplements =
+            Object.keys(cachedComplementsByProduct).length > 0
+              ? cachedComplementsByProduct
+              : (cachedLs && cachedLs.version === targetVersion && cachedLs.complements ? cachedLs.complements : {});
           const complementsCache =
-            cached && cached.version === targetVersion && cached.complements
-              ? cached.complements
-              : {};
+            (idbLoadedMenuRecord && idbLoadedMenuRecord.version === targetVersion && idbLoadedMenuRecord.complements) ||
+            (cachedLs && cachedLs.version === targetVersion && sourceComplements) ||
+            {};
 
           saveCachedMenuData({
             version: targetVersion,
@@ -4514,7 +4671,7 @@
 
           renderCategoryFilterTabs();
           renderCatalogItems();
-          console.log(`[Menu Cache] Cardápio sincronizado com sucesso e salvo no cache local (v${targetVersion}).`);
+          console.log(`[Menu Cache] Cardápio completo sincronizado e salvo no IndexedDB (v${targetVersion}).`);
         } catch (err) {
           console.error("[Menu Cache] Erro ao sincronizar cardápio do Firestore:", err);
         } finally {
@@ -4523,37 +4680,58 @@
         }
       }
 
-      function checkAndSyncMenuVersion(serverVersion) {
+      async function checkAndSyncMenuVersion(serverVersion) {
         const targetV = serverVersion || 1;
-        const cached = getCachedMenuData();
 
-        if (cached && cached.version === targetV && categoriesList.length > 0) {
+        // Garante que o IndexedDB terminou de responder antes de decidir se precisa baixar do servidor
+        const idbData = await hydrateIndexedDBCatalog();
+
+        if (
+          idbData &&
+          idbData.cacheSchema >= MENU_CACHE_SCHEMA_VERSION &&
+          !idbData.imagesStripped &&
+          idbData.version === targetV &&
+          Array.isArray(idbData.categories) &&
+          Array.isArray(idbData.products) &&
+          idbData.categories.length > 0
+        ) {
+          categoriesList = idbData.categories;
+          productsList = idbData.products;
           currentLoadedMenuVersion = targetV;
-          console.log(`[Menu Cache] Cardápio já está atualizado (v${targetV}). Zero leituras adicionais consumidas!`);
+          hasCompleteCachedImages = true;
+          renderCategoryFilterTabs();
+          renderCatalogItems();
+          console.log(`[Menu Cache] Cardápio completo com imagens já atualizado no IndexedDB (v${targetV}). Zero leituras adicionais!`);
           return;
         }
 
+        const cached = getCachedMenuData();
         if (
           cached &&
+          cached.cacheSchema >= MENU_CACHE_SCHEMA_VERSION &&
+          !cached.imagesStripped &&
           cached.version === targetV &&
           Array.isArray(cached.categories) &&
-          Array.isArray(cached.products)
+          Array.isArray(cached.products) &&
+          cached.categories.length > 0
         ) {
           categoriesList = cached.categories;
           productsList = cached.products;
           currentLoadedMenuVersion = targetV;
+          hasCompleteCachedImages = true;
+          saveCachedMenuData({ ...cached, version: targetV });
           renderCategoryFilterTabs();
           renderCatalogItems();
-          console.log(`[Menu Cache] Cardápio sincronizado via cache local (v${targetV}). Zero leituras consumidas!`);
+          console.log(`[Menu Cache] Cardápio completo já atualizado no cache local (v${targetV}). Zero leituras adicionais!`);
           return;
         }
 
+        // Cache ausente, versão antiga, ou cache antigo sem imagens (imagesStripped / schema < 2): baixa uma vez do Firestore e salva completo no IndexedDB
         syncCatalogFromServer(targetV);
       }
 
       function setupCatalogCache() {
         if (window.currentStoreId) {
-          prefillCatalogFromCache();
           bootstrapStoreCatalog();
         }
       }
@@ -5312,13 +5490,16 @@
 
         try {
           let compData = null;
-          const cachedMenu = getCachedMenuData();
-          if (
+          const cachedMenu = idbLoadedMenuRecord || getCachedMenuData();
+          if (cachedComplementsByProduct[prod.id] !== undefined) {
+            compData = cachedComplementsByProduct[prod.id];
+          } else if (
             cachedMenu &&
             cachedMenu.complements &&
             cachedMenu.complements[prod.id] !== undefined
           ) {
             compData = cachedMenu.complements[prod.id];
+            cachedComplementsByProduct[prod.id] = compData;
           } else {
             const compRef = doc(db, COLLECTIONS.complements, prod.id);
             const compSnap = await getDoc(compRef);
@@ -5333,12 +5514,8 @@
               compData = [];
             }
 
-            // Armazena no cache local de complementos
-            if (cachedMenu) {
-              if (!cachedMenu.complements) cachedMenu.complements = {};
-              cachedMenu.complements[prod.id] = compData;
-              saveCachedMenuData(cachedMenu);
-            }
+            // Armazena no cache sem sobrescrever as imagens completas salvas no IndexedDB
+            await saveComplementToMenuCache(prod.id, compData);
           }
 
           if (compData && compData.length > 0) {
