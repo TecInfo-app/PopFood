@@ -209,7 +209,7 @@ window.openMesaQrCodeModal = function() {
             <span class="text-2xl hidden sm:inline">📊</span>
             <div>
               <h1 class="font-display font-bold text-base text-gray-800 leading-none">Relatórios Financeiros</h1>
-              <p class="text-xs text-gray-400 mt-1 leading-none font-medium">Visão geral do faturamento, comissões de entrega e cupons</p>
+              <p class="text-xs text-gray-400 mt-1 leading-none font-medium">Visão geral do faturamento, comissões de entrega, taxa de serviço (10%) e cupons</p>
             </div>
           </div>
         </div>
@@ -254,28 +254,34 @@ window.openMesaQrCodeModal = function() {
     </section>
 
     <!-- CORE ANALYTICS METRIC STATUSES STRIP -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
       <!-- Faturamento -->
       <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widestblock">Faturamento Bruto</span>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Faturamento Bruto</span>
         <h3 id="lbl-rep-gross" class="text-xl font-display font-bold text-gray-800">R$ 0,00</h3>
         <p class="text-[9px] text-gray-400 font-medium">Pedidos com status <span class="text-brand-secondary font-bold">Entregue</span></p>
       </div>
       <!-- Ticket -->
       <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widestblock">Ticket Médio</span>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Ticket Médio</span>
         <h3 id="lbl-rep-avg" class="text-xl font-display font-bold text-gray-800">R$ 0,00</h3>
         <p id="lbl-rep-orders-count" class="text-[9px] text-gray-400 font-medium">Dividido por 0 pedidos</p>
       </div>
       <!-- Comission -->
       <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widestblock">Comissões de Entrega</span>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Comissões de Entrega</span>
         <h3 id="lbl-rep-delivery" class="text-xl font-display font-bold text-gray-800">R$ 0,00</h3>
         <p class="text-[9px] text-gray-400 font-medium">Fundos repassados a moto-boys</p>
       </div>
+      <!-- Taxa de Serviço (10% Mesas) -->
+      <div class="bg-white rounded-2xl p-5 border border-indigo-200 shadow-sm space-y-2">
+        <span class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block">Taxa de Serviço (10%)</span>
+        <h3 id="lbl-rep-service-fee" class="text-xl font-display font-bold text-indigo-700">R$ 0,00</h3>
+        <p id="lbl-rep-service-fee-count" class="text-[9px] text-gray-400 font-medium">Recebido em 0 mesas</p>
+      </div>
       <!-- Coupons metrics -->
       <div class="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-2">
-        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widestblock">Cupons Utilizados</span>
+        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Cupons Utilizados</span>
         <h3 id="lbl-rep-coupons" class="text-xl font-display font-bold text-gray-800">R$ 0,00</h3>
         <p id="lbl-rep-coupons-count" class="text-[9px] text-gray-400 font-medium">Total de 0 cupons aplicados</p>
       </div>
@@ -658,9 +664,11 @@ window.openMesaQrCodeModal = function() {
     }
 
     function processAndRenderReportsKPIs(orders) {
-      const grossRevenue = orders.reduce((acc, o) => acc + (o.total || 0), 0);
-      const deliverySpent = orders.reduce((acc, o) => acc + (o.deliveryFee || 0), 0);
-      const couponSpent = orders.reduce((acc, o) => acc + (o.desconto || 0), 0);
+      const grossRevenue = orders.reduce((acc, o) => acc + (Number(o.total) || 0), 0);
+      const deliverySpent = orders.reduce((acc, o) => acc + (Number(o.deliveryFee) || 0), 0);
+      const serviceFeeCollected = orders.reduce((acc, o) => acc + (Number(o.serviceFee) || 0), 0);
+      const serviceFeeCount = orders.filter(o => Number(o.serviceFee) > 0).length;
+      const couponSpent = orders.reduce((acc, o) => acc + (Number(o.desconto) || 0), 0);
       const couponCount = orders.filter(o => o.desconto && o.desconto > 0).length;
 
       const totalOrdersCount = orders.length;
@@ -669,9 +677,11 @@ window.openMesaQrCodeModal = function() {
       const elG = document.getElementById('lbl-rep-gross'); if (elG) elG.textContent = `R$ ${grossRevenue.toFixed(2).replace('.', ',')}`;
       const elA = document.getElementById('lbl-rep-avg'); if (elA) elA.textContent = `R$ ${avgValue.toFixed(2).replace('.', ',')}`;
       const elD = document.getElementById('lbl-rep-delivery'); if (elD) elD.textContent = `R$ ${deliverySpent.toFixed(2).replace('.', ',')}`;
+      const elSF = document.getElementById('lbl-rep-service-fee'); if (elSF) elSF.textContent = `R$ ${serviceFeeCollected.toFixed(2).replace('.', ',')}`;
       const elC = document.getElementById('lbl-rep-coupons'); if (elC) elC.textContent = `R$ ${couponSpent.toFixed(2).replace('.', ',')}`;
 
       const elOC = document.getElementById('lbl-rep-orders-count'); if (elOC) elOC.textContent = `Dividido por ${totalOrdersCount} pedidos`;
+      const elSFC = document.getElementById('lbl-rep-service-fee-count'); if (elSFC) elSFC.textContent = `Recebido em ${serviceFeeCount} ${serviceFeeCount === 1 ? 'mesa' : 'mesas'}`;
       const elCC = document.getElementById('lbl-rep-coupons-count'); if (elCC) elCC.textContent = `Total de ${couponCount} cupons aplicados`;
     }
 
@@ -681,15 +691,18 @@ window.openMesaQrCodeModal = function() {
       orders.forEach(order => {
         if (!Array.isArray(order.items)) return;
         order.items.forEach(item => {
-          if (!productsMap[item.id]) {
-            productsMap[item.id] = {
+          const itemKey = item.id || item.productId || item.name;
+          if (!productsMap[itemKey]) {
+            productsMap[itemKey] = {
               name: item.name,
               qty: 0,
               subRevenue: 0
             };
           }
-          productsMap[item.id].qty += item.quantity;
-          productsMap[item.id].subRevenue += (item.totalItemPrice * item.quantity);
+          const unitPrice = item.totalItemPrice !== undefined ? Number(item.totalItemPrice) : Number(item.price || 0);
+          const qty = Number(item.quantity || 1);
+          productsMap[itemKey].qty += qty;
+          productsMap[itemKey].subRevenue += (unitPrice * qty);
         });
       });
 
@@ -902,11 +915,13 @@ window.openMesaQrCodeModal = function() {
       }
 
       let csv = "data:text/csv;charset=utf-8,\uFEFF";
-      csv += "ID Pedido,Data,Cliente,Forma Pagamento,Subtotal (R$),Taxa Entrega (R$),Desconto (R$),Total Faturado (R$)\n";
+      csv += "ID Pedido,Data,Cliente,Forma Pagamento,Subtotal (R$),Taxa Entrega (R$),Taxa Servico 10% (R$),Desconto (R$),Total Faturado (R$)\n";
 
       activeList.forEach(order => {
-        const clientName = `"${(order.customer?.name || '').replace(/"/g, '""')}"`;
-        const line = `${order.id},${order.date || ''},${clientName},${order.paymentMethod || ''},${(order.subtotal || 0).toFixed(2)},${(order.deliveryFee || 0).toFixed(2)},${(order.desconto || 0).toFixed(2)},${(order.total || 0).toFixed(2)}\n`;
+        const cust = order.customer || order.client || {};
+        const clientName = `"${(cust.name || '').replace(/"/g, '""')}"`;
+        const dateLabel = order.date || (order.createdAt ? new Date(order.createdAt).toLocaleString('pt-BR') : '');
+        const line = `${order.id},"${dateLabel}",${clientName},${order.paymentMethod || ''},${(Number(order.subtotal) || 0).toFixed(2)},${(Number(order.deliveryFee) || 0).toFixed(2)},${(Number(order.serviceFee) || 0).toFixed(2)},${(Number(order.desconto) || 0).toFixed(2)},${(Number(order.total) || 0).toFixed(2)}\n`;
         csv += line;
       });
 
