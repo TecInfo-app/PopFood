@@ -126,8 +126,144 @@
       </div>
 
       <!-- Footer Touch Instructions -->
-      <div class="relative z-10 text-center text-slate-400 text-xs font-bold tracking-wider">
-        👈 TOQUE NA OPÇÃO DESEJADA PARA COMEÇAR
+      <div class="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-3 text-center text-slate-400 text-xs font-bold tracking-wider">
+        <span>👈 TOQUE NA OPÇÃO DESEJADA PARA COMEÇAR</span>
+        <button
+          type="button"
+          onclick="openAttendantPortalEntry()"
+          class="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-[11px] font-extrabold transition-all cursor-pointer active:scale-95"
+        >
+          🧑‍🍳 Portal do Atendente (Mesas)
+        </button>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STEP 1B: ATTENDANT PIN MODAL / SCREEN -->
+    <!-- ========================================== -->
+    <div id="step-attendant-pin" class="hidden min-h-screen flex flex-col justify-center bg-slate-900 text-white p-6">
+      <div class="max-w-sm mx-auto w-full bg-slate-800/95 border border-emerald-500/40 p-7 rounded-3xl shadow-2xl space-y-5 text-center">
+        <div class="w-16 h-16 bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 rounded-full flex items-center justify-center text-3xl mx-auto">
+          🔒
+        </div>
+        <div class="space-y-1">
+          <h2 class="font-display font-black text-xl text-white">Portal do Atendente</h2>
+          <p class="text-xs text-slate-300">Digite o PIN configurado pelo estabelecimento para gerenciar e lançar itens nas mesas.</p>
+        </div>
+        <input
+          type="password"
+          id="attendant-pin-input"
+          inputmode="numeric"
+          placeholder="Digite o PIN"
+          onkeydown="if(event.key==='Enter') verifyAttendantPin()"
+          class="w-full text-center text-lg tracking-widest font-mono font-bold p-3.5 bg-slate-900 border border-slate-600 rounded-2xl text-white focus:outline-none focus:border-emerald-400"
+        />
+        <p id="attendant-pin-error" class="hidden text-xs font-bold text-red-400">PIN incorreto. Tente novamente.</p>
+        <div class="space-y-2.5">
+          <button
+            type="button"
+            onclick="verifyAttendantPin()"
+            class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-black text-sm rounded-2xl cursor-pointer transition-all active:scale-95"
+          >
+            🔓 Desbloquear Mesas
+          </button>
+          <button
+            type="button"
+            onclick="exitAttendantPortalToWelcome()"
+            class="w-full py-2.5 bg-slate-700/60 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl cursor-pointer"
+          >
+            ← Voltar ao Totem
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- STEP 1C: ATTENDANT TABLE MAP PORTAL -->
+    <!-- ========================================== -->
+    <div id="step-attendant-portal" class="hidden min-h-screen flex flex-col bg-slate-100 text-slate-800">
+      <header class="bg-slate-900 text-white px-4 sm:px-6 py-3.5 border-b border-slate-800 sticky top-0 z-40 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <img id="attendant-store-logo" src="favicon.png" alt="Logo" class="w-11 h-11 rounded-xl object-cover border border-emerald-400/50 bg-slate-800 shrink-0" />
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h1 id="attendant-store-name" class="font-display font-black text-white text-base sm:text-xl leading-tight">--</h1>
+                <span class="bg-emerald-500 text-slate-950 font-black text-[10px] uppercase px-2.5 py-0.5 rounded-full">
+                  🧑‍🍳 Portal do Atendente
+                </span>
+              </div>
+              <p id="attendant-tables-summary" class="text-xs text-slate-400 font-semibold">Carregando mapa de mesas...</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 flex-wrap">
+            <div class="flex items-center bg-slate-800 rounded-xl p-1 border border-slate-700">
+              <button type="button" onclick="setAttendantMapFilter('all')" id="att-filter-all" class="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500 text-slate-950 cursor-pointer">Todas</button>
+              <button type="button" onclick="setAttendantMapFilter('occupied')" id="att-filter-occupied" class="px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white cursor-pointer">Ocupadas</button>
+              <button type="button" onclick="setAttendantMapFilter('free')" id="att-filter-free" class="px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white cursor-pointer">Livres</button>
+            </div>
+            <button
+              type="button"
+              onclick="exitAttendantPortalToWelcome()"
+              class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-extrabold cursor-pointer border border-slate-700"
+            >
+              ← Modo Totem
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-5">
+        <!-- Quick open custom table -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="font-display font-black text-sm text-slate-800">🍽️ Abrir ou Acessar Mesa Específica</h2>
+            <p class="text-[11px] text-slate-500 font-medium">Toque em qualquer mesa no mapa abaixo ou digite o número para abrir/lançar itens diretamente.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="text" id="attendant-custom-mesa-input" placeholder="Ex: 12 ou VIP 1" class="text-xs font-bold p-2.5 border border-slate-300 rounded-xl w-36 focus:outline-none focus:border-emerald-500" />
+            <button type="button" onclick="openCustomAttendantTable()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl cursor-pointer transition-all active:scale-95 shrink-0">
+              ➕ Abrir / Lançar
+            </button>
+          </div>
+        </div>
+
+        <!-- Tables Grid -->
+        <div id="attendant-tables-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div class="col-span-full text-center py-12 text-slate-400 font-bold text-sm">Carregando mesas...</div>
+        </div>
+      </main>
+    </div>
+
+    <!-- MODAL: ATTENDANT OPEN FREE TABLE -->
+    <div id="modal-attendant-open-mesa" class="fixed inset-0 bg-black/75 z-50 hidden flex items-center justify-center p-4 backdrop-blur-xs">
+      <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <span id="att-open-mesa-badge" class="inline-block bg-emerald-100 text-emerald-800 text-[11px] font-black px-3 py-0.5 rounded-full uppercase">MESA 01</span>
+            <h3 class="font-display font-black text-lg text-slate-900 mt-1">Abrir Mesa & Lançar Itens</h3>
+          </div>
+          <button type="button" onclick="closeAttendantOpenMesaModal()" class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 font-bold flex items-center justify-center cursor-pointer">✕</button>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[11px] font-extrabold uppercase text-slate-500 mb-1">Nome do Cliente / Identificação (Opcional)</label>
+            <input type="text" id="att-open-customer-name" placeholder="Ex: João / Família" class="w-full text-sm font-bold p-3 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500" />
+          </div>
+          <div>
+            <label class="block text-[11px] font-extrabold uppercase text-slate-500 mb-1">Observação / Garçom (Opcional)</label>
+            <input type="text" id="att-open-attendant-name" placeholder="Ex: Atendente Carlos" class="w-full text-xs font-semibold p-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-emerald-500" />
+          </div>
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeAttendantOpenMesaModal()" class="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs cursor-pointer">Cancelar</button>
+          <button type="button" onclick="confirmAttendantOpenMesa()" class="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs cursor-pointer shadow-sm">
+            Ir ao Cardápio ➔
+          </button>
+        </div>
       </div>
     </div>
 
@@ -290,6 +426,7 @@
             </button>
             <button
               type="button"
+              id="btn-kiosk-exit-session"
               onclick="logoutOrResetSession()"
               class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-extrabold transition-all flex items-center gap-1 cursor-pointer active:scale-95"
             >
@@ -562,6 +699,17 @@
 
         <!-- Footer Submit Button -->
         <div class="p-4 border-t border-slate-200 bg-slate-50 space-y-3">
+          <div id="checkout-fee-breakdown" class="hidden space-y-1 text-xs font-bold text-slate-600 bg-amber-50/80 border border-amber-200 rounded-xl p-2.5">
+            <div class="flex items-center justify-between">
+              <span>Subtotal dos itens novos:</span>
+              <span id="checkout-subtotal-val">R$ 0,00</span>
+            </div>
+            <div class="flex items-center justify-between text-amber-800">
+              <span id="checkout-service-fee-lbl">Taxa de Serviço (10%):</span>
+              <span id="checkout-service-fee-val">R$ 0,00</span>
+            </div>
+          </div>
+
           <div class="flex items-center justify-between text-base">
             <span class="font-extrabold text-slate-600">Total a Pagar:</span>
             <span id="checkout-total-val" class="font-black text-2xl text-slate-900">R$ 0,00</span>
@@ -659,6 +807,17 @@
         </div>
 
         <div class="p-4 bg-amber-50 border-t border-amber-200 space-y-3">
+          <div id="view-tab-fee-breakdown" class="hidden space-y-1 text-xs font-bold text-slate-600 border-b border-amber-200 pb-2">
+            <div class="flex items-center justify-between">
+              <span>Subtotal dos itens:</span>
+              <span id="view-tab-subtotal-val">R$ 0,00</span>
+            </div>
+            <div class="flex items-center justify-between text-amber-800">
+              <span id="view-tab-service-fee-lbl">Taxa de Serviço (10%):</span>
+              <span id="view-tab-service-fee-val">R$ 0,00</span>
+            </div>
+          </div>
+
           <div class="flex items-center justify-between text-base">
             <span class="font-extrabold text-slate-700">Total Acumulado na Mesa:</span>
             <span id="view-tab-total-val" class="font-black text-2xl text-slate-950">R$ 0,00</span>
@@ -692,6 +851,8 @@
         getDocs, 
         setDoc, 
         updateDoc, 
+        onSnapshot,
+        increment,
         query, 
         where 
       } from './firebase-config.js';
@@ -703,7 +864,7 @@
       let productsList = [];
       let complementsMap = {};
 
-      // USER STATE
+      // USER & ATTENDANT STATE
       let selectedMethod = "Mesa"; // Mesa, Retirada
       let selectedMesaNum = "Mesa 01";
       let customerName = "Cliente Balcão";
@@ -711,6 +872,16 @@
       let activeCategory = "all";
       let selectedPayment = "Pix";
       let activeTableOrderDoc = null; // Holds existing open order for this table if any
+      let isAttendantMode = false;
+      let attendantMapFilter = "all";
+      let attendantOrdersUnsubs = [];
+      let attendantStatusBuckets = {
+        "Pendente": new Map(),
+        "Preparando": new Map(),
+        "Saiu para entrega": new Map()
+      };
+      let activeMesaOrdersList = [];
+      let pendingAttendantTableLabel = "";
 
       // CART STATE
       let totemCart = []; // [{ productId, product, quantity, complements: [{groupName, optionName, price}], price }]
@@ -720,6 +891,75 @@
       let currentCompSelections = {};
       let currentCompQty = 1;
       let succCountdownInterval = null;
+
+      // HELPERS: CHANNELS & SERVICE FEE
+      function isProductAllowedInActiveChannel(prod) {
+        if (!prod || !prod.channels) return true;
+        const ch = selectedMethod === "Mesa" ? "mesa" : "totem";
+        return prod.channels[ch] !== false;
+      }
+
+      function getMesaServiceFeeConfig() {
+        const enabled = restaurantProfile?.mesaServiceFeeEnabled === true;
+        let percent = parseFloat(restaurantProfile?.mesaServiceFeePercent ?? 10);
+        if (isNaN(percent) || percent < 0) percent = 10;
+        return { enabled, percent };
+      }
+
+      function computeMesaTotals(subtotal, existingDoc = null) {
+        const cleanSub = Math.max(0, Number(subtotal) || 0);
+        if (selectedMethod !== "Mesa") {
+          return { subtotal: cleanSub, serviceFee: 0, serviceFeePercent: 0, total: cleanSub };
+        }
+        const cfg = getMesaServiceFeeConfig();
+        // Respect explicit waiver if set on existingDoc, otherwise apply store config
+        const applyFee = existingDoc && existingDoc.serviceFeeWaived === true ? false : cfg.enabled;
+        const pct = applyFee ? cfg.percent : 0;
+        const fee = applyFee ? Math.round((cleanSub * (pct / 100)) * 100) / 100 : 0;
+        const desconto = Number(existingDoc?.desconto || 0);
+        const total = Math.max(0, Math.round((cleanSub + fee - desconto) * 100) / 100);
+        return { subtotal: cleanSub, serviceFee: fee, serviceFeePercent: pct, total };
+      }
+
+      // INDEXEDDB CATALOG CACHE (Reuses popfood_catalog_db synced with menuVersion)
+      function openCatalogIDB() {
+        return new Promise((resolve) => {
+          if (!window.indexedDB) { resolve(null); return; }
+          try {
+            const req = indexedDB.open("popfood_catalog_db", 1);
+            req.onupgradeneeded = (e) => {
+              const idb = e.target.result;
+              if (!idb.objectStoreNames.contains("menus")) {
+                idb.createObjectStore("menus", { keyPath: "storeId" });
+              }
+            };
+            req.onsuccess = (e) => resolve(e.target.result);
+            req.onerror = () => resolve(null);
+          } catch (e) { resolve(null); }
+        });
+      }
+
+      async function getCachedMenuFromIDB(storeId) {
+        try {
+          const idb = await openCatalogIDB();
+          if (!idb) return null;
+          return await new Promise((resolve) => {
+            const tx = idb.transaction("menus", "readonly");
+            const req = tx.objectStore("menus").get(storeId);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => resolve(null);
+          });
+        } catch (e) { return null; }
+      }
+
+      async function saveCachedMenuToIDB(storeId, payload) {
+        try {
+          const idb = await openCatalogIDB();
+          if (!idb) return;
+          const tx = idb.transaction("menus", "readwrite");
+          tx.objectStore("menus").put({ storeId, ...payload, savedAt: Date.now() });
+        } catch (e) {}
+      }
 
       // CLIENT UNIQUE DEVICE SESSION ID (Para travar a mesa para o cliente que a abriu)
       function getDeviceSessionId() {
@@ -739,6 +979,11 @@
         window.currentStoreId = store;
         localStorage.setItem("popfood_last_store_id", store);
 
+        const modoParam = (urlParams.get("modo") || urlParams.get("mode") || "").toLowerCase();
+        if (modoParam === "atendente" || urlParams.get("atendente") === "1" || urlParams.get("waiter") === "1") {
+          isAttendantMode = true;
+        }
+
         // Check for URL mesa or table parameter (e.g. ?store=...&mesa=10)
         let mesaParam = urlParams.get("mesa") || urlParams.get("table");
         if (mesaParam) {
@@ -747,10 +992,8 @@
           selectedMesaNum = cleanMesa.toLowerCase().startsWith("mesa") ? cleanMesa : `Mesa ${cleanMesa}`;
           console.log("QR Code Mesa detectado da URL:", selectedMesaNum);
         } else {
-          // Quando acessado pelo Link do Pedido Rápido / Totem sem QR de mesa, o padrão é Retirada / Balcão
           selectedMethod = "Retirada";
           selectedMesaNum = "Retirada (Balcão)";
-          console.log("Pedido Rápido (Totem / Autoatendimento) - Identificado como Retirada / Balcão");
         }
       }
 
@@ -766,41 +1009,65 @@
             const sName = restaurantProfile.name || currentStoreId;
             document.getElementById("welcome-store-name").textContent = sName;
             document.getElementById("kiosk-header-name").textContent = sName;
+            document.getElementById("attendant-store-name").textContent = sName;
 
             if (restaurantProfile.logo) {
               document.getElementById("welcome-store-logo").src = restaurantProfile.logo;
               document.getElementById("kiosk-header-logo").src = restaurantProfile.logo;
+              document.getElementById("attendant-store-logo").src = restaurantProfile.logo;
             }
           } else {
             document.getElementById("welcome-store-name").textContent = currentStoreId;
             document.getElementById("kiosk-header-name").textContent = currentStoreId;
+            document.getElementById("attendant-store-name").textContent = currentStoreId;
           }
 
-          // 2. Categories
-          const catSnap = await getDocs(query(collection(db, COLLECTIONS.categories), where("storeId", "==", currentStoreId)));
-          categoriesList = [];
-          catSnap.forEach(d => categoriesList.push({ id: d.id, ...d.data() }));
-          categoriesList.sort((a, b) => (a.order || 0) - (b.order || 0));
+          const targetVersion = String(restaurantProfile?.menuVersion || "1");
+          let loadedFromCache = false;
+          const cached = await getCachedMenuFromIDB(currentStoreId);
+          if (cached && String(cached.version) === targetVersion && Array.isArray(cached.products) && Array.isArray(cached.categories)) {
+            categoriesList = [...cached.categories].sort((a, b) => (a.order || 0) - (b.order || 0));
+            productsList = cached.products.filter(p => !p.paused).sort((a, b) => (a.order || 0) - (b.order || 0));
+            complementsMap = cached.complements || {};
+            loadedFromCache = true;
+          }
 
-          // 3. Products
-          const prodSnap = await getDocs(query(collection(db, COLLECTIONS.products), where("storeId", "==", currentStoreId)));
-          productsList = [];
-          prodSnap.forEach(d => {
-            const p = { id: d.id, ...d.data() };
-            if (!p.paused) productsList.push(p);
-          });
-          productsList.sort((a, b) => (a.order || 0) - (b.order || 0));
+          if (!loadedFromCache) {
+            // 2. Categories
+            const catSnap = await getDocs(query(collection(db, COLLECTIONS.categories), where("storeId", "==", currentStoreId)));
+            categoriesList = [];
+            catSnap.forEach(d => categoriesList.push({ id: d.id, ...d.data() }));
+            categoriesList.sort((a, b) => (a.order || 0) - (b.order || 0));
 
-          // 4. Complements
-          const compSnap = await getDocs(query(collection(db, COLLECTIONS.complements), where("storeId", "==", currentStoreId)));
-          complementsMap = {};
-          compSnap.forEach(d => {
-            complementsMap[d.id] = d.data();
-          });
+            // 3. Products
+            const prodSnap = await getDocs(query(collection(db, COLLECTIONS.products), where("storeId", "==", currentStoreId)));
+            const rawProducts = [];
+            prodSnap.forEach(d => rawProducts.push({ id: d.id, ...d.data() }));
+            rawProducts.sort((a, b) => (a.order || 0) - (b.order || 0));
+            productsList = rawProducts.filter(p => !p.paused);
 
-          // Check if Mesa parameter was present in URL -> Auto jump to Customer Info / Verification
+            // 4. Complements
+            const compSnap = await getDocs(query(collection(db, COLLECTIONS.complements), where("storeId", "==", currentStoreId)));
+            complementsMap = {};
+            compSnap.forEach(d => {
+              complementsMap[d.id] = d.data();
+            });
+
+            saveCachedMenuToIDB(currentStoreId, {
+              version: targetVersion,
+              categories: categoriesList,
+              products: rawProducts,
+              complements: complementsMap,
+              cacheSchema: 2,
+              imagesStripped: false
+            });
+          }
+
+          // Check URL routing: Attendant mode vs Mesa QR vs Welcome
           const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get("mesa") || urlParams.get("table")) {
+          if (isAttendantMode) {
+            window.openAttendantPortalEntry();
+          } else if (urlParams.get("mesa") || urlParams.get("table")) {
             document.getElementById("step-welcome").classList.add("hidden");
             await goToStepCustomerInfo();
           }
@@ -870,8 +1137,13 @@
               selectedPayment = activeTableOrderDoc.paymentMethod;
             }
 
-            const totalVal = activeTableOrderDoc.total || 0;
             const itemsCount = (activeTableOrderDoc.items || []).reduce((acc, i) => acc + (i.quantity || 1), 0);
+            const subFromItems = (activeTableOrderDoc.items || []).reduce((acc, it) => {
+              const unitP = it.price !== undefined ? it.price : (it.totalItemPrice || 0);
+              return acc + unitP * (it.quantity || 1);
+            }, 0);
+            const rawSub = activeTableOrderDoc.subtotal !== undefined ? activeTableOrderDoc.subtotal : subFromItems;
+            const totalVal = activeTableOrderDoc.total !== undefined ? activeTableOrderDoc.total : rawSub;
 
             document.getElementById("open-tab-mesa-lbl").textContent = selectedMesaNum;
             document.getElementById("open-tab-total-lbl").textContent = totalVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -880,7 +1152,7 @@
             document.getElementById("totem-open-tab-banner").classList.remove("hidden");
             document.getElementById("btn-kiosk-view-tab").classList.remove("hidden");
 
-            return { exists: true, isMyDevice, doc: activeTableOrderDoc };
+            return { exists: true, isMyDevice: isAttendantMode ? true : isMyDevice, doc: activeTableOrderDoc };
           } else {
             document.getElementById("totem-open-tab-banner").classList.add("hidden");
             document.getElementById("btn-kiosk-view-tab").classList.add("hidden");
@@ -890,6 +1162,322 @@
           console.warn("Could not check open table tab:", err);
           return { exists: false, isMyDevice: true };
         }
+      }
+
+      // ============================================
+      // ATTENDANT PORTAL / REAL-TIME TABLE MAP LOGIC
+      // ============================================
+      window.openAttendantPortalEntry = function() {
+        isAttendantMode = true;
+        document.getElementById("step-welcome").classList.add("hidden");
+        document.getElementById("step-mesa-blocked").classList.add("hidden");
+        document.getElementById("step-customer-info").classList.add("hidden");
+        document.getElementById("step-totem-menu").classList.add("hidden");
+
+        const requiredPin = (restaurantProfile?.attendantPortalPin || "").trim();
+        const unlocked = sessionStorage.getItem(`popfood_attendant_unlocked_${currentStoreId}`) === requiredPin;
+
+        if (requiredPin && !unlocked) {
+          document.getElementById("attendant-pin-error").classList.add("hidden");
+          const pinIn = document.getElementById("attendant-pin-input");
+          if (pinIn) { pinIn.value = ""; setTimeout(() => pinIn.focus(), 80); }
+          document.getElementById("step-attendant-pin").classList.remove("hidden");
+          return;
+        }
+
+        document.getElementById("step-attendant-pin").classList.add("hidden");
+        document.getElementById("step-attendant-portal").classList.remove("hidden");
+        startAttendantMesasListeners();
+      };
+
+      window.verifyAttendantPin = function() {
+        const requiredPin = (restaurantProfile?.attendantPortalPin || "").trim();
+        const typed = (document.getElementById("attendant-pin-input")?.value || "").trim();
+        if (typed === requiredPin) {
+          sessionStorage.setItem(`popfood_attendant_unlocked_${currentStoreId}`, requiredPin);
+          document.getElementById("step-attendant-pin").classList.add("hidden");
+          document.getElementById("step-attendant-portal").classList.remove("hidden");
+          startAttendantMesasListeners();
+        } else {
+          document.getElementById("attendant-pin-error").classList.remove("hidden");
+        }
+      };
+
+      window.exitAttendantPortalToWelcome = function() {
+        isAttendantMode = false;
+        stopAttendantMesasListeners();
+        document.getElementById("step-attendant-pin").classList.add("hidden");
+        document.getElementById("step-attendant-portal").classList.add("hidden");
+        document.getElementById("step-totem-menu").classList.add("hidden");
+        document.getElementById("step-welcome").classList.remove("hidden");
+      };
+
+      window.setAttendantMapFilter = function(filterVal) {
+        attendantMapFilter = filterVal;
+        ["all", "occupied", "free"].forEach(f => {
+          const btn = document.getElementById(`att-filter-${f}`);
+          if (!btn) return;
+          if (f === filterVal) {
+            btn.className = "px-3 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500 text-slate-950 cursor-pointer";
+          } else {
+            btn.className = "px-3 py-1.5 rounded-lg text-[11px] font-bold text-slate-300 hover:text-white cursor-pointer";
+          }
+        });
+        renderAttendantTablesGrid();
+      };
+
+      function stopAttendantMesasListeners() {
+        attendantOrdersUnsubs.forEach(u => { try { u(); } catch(e) {} });
+        attendantOrdersUnsubs = [];
+      }
+
+      function normalizeMesaKey(mesaLabel) {
+        return String(mesaLabel || "").toLowerCase().replace(/mesa\s*/i, "").replace(/^0+/, "").trim();
+      }
+
+      function startAttendantMesasListeners() {
+        stopAttendantMesasListeners();
+        const activeStatuses = ["Pendente", "Preparando", "Saiu para entrega"];
+        attendantStatusBuckets = {
+          "Pendente": new Map(),
+          "Preparando": new Map(),
+          "Saiu para entrega": new Map()
+        };
+
+        activeStatuses.forEach(st => {
+          const q = query(
+            collection(db, COLLECTIONS.orders),
+            where("storeId", "==", currentStoreId),
+            where("status", "==", st)
+          );
+          const unsub = onSnapshot(q, (snap) => {
+            attendantStatusBuckets[st].clear();
+            snap.forEach(d => {
+              const data = d.data();
+              const cust = data.customer || data.client || {};
+              const isMesaOrder = cust.type === "Mesa" ||
+                (cust.address && cust.address.toLowerCase().includes("mesa")) ||
+                (data.origin && data.origin.includes("Mesa"));
+              const isClosed = data.isPaid === true || data.status === "Entregue" || data.status === "Cancelado";
+              if (isMesaOrder && !isClosed) {
+                attendantStatusBuckets[st].set(d.id, { id: d.id, ...data });
+              }
+            });
+            rebuildAttendantMesaList();
+          }, (err) => {
+            console.error("Attendant mesa listener error:", err);
+          });
+          attendantOrdersUnsubs.push(unsub);
+        });
+      }
+
+      function rebuildAttendantMesaList() {
+        const merged = [];
+        Object.values(attendantStatusBuckets).forEach(bucket => {
+          bucket.forEach(order => merged.push(order));
+        });
+        activeMesaOrdersList = merged;
+        renderAttendantTablesGrid();
+      }
+
+      function renderAttendantTablesGrid() {
+        const grid = document.getElementById("attendant-tables-grid");
+        if (!grid) return;
+
+        const configuredQty = Math.max(1, parseInt(restaurantProfile?.totemTablesQty || 10, 10) || 10);
+        const mesaMap = new Map();
+
+        // Index active orders by normalized mesa key
+        activeMesaOrdersList.forEach(order => {
+          const cust = order.customer || order.client || {};
+          const rawLabel = cust.number || cust.address || "Mesa";
+          const normKey = normalizeMesaKey(rawLabel) || rawLabel.toLowerCase();
+          if (!mesaMap.has(normKey)) {
+            mesaMap.set(normKey, order);
+          }
+        });
+
+        const cardsData = [];
+        const seenKeys = new Set();
+
+        for (let i = 1; i <= configuredQty; i++) {
+          const label = `Mesa ${i < 10 ? "0" + i : i}`;
+          const key = normalizeMesaKey(String(i));
+          seenKeys.add(key);
+          cardsData.push({
+            label,
+            displayTitle: label,
+            order: mesaMap.get(key) || null
+          });
+        }
+
+        // Add any extra active tables outside 1..configuredQty
+        activeMesaOrdersList.forEach(order => {
+          const cust = order.customer || order.client || {};
+          const rawLabel = cust.number || cust.address || "Mesa";
+          const key = normalizeMesaKey(rawLabel) || rawLabel.toLowerCase();
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            cardsData.push({
+              label: rawLabel.toLowerCase().startsWith("mesa") ? rawLabel : `Mesa ${rawLabel}`,
+              displayTitle: rawLabel.toLowerCase().startsWith("mesa") ? rawLabel : `Mesa ${rawLabel}`,
+              order
+            });
+          }
+        });
+
+        const occupiedCount = cardsData.filter(c => !!c.order).length;
+        const summaryEl = document.getElementById("attendant-tables-summary");
+        if (summaryEl) {
+          summaryEl.textContent = `${occupiedCount} mesa(s) aberta(s) • ${cardsData.length - occupiedCount} livre(s)`;
+        }
+
+        const filteredCards = cardsData.filter(c => {
+          if (attendantMapFilter === "occupied") return !!c.order;
+          if (attendantMapFilter === "free") return !c.order;
+          return true;
+        });
+
+        if (filteredCards.length === 0) {
+          grid.innerHTML = `<div class="col-span-full bg-white rounded-2xl p-8 text-center text-slate-400 font-bold text-sm border border-slate-200">Nenhuma mesa encontrada neste filtro.</div>`;
+          return;
+        }
+
+        grid.innerHTML = "";
+        filteredCards.forEach(item => {
+          const isOccupied = !!item.order;
+          const card = document.createElement("div");
+
+          if (isOccupied) {
+            const order = item.order;
+            const cust = order.customer || order.client || {};
+            const cName = cust.name || "Cliente";
+            const itemsQty = (order.items || []).reduce((acc, it) => acc + (it.quantity || 1), 0);
+            const totalVal = (order.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            const statusText = order.status === "Pendente" ? "⏳ Pendente" : (order.status === "Preparando" ? "🧑‍🍳 Preparando" : "🍽️ Ativa");
+
+            card.className = "bg-white rounded-2xl p-4 border-2 border-amber-400 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-3";
+            card.innerHTML = `
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between gap-1">
+                  <span class="font-display font-black text-base text-slate-900">${item.displayTitle}</span>
+                  <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900">${statusText}</span>
+                </div>
+                <p class="text-xs font-bold text-slate-700 truncate">👤 ${cName}</p>
+                <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 pt-1">
+                  <span>${itemsQty} item(ns)</span>
+                  <span class="text-sm font-black text-emerald-700">${totalVal}</span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-1.5 pt-1">
+                <button type="button" onclick="attendantSelectOpenTable('${item.label.replace(/'/g, "\\'")}', '${order.id}')" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl cursor-pointer transition-all active:scale-95">
+                  ➕ Lançar Itens
+                </button>
+                <button type="button" onclick="attendantPreviewTableTab('${item.label.replace(/'/g, "\\'")}')" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl cursor-pointer transition-all">
+                  🧾 Ver Comanda
+                </button>
+              </div>
+            `;
+          } else {
+            card.className = "bg-white rounded-2xl p-4 border border-slate-200 hover:border-emerald-400 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between gap-3 cursor-pointer";
+            card.onclick = () => openAttendantFreeTableModal(item.label);
+            card.innerHTML = `
+              <div class="space-y-1.5 text-center py-2">
+                <span class="inline-block w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 text-xl leading-10 font-bold">🍽️</span>
+                <h3 class="font-display font-black text-base text-slate-800">${item.displayTitle}</h3>
+                <span class="inline-block text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Livre</span>
+              </div>
+              <button type="button" class="w-full py-2.5 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl cursor-pointer">
+                Abrir Mesa ➔
+              </button>
+            `;
+          }
+
+          grid.appendChild(card);
+        });
+      }
+
+      window.openCustomAttendantTable = function() {
+        const raw = (document.getElementById("attendant-custom-mesa-input")?.value || "").trim();
+        if (!raw) {
+          alert("Digite o número ou nome da mesa (ex: 12).");
+          return;
+        }
+        const label = raw.toLowerCase().startsWith("mesa") ? raw : `Mesa ${raw}`;
+        const key = normalizeMesaKey(label);
+        const existing = activeMesaOrdersList.find(o => {
+          const c = o.customer || o.client || {};
+          return normalizeMesaKey(c.number || c.address || "") === key;
+        });
+
+        if (existing) {
+          window.attendantSelectOpenTable(label, existing.id);
+        } else {
+          openAttendantFreeTableModal(label);
+        }
+      };
+
+      function openAttendantFreeTableModal(mesaLabel) {
+        pendingAttendantTableLabel = mesaLabel;
+        document.getElementById("att-open-mesa-badge").textContent = mesaLabel.toUpperCase();
+        const nameEl = document.getElementById("att-open-customer-name");
+        if (nameEl) nameEl.value = "";
+        document.getElementById("modal-attendant-open-mesa").classList.remove("hidden");
+        if (nameEl) setTimeout(() => nameEl.focus(), 60);
+      }
+
+      window.closeAttendantOpenMesaModal = function() {
+        document.getElementById("modal-attendant-open-mesa").classList.add("hidden");
+      };
+
+      window.confirmAttendantOpenMesa = async function() {
+        const cName = (document.getElementById("att-open-customer-name")?.value || "").trim();
+        const attName = (document.getElementById("att-open-attendant-name")?.value || "").trim();
+        closeAttendantOpenMesaModal();
+
+        selectedMethod = "Mesa";
+        selectedMesaNum = pendingAttendantTableLabel || "Mesa 01";
+        customerName = cName || `Cliente ${selectedMesaNum}`;
+        customerPhone = attName ? `Atend: ${attName}` : "";
+        totemCart = [];
+        activeCategory = "all";
+
+        await enterMenuFromAttendant();
+      };
+
+      window.attendantSelectOpenTable = async function(mesaLabel, orderId) {
+        const found = activeMesaOrdersList.find(o => o.id === orderId);
+        const cust = found?.customer || found?.client || {};
+        selectedMethod = "Mesa";
+        selectedMesaNum = mesaLabel;
+        customerName = cust.name || `Cliente ${mesaLabel}`;
+        customerPhone = cust.phone && cust.phone !== "Sem telefone" ? cust.phone : "";
+        totemCart = [];
+        activeCategory = "all";
+
+        await enterMenuFromAttendant();
+      };
+
+      window.attendantPreviewTableTab = async function(mesaLabel) {
+        selectedMethod = "Mesa";
+        selectedMesaNum = mesaLabel;
+        await window.openViewTabModal();
+      };
+
+      async function enterMenuFromAttendant() {
+        document.getElementById("step-attendant-portal").classList.add("hidden");
+        document.getElementById("kiosk-header-method").textContent = selectedMesaNum;
+        document.getElementById("kiosk-header-customer").innerHTML = `Cliente: <span class="text-white font-bold">${customerName}</span> • <span class="text-emerald-300 font-bold">Modo Atendente</span>`;
+        document.getElementById("totem-footer-method-lbl").textContent = selectedMesaNum;
+
+        const exitBtn = document.getElementById("btn-kiosk-exit-session");
+        if (exitBtn) exitBtn.textContent = "← Voltar às Mesas";
+
+        document.getElementById("step-totem-menu").classList.remove("hidden");
+        renderTotemCategoriesSidebar();
+        renderTotemProductsGrid();
+        updateTotemCartUI();
+        await checkAndLoadOpenTableTab();
       }
 
       // VIEW OPEN TAB MODAL HANDLERS
@@ -906,7 +1494,7 @@
         listEl.innerHTML = "";
 
         const items = activeTableOrderDoc.items || [];
-        let total = activeTableOrderDoc.total || 0;
+        let computedSub = 0;
 
         if (items.length === 0) {
           listEl.innerHTML = `<p class="text-xs text-slate-500 font-bold text-center py-4">Nenhum item encontrado nesta comanda.</p>`;
@@ -916,6 +1504,9 @@
               ? item.complements.map(c => c.optionName || c.name).join(", ")
               : "";
             const itemNotes = item.notes ? `<p class="text-[10px] text-orange-600 font-bold italic">Obs: "${item.notes}"</p>` : "";
+            const unitPrice = item.price !== undefined ? item.price : (item.totalItemPrice || 0);
+            const itemTotal = unitPrice * (item.quantity || 1);
+            computedSub += itemTotal;
 
             const row = document.createElement("div");
             row.className = "p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-2";
@@ -928,11 +1519,28 @@
                 ${itemNotes}
               </div>
               <p class="font-black text-xs text-amber-600 shrink-0">
-                ${((item.price || 0) * (item.quantity || 1)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                ${itemTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
             `;
             listEl.appendChild(row);
           });
+        }
+
+        const subtotalVal = activeTableOrderDoc.subtotal !== undefined ? activeTableOrderDoc.subtotal : computedSub;
+        const serviceFeeVal = activeTableOrderDoc.serviceFee || 0;
+        const serviceFeePct = activeTableOrderDoc.serviceFeePercent || getMesaServiceFeeConfig().percent;
+        const total = activeTableOrderDoc.total !== undefined ? activeTableOrderDoc.total : (subtotalVal + serviceFeeVal);
+
+        const feeBox = document.getElementById("view-tab-fee-breakdown");
+        if (feeBox) {
+          if (serviceFeeVal > 0) {
+            document.getElementById("view-tab-subtotal-val").textContent = subtotalVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById("view-tab-service-fee-lbl").textContent = `Taxa de Serviço (${serviceFeePct}%):`;
+            document.getElementById("view-tab-service-fee-val").textContent = serviceFeeVal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            feeBox.classList.remove("hidden");
+          } else {
+            feeBox.classList.add("hidden");
+          }
         }
 
         document.getElementById("view-tab-total-val").textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -1459,9 +2067,14 @@
 
       window.cancelTotemOrder = function() {
         if (totemCart.length > 0) {
-          if (!confirm("Deseja realmente cancelar e reiniciar o pedido?")) return;
+          if (!confirm("Deseja realmente cancelar os itens selecionados agora?")) return;
         }
         totemCart = [];
+        if (isAttendantMode) {
+          document.getElementById("step-totem-menu").classList.add("hidden");
+          document.getElementById("step-attendant-portal").classList.remove("hidden");
+          return;
+        }
         backToStepWelcome();
       };
 
@@ -1511,8 +2124,21 @@
           list.appendChild(row);
         });
 
+        const feeBreakdown = computeMesaTotals(subtotal, activeTableOrderDoc);
+        const feeBox = document.getElementById("checkout-fee-breakdown");
+        if (feeBox) {
+          if (selectedMethod === "Mesa" && feeBreakdown.serviceFee > 0) {
+            document.getElementById("checkout-subtotal-val").textContent = feeBreakdown.subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById("checkout-service-fee-lbl").textContent = `Taxa de Serviço (${feeBreakdown.serviceFeePercent}%):`;
+            document.getElementById("checkout-service-fee-val").textContent = feeBreakdown.serviceFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            feeBox.classList.remove("hidden");
+          } else {
+            feeBox.classList.add("hidden");
+          }
+        }
+
         document.getElementById("checkout-items-count-badge").textContent = `${totalCount} item(ns)`;
-        document.getElementById("checkout-total-val").textContent = subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        document.getElementById("checkout-total-val").textContent = (selectedMethod === "Mesa" ? subtotal + feeBreakdown.serviceFee : subtotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         document.getElementById("checkout-modal-method-lbl").textContent = selectedMethod === "Mesa" ? selectedMesaNum : "Para Levar (Balcão)";
         document.getElementById("checkout-customer-summary").textContent = `Nome: ${customerName} ${customerPhone ? ' • Tel: ' + customerPhone : ''}`;
 
@@ -1602,8 +2228,8 @@
           // Check if there is an active open order for this table
           const tabStatus = await checkAndLoadOpenTableTab();
 
-          // Validação extra: se a mesa foi bloqueada por outro dispositivo
-          if (selectedMethod === "Mesa" && tabStatus.exists && !tabStatus.isMyDevice) {
+          // Validação extra: somente bloqueia para clientes QR Code (atendente sempre pode lançar em qualquer mesa)
+          if (selectedMethod === "Mesa" && !isAttendantMode && tabStatus.exists && !tabStatus.isMyDevice) {
             alert("⚠️ Esta mesa está em atendimento por outro cliente no momento. Não é possível enviar itens.");
             closeTotemCheckoutModal();
             document.getElementById("step-totem-menu").classList.add("hidden");
@@ -1623,31 +2249,45 @@
 
             const existingItems = activeTableOrderDoc.items || [];
             const mergedItems = [...existingItems, ...newItems];
-            const updatedTotal = (activeTableOrderDoc.total || 0) + newCartTotal;
+            const prevSubtotal = activeTableOrderDoc.subtotal !== undefined
+              ? Number(activeTableOrderDoc.subtotal)
+              : existingItems.reduce((acc, it) => acc + ((it.price !== undefined ? it.price : (it.totalItemPrice || 0)) * (it.quantity || 1)), 0);
+            const newSubtotal = prevSubtotal + newCartTotal;
+            const totals = computeMesaTotals(newSubtotal, activeTableOrderDoc);
 
             // Mantém a forma de pagamento já cadastrada para a mesa
             const fixedPayment = activeTableOrderDoc.paymentMethod || selectedPayment;
+            // Preserva o deviceSessionId do cliente caso já exista (se for atendente lançando)
+            const preservedDeviceSessionId = isAttendantMode
+              ? (activeTableOrderDoc.deviceSessionId || null)
+              : myDeviceSessionId;
 
             const orderRef = doc(db, COLLECTIONS.orders, finalOrderId);
             await updateDoc(orderRef, {
               items: mergedItems,
               lastAddedItems: newItems, // Contém apenas novos itens adicionados para impressão na cozinha
-              subtotal: updatedTotal,
-              total: updatedTotal,
+              subtotal: totals.subtotal,
+              serviceFee: totals.serviceFee,
+              serviceFeePercent: totals.serviceFeePercent,
+              total: totals.total,
               paymentMethod: fixedPayment,
-              deviceSessionId: myDeviceSessionId,
+              deviceSessionId: preservedDeviceSessionId,
               status: "Pendente", // Alerta cozinha para novos itens
               updatedAt: new Date().toISOString(),
-              origin: "Totem Touch - Adição de Mesa"
+              origin: isAttendantMode ? "Portal do Atendente - Adição de Mesa" : "Totem Touch - Adição de Mesa"
             });
 
-            localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`, finalOrderId);
+            if (!isAttendantMode) {
+              localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`, finalOrderId);
+            }
 
           } else {
             // CREATE NEW ORDER DOCUMENT
             const orderId = String(Math.floor(100000 + Math.random() * 900000));
             finalOrderId = orderId;
             const trocoVal = document.getElementById("checkout-troco-value")?.value.trim() || "";
+            const totals = computeMesaTotals(newCartTotal, null);
+            const docDeviceSid = isAttendantMode ? null : myDeviceSessionId;
 
             const orderDocument = {
               id: orderId,
@@ -1660,9 +2300,9 @@
                 number: selectedMethod === "Mesa" ? selectedMesaNum : "Balcão",
                 bairro: "Salão",
                 type: selectedMethod === "Mesa" ? "Mesa" : "Retirada",
-                deviceSessionId: myDeviceSessionId
+                deviceSessionId: docDeviceSid
               },
-              deviceSessionId: myDeviceSessionId,
+              deviceSessionId: docDeviceSid,
               paymentMethod: selectedPayment,
               isPaid: false,
               paymentApproved: false,
@@ -1671,33 +2311,33 @@
               notes: "",
               items: newItems,
               lastAddedItems: newItems, // For printing
-              subtotal: newCartTotal,
+              subtotal: totals.subtotal,
               deliveryFee: 0,
+              serviceFee: totals.serviceFee,
+              serviceFeePercent: totals.serviceFeePercent,
               desconto: 0,
-              total: newCartTotal,
+              total: totals.total,
               status: "Pendente",
-              origin: selectedMethod === "Mesa" ? "Totem Touch - Mesa" : "Totem Pedido Rápido Touch",
+              origin: selectedMethod === "Mesa"
+                ? (isAttendantMode ? "Portal do Atendente - Mesa" : "Totem Touch - Mesa")
+                : "Totem Pedido Rápido Touch",
               storeId: currentStoreId
             };
 
             await setDoc(doc(db, COLLECTIONS.orders, orderId), orderDocument);
 
-            if (selectedMethod === "Mesa") {
+            if (selectedMethod === "Mesa" && !isAttendantMode) {
               localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`, orderId);
             }
           }
 
-          // Update product orderCounts
+          // Update product orderCounts cleanly with increment() (0 extra reads!)
           for (const item of totemCart) {
             try {
               const pRef = doc(db, COLLECTIONS.products, item.productId);
-              const pSnap = await getDoc(pRef);
-              if (pSnap.exists()) {
-                const pData = pSnap.data();
-                await updateDoc(pRef, { orderCount: (pData.orderCount || 0) + item.quantity });
-              }
+              await updateDoc(pRef, { orderCount: increment(item.quantity) });
             } catch (e) {
-              console.error("Error updating stock/count", e);
+              console.error("Error updating orderCount", e);
             }
           }
 
@@ -1722,8 +2362,8 @@
 
           document.getElementById("step-success").classList.remove("hidden");
 
-          // Start 15s Countdown
-          let seconds = 15;
+          // Start countdown (faster 4s in attendant mode)
+          let seconds = isAttendantMode ? 4 : 15;
           const countEl = document.getElementById("succ-countdown");
           if (countEl) countEl.textContent = seconds;
 
@@ -1750,6 +2390,14 @@
         if (succCountdownInterval) clearInterval(succCountdownInterval);
         document.getElementById("step-success").classList.add("hidden");
 
+        if (isAttendantMode) {
+          totemCart = [];
+          updateTotemCartUI();
+          document.getElementById("step-totem-menu").classList.add("hidden");
+          document.getElementById("step-attendant-portal").classList.remove("hidden");
+          return;
+        }
+
         // IF CUSTOMER IS ON A MESA OR HAS ACTIVE SESSION, REMAIN LOGGED IN
         if (customerName && customerName !== "Cliente Balcão") {
           totemCart = [];
@@ -1761,7 +2409,7 @@
 
         document.getElementById("step-customer-info").classList.add("hidden");
         document.getElementById("step-totem-menu").classList.add("hidden");
-        document.getElementById("welcome-mesa-box").classList.add("hidden");
+        document.getElementById("welcome-mesa-box")?.classList.add("hidden");
 
         // Reset inputs
         const nameIn = document.getElementById("customer-input-name");
@@ -1775,6 +2423,17 @@
 
       window.logoutOrResetSession = function() {
         if (succCountdownInterval) clearInterval(succCountdownInterval);
+
+        if (isAttendantMode) {
+          totemCart = [];
+          activeTableOrderDoc = null;
+          document.getElementById("step-success").classList.add("hidden");
+          document.getElementById("step-customer-info").classList.add("hidden");
+          document.getElementById("step-totem-menu").classList.add("hidden");
+          document.getElementById("step-attendant-portal").classList.remove("hidden");
+          return;
+        }
+
         if (selectedMethod === "Mesa" && selectedMesaNum) {
           localStorage.removeItem(`popfood_mesa_name_${currentStoreId}_${selectedMesaNum}`);
           localStorage.removeItem(`popfood_mesa_phone_${currentStoreId}_${selectedMesaNum}`);
@@ -1787,7 +2446,7 @@
         document.getElementById("step-success").classList.add("hidden");
         document.getElementById("step-customer-info").classList.add("hidden");
         document.getElementById("step-totem-menu").classList.add("hidden");
-        document.getElementById("welcome-mesa-box").classList.add("hidden");
+        document.getElementById("welcome-mesa-box")?.classList.add("hidden");
 
         const nameIn = document.getElementById("customer-input-name");
         if (nameIn) nameIn.value = "";

@@ -1032,7 +1032,7 @@ window.copyStoreLink = function() {
           </div>
 
           <!-- HIGHLIGHT ACTIONS -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
             <!-- 1. Pedido Rápido -->
             <div class="bg-gradient-to-br from-purple-900 to-indigo-950 text-white p-5 rounded-2xl shadow-md space-y-3 flex flex-col justify-between">
               <div class="space-y-1.5">
@@ -1059,7 +1059,19 @@ window.copyStoreLink = function() {
               </div>
             </div>
 
-            <!-- 3. QR Codes Mesas -->
+            <!-- 3. Portal do Atendente / Garçons -->
+            <div class="bg-gradient-to-br from-emerald-700 to-teal-900 text-white p-5 rounded-2xl shadow-md space-y-3 flex flex-col justify-between">
+              <div class="space-y-1.5">
+                <span class="text-2xl">🧑‍🍳</span>
+                <h3 class="font-display font-black text-base text-white">Portal do Atendente</h3>
+                <p class="text-[11px] text-emerald-100 leading-relaxed font-medium">Mapa de mesas em tempo real para garçons abrirem mesas ou lançarem itens em qualquer mesa aberta (mesmo aberta por QR Code).</p>
+              </div>
+              <a id="btn-card-open-atendente" href="rapido.html?modo=atendente" target="_blank" class="w-full bg-white hover:bg-emerald-50 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl text-center transition-transform active:scale-95 block shadow-xs">
+                🧑‍🍳 Abrir Portal das Mesas ➔
+              </a>
+            </div>
+
+            <!-- 4. QR Codes Mesas -->
             <div class="bg-gradient-to-br from-slate-900 to-slate-950 text-white p-5 rounded-2xl shadow-md space-y-3 flex flex-col justify-between">
               <div class="space-y-1.5">
                 <span class="text-2xl">🔲</span>
@@ -1070,6 +1082,75 @@ window.copyStoreLink = function() {
                 <span>🔲 Gerar e Imprimir QR Codes</span>
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- PORTAL DO ATENDENTE & TAXA DE SERVIÇO (10% MESAS) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <!-- Portal do Atendente Link Box -->
+          <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+            <div class="border-b border-gray-100 pb-3">
+              <h3 class="font-display font-bold text-sm text-gray-800 flex items-center gap-2">
+                <span>🧑‍🍳</span> Portal do Atendente / Garçons (Mesas)
+              </h3>
+              <p class="text-[10px] text-gray-400 font-medium">Envie este link para os celulares/tablets dos garçons acessarem o mapa de mesas e lançarem pedidos sem bloqueio.</p>
+            </div>
+
+            <div class="space-y-2.5">
+              <input type="text" id="tab-atendente-link-input" readonly class="w-full text-xs p-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-700 font-mono focus:outline-none select-all" value="" />
+              <div class="flex flex-wrap gap-2">
+                <button type="button" onclick="window.copyAtendenteLink()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm">
+                  <span>📋 Copiar Link</span>
+                </button>
+                <a id="btn-open-atendente-link" href="rapido.html?modo=atendente" target="_blank" class="bg-slate-900 hover:bg-black text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm">
+                  <span>🔗 Abrir Portal</span>
+                </a>
+                <button type="button" onclick="window.shareAtendenteLinkWhatsApp()" class="bg-green-600 hover:bg-green-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer">
+                  <span>💬 WhatsApp</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="pt-1 space-y-1.5">
+              <label for="attendant-portal-pin" class="block text-xs font-bold text-gray-700">🔒 PIN de Acesso do Atendente (Opcional)</label>
+              <input type="text" id="attendant-portal-pin" maxlength="10" placeholder="Ex: 1234 (deixe vazio para acesso direto)" class="w-full text-xs p-2.5 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:outline-none focus:border-emerald-500 font-mono" />
+              <p class="text-[10px] text-gray-400">Se preenchido, quem abrir o Portal do Atendente precisará digitar este PIN para ver e lançar nas mesas.</p>
+            </div>
+          </div>
+
+          <!-- Taxa de Serviço (10% Mesas) Box -->
+          <div class="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4 flex flex-col justify-between">
+            <div class="space-y-4">
+              <div class="border-b border-gray-100 pb-3">
+                <h3 class="font-display font-bold text-sm text-gray-800 flex items-center gap-2">
+                  <span>🍽️</span> Taxa de Serviço (10%) Apenas nas Mesas
+                </h3>
+                <p class="text-[10px] text-gray-400 font-medium">Quando ativada, a taxa é calculada automaticamente somente para pedidos em <strong>Mesa</strong> (nunca aplicada em Delivery ou Balcão).</p>
+              </div>
+
+              <label class="flex items-start gap-3 p-3.5 rounded-xl border border-amber-200 bg-amber-50/50 cursor-pointer select-none">
+                <input type="checkbox" id="mesa-service-fee-enabled" class="w-4 h-4 mt-0.5 text-amber-600 border-gray-300 rounded focus:ring-amber-500 cursor-pointer" />
+                <div>
+                  <span class="block text-xs font-extrabold text-gray-800">Ativar Taxa de Serviço nas Mesas</span>
+                  <span class="block text-[10px] text-gray-500 mt-0.5">O valor aparece discriminado na conta do cliente, no painel de pedidos e na impressão da comanda.</span>
+                </div>
+              </label>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label for="mesa-service-fee-percent" class="block text-xs font-bold text-gray-700">Percentual da Taxa (%)</label>
+                  <input type="number" id="mesa-service-fee-percent" value="10" min="0" max="100" step="0.5" class="w-full text-xs font-bold p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-500" />
+                </div>
+                <div class="space-y-1">
+                  <label class="block text-xs font-bold text-gray-700">Qtd. de Mesas no Mapa</label>
+                  <input type="number" id="tab-totem-tables-qty" value="10" min="1" max="100" oninput="document.getElementById('input-qr-tables-qty-tab').value = this.value; document.getElementById('input-qr-tables-qty').value = this.value;" class="w-full text-xs font-bold p-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-500" />
+                </div>
+              </div>
+            </div>
+
+            <button type="button" id="btn-save-mesa-totem-config" onclick="window.saveMesaTotemSettings()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs py-3 px-4 rounded-xl shadow-sm transition-all active:scale-95 cursor-pointer">
+              💾 Salvar Configurações de Mesas & Taxa
+            </button>
           </div>
         </div>
 
@@ -1759,6 +1840,15 @@ window.copyStoreLink = function() {
         const btnViewRapidoSidebar = document.getElementById('btn-view-rapido-sidebar');
         if (btnViewRapidoSidebar) btnViewRapidoSidebar.href = rapidoUrl;
 
+        // Populate Portal do Atendente (Mesas) link in UI
+        const atendenteUrl = window.location.origin + basePath + "/rapido.html?store=" + encodeURIComponent(window.currentStoreId) + "&modo=atendente";
+        const tabAtendenteInput = document.getElementById('tab-atendente-link-input');
+        if (tabAtendenteInput) tabAtendenteInput.value = atendenteUrl;
+        const btnCardOpenAtendente = document.getElementById('btn-card-open-atendente');
+        if (btnCardOpenAtendente) btnCardOpenAtendente.href = atendenteUrl;
+        const btnOpenAtendenteLink = document.getElementById('btn-open-atendente-link');
+        if (btnOpenAtendenteLink) btnOpenAtendenteLink.href = atendenteUrl;
+
         // Auto-generate in-tab QR codes on start
         setTimeout(() => {
           if (window.generateTableQrCodesTab) window.generateTableQrCodesTab();
@@ -1899,6 +1989,85 @@ window.copyStoreLink = function() {
       const text = `📱 Link do Totem de Autoatendimento / Pedido Rápido:\n\n${linkVal}`;
       const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
       window.open(url, '_blank');
+    };
+
+    window.copyAtendenteLink = function() {
+      const storeId = window.currentStoreId || localStorage.getItem('popfood_custom_store_id') || 'cia-do-chopp';
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      const linkVal = `${window.location.origin}${basePath}/rapido.html?store=${encodeURIComponent(storeId)}&modo=atendente`;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(linkVal).then(() => {
+          alert("🧑‍🍳 Link do Portal do Atendente (Mesas) copiado com sucesso!");
+        }).catch(() => {
+          fallbackCopyToClipboard(linkVal);
+        });
+      } else {
+        fallbackCopyToClipboard(linkVal);
+      }
+    };
+
+    window.shareAtendenteLinkWhatsApp = function() {
+      const storeId = window.currentStoreId || localStorage.getItem('popfood_custom_store_id') || 'cia-do-chopp';
+      const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+      const linkVal = `${window.location.origin}${basePath}/rapido.html?store=${encodeURIComponent(storeId)}&modo=atendente`;
+      const text = `🧑‍🍳 Portal do Atendente / Garçom (Mesas):\n\n${linkVal}`;
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
+    };
+
+    window.saveMesaTotemSettings = async function() {
+      const enabled = document.getElementById('mesa-service-fee-enabled')?.checked === true;
+      let percent = parseFloat(document.getElementById('mesa-service-fee-percent')?.value || '10');
+      if (isNaN(percent) || percent < 0) percent = 10;
+      let tablesQty = parseInt(document.getElementById('tab-totem-tables-qty')?.value || document.getElementById('input-qr-tables-qty-tab')?.value || '10', 10);
+      if (isNaN(tablesQty) || tablesQty < 1) tablesQty = 10;
+      const pin = (document.getElementById('attendant-portal-pin')?.value || '').trim();
+
+      const btn = document.getElementById('btn-save-mesa-totem-config');
+      const origText = btn ? btn.textContent : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Salvando...';
+      }
+
+      try {
+        await setDoc(doc(db, COLLECTIONS.restaurantProfile, window.currentStoreId), {
+          mesaServiceFeeEnabled: enabled,
+          mesaServiceFeePercent: percent,
+          totemTablesQty: tablesQty,
+          attendantPortalPin: pin,
+          storeId: window.currentStoreId
+        }, { merge: true });
+
+        if (profileData) {
+          profileData.mesaServiceFeeEnabled = enabled;
+          profileData.mesaServiceFeePercent = percent;
+          profileData.totemTablesQty = tablesQty;
+          profileData.attendantPortalPin = pin;
+        }
+        (document.getElementById('input-qr-tables-qty-tab') || {}).value = tablesQty;
+        (document.getElementById('input-qr-tables-qty') || {}).value = tablesQty;
+        if (window.generateTableQrCodesTab) window.generateTableQrCodesTab();
+
+        if (btn) {
+          btn.textContent = '✅ Configurações Salvas!';
+          btn.classList.remove('bg-amber-500', 'hover:bg-amber-400', 'text-slate-950');
+          btn.classList.add('bg-emerald-600', 'text-white');
+          setTimeout(() => {
+            btn.textContent = origText;
+            btn.disabled = false;
+            btn.classList.remove('bg-emerald-600', 'text-white');
+            btn.classList.add('bg-amber-500', 'hover:bg-amber-400', 'text-slate-950');
+          }, 2500);
+        }
+      } catch (err) {
+        console.error("Erro ao salvar configurações de Mesas & Taxa:", err);
+        alert("Erro ao salvar configurações: " + err.message);
+        if (btn) {
+          btn.textContent = origText;
+          btn.disabled = false;
+        }
+      }
     };
 
     window.openMesaQrCodeModal = function() {
@@ -2146,6 +2315,15 @@ window.copyStoreLink = function() {
               }
             }
           }
+
+          // Populate Mesas & Service Fee settings
+          (document.getElementById('mesa-service-fee-enabled') || {}).checked = profileData.mesaServiceFeeEnabled === true;
+          (document.getElementById('mesa-service-fee-percent') || {}).value = profileData.mesaServiceFeePercent !== undefined ? profileData.mesaServiceFeePercent : 10;
+          (document.getElementById('attendant-portal-pin') || {}).value = profileData.attendantPortalPin || '';
+          const savedTablesQty = profileData.totemTablesQty || 10;
+          (document.getElementById('tab-totem-tables-qty') || {}).value = savedTablesQty;
+          (document.getElementById('input-qr-tables-qty-tab') || {}).value = savedTablesQty;
+          (document.getElementById('input-qr-tables-qty') || {}).value = savedTablesQty;
           
           const destaquesTipo = profileData.destaquesTipo || 'mais_pedidos';
           const radioToSelect = document.querySelector(`input[name="profile-destaques-tipo"][value="${destaquesTipo}"]`);
@@ -2909,6 +3087,11 @@ window.copyStoreLink = function() {
         loyaltyType: document.getElementById('loyalty-type').value,
         loyaltyValue: parseFloat(document.getElementById('loyalty-value').value || 0),
         loyaltyMinOrders: parseInt(document.getElementById('loyalty-min-orders').value || 3),
+        // Preserve Mesas & Service Fee settings
+        mesaServiceFeeEnabled: document.getElementById('mesa-service-fee-enabled')?.checked === true,
+        mesaServiceFeePercent: parseFloat(document.getElementById('mesa-service-fee-percent')?.value || '10') || 10,
+        totemTablesQty: parseInt(document.getElementById('tab-totem-tables-qty')?.value || '10', 10) || 10,
+        attendantPortalPin: (document.getElementById('attendant-portal-pin')?.value || '').trim(),
         storeId: window.currentStoreId
       };
 

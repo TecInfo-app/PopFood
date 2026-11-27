@@ -501,6 +501,30 @@
           </div>
         </div>
 
+        <!-- Product Sales Channels -->
+        <div class="bg-orange-50/50 rounded-xl p-3.5 border border-orange-100 space-y-2">
+          <span class="block text-xs font-bold text-gray-800 uppercase tracking-wider select-none">
+            📍 Onde este produto é vendido?
+          </span>
+          <p class="text-[10px] text-gray-500 font-medium leading-tight">
+            Escolha em quais cardápios/canais este item ficará visível para venda.
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+            <label class="flex items-center gap-2 text-xs font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-xl hover:border-orange-300 select-none">
+              <input type="checkbox" id="form-channel-delivery" checked class="w-4 h-4 text-orange-600 rounded">
+              <span>🛵 Delivery</span>
+            </label>
+            <label class="flex items-center gap-2 text-xs font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-xl hover:border-orange-300 select-none">
+              <input type="checkbox" id="form-channel-totem" checked class="w-4 h-4 text-orange-600 rounded">
+              <span>📱 Balcão / Totem</span>
+            </label>
+            <label class="flex items-center gap-2 text-xs font-semibold text-gray-750 cursor-pointer bg-white border border-gray-200 px-3 py-2 rounded-xl hover:border-orange-300 select-none">
+              <input type="checkbox" id="form-channel-mesa" checked class="w-4 h-4 text-orange-600 rounded">
+              <span>🍽️ Mesas</span>
+            </label>
+          </div>
+        </div>
+
         <div class="flex items-center gap-2 py-1 select-none">
           <input type="checkbox" id="form-product-exclusive" class="w-4.5 h-4.5 text-orange-600 border-gray-300 rounded focus:ring-orange-500 cursor-pointer">
           <label for="form-product-exclusive" class="text-xs font-semibold text-gray-700 cursor-pointer">Marcar como "⭐ Produto Exclusivo"</label>
@@ -1674,6 +1698,11 @@ storeId: window.currentStoreId
           (document.getElementById('form-product-desc') || {}).value = prd.description || '';
           (document.getElementById('form-product-exclusive') || {}).checked = !!prd.exclusivo;
 
+          const ch = prd.channels || {};
+          (document.getElementById('form-channel-delivery') || {}).checked = ch.delivery !== false;
+          (document.getElementById('form-channel-totem') || {}).checked = ch.totem !== false;
+          (document.getElementById('form-channel-mesa') || {}).checked = ch.mesa !== false;
+
           // Setup availability fields
           const days = prd.availableDays || [0, 1, 2, 3, 4, 5, 6];
           for (let d = 0; d <= 6; d++) {
@@ -1697,6 +1726,9 @@ storeId: window.currentStoreId
           (document.getElementById('product-form-title') || {}).textContent = "Cadastrar Produto";
           document.getElementById('product-catalog-form').reset();
           (document.getElementById('form-product-id') || {}).value = '';
+          (document.getElementById('form-channel-delivery') || {}).checked = true;
+          (document.getElementById('form-channel-totem') || {}).checked = true;
+          (document.getElementById('form-channel-mesa') || {}).checked = true;
           imageBase64Data = "";
           document.getElementById('form-img-preview').classList.add('hidden');
           document.getElementById('form-img-placeholder').classList.remove('hidden');
@@ -1772,6 +1804,15 @@ storeId: window.currentStoreId
       const desc = document.getElementById('form-product-desc').value.trim();
       const excl = document.getElementById('form-product-exclusive').checked;
 
+      const chDelivery = document.getElementById('form-channel-delivery')?.checked !== false;
+      const chTotem = document.getElementById('form-channel-totem')?.checked !== false;
+      const chMesa = document.getElementById('form-channel-mesa')?.checked !== false;
+
+      if (!chDelivery && !chTotem && !chMesa) {
+        alert("Selecione pelo menos um canal de venda (Delivery, Balcão/Totem ou Mesas).");
+        return;
+      }
+
       // Extract available days
       const availableDays = [];
       for (let d = 0; d <= 6; d++) {
@@ -1797,6 +1838,11 @@ storeId: window.currentStoreId
         image: imageBase64Data,
         paused: false,
         exclusivo: excl,
+        channels: {
+          delivery: chDelivery,
+          totem: chTotem,
+          mesa: chMesa
+        },
         availableDays: availableDays,
         availableTimeStart: availableTimeStart,
         availableTimeEnd: availableTimeEnd,
@@ -2022,6 +2068,11 @@ storeId: window.currentStoreId
       const defaultSvg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23fed7aa'/><text x='50' y='55' font-family='sans-serif' font-size='24' fill='%23ea580c' text-anchor='middle'>🍔</text></svg>`;
       const imgPrvUrl = prd.image || defaultSvg;
 
+      const ch = prd.channels || {};
+      const showDel = ch.delivery !== false;
+      const showTot = ch.totem !== false;
+      const showMes = ch.mesa !== false;
+
       row.innerHTML = `
         <div class="flex items-center gap-3.5 flex-grow pr-4 w-full sm:w-auto">
           <label class="cursor-pointer flex items-center shrink-0 mr-1">
@@ -2033,7 +2084,14 @@ storeId: window.currentStoreId
           <div class="space-y-0.5 flex-grow min-w-0">
             <h4 class="font-bold text-xs text-gray-800 capitalize leading-relaxed truncate">${prd.name}</h4>
             <p class="text-[10px] text-gray-400 font-semibold font-mono">PDV: ${prd.pdvCode || prd.id} | ${categoryName}</p>
-            <p class="text-xs font-bold text-brand-primary">R$ ${(prd.price).toFixed(2).replace('.', ',')}</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-xs font-bold text-brand-primary">R$ ${(prd.price).toFixed(2).replace('.', ',')}</p>
+              <div class="flex items-center gap-1 flex-wrap">
+                ${showDel ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-orange-50 text-orange-700 border border-orange-100">🛵 Delivery</span>' : ''}
+                ${showTot ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-100">📱 Balcão</span>' : ''}
+                ${showMes ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">🍽️ Mesas</span>' : ''}
+              </div>
+            </div>
           </div>
         </div>
 

@@ -4779,12 +4779,18 @@
         return "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&auto=format&fit=crop&q=80";
       }
 
+      function isProductAllowedInDelivery(prod) {
+        if (!prod || !prod.channels) return true;
+        return prod.channels.delivery !== false;
+      }
+
       function getActiveCategoriesWithProducts() {
         const hideUnavailable = restaurantProfile && restaurantProfile.mostrarIndisponiveis === false;
         return categoriesList.filter((cat) => {
           return productsList.some((p) => {
             if (p.categoryId !== cat.id) return false;
             if (p.paused) return false;
+            if (!isProductAllowedInDelivery(p)) return false;
             if (hideUnavailable && typeof isProductCurrentlyAvailable === 'function' && !isProductCurrentlyAvailable(p)) return false;
             return true;
           });
@@ -5115,7 +5121,7 @@
         if (restaurantProfile && restaurantProfile.destaquesAtivo && activeCategory === "all" && !searchQuery) {
           let destaques = [];
           const hideUnavailable = restaurantProfile.mostrarIndisponiveis === false;
-          let availableProds = productsList.filter(p => !p.paused);
+          let availableProds = productsList.filter(p => !p.paused && isProductAllowedInDelivery(p));
           
           if (hideUnavailable) {
             availableProds = availableProds.filter(p => isProductCurrentlyAvailable(p));
@@ -5188,7 +5194,7 @@
         catsToDraw.forEach((category) => {
           // Filter elements belonging to category
           let relativeProducts = productsList.filter(
-            (p) => p.categoryId === category.id && !p.paused,
+            (p) => p.categoryId === category.id && !p.paused && isProductAllowedInDelivery(p),
           );
 
           // Apply config to hide unavailable items

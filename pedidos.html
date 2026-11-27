@@ -590,6 +590,14 @@ window.openMesaQrCodeModal = function() {
               >
                 Mesas
               </button>
+              <button
+                type="button"
+                onclick="window.openMesaLauncherModal(null)"
+                class="text-xs font-bold py-2 px-4 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <span>🍽️</span>
+                <span>Abrir / Lançar Mesa</span>
+              </button>
 
               <div class="h-6 w-[1px] bg-gray-200 mx-1 hidden sm:block"></div>
 
@@ -928,11 +936,15 @@ window.openMesaQrCodeModal = function() {
               <span>Desconto:</span>
               <span id="modal-desconto" class="font-bold">- R$ 0,00</span>
             </div>
-            <div class="flex justify-between">
+            <div id="modal-delivery-fee-row" class="flex justify-between">
               <span>Taxa do Delivery:</span>
               <span id="modal-taxa" class="font-bold text-gray-700"
                 >R$ 0,00</span
               >
+            </div>
+            <div id="modal-service-fee-row" class="flex justify-between hidden text-indigo-700">
+              <span id="modal-service-fee-lbl">Taxa de Serviço (10%):</span>
+              <span id="modal-service-fee" class="font-bold">R$ 0,00</span>
             </div>
             <div
               class="flex justify-between text-sm font-bold text-gray-800 pt-2 border-t border-gray-100"
@@ -985,23 +997,29 @@ window.openMesaQrCodeModal = function() {
 
         <!-- Action Footer control keys -->
         <div
-          class="p-4 border-t border-gray-100 bg-gray-50 flex items-center gap-2.5"
+          class="p-4 border-t border-gray-100 bg-gray-50 flex flex-wrap items-center gap-2"
         >
           <button
             id="btn-action-preparar"
-            class="flex-1 bg-brand-primary hover:bg-orange-600 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer"
+            class="flex-1 min-w-[95px] bg-brand-primary hover:bg-orange-600 text-white font-semibold py-2.5 px-3 rounded-lg text-xs transition-colors cursor-pointer"
           >
             Preparar
           </button>
           <button
+            id="btn-action-add-items"
+            class="hidden flex-1 min-w-[125px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs transition-colors cursor-pointer shadow-xs"
+          >
+            ➕ Adicionar Itens
+          </button>
+          <button
             id="btn-action-despachar"
-            class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer"
+            class="flex-1 min-w-[115px] bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-3 rounded-lg text-xs transition-colors cursor-pointer"
           >
             Despachar
           </button>
           <button
             id="btn-action-cancelar"
-            class="flex-1 border border-brand-danger hover:bg-red-50 text-brand-danger font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer"
+            class="flex-1 min-w-[90px] border border-brand-danger hover:bg-red-50 text-brand-danger font-semibold py-2.5 px-3 rounded-lg text-xs transition-colors cursor-pointer"
           >
             Cancelar
           </button>
@@ -1345,6 +1363,275 @@ window.openMesaQrCodeModal = function() {
       </div>
     </div>
 
+    <!-- MODAL: RECEBER MESA (COM OPÇÃO DE TAXA DE SERVIÇO) -->
+    <div
+      id="receber-mesa-modal"
+      class="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 hidden backdrop-blur-xs transition-all"
+    >
+      <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl border border-gray-100 space-y-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl shrink-0">
+              💵
+            </div>
+            <div>
+              <h3 class="font-display font-extrabold text-gray-800 text-base">
+                Receber Pagamento da Mesa
+              </h3>
+              <p id="receber-mesa-subtitle" class="text-xs text-gray-500 font-medium mt-0.5">
+                Mesa • Cliente
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onclick="window.closeReceberMesaModal()"
+            class="text-gray-400 hover:text-gray-700 text-lg font-bold px-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2.5 text-xs">
+          <div class="flex justify-between text-gray-600 font-medium">
+            <span>Subtotal dos Itens:</span>
+            <span id="receber-mesa-subtotal" class="font-bold text-gray-800">R$ 0,00</span>
+          </div>
+          <div id="receber-mesa-discount-row" class="flex justify-between text-emerald-600 font-medium hidden">
+            <span>Desconto:</span>
+            <span id="receber-mesa-discount" class="font-bold">- R$ 0,00</span>
+          </div>
+          <label class="flex items-center justify-between gap-2 pt-2 border-t border-gray-200 cursor-pointer select-none">
+            <span class="flex items-center gap-2 text-indigo-800 font-bold">
+              <input
+                type="checkbox"
+                id="receber-mesa-service-fee-toggle"
+                onchange="window.recalcReceberMesaModal()"
+                class="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+              />
+              <span id="receber-mesa-service-fee-lbl">Cobrar Taxa de Serviço (10%)</span>
+            </span>
+            <span id="receber-mesa-service-fee-val" class="font-bold text-indigo-700">R$ 0,00</span>
+          </label>
+          <div class="flex justify-between items-center pt-2.5 border-t border-gray-200 text-sm font-extrabold text-gray-900">
+            <span>Total a Receber:</span>
+            <span id="receber-mesa-final-total" class="text-lg text-emerald-700">R$ 0,00</span>
+          </div>
+        </div>
+
+        <p class="text-[11px] text-gray-500 leading-relaxed">
+          Ao confirmar, a comanda será marcada como paga/concluída e movida para Finalizados.
+        </p>
+
+        <div class="flex gap-2.5 pt-1">
+          <button
+            type="button"
+            onclick="window.closeReceberMesaModal()"
+            class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold cursor-pointer transition-all"
+          >
+            Voltar
+          </button>
+          <button
+            type="button"
+            id="btn-confirm-receber-mesa"
+            onclick="window.confirmReceberMesa()"
+            class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold cursor-pointer shadow-md transition-all"
+          >
+            ✅ Confirmar Recebimento
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL: ABRIR MESA / LANÇAR ITENS NA MESA -->
+    <div
+      id="mesa-add-items-modal"
+      class="fixed inset-0 bg-black/65 z-[110] flex items-center justify-center p-2 sm:p-4 hidden backdrop-blur-xs transition-all"
+    >
+      <div class="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl border border-gray-200 overflow-hidden relative">
+        <!-- Header -->
+        <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-slate-900 text-white shrink-0">
+          <div>
+            <h3 id="mesa-launcher-title" class="font-display font-extrabold text-base flex items-center gap-2">
+              <span>🍽️</span>
+              <span>Abrir Mesa / Lançar Itens</span>
+            </h3>
+            <p id="mesa-launcher-subtitle" class="text-[11px] text-slate-300 mt-0.5">
+              Selecione a mesa e adicione os produtos diretamente na comanda.
+            </p>
+          </div>
+          <button
+            type="button"
+            onclick="window.closeMesaLauncherModal()"
+            class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold flex items-center justify-center cursor-pointer transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Mesa / Cliente identification bar -->
+        <div class="px-5 py-3 bg-indigo-50/70 border-b border-indigo-100 space-y-2.5 shrink-0">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-indigo-900 mb-1">Mesa</label>
+              <input
+                type="text"
+                id="mesa-launcher-table-input"
+                oninput="window.onMesaLauncherTableChanged()"
+                placeholder="Ex: Mesa 01"
+                class="w-full px-3 py-2 text-xs font-bold bg-white border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-indigo-900 mb-1">Nome do Cliente (Opcional)</label>
+              <input
+                type="text"
+                id="mesa-launcher-client-input"
+                placeholder="Cliente"
+                class="w-full px-3 py-2 text-xs font-semibold bg-white border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold uppercase text-indigo-900 mb-1">Forma de Pagamento</label>
+              <select
+                id="mesa-launcher-payment-select"
+                class="w-full px-3 py-2 text-xs font-bold bg-white border border-indigo-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
+              >
+                <option value="Dinheiro">💵 Dinheiro</option>
+                <option value="Pix">⚡ Pix</option>
+                <option value="Cartão">💳 Cartão</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Quick Mesa Pills -->
+          <div id="mesa-launcher-quick-pills" class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide"></div>
+
+          <!-- Match notice when typing/selecting an already-open table -->
+          <div id="mesa-launcher-existing-banner" class="hidden text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-xl flex items-center justify-between gap-2">
+            <span id="mesa-launcher-existing-text">Mesa já aberta! Os novos itens serão somados à comanda existente.</span>
+          </div>
+        </div>
+
+        <!-- Catalog + Cart 2-Column Body -->
+        <div class="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden">
+          <!-- Left: Catalog -->
+          <div class="flex-1 flex flex-col min-h-0 border-b md:border-b-0 md:border-r border-gray-100 bg-gray-50/40">
+            <div class="p-3 bg-white border-b border-gray-100 space-y-2 shrink-0">
+              <input
+                type="text"
+                id="mesa-launcher-search"
+                oninput="window.renderMesaLauncherProducts()"
+                placeholder="🔍 Buscar produto disponível para mesas..."
+                class="w-full px-3.5 py-2 text-xs bg-gray-100 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <div id="mesa-launcher-categories" class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-hide"></div>
+            </div>
+            <div id="mesa-launcher-products" class="flex-1 overflow-y-auto p-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5 content-start">
+              <div class="col-span-full text-center py-8 text-xs text-gray-400">Carregando cardápio...</div>
+            </div>
+          </div>
+
+          <!-- Right: Cart Summary -->
+          <div class="w-full md:w-80 lg:w-96 flex flex-col bg-white shrink-0 max-h-[42vh] md:max-h-none">
+            <div class="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between bg-gray-50 shrink-0">
+              <span class="text-xs font-extrabold text-gray-800 uppercase tracking-wide">Itens a Lançar</span>
+              <span id="mesa-launcher-cart-count" class="text-[11px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">0 itens</span>
+            </div>
+
+            <div id="mesa-launcher-cart" class="flex-1 overflow-y-auto p-3 space-y-2">
+              <div class="text-center py-8 text-xs text-gray-400">
+                Clique nos produtos ao lado para lançar na mesa.
+              </div>
+            </div>
+
+            <div class="p-3.5 border-t border-gray-100 bg-gray-50 space-y-2 shrink-0">
+              <div class="flex justify-between text-xs text-gray-600 font-semibold">
+                <span>Subtotal dos Novos Itens:</span>
+                <span id="mesa-launcher-subtotal" class="font-bold text-gray-800">R$ 0,00</span>
+              </div>
+              <div id="mesa-launcher-fee-preview-row" class="hidden flex justify-between text-[11px] text-indigo-700 font-bold">
+                <span id="mesa-launcher-fee-preview-lbl">Taxa de Serviço (10%):</span>
+                <span id="mesa-launcher-fee-preview-val">+ R$ 0,00</span>
+              </div>
+              <div class="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  id="btn-mesa-launcher-save"
+                  onclick="window.saveMesaLauncherItems(false)"
+                  class="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-sm"
+                >
+                  ✅ Salvar na Mesa
+                </button>
+                <button
+                  type="button"
+                  id="btn-mesa-launcher-save-print"
+                  onclick="window.saveMesaLauncherItems(true)"
+                  class="flex-1 py-2.5 px-3 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-sm"
+                >
+                  🖨️ Enviar e Imprimir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Inline Complement Picker Overlay -->
+        <div
+          id="mesa-launcher-comp-overlay"
+          class="hidden absolute inset-0 bg-black/60 z-20 flex items-center justify-center p-4 backdrop-blur-xs"
+        >
+          <div class="bg-white rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h4 id="mesa-comp-prod-name" class="font-display font-extrabold text-sm text-gray-800">Produto</h4>
+                <p id="mesa-comp-prod-price" class="text-xs font-bold text-indigo-600">R$ 0,00</p>
+              </div>
+              <button
+                type="button"
+                onclick="window.closeMesaCompPicker()"
+                class="text-gray-400 hover:text-gray-700 font-bold text-base px-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div id="mesa-comp-groups-body" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+            <div class="px-4 pb-3">
+              <label class="block text-[10px] font-bold uppercase text-gray-400 mb-1">Observação do item (opcional)</label>
+              <input
+                type="text"
+                id="mesa-comp-notes-input"
+                placeholder="Ex: Sem cebola, bem passado..."
+                class="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div class="p-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl p-1">
+                <button
+                  type="button"
+                  onclick="window.changeMesaCompQty(-1)"
+                  class="w-7 h-7 bg-gray-100 rounded-lg font-bold text-sm cursor-pointer"
+                >-</button>
+                <span id="mesa-comp-qty-lbl" class="w-6 text-center text-xs font-extrabold">1</span>
+                <button
+                  type="button"
+                  onclick="window.changeMesaCompQty(1)"
+                  class="w-7 h-7 bg-slate-900 text-white rounded-lg font-bold text-sm cursor-pointer"
+                >+</button>
+              </div>
+              <button
+                type="button"
+                onclick="window.confirmMesaCompPicker()"
+                class="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Adicionar <span id="mesa-comp-total-lbl">R$ 0,00</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Required for Client-Side FCM Sender OAuth generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.9.0/jsrsasign-all-min.js"></script>
     <script type="module">
@@ -1361,6 +1648,7 @@ window.openMesaQrCodeModal = function() {
         onSnapshot,
         getDoc,
         getDocs,
+        setDoc,
         limit,
         updateDoc,
         onAuthStateChanged,
@@ -1368,6 +1656,7 @@ window.openMesaQrCodeModal = function() {
         signOut,
         messaging,
         arrayUnion,
+        increment,
         getToken,
         onMessage,
         VAPID_KEY,
@@ -3109,6 +3398,16 @@ window.openMesaQrCodeModal = function() {
           }
           
           ${
+            isMesa && order.status !== "Entregue" && order.status !== "Cancelado"
+              ? `
+            <button onclick="window.openMesaLauncherModal('${order.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}" title="Adicionar Itens na Mesa">
+              ➕ Itens
+            </button>
+          `
+              : ""
+          }
+
+          ${
             order.status === "Pendente"
               ? `
             <button onclick="changeOrderStatus('${order.id}', 'Preparando')" class="bg-brand-primary hover:bg-orange-600 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all ${btnFull}">
@@ -3119,7 +3418,7 @@ window.openMesaQrCodeModal = function() {
           }
 
           ${
-            order.status === "Preparando" || (isMesa && order.status === "Saiu para entrega")
+            (isMesa && order.status !== "Entregue" && order.status !== "Cancelado") || (!isMesa && order.status === "Preparando")
               ? (isMesa
                   ? `
                 <button onclick="receberMesaOrder('${order.id}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs flex-grow sm:flex-grow-0 cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xs ${btnFull}">
@@ -3149,45 +3448,166 @@ window.openMesaQrCodeModal = function() {
         return card;
       }
 
-      // Função para dar baixa e receber mesa
-      window.receberMesaOrder = async function (orderId) {
+      // Helpers para Taxa de Serviço (somente Mesas) e verificação de Mesa
+      function isOrderMesa(order) {
+        if (!order) return false;
+        const customerObj = order.customer || order.client || {};
+        return (
+          customerObj.type === "Mesa" ||
+          (customerObj.address && customerObj.address.toLowerCase().includes("mesa")) ||
+          (order.origin && order.origin.includes("Mesa"))
+        );
+      }
+
+      function getMesaServiceFeeSettings() {
+        const enabled = !!(loadedRestaurantProfile && loadedRestaurantProfile.mesaServiceFeeEnabled === true);
+        let pct = loadedRestaurantProfile && loadedRestaurantProfile.mesaServiceFeePercent !== undefined
+          ? Number(loadedRestaurantProfile.mesaServiceFeePercent)
+          : 10;
+        if (!Number.isFinite(pct) || pct < 0) pct = 10;
+        return { enabled, percent: pct };
+      }
+
+      function computeMesaOrderFinancials(order, rawSubtotal, forceServiceFeeEnabled = null) {
+        const subtotal = Math.round((Number(rawSubtotal) || 0) * 100) / 100;
+        const isMesa = isOrderMesa(order);
+        const deliveryFee = isMesa ? 0 : (Number(order?.deliveryFee) || 0);
+        const desconto = Number(order?.desconto) || 0;
+
+        if (!isMesa) {
+          return {
+            subtotal,
+            deliveryFee,
+            serviceFee: 0,
+            serviceFeePercent: 0,
+            serviceFeeWaived: false,
+            total: Math.round(Math.max(0, subtotal + deliveryFee - desconto) * 100) / 100,
+          };
+        }
+
+        const cfg = getMesaServiceFeeSettings();
+        const effectivePct = (order && Number(order.serviceFeePercent) > 0)
+          ? Number(order.serviceFeePercent)
+          : cfg.percent;
+
+        let applyFee;
+        if (forceServiceFeeEnabled !== null) {
+          applyFee = !!forceServiceFeeEnabled;
+        } else if (order && order.serviceFeeWaived === true) {
+          applyFee = false;
+        } else if (order && Number(order.serviceFee) > 0) {
+          applyFee = true;
+        } else {
+          applyFee = cfg.enabled;
+        }
+
+        const serviceFee = applyFee ? Math.round(subtotal * (effectivePct / 100) * 100) / 100 : 0;
+        const serviceFeePercent = applyFee ? effectivePct : 0;
+        const total = Math.round(Math.max(0, subtotal + serviceFee + deliveryFee - desconto) * 100) / 100;
+
+        return {
+          subtotal,
+          deliveryFee,
+          serviceFee,
+          serviceFeePercent,
+          serviceFeeWaived: forceServiceFeeEnabled === false ? true : (order?.serviceFeeWaived === true && forceServiceFeeEnabled === null),
+          total,
+        };
+      }
+
+      let currentReceberMesaOrderId = null;
+
+      window.closeReceberMesaModal = function () {
+        currentReceberMesaOrderId = null;
+        document.getElementById("receber-mesa-modal")?.classList.add("hidden");
+      };
+
+      window.recalcReceberMesaModal = function () {
+        if (!currentReceberMesaOrderId) return;
+        const order = globalOrdersList.find((o) => o.id === currentReceberMesaOrderId);
+        if (!order) return;
+
+        const includeFee = document.getElementById("receber-mesa-service-fee-toggle")?.checked || false;
+        const fin = computeMesaOrderFinancials(order, order.subtotal || 0, includeFee);
+
+        const cfg = getMesaServiceFeeSettings();
+        const displayPct = (Number(order.serviceFeePercent) > 0 ? Number(order.serviceFeePercent) : cfg.percent) || 10;
+
+        document.getElementById("receber-mesa-subtotal").textContent = fin.subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        const discRow = document.getElementById("receber-mesa-discount-row");
+        if ((order.desconto || 0) > 0) {
+          discRow.classList.remove("hidden");
+          document.getElementById("receber-mesa-discount").textContent = `- ${(order.desconto || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+        } else {
+          discRow.classList.add("hidden");
+        }
+        document.getElementById("receber-mesa-service-fee-lbl").textContent = `Cobrar Taxa de Serviço (${displayPct}%)`;
+        document.getElementById("receber-mesa-service-fee-val").textContent = fin.serviceFee.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        document.getElementById("receber-mesa-final-total").textContent = fin.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      };
+
+      // Função para dar baixa e receber mesa (com opção de incluir/dispensar taxa de serviço)
+      window.receberMesaOrder = function (orderId) {
         const order = globalOrdersList.find((o) => o.id === orderId);
         if (!order) return;
 
+        currentReceberMesaOrderId = orderId;
         const customerObj = order.customer || order.client || {};
-        const mesaIdent =
-          customerObj.number || customerObj.address || "Mesa";
+        const mesaIdent = customerObj.number || customerObj.address || "Mesa";
         const clientName = customerObj.name || "Cliente";
-        const totalVal = order.total || 0;
-        const totalFormatted = totalVal.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-        });
 
-        const confirmMsg = `Deseja dar baixa e RECEBER o pagamento da ${mesaIdent} (${clientName})?\n\nValor Total: ${totalFormatted}\n\nO pedido será marcado como concluído e movido para Finalizados.`;
-        const ok = await window.customConfirm(confirmMsg);
-        if (!ok) return;
+        document.getElementById("receber-mesa-subtitle").textContent = `${mesaIdent} • ${clientName}`;
+
+        const cfg = getMesaServiceFeeSettings();
+        const defaultChecked = order.serviceFeeWaived === true
+          ? false
+          : (Number(order.serviceFee) > 0 || cfg.enabled);
+
+        const toggle = document.getElementById("receber-mesa-service-fee-toggle");
+        if (toggle) toggle.checked = defaultChecked;
+
+        window.recalcReceberMesaModal();
+        document.getElementById("receber-mesa-modal")?.classList.remove("hidden");
+      };
+
+      window.confirmReceberMesa = async function () {
+        if (!currentReceberMesaOrderId) return;
+        const orderId = currentReceberMesaOrderId;
+        const order = globalOrdersList.find((o) => o.id === orderId);
+        if (!order) return;
+
+        const btn = document.getElementById("btn-confirm-receber-mesa");
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Finalizando...";
+        }
 
         try {
-          const orderRef = doc(db, COLLECTIONS.orders, orderId);
-          await updateDoc(orderRef, {
+          const includeFee = document.getElementById("receber-mesa-service-fee-toggle")?.checked || false;
+          const fin = computeMesaOrderFinancials(order, order.subtotal || 0, includeFee);
+          const nowIso = new Date().toISOString();
+
+          const updatePayload = {
             status: "Entregue",
             isPaid: true,
             paymentStatus: "Aprovado",
-            closedAt: new Date().toISOString(),
-            finishedAt: new Date().toISOString(),
-          });
+            serviceFee: fin.serviceFee,
+            serviceFeePercent: fin.serviceFeePercent,
+            serviceFeeWaived: !includeFee,
+            total: fin.total,
+            closedAt: nowIso,
+            finishedAt: nowIso,
+          };
+
+          const orderRef = doc(db, COLLECTIONS.orders, orderId);
+          await updateDoc(orderRef, updatePayload);
 
           rememberFinishedOrder({
             ...order,
-            status: "Entregue",
-            isPaid: true,
-            paymentStatus: "Aprovado",
-            closedAt: new Date().toISOString(),
-            finishedAt: new Date().toISOString(),
+            ...updatePayload,
           });
 
-          // Fechar modal de detalhes se estiver aberto
+          window.closeReceberMesaModal();
           toggleDetailsModal(false);
 
           if (order.fcmToken && window.notifyOrderUpdate) {
@@ -3202,6 +3622,68 @@ window.openMesaQrCodeModal = function() {
         } catch (err) {
           console.error("Erro ao receber mesa:", err);
           alert("Erro ao receber mesa: " + err.message);
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "✅ Confirmar Recebimento";
+          }
+        }
+      };
+
+      // Alterar quantidade (+/-) de um item na comanda de mesa
+      window.updateMesaItemQty = async function (orderId, itemIndex, delta) {
+        const order = globalOrdersList.find((o) => o.id === orderId);
+        if (!order || !order.items || !order.items[itemIndex]) return;
+
+        const currentQty = Number(order.items[itemIndex].quantity || 1);
+        const nextQty = currentQty + delta;
+
+        if (nextQty <= 0) {
+          await window.removeMesaOrderItem(orderId, itemIndex);
+          return;
+        }
+
+        try {
+          if (!window._merchantActionOrderTimestamps) {
+            window._merchantActionOrderTimestamps = {};
+          }
+          window._merchantActionOrderTimestamps[orderId] = Date.now();
+
+          const newItems = order.items.map((it, idx) =>
+            idx === itemIndex ? { ...it, quantity: nextQty } : it
+          );
+
+          let newSubtotal = 0;
+          newItems.forEach((it) => {
+            const unitPrice = it.totalItemPrice !== undefined ? Number(it.totalItemPrice) : Number(it.price || 0);
+            const q = Number(it.quantity || 1);
+            newSubtotal += unitPrice * q;
+          });
+
+          const fin = computeMesaOrderFinancials(order, newSubtotal);
+
+          const orderRef = doc(db, COLLECTIONS.orders, orderId);
+          await updateDoc(orderRef, {
+            items: newItems,
+            lastAddedItems: [],
+            subtotal: fin.subtotal,
+            serviceFee: fin.serviceFee,
+            serviceFeePercent: fin.serviceFeePercent,
+            total: fin.total,
+            updatedAt: new Date().toISOString(),
+          });
+
+          order.items = newItems;
+          order.lastAddedItems = [];
+          order.subtotal = fin.subtotal;
+          order.serviceFee = fin.serviceFee;
+          order.serviceFeePercent = fin.serviceFeePercent;
+          order.total = fin.total;
+
+          showOrderDetailsDrawer(orderId);
+        } catch (err) {
+          console.error("Erro ao atualizar quantidade do item:", err);
+          alert("Erro ao atualizar quantidade: " + err.message);
         }
       };
 
@@ -3250,7 +3732,7 @@ window.openMesaQrCodeModal = function() {
             }
           }
 
-          // Recalcular subtotal e total
+          // Recalcular subtotal, taxa de serviço e total
           let newSubtotal = 0;
           newItems.forEach((it) => {
             const unitPrice = it.totalItemPrice !== undefined ? it.totalItemPrice : (it.price || 0);
@@ -3258,24 +3740,26 @@ window.openMesaQrCodeModal = function() {
             newSubtotal += unitPrice * q;
           });
 
-          const deliveryFee = order.deliveryFee || 0;
-          const desconto = order.desconto || 0;
-          const newTotal = Math.max(0, newSubtotal + deliveryFee - desconto);
+          const fin = computeMesaOrderFinancials(order, newSubtotal);
 
           const orderRef = doc(db, COLLECTIONS.orders, orderId);
           await updateDoc(orderRef, {
             items: newItems,
-            lastAddedItems: [], // Clear any previous additions flag
-            subtotal: newSubtotal,
-            total: newTotal,
+            lastAddedItems: [],
+            subtotal: fin.subtotal,
+            serviceFee: fin.serviceFee,
+            serviceFeePercent: fin.serviceFeePercent,
+            total: fin.total,
             updatedAt: new Date().toISOString()
           });
 
           // Atualizar o objeto localmente para re-renderizar o modal imediatamente
           order.items = newItems;
           order.lastAddedItems = [];
-          order.subtotal = newSubtotal;
-          order.total = newTotal;
+          order.subtotal = fin.subtotal;
+          order.serviceFee = fin.serviceFee;
+          order.serviceFeePercent = fin.serviceFeePercent;
+          order.total = fin.total;
 
           showOrderDetailsDrawer(orderId);
 
@@ -3283,6 +3767,759 @@ window.openMesaQrCodeModal = function() {
         } catch (err) {
           console.error("Erro ao remover item da comanda de mesa:", err);
           alert("Erro ao excluir item: " + err.message);
+        }
+      };
+
+      // ============================================================
+      // MESA LAUNCHER: ABRIR MESA / LANÇAR ITENS DIRETO NO PAINEL
+      // ============================================================
+      let mesaLauncherTargetOrderId = null;
+      let mesaLauncherCatalogLoadedStore = null;
+      let mesaLauncherCategories = [];
+      let mesaLauncherProducts = [];
+      let mesaLauncherComplements = {};
+      let mesaLauncherActiveCategoryId = "all";
+      let mesaLauncherCart = [];
+      let mesaLauncherCompProduct = null;
+      let mesaLauncherCompQty = 1;
+      let mesaLauncherCompSelections = {};
+
+      function openMesaCatalogIDB() {
+        return new Promise((resolve, reject) => {
+          if (!window.indexedDB) return reject(new Error("No IndexedDB"));
+          const req = window.indexedDB.open("popfood_catalog_db", 1);
+          req.onupgradeneeded = (e) => {
+            const dbInst = e.target.result;
+            if (!dbInst.objectStoreNames.contains("menus")) {
+              dbInst.createObjectStore("menus", { keyPath: "storeId" });
+            }
+          };
+          req.onsuccess = (e) => resolve(e.target.result);
+          req.onerror = (e) => reject(e.target.error);
+        });
+      }
+
+      async function getMesaCachedCatalogFromIDB(storeId) {
+        try {
+          const dbInst = await openMesaCatalogIDB();
+          return await new Promise((resolve) => {
+            const tx = dbInst.transaction("menus", "readonly");
+            const store = tx.objectStore("menus");
+            const getReq = store.get(storeId);
+            getReq.onsuccess = () => resolve(getReq.result || null);
+            getReq.onerror = () => resolve(null);
+          });
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function saveMesaCachedCatalogToIDB(storeId, payload) {
+        try {
+          const dbInst = await openMesaCatalogIDB();
+          await new Promise((resolve) => {
+            const tx = dbInst.transaction("menus", "readwrite");
+            const store = tx.objectStore("menus");
+            store.put({ storeId, ...payload, savedAt: Date.now() });
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+          });
+        } catch (e) {}
+      }
+
+      async function ensureMesaLauncherCatalogLoaded() {
+        const storeId = window.currentStoreId;
+        if (!storeId) return;
+        const targetVersion = String(loadedRestaurantProfile?.menuVersion || "1");
+        if (mesaLauncherCatalogLoadedStore === `${storeId}_${targetVersion}` && mesaLauncherProducts.length > 0) {
+          return;
+        }
+
+        const cached = await getMesaCachedCatalogFromIDB(storeId);
+        if (cached && String(cached.version) === targetVersion && Array.isArray(cached.products) && Array.isArray(cached.categories)) {
+          mesaLauncherCategories = [...cached.categories].sort((a, b) => (a.order || 0) - (b.order || 0));
+          mesaLauncherProducts = cached.products.filter((p) => !p.paused).sort((a, b) => (a.order || 0) - (b.order || 0));
+          mesaLauncherComplements = cached.complements || {};
+          mesaLauncherCatalogLoadedStore = `${storeId}_${targetVersion}`;
+          return;
+        }
+
+        const [catSnap, prodSnap, compSnap] = await Promise.all([
+          getDocs(query(collection(db, COLLECTIONS.categories), where("storeId", "==", storeId))),
+          getDocs(query(collection(db, COLLECTIONS.products), where("storeId", "==", storeId))),
+          getDocs(query(collection(db, COLLECTIONS.complements), where("storeId", "==", storeId))),
+        ]);
+
+        const cats = [];
+        catSnap.forEach((d) => cats.push({ id: d.id, ...d.data() }));
+        cats.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        const rawProds = [];
+        prodSnap.forEach((d) => rawProds.push({ id: d.id, ...d.data() }));
+        rawProds.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        const comps = {};
+        compSnap.forEach((d) => { comps[d.id] = d.data(); });
+
+        mesaLauncherCategories = cats;
+        mesaLauncherProducts = rawProds.filter((p) => !p.paused);
+        mesaLauncherComplements = comps;
+        mesaLauncherCatalogLoadedStore = `${storeId}_${targetVersion}`;
+
+        saveMesaCachedCatalogToIDB(storeId, {
+          version: targetVersion,
+          categories: cats,
+          products: rawProds,
+          complements: comps,
+          cacheSchema: 2,
+          imagesStripped: false,
+        });
+      }
+
+      function normalizeMesaLabelForMatch(str) {
+        return String(str || "")
+          .trim()
+          .toLowerCase()
+          .replace(/^mesa\s*/i, "")
+          .replace(/^0+/, "") || String(str || "").trim().toLowerCase();
+      }
+
+      function findActiveMesaOrderByLabel(tableInputVal) {
+        const cleanRaw = String(tableInputVal || "").trim();
+        if (!cleanRaw) return null;
+        const normTarget = normalizeMesaLabelForMatch(cleanRaw);
+        return globalOrdersList.find((o) => {
+          if (!isOrderMesa(o)) return false;
+          if (o.status === "Entregue" || o.status === "Cancelado") return false;
+          const cust = o.customer || o.client || {};
+          const oMesa = cust.number || cust.address || "";
+          return normalizeMesaLabelForMatch(oMesa) === normTarget;
+        }) || null;
+      }
+
+      window.openMesaLauncherModal = async function (orderId = null) {
+        mesaLauncherTargetOrderId = orderId || null;
+        mesaLauncherCart = [];
+        mesaLauncherActiveCategoryId = "all";
+        const searchEl = document.getElementById("mesa-launcher-search");
+        if (searchEl) searchEl.value = "";
+
+        const tableInput = document.getElementById("mesa-launcher-table-input");
+        const clientInput = document.getElementById("mesa-launcher-client-input");
+        const paymentSelect = document.getElementById("mesa-launcher-payment-select");
+        const titleEl = document.getElementById("mesa-launcher-title");
+        const subtitleEl = document.getElementById("mesa-launcher-subtitle");
+
+        if (orderId) {
+          const existing = globalOrdersList.find((o) => o.id === orderId);
+          if (!existing) return;
+          const cust = existing.customer || existing.client || {};
+          const mesaLabel = cust.number || cust.address || "Mesa";
+          tableInput.value = mesaLabel;
+          tableInput.readOnly = true;
+          tableInput.classList.add("bg-gray-100");
+          clientInput.value = cust.name || "Cliente";
+          clientInput.readOnly = true;
+          clientInput.classList.add("bg-gray-100");
+          if (existing.paymentMethod && paymentSelect) {
+            const hasOption = Array.from(paymentSelect.options).some((op) => op.value === existing.paymentMethod);
+            if (hasOption) paymentSelect.value = existing.paymentMethod;
+          }
+          titleEl.innerHTML = `<span>➕</span><span>Lançar Itens na ${mesaLabel}</span>`;
+          subtitleEl.textContent = `Comanda #${existing.shortId || existing.id.substring(0, 5)} • Os itens serão somados à mesa aberta.`;
+        } else {
+          tableInput.value = "";
+          tableInput.readOnly = false;
+          tableInput.classList.remove("bg-gray-100");
+          clientInput.value = "";
+          clientInput.readOnly = false;
+          clientInput.classList.remove("bg-gray-100");
+          if (paymentSelect) paymentSelect.value = "Dinheiro";
+          titleEl.innerHTML = `<span>🍽️</span><span>Abrir Mesa / Lançar Itens</span>`;
+          subtitleEl.textContent = `Selecione ou digite o número da mesa para abrir ou adicionar itens.`;
+        }
+
+        renderMesaLauncherQuickPills();
+        window.onMesaLauncherTableChanged();
+        renderMesaLauncherCart();
+
+        document.getElementById("mesa-add-items-modal")?.classList.remove("hidden");
+
+        const prodGrid = document.getElementById("mesa-launcher-products");
+        if (prodGrid) {
+          prodGrid.innerHTML = `<div class="col-span-full text-center py-8 text-xs text-gray-400 font-semibold">⏳ Carregando produtos disponíveis para Mesas...</div>`;
+        }
+
+        try {
+          await ensureMesaLauncherCatalogLoaded();
+          renderMesaLauncherCategories();
+          window.renderMesaLauncherProducts();
+        } catch (err) {
+          console.error("Erro ao carregar cardápio para mesa:", err);
+          if (prodGrid) {
+            prodGrid.innerHTML = `<div class="col-span-full text-center py-8 text-xs text-red-500 font-semibold">Erro ao carregar cardápio. Tente novamente.</div>`;
+          }
+        }
+      };
+
+      window.closeMesaLauncherModal = function () {
+        mesaLauncherTargetOrderId = null;
+        document.getElementById("mesa-launcher-comp-overlay")?.classList.add("hidden");
+        document.getElementById("mesa-add-items-modal")?.classList.add("hidden");
+      };
+
+      function renderMesaLauncherQuickPills() {
+        const container = document.getElementById("mesa-launcher-quick-pills");
+        if (!container) return;
+
+        if (mesaLauncherTargetOrderId) {
+          container.innerHTML = "";
+          return;
+        }
+
+        const qtyConfigured = Math.min(50, Math.max(4, Number(loadedRestaurantProfile?.totemTablesQty || 10)));
+        const activeMesas = new Map();
+        globalOrdersList.forEach((o) => {
+          if (isOrderMesa(o) && o.status !== "Entregue" && o.status !== "Cancelado") {
+            const cust = o.customer || o.client || {};
+            const label = cust.number || cust.address || "";
+            if (label) activeMesas.set(normalizeMesaLabelForMatch(label), { label, order: o });
+          }
+        });
+
+        let html = "";
+        for (let i = 1; i <= qtyConfigured; i++) {
+          const padNum = i < 10 ? `0${i}` : `${i}`;
+          const label = `Mesa ${padNum}`;
+          const match = activeMesas.get(normalizeMesaLabelForMatch(label));
+          if (match) {
+            html += `<button type="button" onclick="window.selectQuickMesaInLauncher('${match.label.replace(/'/g, "\\'")}')" class="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 cursor-pointer">🟠 ${match.label} (Aberta)</button>`;
+          } else {
+            html += `<button type="button" onclick="window.selectQuickMesaInLauncher('${label}')" class="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold bg-white text-gray-600 border border-gray-200 hover:border-indigo-400 hover:text-indigo-700 cursor-pointer">🍽️ ${label}</button>`;
+          }
+        }
+
+        // Also include any active custom-named tables outside 1..N
+        activeMesas.forEach((entry, key) => {
+          const num = parseInt(key, 10);
+          if (isNaN(num) || num < 1 || num > qtyConfigured) {
+            html = `<button type="button" onclick="window.selectQuickMesaInLauncher('${entry.label.replace(/'/g, "\\'")}')" class="shrink-0 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200 cursor-pointer">🟠 ${entry.label} (Aberta)</button>` + html;
+          }
+        });
+
+        container.innerHTML = html;
+      }
+
+      window.selectQuickMesaInLauncher = function (label) {
+        const input = document.getElementById("mesa-launcher-table-input");
+        if (input && !input.readOnly) {
+          input.value = label;
+          window.onMesaLauncherTableChanged();
+        }
+      };
+
+      window.onMesaLauncherTableChanged = function () {
+        const banner = document.getElementById("mesa-launcher-existing-banner");
+        const bannerTxt = document.getElementById("mesa-launcher-existing-text");
+        if (!banner || !bannerTxt) return;
+
+        if (mesaLauncherTargetOrderId) {
+          banner.classList.add("hidden");
+          return;
+        }
+
+        const val = document.getElementById("mesa-launcher-table-input")?.value || "";
+        const matched = findActiveMesaOrderByLabel(val);
+        if (matched) {
+          const cust = matched.customer || matched.client || {};
+          bannerTxt.textContent = `⚠️ ${cust.number || cust.address || val} já possui comanda aberta (#${matched.shortId || matched.id.substring(0, 5)} • ${cust.name || "Cliente"}). Os itens serão somados a ela!`;
+          banner.classList.remove("hidden");
+          const clientInput = document.getElementById("mesa-launcher-client-input");
+          if (clientInput && !clientInput.value.trim() && cust.name) {
+            clientInput.value = cust.name;
+          }
+        } else {
+          banner.classList.add("hidden");
+        }
+      };
+
+      function isMesaProductAllowed(prod) {
+        return !prod || !prod.channels || prod.channels.mesa !== false;
+      }
+
+      function renderMesaLauncherCategories() {
+        const container = document.getElementById("mesa-launcher-categories");
+        if (!container) return;
+
+        const mesaProds = mesaLauncherProducts.filter(isMesaProductAllowed);
+        const validCatIds = new Set(mesaProds.map((p) => p.categoryId));
+
+        let html = `<button type="button" onclick="window.selectMesaLauncherCategory('all')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${mesaLauncherActiveCategoryId === "all" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}">Todos</button>`;
+        mesaLauncherCategories.forEach((cat) => {
+          if (!validCatIds.has(cat.id)) return;
+          const active = mesaLauncherActiveCategoryId === cat.id;
+          html += `<button type="button" onclick="window.selectMesaLauncherCategory('${cat.id}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${active ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}">${cat.name}</button>`;
+        });
+        container.innerHTML = html;
+      }
+
+      window.selectMesaLauncherCategory = function (catId) {
+        mesaLauncherActiveCategoryId = catId;
+        renderMesaLauncherCategories();
+        window.renderMesaLauncherProducts();
+      };
+
+      window.renderMesaLauncherProducts = function () {
+        const container = document.getElementById("mesa-launcher-products");
+        if (!container) return;
+
+        const q = (document.getElementById("mesa-launcher-search")?.value || "").trim().toLowerCase();
+        const filtered = mesaLauncherProducts.filter((p) => {
+          if (!isMesaProductAllowed(p)) return false;
+          if (mesaLauncherActiveCategoryId !== "all" && p.categoryId !== mesaLauncherActiveCategoryId) return false;
+          if (q && !(p.name || "").toLowerCase().includes(q) && !(p.description || "").toLowerCase().includes(q)) return false;
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          container.innerHTML = `<div class="col-span-full text-center py-8 text-xs text-gray-400">Nenhum produto disponível para Mesas encontrado.</div>`;
+          return;
+        }
+
+        container.innerHTML = filtered.map((prod) => {
+          const hasComps = !!(mesaLauncherComplements[prod.id]?.groups?.length);
+          const priceFormatted = Number(prod.price || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+          return `
+            <button
+              type="button"
+              onclick="window.clickMesaLauncherProduct('${prod.id}')"
+              class="flex items-center gap-3 p-2.5 bg-white border border-gray-200 hover:border-indigo-400 hover:bg-indigo-50/30 rounded-xl text-left transition-all cursor-pointer group"
+            >
+              ${prod.image ? `<img src="${prod.image}" class="w-12 h-12 rounded-lg object-cover shrink-0 bg-gray-100" alt="" />` : `<div class="w-12 h-12 rounded-lg bg-indigo-50 text-indigo-500 flex items-center justify-center text-lg shrink-0">🍽️</div>`}
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-bold text-gray-800 truncate group-hover:text-indigo-700">${prod.name}</p>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <span class="text-xs font-extrabold text-emerald-700">${priceFormatted}</span>
+                  ${hasComps ? `<span class="text-[9px] font-bold bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">Opções</span>` : ""}
+                </div>
+              </div>
+              <span class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 font-extrabold flex items-center justify-center text-sm shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">+</span>
+            </button>
+          `;
+        }).join("");
+      };
+
+      window.clickMesaLauncherProduct = function (prodId) {
+        const prod = mesaLauncherProducts.find((p) => p.id === prodId);
+        if (!prod) return;
+
+        const hasComps = !!(mesaLauncherComplements[prod.id]?.groups?.length);
+        if (hasComps) {
+          openMesaCompPicker(prod);
+          return;
+        }
+
+        const existing = mesaLauncherCart.find((i) => i.productId === prod.id && (!i.complements || i.complements.length === 0) && !i.notes);
+        if (existing) {
+          existing.quantity += 1;
+        } else {
+          mesaLauncherCart.push({
+            productId: prod.id,
+            name: prod.name,
+            price: Number(prod.price || 0),
+            totalItemPrice: Number(prod.price || 0),
+            quantity: 1,
+            complements: [],
+            notes: "",
+          });
+        }
+        renderMesaLauncherCart();
+      };
+
+      function openMesaCompPicker(prod) {
+        mesaLauncherCompProduct = prod;
+        mesaLauncherCompQty = 1;
+        mesaLauncherCompSelections = {};
+
+        document.getElementById("mesa-comp-prod-name").textContent = prod.name;
+        document.getElementById("mesa-comp-prod-price").textContent = Number(prod.price || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        document.getElementById("mesa-comp-qty-lbl").textContent = "1";
+        document.getElementById("mesa-comp-notes-input").value = "";
+
+        const compDoc = mesaLauncherComplements[prod.id];
+        const body = document.getElementById("mesa-comp-groups-body");
+        body.innerHTML = "";
+
+        if (compDoc && Array.isArray(compDoc.groups)) {
+          compDoc.groups.forEach((group, gIdx) => {
+            mesaLauncherCompSelections[gIdx] = [];
+            const isReq = !!group.isMandatory;
+            const minSel = group.minSelection || (isReq ? 1 : 0);
+            const maxSel = group.maxSelection || 1;
+
+            const div = document.createElement("div");
+            div.className = "space-y-2";
+            div.innerHTML = `
+              <div>
+                <h5 class="text-xs font-extrabold text-gray-800">${group.name}</h5>
+                <p class="text-[10px] text-gray-400 font-bold">
+                  ${isReq ? `<span class="text-red-500">*Obrigatório</span> • ` : ""}Selecione de ${minSel} até ${maxSel}
+                </p>
+              </div>
+              <div class="space-y-1.5">
+                ${(group.options || []).map((opt, oIdx) => {
+                  const priceTag = opt.price ? `<span class="text-[11px] font-bold text-emerald-700">+ ${Number(opt.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>` : "";
+                  if (maxSel > 1) {
+                    const spanId = `mesa-comp-opt-${gIdx}-${oIdx}`;
+                    return `
+                      <div class="flex items-center justify-between p-2.5 rounded-xl border border-gray-200 bg-gray-50">
+                        <div>
+                          <span class="text-xs font-bold text-gray-800">${opt.name}</span>
+                          <div class="mt-0.5">${priceTag}</div>
+                        </div>
+                        <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5">
+                          <button type="button" onclick="window.changeMesaCompOptQty(${gIdx}, ${oIdx}, -1)" class="w-6 h-6 bg-gray-100 rounded text-xs font-bold cursor-pointer">-</button>
+                          <span id="${spanId}" class="w-5 text-center text-xs font-bold">0</span>
+                          <button type="button" onclick="window.changeMesaCompOptQty(${gIdx}, ${oIdx}, 1)" class="w-6 h-6 bg-slate-900 text-white rounded text-xs font-bold cursor-pointer">+</button>
+                        </div>
+                      </div>
+                    `;
+                  } else {
+                    return `
+                      <label class="flex items-center justify-between p-2.5 rounded-xl border border-gray-200 bg-gray-50 hover:bg-indigo-50 cursor-pointer">
+                        <span class="flex items-center gap-2">
+                          <input type="radio" name="mesa-comp-group-${gIdx}" onchange="window.selectMesaCompRadio(${gIdx}, ${oIdx})" class="w-4 h-4 accent-indigo-600" />
+                          <span class="text-xs font-bold text-gray-800">${opt.name}</span>
+                        </span>
+                        ${priceTag}
+                      </label>
+                    `;
+                  }
+                }).join("")}
+              </div>
+            `;
+            body.appendChild(div);
+          });
+        }
+
+        updateMesaCompTotal();
+        document.getElementById("mesa-launcher-comp-overlay")?.classList.remove("hidden");
+      }
+
+      window.closeMesaCompPicker = function () {
+        mesaLauncherCompProduct = null;
+        document.getElementById("mesa-launcher-comp-overlay")?.classList.add("hidden");
+      };
+
+      window.selectMesaCompRadio = function (gIdx, oIdx) {
+        if (!mesaLauncherCompProduct) return;
+        const opt = mesaLauncherComplements[mesaLauncherCompProduct.id]?.groups?.[gIdx]?.options?.[oIdx];
+        if (!opt) return;
+        mesaLauncherCompSelections[gIdx] = [{ optionName: opt.name, price: Number(opt.price || 0) }];
+        updateMesaCompTotal();
+      };
+
+      window.changeMesaCompOptQty = function (gIdx, oIdx, delta) {
+        if (!mesaLauncherCompProduct) return;
+        const group = mesaLauncherComplements[mesaLauncherCompProduct.id]?.groups?.[gIdx];
+        const opt = group?.options?.[oIdx];
+        if (!group || !opt) return;
+
+        const maxSel = group.maxSelection || 1;
+        if (!mesaLauncherCompSelections[gIdx]) mesaLauncherCompSelections[gIdx] = [];
+        const arr = mesaLauncherCompSelections[gIdx];
+
+        if (delta > 0) {
+          if (arr.length >= maxSel) return;
+          arr.push({ optionName: opt.name, price: Number(opt.price || 0) });
+        } else {
+          const idx = arr.findIndex((i) => i.optionName === opt.name);
+          if (idx > -1) arr.splice(idx, 1);
+        }
+
+        const count = arr.filter((i) => i.optionName === opt.name).length;
+        const spanEl = document.getElementById(`mesa-comp-opt-${gIdx}-${oIdx}`);
+        if (spanEl) spanEl.textContent = count;
+        updateMesaCompTotal();
+      };
+
+      window.changeMesaCompQty = function (delta) {
+        mesaLauncherCompQty = Math.max(1, mesaLauncherCompQty + delta);
+        document.getElementById("mesa-comp-qty-lbl").textContent = mesaLauncherCompQty;
+        updateMesaCompTotal();
+      };
+
+      function updateMesaCompTotal() {
+        if (!mesaLauncherCompProduct) return;
+        let unit = Number(mesaLauncherCompProduct.price || 0);
+        Object.values(mesaLauncherCompSelections).forEach((arr) => {
+          arr.forEach((opt) => { unit += Number(opt.price || 0); });
+        });
+        const total = unit * mesaLauncherCompQty;
+        document.getElementById("mesa-comp-total-lbl").textContent = total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+      }
+
+      window.confirmMesaCompPicker = function () {
+        if (!mesaLauncherCompProduct) return;
+        const compDoc = mesaLauncherComplements[mesaLauncherCompProduct.id];
+        const comps = [];
+
+        if (compDoc && Array.isArray(compDoc.groups)) {
+          for (let gIdx = 0; gIdx < compDoc.groups.length; gIdx++) {
+            const g = compDoc.groups[gIdx];
+            const chosen = mesaLauncherCompSelections[gIdx] || [];
+            if (g.isMandatory && chosen.length < (g.minSelection || 1)) {
+              alert(`Por favor, selecione as opções obrigatórias em: ${g.name}`);
+              return;
+            }
+            chosen.forEach((c) => {
+              comps.push({
+                groupName: g.name,
+                optionName: c.optionName,
+                price: Number(c.price || 0),
+              });
+            });
+          }
+        }
+
+        let unit = Number(mesaLauncherCompProduct.price || 0);
+        comps.forEach((c) => { unit += Number(c.price || 0); });
+        const notes = document.getElementById("mesa-comp-notes-input")?.value.trim() || "";
+
+        mesaLauncherCart.push({
+          productId: mesaLauncherCompProduct.id,
+          name: mesaLauncherCompProduct.name,
+          price: unit,
+          totalItemPrice: unit,
+          quantity: mesaLauncherCompQty,
+          complements: comps,
+          notes,
+        });
+
+        window.closeMesaCompPicker();
+        renderMesaLauncherCart();
+      };
+
+      window.changeMesaLauncherCartQty = function (idx, delta) {
+        if (!mesaLauncherCart[idx]) return;
+        const next = mesaLauncherCart[idx].quantity + delta;
+        if (next <= 0) {
+          mesaLauncherCart.splice(idx, 1);
+        } else {
+          mesaLauncherCart[idx].quantity = next;
+        }
+        renderMesaLauncherCart();
+      };
+
+      function renderMesaLauncherCart() {
+        const container = document.getElementById("mesa-launcher-cart");
+        const countEl = document.getElementById("mesa-launcher-cart-count");
+        const subEl = document.getElementById("mesa-launcher-subtotal");
+        const feeRow = document.getElementById("mesa-launcher-fee-preview-row");
+        const feeLbl = document.getElementById("mesa-launcher-fee-preview-lbl");
+        const feeVal = document.getElementById("mesa-launcher-fee-preview-val");
+        if (!container) return;
+
+        let totalQty = 0;
+        let subtotal = 0;
+        mesaLauncherCart.forEach((it) => {
+          totalQty += Number(it.quantity || 1);
+          subtotal += Number(it.totalItemPrice || it.price || 0) * Number(it.quantity || 1);
+        });
+
+        if (countEl) countEl.textContent = `${totalQty} ${totalQty === 1 ? "item" : "itens"}`;
+        if (subEl) subEl.textContent = subtotal.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+        const cfg = getMesaServiceFeeSettings();
+        if (feeRow && cfg.enabled && subtotal > 0) {
+          const fee = Math.round(subtotal * (cfg.percent / 100) * 100) / 100;
+          feeRow.classList.remove("hidden");
+          if (feeLbl) feeLbl.textContent = `Taxa de Serviço (${cfg.percent}% estimada):`;
+          if (feeVal) feeVal.textContent = `+ ${fee.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`;
+        } else if (feeRow) {
+          feeRow.classList.add("hidden");
+        }
+
+        if (mesaLauncherCart.length === 0) {
+          container.innerHTML = `<div class="text-center py-8 text-xs text-gray-400">Clique nos produtos ao lado para lançar na mesa.</div>`;
+          return;
+        }
+
+        container.innerHTML = mesaLauncherCart.map((it, idx) => {
+          const lineTotal = (Number(it.totalItemPrice || it.price || 0) * Number(it.quantity || 1)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+          const compsTxt = (it.complements || []).map((c) => c.optionName || c.name).filter(Boolean).join(", ");
+          return `
+            <div class="p-2.5 bg-gray-50 border border-gray-200 rounded-xl flex items-start justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <p class="text-xs font-bold text-gray-800 truncate">${it.name}</p>
+                ${compsTxt ? `<p class="text-[10px] text-gray-500 truncate">+ ${compsTxt}</p>` : ""}
+                ${it.notes ? `<p class="text-[10px] text-orange-600 italic truncate">Obs: ${it.notes}</p>` : ""}
+                <p class="text-[11px] font-extrabold text-emerald-700 mt-0.5">${lineTotal}</p>
+              </div>
+              <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-0.5 shrink-0">
+                <button type="button" onclick="window.changeMesaLauncherCartQty(${idx}, -1)" class="w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded text-xs font-bold cursor-pointer">-</button>
+                <span class="w-5 text-center text-xs font-bold">${it.quantity}</span>
+                <button type="button" onclick="window.changeMesaLauncherCartQty(${idx}, 1)" class="w-6 h-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-bold cursor-pointer">+</button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      window.saveMesaLauncherItems = async function (shouldPrint) {
+        if (mesaLauncherCart.length === 0) {
+          alert("Adicione pelo menos 1 produto para lançar na mesa.");
+          return;
+        }
+
+        const rawMesa = document.getElementById("mesa-launcher-table-input")?.value.trim() || "";
+        if (!rawMesa) {
+          alert("Informe o número ou nome da Mesa.");
+          document.getElementById("mesa-launcher-table-input")?.focus();
+          return;
+        }
+        const formattedMesa = /^\d+$/.test(rawMesa)
+          ? `Mesa ${rawMesa.padStart(2, "0")}`
+          : (rawMesa.toLowerCase().startsWith("mesa") ? rawMesa : `Mesa ${rawMesa}`);
+
+        const clientName = document.getElementById("mesa-launcher-client-input")?.value.trim() || "Cliente";
+        const paymentMethod = document.getElementById("mesa-launcher-payment-select")?.value || "Dinheiro";
+
+        const btnSave = document.getElementById("btn-mesa-launcher-save");
+        const btnPrint = document.getElementById("btn-mesa-launcher-save-print");
+        if (btnSave) btnSave.disabled = true;
+        if (btnPrint) btnPrint.disabled = true;
+
+        try {
+          let targetOrder = mesaLauncherTargetOrderId
+            ? globalOrdersList.find((o) => o.id === mesaLauncherTargetOrderId)
+            : findActiveMesaOrderByLabel(formattedMesa);
+
+          const newItems = mesaLauncherCart.map((it) => ({
+            productId: it.productId,
+            name: it.name,
+            price: Number(it.totalItemPrice || it.price || 0),
+            totalItemPrice: Number(it.totalItemPrice || it.price || 0),
+            quantity: Number(it.quantity || 1),
+            complements: it.complements || [],
+            notes: it.notes || "",
+          }));
+
+          const newCartSubtotal = newItems.reduce((acc, it) => acc + (Number(it.totalItemPrice) * Number(it.quantity)), 0);
+
+          if (!window._merchantActionOrderTimestamps) {
+            window._merchantActionOrderTimestamps = {};
+          }
+
+          let savedOrderForPrint = null;
+          let isExistingUpdate = false;
+
+          if (targetOrder) {
+            isExistingUpdate = true;
+            window._merchantActionOrderTimestamps[targetOrder.id] = Date.now();
+
+            const existingItems = targetOrder.items || [];
+            const mergedItems = [...existingItems, ...newItems];
+            const prevSubtotal = targetOrder.subtotal !== undefined
+              ? Number(targetOrder.subtotal)
+              : existingItems.reduce((acc, it) => acc + ((it.totalItemPrice !== undefined ? Number(it.totalItemPrice) : Number(it.price || 0)) * Number(it.quantity || 1)), 0);
+
+            const fin = computeMesaOrderFinancials(targetOrder, prevSubtotal + newCartSubtotal);
+            const nowIso = new Date().toISOString();
+
+            const updatePayload = {
+              items: mergedItems,
+              lastAddedItems: newItems,
+              subtotal: fin.subtotal,
+              serviceFee: fin.serviceFee,
+              serviceFeePercent: fin.serviceFeePercent,
+              total: fin.total,
+              updatedAt: nowIso,
+            };
+
+            await updateDoc(doc(db, COLLECTIONS.orders, targetOrder.id), updatePayload);
+
+            Object.assign(targetOrder, updatePayload);
+            savedOrderForPrint = { ...targetOrder };
+          } else {
+            const orderId = String(Math.floor(100000 + Math.random() * 900000));
+            window._merchantActionOrderTimestamps[orderId] = Date.now();
+
+            const dummyOrder = { customer: { type: "Mesa" }, deliveryFee: 0, desconto: 0 };
+            const fin = computeMesaOrderFinancials(dummyOrder, newCartSubtotal);
+            const nowIso = new Date().toISOString();
+
+            const newOrderDoc = {
+              id: orderId,
+              shortId: orderId.substring(0, 5),
+              createdAt: nowIso,
+              client: {
+                name: clientName,
+                phone: "Sem telefone",
+                address: formattedMesa,
+                number: formattedMesa,
+                bairro: "Salão",
+                type: "Mesa",
+                deviceSessionId: null,
+              },
+              customer: {
+                name: clientName,
+                phone: "Sem telefone",
+                address: formattedMesa,
+                number: formattedMesa,
+                bairro: "Salão",
+                type: "Mesa",
+                deviceSessionId: null,
+              },
+              deviceSessionId: null,
+              paymentMethod,
+              isPaid: false,
+              paymentApproved: false,
+              paymentStatus: "Pendente",
+              troco: "",
+              notes: "",
+              items: newItems,
+              lastAddedItems: newItems,
+              subtotal: fin.subtotal,
+              deliveryFee: 0,
+              serviceFee: fin.serviceFee,
+              serviceFeePercent: fin.serviceFeePercent,
+              desconto: 0,
+              total: fin.total,
+              status: "Pendente",
+              origin: "Painel do Lojista - Mesa",
+              storeId: window.currentStoreId,
+            };
+
+            await setDoc(doc(db, COLLECTIONS.orders, orderId), newOrderDoc);
+            savedOrderForPrint = newOrderDoc;
+          }
+
+          // Increment product order counts without extra reads
+          for (const item of newItems) {
+            try {
+              await updateDoc(doc(db, COLLECTIONS.products, item.productId), {
+                orderCount: increment(item.quantity),
+              });
+            } catch (e) {}
+          }
+
+          const reopenDetailsId = mesaLauncherTargetOrderId;
+          window.closeMesaLauncherModal();
+
+          if (reopenDetailsId) {
+            showOrderDetailsDrawer(reopenDetailsId);
+          }
+
+          if (shouldPrint && savedOrderForPrint && typeof window.triggerThermalComandaPrint === "function") {
+            window.triggerThermalComandaPrint(savedOrderForPrint, isExistingUpdate);
+          }
+        } catch (err) {
+          console.error("Erro ao lançar itens na mesa:", err);
+          alert("Erro ao salvar na mesa: " + err.message);
+        } finally {
+          if (btnSave) btnSave.disabled = false;
+          if (btnPrint) btnPrint.disabled = false;
         }
       };
 
@@ -3843,19 +5080,30 @@ window.openMesaQrCodeModal = function() {
           const itemUnitPrice = item.totalItemPrice !== undefined ? item.totalItemPrice : (item.price || 0);
           const itemTotalFormatted = (itemUnitPrice * (item.quantity || 1)).toFixed(2).replace(".", ",");
 
-          // Se for comanda de Mesa e o pedido não estiver finalizado/cancelado, permite exclusão do item
-          const canDeleteMesaItem = isMesa && order.status !== "Entregue" && order.status !== "Cancelado";
+          // Se for comanda de Mesa e o pedido não estiver finalizado/cancelado, permite editar qtd e excluir item
+          const canEditMesaItem = isMesa && order.status !== "Entregue" && order.status !== "Cancelado";
 
           row.innerHTML = `
-          <div class="flex-grow">
+          <div class="flex-grow min-w-0">
             <div class="font-bold text-gray-700 capitalize">${item.quantity}x ${item.name}</div>
             ${compText}
             ${notesText}
           </div>
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${
+              canEditMesaItem
+                ? `
+                  <div class="inline-flex items-center bg-gray-100 border border-gray-200 rounded-lg p-0.5 mr-1">
+                    <button type="button" onclick="window.updateMesaItemQty('${order.id}', ${itemIdx}, -1)" class="w-6 h-6 rounded hover:bg-gray-200 text-gray-700 font-extrabold text-xs cursor-pointer" title="Diminuir quantidade">-</button>
+                    <span class="px-1.5 text-[11px] font-bold text-gray-800">${item.quantity || 1}</span>
+                    <button type="button" onclick="window.updateMesaItemQty('${order.id}', ${itemIdx}, 1)" class="w-6 h-6 rounded hover:bg-indigo-600 hover:text-white text-gray-700 font-extrabold text-xs cursor-pointer" title="Aumentar quantidade">+</button>
+                  </div>
+                `
+                : ''
+            }
             <span class="font-semibold text-gray-700">R$ ${itemTotalFormatted}</span>
             ${
-              canDeleteMesaItem
+              canEditMesaItem
                 ? `<button type="button" onclick="window.removeMesaOrderItem('${order.id}', ${itemIdx})" class="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors cursor-pointer text-xs font-bold" title="Excluir este item da mesa">🗑️</button>`
                 : ''
             }
@@ -3866,16 +5114,39 @@ window.openMesaQrCodeModal = function() {
 
         // Populate values receipt summaries
         (document.getElementById("modal-subtotal") || {}).textContent =
-          `R$ ${order.subtotal.toFixed(2).replace(".", ",")}`;
+          `R$ ${Number(order.subtotal || 0).toFixed(2).replace(".", ",")}`;
         (document.getElementById("modal-desconto") || {}).textContent =
-          `- R$ ${(order.desconto || 0).toFixed(2).replace(".", ",")}`;
-        (document.getElementById("modal-taxa") || {}).textContent =
-          `R$ ${order.deliveryFee.toFixed(2).replace(".", ",")}`;
+          `- R$ ${Number(order.desconto || 0).toFixed(2).replace(".", ",")}`;
+
+        const deliveryFeeRow = document.getElementById("modal-delivery-fee-row");
+        const serviceFeeRow = document.getElementById("modal-service-fee-row");
+        const serviceFeeVal = Number(order.serviceFee || 0);
+        const serviceFeePct = Number(order.serviceFeePercent || getMesaServiceFeeSettings().percent || 10);
+
+        if (isMesa) {
+          if (deliveryFeeRow) deliveryFeeRow.classList.add("hidden");
+          if (serviceFeeRow) {
+            if (serviceFeeVal > 0) {
+              serviceFeeRow.classList.remove("hidden");
+              (document.getElementById("modal-service-fee-lbl") || {}).textContent = `Taxa de Serviço (${serviceFeePct}%):`;
+              (document.getElementById("modal-service-fee") || {}).textContent = `R$ ${serviceFeeVal.toFixed(2).replace(".", ",")}`;
+            } else {
+              serviceFeeRow.classList.add("hidden");
+            }
+          }
+        } else {
+          if (deliveryFeeRow) deliveryFeeRow.classList.remove("hidden");
+          if (serviceFeeRow) serviceFeeRow.classList.add("hidden");
+          (document.getElementById("modal-taxa") || {}).textContent =
+            `R$ ${Number(order.deliveryFee || 0).toFixed(2).replace(".", ",")}`;
+        }
+
         (document.getElementById("modal-total") || {}).textContent =
-          `R$ ${order.total.toFixed(2).replace(".", ",")}`;
+          `R$ ${Number(order.total || 0).toFixed(2).replace(".", ",")}`;
 
         // Configured event listeners with actions trigger buttons on details popup
         const btnPre = document.getElementById("btn-action-preparar");
+        const btnAddItems = document.getElementById("btn-action-add-items");
         const btnDes = document.getElementById("btn-action-despachar");
         const btnCan = document.getElementById("btn-action-cancelar");
 
@@ -3884,10 +5155,16 @@ window.openMesaQrCodeModal = function() {
           toggleDetailsModal(false);
         };
 
+        if (btnAddItems) {
+          btnAddItems.onclick = () => {
+            window.openMesaLauncherModal(order.id);
+          };
+        }
+
         if (isMesa) {
           btnDes.innerHTML = "💵 Receber Mesa";
           btnDes.className =
-            "flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs transition-colors cursor-pointer shadow-xs";
+            "flex-1 min-w-[115px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs transition-colors cursor-pointer shadow-xs";
           btnDes.onclick = () => {
             receberMesaOrder(order.id);
           };
@@ -3895,7 +5172,7 @@ window.openMesaQrCodeModal = function() {
           if (order.status === "Saiu para entrega" && isPickup) {
             btnDes.innerHTML = "✅ Entregue";
             btnDes.className =
-              "flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs transition-colors cursor-pointer shadow-xs";
+              "flex-1 min-w-[115px] bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs transition-colors cursor-pointer shadow-xs";
             btnDes.onclick = () => {
               changeOrderStatus(order.id, "Entregue");
               toggleDetailsModal(false);
@@ -3903,7 +5180,7 @@ window.openMesaQrCodeModal = function() {
           } else {
             btnDes.innerHTML = isPickup ? "🛍️ Pronto p/ Retirada" : "🏍️ Despachar Pedido";
             btnDes.className =
-              "flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 rounded-lg text-xs transition-colors cursor-pointer";
+              "flex-1 min-w-[115px] bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-3 rounded-lg text-xs transition-colors cursor-pointer";
             btnDes.onclick = () => {
               changeOrderStatus(order.id, "Saiu para entrega");
               toggleDetailsModal(false);
@@ -4007,20 +5284,30 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
 
         // Hide/Show action buttons based on status
         btnPre.classList.add("hidden");
+        if (btnAddItems) btnAddItems.classList.add("hidden");
         btnDes.classList.add("hidden");
         btnCan.classList.add("hidden");
 
-        if (order.status === "Pendente") {
-          btnPre.classList.remove("hidden");
-          btnCan.classList.remove("hidden");
-        } else if (order.status === "Preparando") {
-          btnDes.classList.remove("hidden");
-          btnCan.classList.remove("hidden");
-        } else if (order.status === "Saiu para entrega") {
-          if (isMesa || isPickup) {
+        if (isMesa) {
+          if (order.status !== "Entregue" && order.status !== "Cancelado") {
+            if (order.status === "Pendente") btnPre.classList.remove("hidden");
+            if (btnAddItems) btnAddItems.classList.remove("hidden");
             btnDes.classList.remove("hidden");
+            btnCan.classList.remove("hidden");
           }
-          btnCan.classList.remove("hidden");
+        } else {
+          if (order.status === "Pendente") {
+            btnPre.classList.remove("hidden");
+            btnCan.classList.remove("hidden");
+          } else if (order.status === "Preparando") {
+            btnDes.classList.remove("hidden");
+            btnCan.classList.remove("hidden");
+          } else if (order.status === "Saiu para entrega") {
+            if (isPickup) {
+              btnDes.classList.remove("hidden");
+            }
+            btnCan.classList.remove("hidden");
+          }
         }
 
         toggleDetailsModal(true);
@@ -4518,6 +5805,8 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
         }
 
         const deliveryFee = order.deliveryFee || 0;
+        const serviceFee = Number(order.serviceFee || 0);
+        const serviceFeePct = Number(order.serviceFeePercent || 10);
         const subtotal = order.subtotal || 0;
         const discount = order.desconto || 0;
         const total = order.total || 0;
@@ -4649,7 +5938,12 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
           detailsText += makeDivider("-");
           
           detailsText += formatLine(printOnlyNew ? "Subtotal Acumulado:" : "Valor total do pedido:", `R$ ${subtotal.toFixed(2).replace(".", ",")}`);
-          detailsText += formatLine("Taxa de entrega:", `R$ ${deliveryFee.toFixed(2).replace(".", ",")}`);
+          if (!isMesa || deliveryFee > 0) {
+            detailsText += formatLine("Taxa de entrega:", `R$ ${deliveryFee.toFixed(2).replace(".", ",")}`);
+          }
+          if (isMesa && serviceFee > 0) {
+            detailsText += formatLine(`Taxa de servico (${serviceFeePct}%):`, `R$ ${serviceFee.toFixed(2).replace(".", ",")}`);
+          }
           if (discount > 0) {
             detailsText += formatLine("Desconto / Incentivos:", `-R$ ${discount.toFixed(2).replace(".", ",")}`);
           }
@@ -4876,10 +6170,16 @@ Deseja cancelar o pedido e fazer o reembolso manualmente?`,
             <span>${printOnlyNew ? "Subtotal Acumulado:" : "Valor total do pedido:"}</span>
             <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${subtotal.toFixed(2).replace(".", ",")}</span>
           </div>
+          ${(!isMesa || deliveryFee > 0) ? `
           <div style="display: flex; justify-content: space-between; margin-top: 3px;">
             <span>Taxa de entrega:</span>
             <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${deliveryFee.toFixed(2).replace(".", ",")}</span>
-          </div>
+          </div>` : ""}
+          ${(isMesa && serviceFee > 0) ? `
+          <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+            <span>Taxa de servico (${serviceFeePct}%):</span>
+            <span style="white-space: nowrap; margin-left: 8px; flex-shrink: 0;">R$ ${serviceFee.toFixed(2).replace(".", ",")}</span>
+          </div>` : ""}
           ${discountHtml}
           <div style="display: flex; justify-content: space-between; font-weight: bold; margin-top: 3px;">
             <span>${printOnlyNew ? "Total Geral da Mesa:" : "Valor final do pedido:"}</span>
