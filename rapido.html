@@ -126,15 +126,8 @@
       </div>
 
       <!-- Footer Touch Instructions -->
-      <div class="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-3 text-center text-slate-400 text-xs font-bold tracking-wider">
-        <span>👈 TOQUE NA OPÇÃO DESEJADA PARA COMEÇAR</span>
-        <button
-          type="button"
-          onclick="openAttendantPortalEntry()"
-          class="px-4 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 text-[11px] font-extrabold transition-all cursor-pointer active:scale-95"
-        >
-          🧑‍🍳 Portal do Atendente (Mesas)
-        </button>
+      <div class="relative z-10 flex items-center justify-center text-center text-slate-400 text-xs font-bold tracking-wider">
+        <span>👆 TOQUE NO BOTÃO ACIMA PARA COMEÇAR</span>
       </div>
     </div>
 
@@ -356,7 +349,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-extrabold uppercase text-amber-400 mb-1.5">WhatsApp / Celular (Opcional):</label>
+            <label id="cust-info-phone-lbl" class="block text-xs font-extrabold uppercase text-amber-400 mb-1.5">WhatsApp / Celular (Opcional):</label>
             <input
               type="tel"
               id="customer-input-phone"
@@ -365,6 +358,8 @@
             />
           </div>
         </div>
+
+        <div id="cust-info-error" class="hidden bg-red-500/15 border border-red-400/50 text-red-200 text-xs font-bold p-3.5 rounded-2xl leading-relaxed"></div>
 
         <div class="space-y-3 pt-2">
           <button
@@ -1637,12 +1632,19 @@
         document.getElementById("step-customer-info").classList.remove("hidden");
 
         const mesaBadge = document.getElementById("cust-info-mesa-badge");
+        const phoneLbl = document.getElementById("cust-info-phone-lbl");
+        const errBox = document.getElementById("cust-info-error");
+        if (errBox) {
+          errBox.textContent = "";
+          errBox.classList.add("hidden");
+        }
 
         if (selectedMethod === "Mesa" && selectedMesaNum) {
           if (mesaBadge) {
             mesaBadge.textContent = `📍 ${selectedMesaNum}`;
             mesaBadge.classList.remove("hidden");
           }
+          if (phoneLbl) phoneLbl.textContent = "WhatsApp / Celular:*";
 
           const savedName = localStorage.getItem(`popfood_mesa_name_${currentStoreId}_${selectedMesaNum}`);
           const savedPhone = localStorage.getItem(`popfood_mesa_phone_${currentStoreId}_${selectedMesaNum}`);
@@ -1652,6 +1654,7 @@
           if (savedPhone && phoneIn) phoneIn.value = savedPhone;
         } else {
           if (mesaBadge) mesaBadge.classList.add("hidden");
+          if (phoneLbl) phoneLbl.textContent = "WhatsApp / Celular (Opcional):";
         }
       }
 
@@ -1661,12 +1664,71 @@
         document.getElementById("step-welcome").classList.remove("hidden");
       };
 
+      function normalizePhoneDigits(str) {
+        let d = String(str || "").replace(/\D/g, "");
+        if (d.startsWith("55") && d.length >= 12) d = d.slice(2);
+        d = d.replace(/^0+/, "");
+        return d;
+      }
+
+      function showCustomerInfoError(msg) {
+        const errBox = document.getElementById("cust-info-error");
+        if (errBox) {
+          errBox.textContent = msg;
+          errBox.classList.remove("hidden");
+        } else {
+          alert(msg);
+        }
+      }
+
       // STEP 2: CUSTOMER INFO -> GO TO MENU
       window.proceedToTotemMenu = async function() {
-        const nameVal = document.getElementById("customer-input-name")?.value.trim();
-        const phoneVal = document.getElementById("customer-input-phone")?.value.trim() || "";
+        const nameIn = document.getElementById("customer-input-name");
+        const phoneIn = document.getElementById("customer-input-phone");
+        const errBox = document.getElementById("cust-info-error");
+        if (errBox) {
+          errBox.textContent = "";
+          errBox.classList.add("hidden");
+        }
 
-        customerName = nameVal || (selectedMethod === "Mesa" ? "Cliente Mesa" : "Cliente Balcão");
+        const nameVal = (nameIn?.value || "").trim();
+        const phoneVal = (phoneIn?.value || "").trim();
+        const typedDigits = normalizePhoneDigits(phoneVal);
+
+        if (!nameVal || nameVal.length < 2) {
+          showCustomerInfoError("⚠️ Por favor, informe seu Nome ou Apelido para continuar.");
+          nameIn?.focus();
+          return;
+        }
+
+        if (selectedMethod === "Mesa" && !isAttendantMode) {
+          if (typedDigits.length < 8) {
+            showCustomerInfoError("⚠️ Para pedir na mesa via QR Code, informe um WhatsApp / Celular válido (com DDD).");
+            phoneIn?.focus();
+            return;
+          }
+
+          // Garante leitura atualizada da comanda aberta da mesa antes de liberar
+          const tabStatus = await checkAndLoadOpenTableTab();
+          if (tabStatus.exists && !tabStatus.isMyDevice) {
+            document.getElementById("step-customer-info").classList.add("hidden");
+            document.getElementById("blocked-mesa-badge").textContent = selectedMesaNum.toUpperCase();
+            document.getElementById("step-mesa-blocked").classList.remove("hidden");
+            return;
+          }
+
+          if (activeTableOrderDoc) {
+            const existingRawPhone = activeTableOrderDoc.client?.phone || activeTableOrderDoc.customer?.phone || "";
+            const existingDigits = normalizePhoneDigits(existingRawPhone);
+            if (existingDigits.length >= 8 && typedDigits !== existingDigits) {
+              showCustomerInfoError("⚠️ Esta mesa já possui uma comanda aberta! Informe o mesmo WhatsApp / Celular cadastrado na abertura da mesa ou solicite ajuda ao atendente.");
+              phoneIn?.focus();
+              return;
+            }
+          }
+        }
+
+        customerName = nameVal;
         customerPhone = phoneVal;
 
         // Save session in localStorage so customer remains logged in on this mesa
@@ -2300,8 +2362,9 @@
               ? (activeTableOrderDoc.deviceSessionId || null)
               : myDeviceSessionId;
 
-            const orderRef = doc(db, COLLECTIONS.orders, finalOrderId);
-            await updateDoc(orderRef, {
+            const existingClient = activeTableOrderDoc.client || activeTableOrderDoc.customer || {};
+            const existingPhoneClean = String(existingClient.phone || "").trim();
+            const updateFields = {
               items: mergedItems,
               lastAddedItems: newItems, // Contém apenas novos itens adicionados para impressão na cozinha
               subtotal: totals.subtotal,
@@ -2313,7 +2376,17 @@
               status: "Pendente", // Alerta cozinha para novos itens
               updatedAt: new Date().toISOString(),
               origin: isAttendantMode ? "Portal do Atendente - Adição de Mesa" : "Totem Touch - Adição de Mesa"
-            });
+            };
+
+            // Se a mesa havia sido aberta pelo atendente sem telefone e agora o cliente pelo QR Code lançou itens, vincula os dados do cliente
+            if (!isAttendantMode && (!existingPhoneClean || existingPhoneClean === "Sem telefone") && customerPhone) {
+              updateFields["client.phone"] = customerPhone;
+              updateFields["client.name"] = customerName;
+              updateFields["client.deviceSessionId"] = preservedDeviceSessionId;
+            }
+
+            const orderRef = doc(db, COLLECTIONS.orders, finalOrderId);
+            await updateDoc(orderRef, updateFields);
 
             if (!isAttendantMode) {
               const mKey = normalizeMesaKey(selectedMesaNum);
