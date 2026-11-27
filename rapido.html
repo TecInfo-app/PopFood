@@ -872,6 +872,7 @@
       let activeCategory = "all";
       let selectedPayment = "Pix";
       let activeTableOrderDoc = null; // Holds existing open order for this table if any
+      let selectedMesaOrderId = null; // Explicit order ID selected from Attendant Portal
       let isAttendantMode = false;
       let attendantMapFilter = "all";
       let attendantOrdersUnsubs = [];
@@ -1081,6 +1082,7 @@
       window.switchBlockedToBalcao = function() {
         selectedMethod = "Retirada";
         selectedMesaNum = "Retirada (Balcão)";
+        selectedMesaOrderId = null;
         document.getElementById("step-mesa-blocked").classList.add("hidden");
         document.getElementById("step-welcome").classList.add("hidden");
         goToStepCustomerInfo();
@@ -1096,36 +1098,66 @@
         }
 
         try {
-          const ordersRef = collection(db, COLLECTIONS.orders);
-          const q = query(
-            ordersRef, 
-            where("storeId", "==", currentStoreId),
-            where("client.type", "==", "Mesa")
-          );
-
-          const qSnap = await getDocs(q);
           let foundDoc = null;
+          const targetKey = normalizeMesaKey(selectedMesaNum);
 
-          qSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            const orderMesa = data.client?.number || data.client?.address || data.customer?.number || data.customer?.address || "";
-            // Status finalizados ou cancelados liberam a mesa
-            const isClosed = data.status === "Cancelado" || data.status === "Entregue" || data.status === "Finalizado" || data.isPaid === true;
+          // 1. If Attendant Portal picked a specific open order ID, fetch that doc directly first
+          if (isAttendantMode && selectedMesaOrderId) {
+            try {
+              const directSnap = await getDoc(doc(db, COLLECTIONS.orders, selectedMesaOrderId));
+              if (directSnap.exists()) {
+                const d = directSnap.data();
+                const isClosed = d.status === "Cancelado" || d.status === "Entregue" || d.status === "Finalizado" || d.isPaid === true;
+                if (!isClosed) {
+                  foundDoc = { id: directSnap.id, ...d };
+                }
+              }
+            } catch (e) {}
+          }
 
-            const cleanTarget = selectedMesaNum.toLowerCase().replace(/mesa\s*/i, "").trim();
-            const cleanOrder = orderMesa.toLowerCase().replace(/mesa\s*/i, "").trim();
+          // 2. Otherwise search only active orders (matches both client.type and customer.type, and normalizes Mesa 1 == Mesa 01)
+          if (!foundDoc) {
+            const ordersRef = collection(db, COLLECTIONS.orders);
+            const activeStatuses = ["Pendente", "Preparando", "Saiu para entrega"];
+            const snaps = await Promise.all(
+              activeStatuses.map(st =>
+                getDocs(query(ordersRef, where("storeId", "==", currentStoreId), where("status", "==", st)))
+              )
+            );
 
-            if (!isClosed && (orderMesa.toLowerCase() === selectedMesaNum.toLowerCase() || (cleanTarget && cleanTarget === cleanOrder))) {
-              foundDoc = { id: docSnap.id, ...data };
-            }
-          });
+            snaps.forEach(qSnap => {
+              qSnap.forEach(docSnap => {
+                if (foundDoc) return;
+                const data = docSnap.data();
+                const cust = data.customer || data.client || {};
+                const isMesaOrder = cust.type === "Mesa" ||
+                  (cust.address && cust.address.toLowerCase().includes("mesa")) ||
+                  (data.origin && data.origin.includes("Mesa"));
+                if (!isMesaOrder) return;
+
+                const isClosed = data.status === "Cancelado" || data.status === "Entregue" || data.status === "Finalizado" || data.isPaid === true;
+                if (isClosed) return;
+
+                const orderMesa = cust.number || cust.address || "";
+                const orderKey = normalizeMesaKey(orderMesa);
+
+                if (
+                  orderMesa.toLowerCase().trim() === selectedMesaNum.toLowerCase().trim() ||
+                  (targetKey && orderKey && targetKey === orderKey)
+                ) {
+                  foundDoc = { id: docSnap.id, ...data };
+                }
+              });
+            });
+          }
 
           activeTableOrderDoc = foundDoc;
 
           if (activeTableOrderDoc) {
             const myDevId = getDeviceSessionId();
             const docDevId = activeTableOrderDoc.deviceSessionId || activeTableOrderDoc.client?.deviceSessionId;
-            const savedMesaId = localStorage.getItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`);
+            const savedMesaId = localStorage.getItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`) ||
+                                (targetKey ? localStorage.getItem(`popfood_mesa_order_id_${currentStoreId}_key_${targetKey}`) : null);
 
             // Se a mesa está aberta em outro aparelho e não é o mesmo dispositivo/sessão
             const isMyDevice = (!docDevId && (!savedMesaId || savedMesaId === activeTableOrderDoc.id)) || 
@@ -1205,6 +1237,7 @@
 
       window.exitAttendantPortalToWelcome = function() {
         isAttendantMode = false;
+        selectedMesaOrderId = null;
         stopAttendantMesasListeners();
         document.getElementById("step-attendant-pin").classList.add("hidden");
         document.getElementById("step-attendant-portal").classList.add("hidden");
@@ -1298,32 +1331,32 @@
         });
 
         const cardsData = [];
-        const seenKeys = new Set();
+        const shownOrderIds = new Set();
 
         for (let i = 1; i <= configuredQty; i++) {
           const label = `Mesa ${i < 10 ? "0" + i : i}`;
           const key = normalizeMesaKey(String(i));
-          seenKeys.add(key);
+          const matchedOrder = mesaMap.get(key) || null;
+          if (matchedOrder) shownOrderIds.add(matchedOrder.id);
           cardsData.push({
             label,
             displayTitle: label,
-            order: mesaMap.get(key) || null
+            order: matchedOrder
           });
         }
 
-        // Add any extra active tables outside 1..configuredQty
+        // Add any extra active tables outside 1..configuredQty OR any secondary active order on same table
         activeMesaOrdersList.forEach(order => {
+          if (shownOrderIds.has(order.id)) return;
+          shownOrderIds.add(order.id);
           const cust = order.customer || order.client || {};
           const rawLabel = cust.number || cust.address || "Mesa";
-          const key = normalizeMesaKey(rawLabel) || rawLabel.toLowerCase();
-          if (!seenKeys.has(key)) {
-            seenKeys.add(key);
-            cardsData.push({
-              label: rawLabel.toLowerCase().startsWith("mesa") ? rawLabel : `Mesa ${rawLabel}`,
-              displayTitle: rawLabel.toLowerCase().startsWith("mesa") ? rawLabel : `Mesa ${rawLabel}`,
-              order
-            });
-          }
+          const formatted = rawLabel.toLowerCase().startsWith("mesa") ? rawLabel : `Mesa ${rawLabel}`;
+          cardsData.push({
+            label: formatted,
+            displayTitle: formatted,
+            order
+          });
         });
 
         const occupiedCount = cardsData.filter(c => !!c.order).length;
@@ -1373,7 +1406,7 @@
                 <button type="button" onclick="attendantSelectOpenTable('${item.label.replace(/'/g, "\\'")}', '${order.id}')" class="w-full py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl cursor-pointer transition-all active:scale-95">
                   ➕ Lançar Itens
                 </button>
-                <button type="button" onclick="attendantPreviewTableTab('${item.label.replace(/'/g, "\\'")}')" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl cursor-pointer transition-all">
+                <button type="button" onclick="attendantPreviewTableTab('${item.label.replace(/'/g, "\\'")}', '${order.id}')" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl cursor-pointer transition-all">
                   🧾 Ver Comanda
                 </button>
               </div>
@@ -1437,6 +1470,7 @@
 
         selectedMethod = "Mesa";
         selectedMesaNum = pendingAttendantTableLabel || "Mesa 01";
+        selectedMesaOrderId = null;
         customerName = cName || `Cliente ${selectedMesaNum}`;
         customerPhone = attName ? `Atend: ${attName}` : "";
         totemCart = [];
@@ -1449,8 +1483,9 @@
         const found = activeMesaOrdersList.find(o => o.id === orderId);
         const cust = found?.customer || found?.client || {};
         selectedMethod = "Mesa";
-        selectedMesaNum = mesaLabel;
-        customerName = cust.name || `Cliente ${mesaLabel}`;
+        selectedMesaOrderId = orderId || null;
+        selectedMesaNum = cust.number || cust.address || mesaLabel;
+        customerName = cust.name || `Cliente ${selectedMesaNum}`;
         customerPhone = cust.phone && cust.phone !== "Sem telefone" ? cust.phone : "";
         totemCart = [];
         activeCategory = "all";
@@ -1458,9 +1493,12 @@
         await enterMenuFromAttendant();
       };
 
-      window.attendantPreviewTableTab = async function(mesaLabel) {
+      window.attendantPreviewTableTab = async function(mesaLabel, orderId = null) {
+        const found = orderId ? activeMesaOrdersList.find(o => o.id === orderId) : null;
+        const cust = found?.customer || found?.client || {};
         selectedMethod = "Mesa";
-        selectedMesaNum = mesaLabel;
+        selectedMesaOrderId = orderId || null;
+        selectedMesaNum = cust.number || cust.address || mesaLabel;
         await window.openViewTabModal();
       };
 
@@ -2220,7 +2258,7 @@
               price: item.price,
               complements: item.complements || [],
               notes: item.notes || "",
-              totalItemPrice: itemTotal,
+              totalItemPrice: item.price,
               addedAt: new Date().toISOString()
             };
           });
@@ -2278,7 +2316,9 @@
             });
 
             if (!isAttendantMode) {
+              const mKey = normalizeMesaKey(selectedMesaNum);
               localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`, finalOrderId);
+              if (mKey) localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_key_${mKey}`, finalOrderId);
             }
 
           } else {
@@ -2327,7 +2367,9 @@
             await setDoc(doc(db, COLLECTIONS.orders, orderId), orderDocument);
 
             if (selectedMethod === "Mesa" && !isAttendantMode) {
+              const mKey = normalizeMesaKey(selectedMesaNum);
               localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_${selectedMesaNum}`, orderId);
+              if (mKey) localStorage.setItem(`popfood_mesa_order_id_${currentStoreId}_key_${mKey}`, orderId);
             }
           }
 
